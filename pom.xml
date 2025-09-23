@@ -20,6 +20,9 @@
     <modules>
         <module>woodlin-dependencies</module>
         <module>woodlin-common</module>
+        <module>woodlin-security</module>
+        <module>woodlin-system</module>
+        <module>woodlin-admin</module>
     </modules>
 
     <!-- 统一属性配置 -->

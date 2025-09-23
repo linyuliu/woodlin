@@ -34,7 +34,7 @@
         <jetcache.version>2.7.6</jetcache.version>
         
         <!-- Excel处理 -->
-        <fastexcel.version>0.0.15</fastexcel.version>
+        <easyexcel.version>3.3.4</easyexcel.version>
         
         <!-- ID生成器 -->
         <cosid.version>2.9.8</cosid.version>
@@ -166,11 +166,11 @@
                 <version>${jetcache.version}</version>
             </dependency>
 
-            <!-- FastExcel -->
+            <!-- EasyExcel -->
             <dependency>
-                <groupId>cn.idev.excel</groupId>
-                <artifactId>fastexcel</artifactId>
-                <version>${fastexcel.version}</version>
+                <groupId>com.alibaba</groupId>
+                <artifactId>easyexcel</artifactId>
+                <version>${easyexcel.version}</version>
             </dependency>
 
             <!-- CosId -->
