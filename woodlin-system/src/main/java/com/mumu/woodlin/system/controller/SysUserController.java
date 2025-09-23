@@ -1,12 +1,12 @@
 package com.mumu.woodlin.system.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.mumu.woodlin.common.response.PageResult;
-import com.mumu.woodlin.common.response.Result;
+import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.system.dto.SysUserExcelDto;
 import com.mumu.woodlin.system.entity.SysUser;
+import com.mumu.woodlin.system.service.ISysUserExcelService;
 import com.mumu.woodlin.system.service.ISysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +24,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 用户管理控制器
@@ -42,6 +41,7 @@ import java.util.stream.Collectors;
 public class SysUserController {
     
     private final ISysUserService userService;
+    private final ISysUserExcelService excelService;
     
     /**
      * 分页查询用户列表
@@ -53,13 +53,13 @@ public class SysUserController {
      */
     @GetMapping("/list")
     @Operation(summary = "分页查询用户列表")
-    public Result<PageResult<SysUser>> list(
+    public R<PageResult<SysUser>> list(
             SysUser user,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
         
         IPage<SysUser> page = userService.selectUserPage(user, pageNum, pageSize);
-        return Result.success(PageResult.of(page));
+        return R.ok(PageResult.of(page));
     }
     
     /**
@@ -70,9 +70,9 @@ public class SysUserController {
      */
     @GetMapping("/{userId}")
     @Operation(summary = "根据用户ID获取详细信息")
-    public Result<SysUser> getInfo(@Parameter(description = "用户ID") @PathVariable Long userId) {
+    public R<SysUser> getInfo(@Parameter(description = "用户ID") @PathVariable Long userId) {
         SysUser user = userService.getById(userId);
-        return Result.success(user);
+        return R.ok(user);
     }
     
     /**
@@ -83,9 +83,9 @@ public class SysUserController {
      */
     @PostMapping
     @Operation(summary = "新增用户")
-    public Result<Void> add(@Valid @RequestBody SysUser user) {
+    public R<Void> add(@Valid @RequestBody SysUser user) {
         boolean result = userService.insertUser(user);
-        return result ? Result.success() : Result.fail("新增用户失败");
+        return result ? R.ok("新增用户成功") : R.fail("新增用户失败");
     }
     
     /**
@@ -96,9 +96,9 @@ public class SysUserController {
      */
     @PutMapping
     @Operation(summary = "修改用户")
-    public Result<Void> edit(@Valid @RequestBody SysUser user) {
+    public R<Void> edit(@Valid @RequestBody SysUser user) {
         boolean result = userService.updateUser(user);
-        return result ? Result.success() : Result.fail("修改用户失败");
+        return result ? R.ok("修改用户成功") : R.fail("修改用户失败");
     }
     
     /**
@@ -109,10 +109,10 @@ public class SysUserController {
      */
     @DeleteMapping("/{userIds}")
     @Operation(summary = "删除用户")
-    public Result<Void> remove(@Parameter(description = "用户ID，多个用逗号分隔") @PathVariable String userIds) {
+    public R<Void> remove(@Parameter(description = "用户ID，多个用逗号分隔") @PathVariable String userIds) {
         List<String> ids = Arrays.asList(userIds.split(","));
         boolean result = userService.removeByIds(ids);
-        return result ? Result.success() : Result.fail("删除用户失败");
+        return result ? R.ok("删除用户成功") : R.fail("删除用户失败");
     }
     
     /**
@@ -124,11 +124,11 @@ public class SysUserController {
      */
     @PutMapping("/resetPwd")
     @Operation(summary = "重置密码")
-    public Result<Void> resetPwd(
+    public R<Void> resetPwd(
             @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "新密码") @RequestParam String password) {
         boolean result = userService.resetPassword(userId, password);
-        return result ? Result.success() : Result.fail("重置密码失败");
+        return result ? R.ok("重置密码成功") : R.fail("重置密码失败");
     }
     
     /**
@@ -139,9 +139,9 @@ public class SysUserController {
      */
     @PutMapping("/changeStatus")
     @Operation(summary = "状态修改")
-    public Result<Void> changeStatus(@RequestBody SysUser user) {
+    public R<Void> changeStatus(@RequestBody SysUser user) {
         boolean result = userService.updateById(user);
-        return result ? Result.success() : Result.fail("修改状态失败");
+        return result ? R.ok("修改状态成功") : R.fail("修改状态失败");
     }
     
     /**
@@ -157,9 +157,7 @@ public class SysUserController {
         List<SysUser> userList = userService.list();
         
         // 转换为导出DTO
-        List<SysUserExcelDto> excelList = userList.stream()
-                .map(this::convertToExcelDto)
-                .collect(Collectors.toList());
+        List<SysUserExcelDto> excelList = excelService.convertToExcelDtoList(userList);
         
         // 设置响应头
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -182,7 +180,7 @@ public class SysUserController {
      */
     @PostMapping("/importData")
     @Operation(summary = "导入用户数据")
-    public Result<String> importData(
+    public R<String> importData(
             @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "是否更新支持") @RequestParam(defaultValue = "false") Boolean updateSupport) throws IOException {
         
@@ -193,13 +191,11 @@ public class SysUserController {
                 .doReadSync();
         
         // 转换为实体对象
-        List<SysUser> userList = excelList.stream()
-                .map(this::convertFromExcelDto)
-                .collect(Collectors.toList());
+        List<SysUser> userList = excelService.convertFromExcelDtoList(excelList);
         
         // 导入数据
         String message = userService.importUser(userList, updateSupport);
-        return Result.success(message);
+        return R.ok(message);
     }
     
     /**
@@ -220,73 +216,5 @@ public class SysUserController {
         EasyExcel.write(response.getOutputStream(), SysUserExcelDto.class)
                 .sheet("用户数据")
                 .doWrite((List<?>) null);
-    }
-    
-    /**
-     * 转换为Excel导出DTO
-     * 
-     * @param user 用户实体
-     * @return Excel DTO
-     */
-    private SysUserExcelDto convertToExcelDto(SysUser user) {
-        SysUserExcelDto dto = BeanUtil.copyProperties(user, SysUserExcelDto.class);
-        
-        // 转换性别
-        if (user.getGender() != null) {
-            switch (user.getGender()) {
-                case 1:
-                    dto.setGenderText("男");
-                    break;
-                case 2:
-                    dto.setGenderText("女");
-                    break;
-                default:
-                    dto.setGenderText("未知");
-                    break;
-            }
-        }
-        
-        // 转换状态
-        if ("1".equals(user.getStatus())) {
-            dto.setStatusText("启用");
-        } else {
-            dto.setStatusText("禁用");
-        }
-        
-        return dto;
-    }
-    
-    /**
-     * 从Excel DTO转换为实体
-     * 
-     * @param dto Excel DTO
-     * @return 用户实体
-     */
-    private SysUser convertFromExcelDto(SysUserExcelDto dto) {
-        SysUser user = BeanUtil.copyProperties(dto, SysUser.class);
-        
-        // 转换性别
-        if (dto.getGenderText() != null) {
-            switch (dto.getGenderText()) {
-                case "男":
-                    user.setGender(1);
-                    break;
-                case "女":
-                    user.setGender(2);
-                    break;
-                default:
-                    user.setGender(0);
-                    break;
-            }
-        }
-        
-        // 转换状态
-        if ("启用".equals(dto.getStatusText())) {
-            user.setStatus("1");
-        } else {
-            user.setStatus("0");
-        }
-        
-        return user;
     }
 }
