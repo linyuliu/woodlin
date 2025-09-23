@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.mapper.SysUserMapper;
@@ -116,15 +117,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public boolean insertUser(SysUser user) {
         // 校验用户名唯一性
         if (!checkUsernameUnique(user)) {
-            throw new BusinessException("新增用户'" + user.getUsername() + "'失败，登录账号已存在");
+            throw BusinessException.of(ResultCode.USERNAME_ALREADY_EXISTS, "新增用户'" + user.getUsername() + "'失败，登录账号已存在");
         }
         // 校验手机号唯一性
         if (StrUtil.isNotBlank(user.getMobile()) && !checkPhoneUnique(user)) {
-            throw new BusinessException("新增用户'" + user.getUsername() + "'失败，手机号码已存在");
+            throw BusinessException.of(ResultCode.PHONE_ALREADY_EXISTS, "新增用户'" + user.getUsername() + "'失败，手机号码已存在");
         }
         // 校验邮箱唯一性
         if (StrUtil.isNotBlank(user.getEmail()) && !checkEmailUnique(user)) {
-            throw new BusinessException("新增用户'" + user.getUsername() + "'失败，邮箱账号已存在");
+            throw BusinessException.of(ResultCode.EMAIL_ALREADY_EXISTS, "新增用户'" + user.getUsername() + "'失败，邮箱账号已存在");
         }
         
         return this.save(user);
@@ -140,15 +141,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public boolean updateUser(SysUser user) {
         // 校验用户名唯一性
         if (!checkUsernameUnique(user)) {
-            throw new BusinessException("修改用户'" + user.getUsername() + "'失败，登录账号已存在");
+            throw BusinessException.of(ResultCode.USERNAME_ALREADY_EXISTS, "修改用户'" + user.getUsername() + "'失败，登录账号已存在");
         }
         // 校验手机号唯一性
         if (StrUtil.isNotBlank(user.getMobile()) && !checkPhoneUnique(user)) {
-            throw new BusinessException("修改用户'" + user.getUsername() + "'失败，手机号码已存在");
+            throw BusinessException.of(ResultCode.PHONE_ALREADY_EXISTS, "修改用户'" + user.getUsername() + "'失败，手机号码已存在");
         }
         // 校验邮箱唯一性
         if (StrUtil.isNotBlank(user.getEmail()) && !checkEmailUnique(user)) {
-            throw new BusinessException("修改用户'" + user.getUsername() + "'失败，邮箱账号已存在");
+            throw BusinessException.of(ResultCode.EMAIL_ALREADY_EXISTS, "修改用户'" + user.getUsername() + "'失败，邮箱账号已存在");
         }
         
         return this.updateById(user);
