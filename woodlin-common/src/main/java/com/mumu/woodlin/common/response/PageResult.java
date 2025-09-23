@@ -81,6 +81,17 @@ public class PageResult<T> extends Result<List<T>> {
     }
     
     /**
+     * 从MyBatis Plus分页对象创建分页响应
+     * 
+     * @param page MyBatis Plus分页对象
+     * @param <T> 数据类型
+     * @return 分页响应结果
+     */
+    public static <T> PageResult<T> of(com.baomidou.mybatisplus.core.metadata.IPage<T> page) {
+        return success(page.getCurrent(), page.getSize(), page.getTotal(), page.getRecords());
+    }
+    
+    /**
      * 成功分页响应
      * 
      * @param current 当前页码
