@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 
+        Woodlin 依赖管理模块
+        作者: mumu
+        描述: 统一管理所有第三方依赖版本，确保版本一致性
+    -->
+    <parent>
+        <groupId>com.mumu</groupId>
+        <artifactId>woodlin</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>woodlin-dependencies</artifactId>
+    <packaging>pom</packaging>
+    <name>Woodlin Dependencies BOM</name>
+    <description>Woodlin 项目依赖版本管理</description>
+
+    <!-- 第三方依赖版本定义 -->
+    <properties>
+        <!-- 安全认证框架 -->
+        <sa-token.version>1.39.0</sa-token.version>
+        
+        <!-- 数据库框架 -->
+        <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <dynamic-datasource.version>4.3.1</dynamic-datasource.version>
+        
+        <!-- 缓存框架 -->
+        <redisson.version>3.37.0</redisson.version>
+        <jetcache.version>2.7.6</jetcache.version>
+        
+        <!-- Excel处理 -->
+        <fastexcel.version>0.0.15</fastexcel.version>
+        
+        <!-- ID生成器 -->
+        <cosid.version>2.9.8</cosid.version>
+        
+        <!-- 第三方登录 -->
+        <justauth.version>1.16.6</justauth.version>
+        
+        <!-- 对象映射 -->
+        <crane4j.version>2.9.0</crane4j.version>
+        
+        <!-- API文档 -->
+        <springdoc.version>2.7.0</springdoc.version>
+        
+        <!-- 工具库 -->
+        <hutool.version>5.8.34</hutool.version>
+        <lombok.version>1.18.36</lombok.version>
+        
+        <!-- 数据库驱动 -->
+        <mysql.version>8.4.0</mysql.version>
+        <postgresql.version>42.7.4</postgresql.version>
+        
+        <!-- 验证框架 -->
+        <validation-api.version>3.1.0</validation-api.version>
+        
+        <!-- JSON处理 -->
+        <jackson.version>2.18.2</jackson.version>
+        
+        <!-- 任务调度 -->
+        <quartz.version>2.5.0</quartz.version>
+        
+        <!-- 对象存储 -->
+        <minio.version>8.5.14</minio.version>
+        <aws-java-sdk-s3.version>1.12.780</aws-java-sdk-s3.version>
+        
+        <!-- 邮件发送 -->
+        <mail.version>2.1.3</mail.version>
+        
+        <!-- 短信服务 -->
+        <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
+        
+        <!-- 验证码 -->
+        <easy-captcha.version>1.6.2</easy-captcha.version>
+        
+        <!-- IP地址解析 -->
+        <ip2region.version>3.1.11</ip2region.version>
+        
+        <!-- 模板引擎 -->
+        <velocity.version>2.4.1</velocity.version>
+        
+        <!-- 测试框架 -->
+        <testcontainers.version>1.20.4</testcontainers.version>
+    </properties>
+
+    <!-- 依赖版本管理 -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Woodlin 内部模块 -->
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-common</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-security</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-system</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-tenant</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-file</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-task</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-generator</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+
+            <!-- Sa-Token 安全框架 -->
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-spring-boot3-starter</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-redis-jackson</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+
+            <!-- MyBatis Plus -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+                <version>${dynamic-datasource.version}</version>
+            </dependency>
+
+            <!-- Redisson -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <!-- JetCache -->
+            <dependency>
+                <groupId>com.alicp.jetcache</groupId>
+                <artifactId>jetcache-starter-redis</artifactId>
+                <version>${jetcache.version}</version>
+            </dependency>
+
+            <!-- FastExcel -->
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+
+            <!-- CosId -->
+            <dependency>
+                <groupId>me.ahoo.cosid</groupId>
+                <artifactId>cosid-spring-boot-starter</artifactId>
+                <version>${cosid.version}</version>
+            </dependency>
+
+            <!-- JustAuth -->
+            <dependency>
+                <groupId>me.zhyd.oauth</groupId>
+                <artifactId>JustAuth</artifactId>
+                <version>${justauth.version}</version>
+            </dependency>
+
+            <!-- Crane4j -->
+            <dependency>
+                <groupId>cn.crane4j</groupId>
+                <artifactId>crane4j-spring-boot-starter</artifactId>
+                <version>${crane4j.version}</version>
+            </dependency>
+
+            <!-- SpringDoc -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Hutool -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+            <!-- 数据库驱动 -->
+            <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
+            </dependency>
+
+            <!-- Quartz 任务调度 -->
+            <dependency>
+                <groupId>org.quartz-scheduler</groupId>
+                <artifactId>quartz</artifactId>
+                <version>${quartz.version}</version>
+            </dependency>
+
+            <!-- MinIO 对象存储 -->
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
+            </dependency>
+
+            <!-- AWS S3 SDK -->
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-s3</artifactId>
+                <version>${aws-java-sdk-s3.version}</version>
+            </dependency>
+
+            <!-- 验证码 -->
+            <dependency>
+                <groupId>com.github.whvcse</groupId>
+                <artifactId>easy-captcha</artifactId>
+                <version>${easy-captcha.version}</version>
+            </dependency>
+
+            <!-- IP地址解析 -->
+            <dependency>
+                <groupId>net.dreamlu</groupId>
+                <artifactId>mica-ip2region</artifactId>
+                <version>${ip2region.version}</version>
+            </dependency>
+
+            <!-- 阿里云短信 -->
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>dysmsapi20170525</artifactId>
+                <version>${aliyun-dysmsapi.version}</version>
+            </dependency>
+
+            <!-- Velocity 模板引擎 -->
+            <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity-engine-core</artifactId>
+                <version>${velocity.version}</version>
+            </dependency>
+
+            <!-- Testcontainers -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>
