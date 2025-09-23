@@ -1,13 +1,13 @@
 package com.mumu.woodlin.system.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.mumu.woodlin.common.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.Serial;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -19,10 +19,10 @@ import java.time.LocalDateTime;
  */
 @Data
 @Accessors(chain = true)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 @TableName("sys_user")
 @Schema(description = "用户信息")
-public class SysUser implements Serializable {
+public class SysUser extends BaseEntity {
     
     @Serial
     private static final long serialVersionUID = 1L;
@@ -159,41 +159,5 @@ public class SysUser implements Serializable {
     @TableField("remark")
     @Schema(description = "备注")
     private String remark;
-    
-    /**
-     * 创建人
-     */
-    @TableField(value = "create_by", fill = FieldFill.INSERT)
-    @Schema(description = "创建人")
-    private String createBy;
-    
-    /**
-     * 创建时间
-     */
-    @TableField(value = "create_time", fill = FieldFill.INSERT)
-    @Schema(description = "创建时间")
-    private LocalDateTime createTime;
-    
-    /**
-     * 更新人
-     */
-    @TableField(value = "update_by", fill = FieldFill.INSERT_UPDATE)
-    @Schema(description = "更新人")
-    private String updateBy;
-    
-    /**
-     * 更新时间
-     */
-    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
-    @Schema(description = "更新时间")
-    private LocalDateTime updateTime;
-    
-    /**
-     * 删除标识（0-正常，1-删除）
-     */
-    @TableField("deleted")
-    @TableLogic
-    @Schema(description = "删除标识")
-    private String deleted;
     
 }

@@ -48,6 +48,22 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-task</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-generator</artifactId>
+        </dependency>
 
         <!-- Spring Boot Starter -->
         <dependency>
@@ -72,6 +88,25 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Hutool -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+
+        <!-- MyBatis Plus -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
         </dependency>
 
         <!-- 测试依赖 -->
