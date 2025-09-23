@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- 
-        Woodlin 通用模块
+        Woodlin 多租户模块
         作者: mumu
-        描述: 提供通用工具类、异常处理、常量定义等基础功能
+        描述: 多租户数据隔离和管理功能模块
     -->
     <parent>
         <groupId>com.mumu</groupId>
@@ -15,15 +15,13 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-common</artifactId>
-    <packaging>jar</packaging>
-    <name>Woodlin Common Module</name>
-    <description>Woodlin 通用模块 - 基础工具和公共组件</description>
+    <artifactId>woodlin-tenant</artifactId>
+    <name>Woodlin Tenant Module</name>
+    <description>Woodlin 多租户管理模块</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
         <dependencies>
-            <!-- Woodlin BOM -->
             <dependency>
                 <groupId>com.mumu</groupId>
                 <artifactId>woodlin-dependencies</artifactId>
@@ -34,26 +32,39 @@
         </dependencies>
     </dependencyManagement>
 
+    <!-- 依赖引入 -->
     <dependencies>
-        <!-- Spring Boot Starter -->
+        <!-- Woodlin Common -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common</artifactId>
         </dependency>
-        
-        <!-- Spring Boot Web -->
+
+        <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        
-        <!-- Spring Boot Validation -->
+
+        <!-- MyBatis Plus -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Dynamic DataSource -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- Hutool 工具库 -->
+        <!-- Hutool -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
@@ -64,31 +75,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
-        </dependency>
-
-        <!-- Jackson -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <!-- SpringDoc -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-        </dependency>
-
-        <!-- MyBatis Plus -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
-        </dependency>
-
-        <!-- 测试依赖 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

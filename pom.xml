@@ -22,6 +22,10 @@
         <module>woodlin-common</module>
         <module>woodlin-security</module>
         <module>woodlin-system</module>
+        <module>woodlin-tenant</module>
+        <module>woodlin-file</module>
+        <module>woodlin-task</module>
+        <module>woodlin-generator</module>
         <module>woodlin-admin</module>
     </modules>
 
