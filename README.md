@@ -113,6 +113,73 @@ woodlin
    - API 文档: http://localhost:8080/api/doc.html
    - 默认账号: admin / 123456
 
+### 环境变量配置
+
+为了更好的部署体验，系统支持通过环境变量配置各项参数：
+
+#### 🌐 服务器配置
+```bash
+export SERVER_PORT=8080                        # 服务端口
+export SERVER_CONTEXT_PATH=/api                # 应用上下文路径
+```
+
+#### 🗄️ 数据库配置
+```bash
+export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8"
+export DATABASE_USERNAME=root                   # 数据库用户名
+export DATABASE_PASSWORD=123456                 # 数据库密码
+export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver # 数据库驱动
+export DATABASE_HIKARI_MIN_IDLE=5              # 连接池最小空闲连接数
+export DATABASE_HIKARI_MAX_POOL_SIZE=20        # 连接池最大连接数
+```
+
+#### 📦 Redis 配置
+```bash
+export REDIS_HOST=localhost                     # Redis 主机
+export REDIS_PORT=6379                          # Redis 端口
+export REDIS_DATABASE=0                         # Redis 数据库索引
+export REDIS_PASSWORD=                          # Redis 密码(可选)
+export REDIS_TIMEOUT=10s                        # Redis 超时时间
+```
+
+#### 🔐 Sa-Token 安全配置
+```bash
+export SA_TOKEN_NAME=Authorization              # Token 名称
+export SA_TOKEN_TIMEOUT=2592000                 # Token 有效期(秒)
+export SA_TOKEN_ACTIVITY_TIMEOUT=-1             # Token 活跃超时时间(秒)
+export SA_TOKEN_IS_CONCURRENT=true              # 是否允许并发登录
+export SA_TOKEN_IS_SHARE=false                  # 是否共用Token
+export SA_TOKEN_STYLE=uuid                      # Token 风格
+```
+
+#### ⚡ Redisson 配置
+```bash
+export REDISSON_ADDRESS=redis://localhost:6379  # Redisson 地址
+export REDISSON_DATABASE=0                      # Redisson 数据库索引
+export REDISSON_PASSWORD=                       # Redisson 密码(可选)
+export REDISSON_CONNECTION_POOL_SIZE=64         # 连接池大小
+```
+
+#### 📅 任务调度配置
+```bash
+export SNAIL_JOB_ENABLED=true                   # 是否启用任务调度
+export SNAIL_JOB_SERVER_ADDRESS=localhost:8888  # 任务调度服务地址
+export SNAIL_JOB_NAMESPACE=woodlin              # 命名空间
+export SNAIL_JOB_GROUP_NAME=woodlin-admin       # 组名称
+```
+
+#### 🐳 Docker 部署示例
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -e DATABASE_URL="jdbc:mysql://mysql-server:3306/woodlin" \
+  -e DATABASE_USERNAME=root \
+  -e DATABASE_PASSWORD=yourpassword \
+  -e REDIS_HOST=redis-server \
+  -e REDIS_PORT=6379 \
+  woodlin:latest
+```
+
 ## 📚 功能介绍
 
 ### 核心功能模块

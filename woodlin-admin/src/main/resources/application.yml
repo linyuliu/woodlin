@@ -4,9 +4,9 @@
 
 # 服务器配置
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
-    context-path: /api
+    context-path: ${SERVER_CONTEXT_PATH:/api}
     encoding:
       charset: UTF-8
       enabled: true
@@ -15,10 +15,14 @@ server:
 # Spring Boot 配置
 spring:
   application:
-    name: woodlin-admin
+    name: ${SPRING_APPLICATION_NAME:woodlin-admin}
   
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # Spring Boot Banner 配置
+  main:
+    banner-mode: off
   
   # 数据库配置
   datasource:
@@ -27,14 +31,14 @@ spring:
       strict: false
       datasource:
         master:
-          url: jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-          username: root
-          password: 123456
-          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: ${DATABASE_URL:jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
+          username: ${DATABASE_USERNAME:root}
+          password: ${DATABASE_PASSWORD:123456}
+          driver-class-name: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
           type: com.zaxxer.hikari.HikariDataSource
           hikari:
-            minimum-idle: 5
-            maximum-pool-size: 20
+            minimum-idle: ${DATABASE_HIKARI_MIN_IDLE:5}
+            maximum-pool-size: ${DATABASE_HIKARI_MAX_POOL_SIZE:20}
             auto-commit: true
             idle-timeout: 30000
             pool-name: HikariCP
@@ -45,16 +49,17 @@ spring:
   # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      database: 0
-      timeout: 10s
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:10s}
       lettuce:
         pool:
-          max-active: 200
-          max-wait: -1ms
-          max-idle: 10
-          min-idle: 0
+          max-active: ${REDIS_POOL_MAX_ACTIVE:200}
+          max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:0}
   
   # Jackson配置
   jackson:
@@ -106,19 +111,19 @@ mybatis-plus:
 # Sa-Token配置
 sa-token:
   # token名称 (同时也是cookie名称)
-  token-name: Authorization
+  token-name: ${SA_TOKEN_NAME:Authorization}
   # token有效期，单位s 默认30天, -1代表永不过期
-  timeout: 2592000
+  timeout: ${SA_TOKEN_TIMEOUT:2592000}
   # token临时有效期 (指定时间内无操作就视为token过期) 单位: 秒
-  activity-timeout: -1
+  activity-timeout: ${SA_TOKEN_ACTIVITY_TIMEOUT:-1}
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
-  is-concurrent: true
+  is-concurrent: ${SA_TOKEN_IS_CONCURRENT:true}
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
-  is-share: false
+  is-share: ${SA_TOKEN_IS_SHARE:false}
   # token风格
-  token-style: uuid
+  token-style: ${SA_TOKEN_STYLE:uuid}
   # 是否输出操作日志
-  is-log: false
+  is-log: ${SA_TOKEN_IS_LOG:false}
 
 # SpringDoc配置
 springdoc:
@@ -163,35 +168,36 @@ management:
 # SnailJob 分布式任务调度配置
 snail-job:
   # 是否启用SnailJob
-  enabled: true
+  enabled: ${SNAIL_JOB_ENABLED:true}
   # 服务端地址
-  server-address: localhost:8888
+  server-address: ${SNAIL_JOB_SERVER_ADDRESS:localhost:8888}
   # 命名空间
-  namespace: woodlin
+  namespace: ${SNAIL_JOB_NAMESPACE:woodlin}
   # 组名称
-  group-name: woodlin-admin
+  group-name: ${SNAIL_JOB_GROUP_NAME:woodlin-admin}
   # 客户端配置
   client:
     # 重试配置
     retry:
       # 重试次数
-      max-retry-count: 3
+      max-retry-count: ${SNAIL_JOB_MAX_RETRY_COUNT:3}
       # 重试间隔(秒)
-      retry-interval: 30
+      retry-interval: ${SNAIL_JOB_RETRY_INTERVAL:30}
 
 # Redisson 配置
 redisson:
   # 单节点配置
   single-server-config:
-    address: redis://localhost:6379
-    database: 0
-    connection-pool-size: 64
-    connection-minimum-idle-size: 10
-    idle-connection-timeout: 10000
-    connect-timeout: 10000
-    timeout: 3000
-    retry-attempts: 3
-    retry-interval: 1500
+    address: ${REDISSON_ADDRESS:redis://localhost:6379}
+    database: ${REDISSON_DATABASE:0}
+    password: ${REDISSON_PASSWORD:}
+    connection-pool-size: ${REDISSON_CONNECTION_POOL_SIZE:64}
+    connection-minimum-idle-size: ${REDISSON_CONNECTION_MIN_IDLE_SIZE:10}
+    idle-connection-timeout: ${REDISSON_IDLE_CONNECTION_TIMEOUT:10000}
+    connect-timeout: ${REDISSON_CONNECT_TIMEOUT:10000}
+    timeout: ${REDISSON_TIMEOUT:3000}
+    retry-attempts: ${REDISSON_RETRY_ATTEMPTS:3}
+    retry-interval: ${REDISSON_RETRY_INTERVAL:1500}
 
 # 分页配置
 page:
