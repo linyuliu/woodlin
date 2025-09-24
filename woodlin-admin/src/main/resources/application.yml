@@ -226,3 +226,34 @@ page:
   max-page-size: 500
   # 最大页码 (防止页码溢出)
   max-page-num: 10000
+
+# Woodlin 安全配置
+woodlin:
+  security:
+    password:
+      # 是否启用密码策略
+      enabled: ${PASSWORD_POLICY_ENABLED:true}
+      # 是否要求首次登录修改密码
+      require-change-on-first-login: ${PASSWORD_REQUIRE_FIRST_CHANGE:false}
+      # 密码过期天数（0表示永不过期）
+      expire-days: ${PASSWORD_EXPIRE_DAYS:0}
+      # 密码过期前提醒天数
+      warning-days: ${PASSWORD_WARNING_DAYS:7}
+      # 最大密码错误次数
+      max-error-count: ${PASSWORD_MAX_ERROR_COUNT:5}
+      # 账号锁定时长（分钟）
+      lock-duration-minutes: ${PASSWORD_LOCK_DURATION_MINUTES:30}
+      # 是否启用强密码策略
+      strong-password-required: ${PASSWORD_STRONG_REQUIRED:false}
+      # 最小密码长度
+      min-length: ${PASSWORD_MIN_LENGTH:6}
+      # 最大密码长度
+      max-length: ${PASSWORD_MAX_LENGTH:20}
+      # 是否要求包含数字
+      require-digits: ${PASSWORD_REQUIRE_DIGITS:false}
+      # 是否要求包含小写字母
+      require-lowercase: ${PASSWORD_REQUIRE_LOWERCASE:false}
+      # 是否要求包含大写字母
+      require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:false}
+      # 是否要求包含特殊字符
+      require-special-chars: ${PASSWORD_REQUIRE_SPECIAL_CHARS:false}
