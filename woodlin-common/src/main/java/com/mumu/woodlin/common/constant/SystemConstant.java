@@ -20,6 +20,21 @@ public interface SystemConstant {
     String SYSTEM_VERSION = "1.0.0";
     
     /**
+     * 构建时间（在打包时会被替换）
+     */
+    String BUILD_TIME = "@maven.build.timestamp@";
+    
+    /**
+     * Git提交ID（在打包时会被替换）
+     */
+    String GIT_COMMIT_ID = "@git.commit.id.abbrev@";
+    
+    /**
+     * 构建环境
+     */
+    String BUILD_PROFILE = "@build.profile.name@";
+    
+    /**
      * 默认租户ID
      */
     String DEFAULT_TENANT_ID = "default";

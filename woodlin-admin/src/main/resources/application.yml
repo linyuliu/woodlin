@@ -230,6 +230,20 @@ page:
 # Woodlin 安全配置
 woodlin:
   security:
+    # 用户活动监控配置
+    activity-monitoring:
+      # 是否启用用户活动监控
+      enabled: ${ACTIVITY_MONITORING_ENABLED:true}
+      # 用户无活动超时时间（秒），超时后自动登出，-1表示不限制
+      timeout-seconds: ${ACTIVITY_MONITORING_TIMEOUT:1800}
+      # 监控检查间隔（秒）
+      check-interval-seconds: ${ACTIVITY_MONITORING_CHECK_INTERVAL:60}
+      # 是否监控API请求活动
+      monitor-api-requests: ${ACTIVITY_MONITORING_API:true}
+      # 是否监控前端用户交互（键盘、鼠标）
+      monitor-user-interactions: ${ACTIVITY_MONITORING_INTERACTIONS:true}
+      # 活动监控警告提前时间（秒）
+      warning-before-timeout-seconds: ${ACTIVITY_MONITORING_WARNING:300}
     password:
       # 是否启用密码策略
       enabled: ${PASSWORD_POLICY_ENABLED:true}
@@ -257,3 +271,15 @@ woodlin:
       require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:false}
       # 是否要求包含特殊字符
       require-special-chars: ${PASSWORD_REQUIRE_SPECIAL_CHARS:false}
+  # 缓存配置
+  cache:
+    # 是否启用Redis二级缓存
+    redis-enabled: ${CACHE_REDIS_ENABLED:true}
+    # 字典缓存配置
+    dictionary:
+      # 是否启用字典缓存
+      enabled: ${CACHE_DICTIONARY_ENABLED:true}
+      # 缓存过期时间（秒）
+      expire-seconds: ${CACHE_DICTIONARY_EXPIRE:3600}
+      # 缓存刷新间隔（秒）
+      refresh-interval-seconds: ${CACHE_DICTIONARY_REFRESH:1800}

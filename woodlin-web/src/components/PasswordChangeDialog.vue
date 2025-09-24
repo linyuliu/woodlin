@@ -13,7 +13,7 @@
   >
     <div class="password-change-form">
       <div v-if="message" class="message" :class="messageType">
-        <NIcon :component="InfoCircleOutlined" />
+        <NIcon :component="InformationCircle" />
         {{ message }}
       </div>
       
@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { NModal, NForm, NFormItem, NInput, NIcon, useMessage } from 'naive-ui'
-import { InfoCircleOutlined } from '@vicons/antd'
+import { InformationCircle } from '@vicons/ionicons5'
 import axios from 'axios'
 
 interface Props {
