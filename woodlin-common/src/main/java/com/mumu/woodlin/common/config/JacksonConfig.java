@@ -13,6 +13,9 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
+import com.mumu.woodlin.common.enums.DictEnum;
+import com.mumu.woodlin.common.enums.Gender;
+import com.mumu.woodlin.common.enums.UserStatus;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -75,6 +78,10 @@ public class JacksonConfig {
         simpleModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
         simpleModule.addSerializer(BigInteger.class, ToStringSerializer.instance);
         simpleModule.addSerializer(BigDecimal.class, ToStringSerializer.instance);
+        
+        // 字典枚举反序列化配置
+        simpleModule.addDeserializer(UserStatus.class, new DictEnumDeserializer(UserStatus.class));
+        simpleModule.addDeserializer(Gender.class, new DictEnumDeserializer(Gender.class));
         
         // 时间序列化配置
         simpleModule.addSerializer(LocalDateTime.class, 
