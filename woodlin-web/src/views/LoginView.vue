@@ -1,19 +1,84 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NCard, NForm, NFormItem, NInput, NButton, NSpace } from 'naive-ui'
+import { NCard, NForm, NFormItem, NInput, NButton, NSpace, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import PasswordChangeDialog from '@/components/PasswordChangeDialog.vue'
 
 const router = useRouter()
+const message = useMessage()
 
 const loginForm = ref({
   username: 'admin',
   password: '123456'
 })
 
-const handleLogin = () => {
-  // TODO: 实现登录逻辑
-  console.log('登录:', loginForm.value)
-  router.push('/')
+const loading = ref(false)
+const showPasswordChange = ref(false)
+const passwordChangeRequired = ref(false)
+const passwordChangeMessage = ref('')
+const passwordChangeMessageType = ref<'info' | 'warning' | 'error'>('info')
+
+const handleLogin = async () => {
+  if (!loginForm.value.username || !loginForm.value.password) {
+    message.error('请输入用户名和密码')
+    return
+  }
+  
+  loading.value = true
+  
+  try {
+    const response = await axios.post('/api/auth/login', {
+      username: loginForm.value.username,
+      password: loginForm.value.password
+    })
+    
+    const data = response.data.data
+    
+    // 存储token
+    localStorage.setItem('token', data.token)
+    
+    // 处理密码策略
+    if (data.requirePasswordChange) {
+      // 需要强制修改密码
+      passwordChangeRequired.value = true
+      passwordChangeMessage.value = data.message || '需要修改密码'
+      passwordChangeMessageType.value = 'warning'
+      showPasswordChange.value = true
+    } else if (data.passwordExpiringSoon) {
+      // 密码即将过期，提醒修改
+      message.warning(`${data.message}，建议及时修改密码`)
+      router.push('/')
+    } else {
+      // 正常登录
+      message.success('登录成功')
+      router.push('/')
+    }
+    
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      message.error(error.response.data.message)
+    } else {
+      message.error('登录失败，请检查用户名和密码')
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 密码修改成功后的处理
+const handlePasswordChangeSuccess = () => {
+  message.success('密码修改成功，正在跳转...')
+  setTimeout(() => {
+    router.push('/')
+  }, 1000)
+}
+
+// 如果不是强制修改密码，允许取消
+const handlePasswordChangeCancel = () => {
+  if (!passwordChangeRequired.value) {
+    router.push('/')
+  }
 }
 </script>
 
@@ -46,9 +111,10 @@ const handleLogin = () => {
             type="primary" 
             block 
             size="large"
+            :loading="loading"
             @click="handleLogin"
           >
-            登录
+            {{ loading ? '登录中...' : '登录' }}
           </NButton>
         </NFormItem>
       </NForm>
@@ -59,6 +125,16 @@ const handleLogin = () => {
         </p>
       </div>
     </NCard>
+    
+    <!-- 密码修改对话框 -->
+    <PasswordChangeDialog
+      v-model:show="showPasswordChange"
+      :required="passwordChangeRequired"
+      :message="passwordChangeMessage"
+      :messageType="passwordChangeMessageType"
+      @success="handlePasswordChangeSuccess"
+      @cancel="handlePasswordChangeCancel"
+    />
   </div>
 </template>
 
