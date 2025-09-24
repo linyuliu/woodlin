@@ -16,6 +16,7 @@ com/mumu/woodlin/common/constant/PageConstant.class
 com/mumu/woodlin/common/response/Result.class
 com/mumu/woodlin/common/util/DictUtil.class
 com/mumu/woodlin/common/response/R.class
+com/mumu/woodlin/common/config/DictEnumDeserializer.class
 com/mumu/woodlin/common/response/PageResult.class
 com/mumu/woodlin/common/exception/BusinessException.class
 com/mumu/woodlin/common/enums/DictEnum.class
