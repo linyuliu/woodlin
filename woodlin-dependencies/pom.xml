@@ -64,6 +64,7 @@
         
         <!-- 任务调度 -->
         <quartz.version>2.5.0</quartz.version>
+        <snail-job.version>1.1.0</snail-job.version>
         
         <!-- 对象存储 -->
         <minio.version>8.5.14</minio.version>
@@ -227,11 +228,18 @@
                 <version>${postgresql.version}</version>
             </dependency>
 
-            <!-- Quartz 任务调度 -->
+            <!-- 任务调度 Quartz -->
             <dependency>
                 <groupId>org.quartz-scheduler</groupId>
                 <artifactId>quartz</artifactId>
                 <version>${quartz.version}</version>
+            </dependency>
+            
+            <!-- SnailJob 分布式任务调度 -->
+            <dependency>
+                <groupId>com.aizuda</groupId>
+                <artifactId>snail-job-client-starter</artifactId>
+                <version>${snail-job.version}</version>
             </dependency>
 
             <!-- MinIO 对象存储 -->
