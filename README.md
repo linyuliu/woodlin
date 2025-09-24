@@ -129,8 +129,11 @@ export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&charact
 export DATABASE_USERNAME=root                   # 数据库用户名
 export DATABASE_PASSWORD=123456                 # 数据库密码
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver # 数据库驱动
-export DATABASE_HIKARI_MIN_IDLE=5              # 连接池最小空闲连接数
-export DATABASE_HIKARI_MAX_POOL_SIZE=20        # 连接池最大连接数
+export DATABASE_DRUID_INITIAL_SIZE=5            # Druid连接池初始大小
+export DATABASE_DRUID_MIN_IDLE=5                # Druid连接池最小空闲连接数
+export DATABASE_DRUID_MAX_ACTIVE=20             # Druid连接池最大连接数
+export DATABASE_DRUID_USERNAME=admin            # Druid监控用户名
+export DATABASE_DRUID_PASSWORD=123456           # Druid监控密码
 ```
 
 #### 📦 Redis 配置
@@ -179,6 +182,51 @@ docker run -d \
   -e REDIS_PORT=6379 \
   woodlin:latest
 ```
+
+### 🚀 一键部署
+
+项目提供了完整的部署脚本和Docker配置：
+
+#### 快速部署
+```bash
+# 克隆项目
+git clone https://github.com/linyuliu/woodlin.git
+cd woodlin
+
+# 一键部署（包含前后端）
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+
+# 或使用Docker Compose
+cp .env.example .env  # 修改环境变量
+docker-compose up -d
+```
+
+#### 开发环境启动
+```bash
+# 后端开发
+mvn spring-boot:run -pl woodlin-admin
+
+# 前端开发
+cd woodlin-web
+npm install
+npm run dev
+```
+
+### 📦 项目结构
+
+#### 前端技术栈
+- **Vue 3** + **TypeScript** + **Vite**
+- **Naive UI** - 现代化的Vue3组件库
+- **Pinia** - Vue状态管理
+- **Vue Router** - 路由管理
+- **Axios** - HTTP客户端
+- **ESLint** + **Prettier** - 代码规范
+
+#### 后端改进
+- **Druid连接池** - 替换HikariCP，提供更好的监控和性能
+- **分页溢出防护** - 防止大页码查询导致的性能问题
+- **SonarQube兼容** - 符合代码质量扫描规范
 
 ## 📚 功能介绍
 

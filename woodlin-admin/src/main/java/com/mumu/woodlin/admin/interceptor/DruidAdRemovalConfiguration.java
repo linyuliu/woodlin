@@ -1,0 +1,117 @@
+package com.mumu.woodlin.admin.interceptor;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.web.servlet.ServletRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * Druid 广告移除配置
+ * 
+ * @author mumu
+ * @description 移除Druid监控页面底部的广告信息
+ * @since 2025-01-01
+ */
+@Slf4j
+@Configuration
+public class DruidAdRemovalConfiguration {
+
+    /**
+     * 注册过滤器来移除Druid广告
+     */
+    @Bean
+    public FilterRegistrationBean<DruidAdRemovalFilter> druidAdRemovalFilter() {
+        FilterRegistrationBean<DruidAdRemovalFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new DruidAdRemovalFilter());
+        registration.addUrlPatterns("/druid/*");
+        registration.setName("druidAdRemovalFilter");
+        registration.setOrder(1);
+        return registration;
+    }
+
+    /**
+     * 自定义过滤器，移除广告
+     */
+    public static class DruidAdRemovalFilter implements Filter {
+        
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) 
+                throws IOException, ServletException {
+            
+            if (response instanceof HttpServletResponse) {
+                HttpServletResponse httpResponse = (HttpServletResponse) response;
+                DruidResponseWrapper wrapper = new DruidResponseWrapper(httpResponse);
+                chain.doFilter(request, wrapper);
+                
+                String content = wrapper.getContent();
+                if (content != null && content.contains("支持")) {
+                    // 移除广告相关内容
+                    content = content.replaceAll("<a.*?www\\.aliyun\\.com.*?</a>", "");
+                    content = content.replaceAll("支持.*?阿里云.*?</div>", "</div>");
+                    content = content.replace("powered by Alibaba", "");
+                }
+                
+                httpResponse.getOutputStream().write(content.getBytes("UTF-8"));
+            } else {
+                chain.doFilter(request, response);
+            }
+        }
+    }
+
+    /**
+     * 响应包装器
+     */
+    private static class DruidResponseWrapper extends jakarta.servlet.http.HttpServletResponseWrapper {
+        private java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        private jakarta.servlet.ServletOutputStream stream = new ServletOutputStreamWrapper(buffer);
+        
+        public DruidResponseWrapper(HttpServletResponse response) {
+            super(response);
+        }
+        
+        @Override
+        public jakarta.servlet.ServletOutputStream getOutputStream() throws IOException {
+            return stream;
+        }
+        
+        public String getContent() {
+            try {
+                return buffer.toString("UTF-8");
+            } catch (Exception e) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * ServletOutputStream 包装器
+     */
+    private static class ServletOutputStreamWrapper extends ServletOutputStream {
+        private java.io.ByteArrayOutputStream buffer;
+        
+        public ServletOutputStreamWrapper(java.io.ByteArrayOutputStream buffer) {
+            this.buffer = buffer;
+        }
+        
+        @Override
+        public void write(int b) throws IOException {
+            buffer.write(b);
+        }
+        
+        @Override
+        public boolean isReady() {
+            return true;
+        }
+        
+        @Override
+        public void setWriteListener(WriteListener listener) {
+            // Not implemented
+        }
+    }
+}

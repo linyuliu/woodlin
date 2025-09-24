@@ -35,16 +35,33 @@ spring:
           username: ${DATABASE_USERNAME:root}
           password: ${DATABASE_PASSWORD:123456}
           driver-class-name: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
-          type: com.zaxxer.hikari.HikariDataSource
-          hikari:
-            minimum-idle: ${DATABASE_HIKARI_MIN_IDLE:5}
-            maximum-pool-size: ${DATABASE_HIKARI_MAX_POOL_SIZE:20}
-            auto-commit: true
-            idle-timeout: 30000
-            pool-name: HikariCP
-            max-lifetime: 1800000
-            connection-timeout: 30000
-            connection-test-query: SELECT 1
+          type: com.alibaba.druid.pool.DruidDataSource
+          druid:
+            initial-size: ${DATABASE_DRUID_INITIAL_SIZE:5}
+            min-idle: ${DATABASE_DRUID_MIN_IDLE:5}
+            max-active: ${DATABASE_DRUID_MAX_ACTIVE:20}
+            max-wait: ${DATABASE_DRUID_MAX_WAIT:60000}
+            time-between-eviction-runs-millis: 60000
+            min-evictable-idle-time-millis: 300000
+            validation-query: ${DATABASE_DRUID_VALIDATION_QUERY:SELECT 1}
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+            pool-prepared-statements: true
+            max-pool-prepared-statement-per-connection-size: 20
+            filters: stat,wall,slf4j
+            connection-properties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
+            web-stat-filter:
+              enabled: true
+              url-pattern: "/*"
+              exclusions: "*.js,*.gif,*.jpg,*.bmp,*.png,*.css,*.ico,/druid/*"
+            stat-view-servlet:
+              enabled: true
+              url-pattern: "/druid/*"
+              reset-enable: false
+              login-username: ${DATABASE_DRUID_USERNAME:admin}
+              login-password: ${DATABASE_DRUID_PASSWORD:123456}
+              allow: ${DATABASE_DRUID_ALLOW:}
   
   # Redis配置
   data:
@@ -205,7 +222,7 @@ page:
   default-page-num: 1
   # 默认页面大小
   default-page-size: 20
-  # 最大页面大小
+  # 最大页面大小 (防止大量数据查询)
   max-page-size: 500
-  # 最大页码
-  max-page-num: 1000000
+  # 最大页码 (防止页码溢出)
+  max-page-num: 10000
