@@ -123,7 +123,7 @@ const rules = {
     message: '请输入新密码',
     trigger: ['input', 'blur'],
     validator: (rule: any, value: string) => {
-      if (!value) return new Error('请输入新密码')
+      if (!value) {return new Error('请输入新密码')}
       if (value.length < passwordPolicy.minLength) {
         return new Error(`密码长度不能少于${passwordPolicy.minLength}位`)
       }
