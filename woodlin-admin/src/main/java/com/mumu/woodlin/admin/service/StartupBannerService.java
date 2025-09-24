@@ -70,6 +70,12 @@ public class StartupBannerService implements ApplicationRunner {
                    Spring环境: %s
                    启动时间: %s
                    
+                🔧 构建信息:
+                   构建时间: %s
+                   Git提交: %s
+                   构建环境: %s
+                   Maven版本: %s
+                   
                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 
                 """.formatted(
@@ -85,7 +91,11 @@ public class StartupBannerService implements ApplicationRunner {
                     contextPath,
                     System.getProperty("java.version"),
                     activeProfiles.isEmpty() ? "default" : activeProfiles,
-                    currentTime
+                    currentTime,
+                    getBuildTime(),
+                    getGitCommitId(),
+                    getBuildProfile(),
+                    getMavenVersion()
             ));
             
             // 输出环境变量提示
@@ -106,5 +116,56 @@ public class StartupBannerService implements ApplicationRunner {
         String databaseUrl = environment.getProperty("DATABASE_URL");
         String redisHost = environment.getProperty("REDIS_HOST");
         return databaseUrl == null || redisHost == null;
+    }
+    
+    /**
+     * 获取构建时间
+     */
+    private String getBuildTime() {
+        String buildTime = SystemConstant.BUILD_TIME;
+        if (buildTime.startsWith("@") && buildTime.endsWith("@")) {
+            return "开发环境";
+        }
+        return buildTime;
+    }
+    
+    /**
+     * 获取Git提交ID
+     */
+    private String getGitCommitId() {
+        String gitCommitId = SystemConstant.GIT_COMMIT_ID;
+        if (gitCommitId.startsWith("@") && gitCommitId.endsWith("@")) {
+            return "dev";
+        }
+        return gitCommitId;
+    }
+    
+    /**
+     * 获取构建环境
+     */
+    private String getBuildProfile() {
+        String buildProfile = SystemConstant.BUILD_PROFILE;
+        if (buildProfile.startsWith("@") && buildProfile.endsWith("@")) {
+            return "development";
+        }
+        return buildProfile;
+    }
+    
+    /**
+     * 获取Maven版本信息
+     */
+    private String getMavenVersion() {
+        try {
+            // 尝试从Maven相关的系统属性获取版本信息
+            String version = System.getProperty("maven.version", 
+                environment.getProperty("maven.version", "未知"));
+            if ("未知".equals(version)) {
+                // 尝试从环境变量获取
+                version = System.getenv().getOrDefault("MAVEN_VERSION", "3.x");
+            }
+            return version;
+        } catch (Exception e) {
+            return "未知";
+        }
     }
 }
