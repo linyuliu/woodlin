@@ -4,6 +4,8 @@ import cn.dev33.satoken.config.SaTokenConfig;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
+import com.mumu.woodlin.security.interceptor.UserActivityInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -17,7 +19,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * @since 2025-01-01
  */
 @Configuration
+@RequiredArgsConstructor
 public class SaTokenConfiguration implements WebMvcConfigurer {
+    
+    private final UserActivityInterceptor userActivityInterceptor;
     
     /**
      * Sa-Token 配置
@@ -50,6 +55,25 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 注册用户活动监控拦截器
+        registry.addInterceptor(userActivityInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        // 排除不需要监控的路径
+                        "/auth/login",          // 登录接口
+                        "/auth/logout",         // 登出接口
+                        "/auth/captcha",        // 验证码接口
+                        "/auth/register",       // 注册接口
+                        "/auth/forgot-password",// 忘记密码接口
+                        "/error",               // 错误页面
+                        "/favicon.ico",         // 网站图标
+                        "/doc.html",            // 接口文档
+                        "/swagger-ui/**",       // Swagger UI
+                        "/v3/api-docs/**",      // OpenAPI 文档
+                        "/webjars/**",          // 静态资源
+                        "/actuator/**"          // 监控端点
+                );
+        
         // 注册 Sa-Token 拦截器，定义详细的鉴权规则
         registry.addInterceptor(new SaInterceptor(handler -> {
             // 指定一条 match 规则
