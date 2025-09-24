@@ -65,6 +65,10 @@ spring:
       fail-on-empty-beans: false
     deserialization:
       fail-on-unknown-properties: false
+    default-property-inclusion: NON_NULL
+    # Long类型序列化为String，避免JavaScript精度丢失
+    generator:
+      write-numbers-as-strings: false
 
 # MyBatis Plus配置
 mybatis-plus:
@@ -155,3 +159,47 @@ management:
   endpoint:
     health:
       show-details: always
+
+# SnailJob 分布式任务调度配置
+snail-job:
+  # 是否启用SnailJob
+  enabled: true
+  # 服务端地址
+  server-address: localhost:8888
+  # 命名空间
+  namespace: woodlin
+  # 组名称
+  group-name: woodlin-admin
+  # 客户端配置
+  client:
+    # 重试配置
+    retry:
+      # 重试次数
+      max-retry-count: 3
+      # 重试间隔(秒)
+      retry-interval: 30
+
+# Redisson 配置
+redisson:
+  # 单节点配置
+  single-server-config:
+    address: redis://localhost:6379
+    database: 0
+    connection-pool-size: 64
+    connection-minimum-idle-size: 10
+    idle-connection-timeout: 10000
+    connect-timeout: 10000
+    timeout: 3000
+    retry-attempts: 3
+    retry-interval: 1500
+
+# 分页配置
+page:
+  # 默认页码
+  default-page-num: 1
+  # 默认页面大小
+  default-page-size: 20
+  # 最大页面大小
+  max-page-size: 500
+  # 最大页码
+  max-page-num: 1000000
