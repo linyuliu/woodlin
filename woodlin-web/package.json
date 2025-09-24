@@ -17,6 +17,7 @@
     "version:info": "node scripts/generate-version.js"
   },
   "dependencies": {
+    "@vicons/antd": "^0.13.0",
     "@vicons/ionicons5": "^0.13.0",
     "axios": "^1.12.2",
     "naive-ui": "^2.43.1",
