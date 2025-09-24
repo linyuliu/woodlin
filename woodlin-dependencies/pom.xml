@@ -62,6 +62,7 @@
         
         <!-- JSON处理 -->
         <jackson.version>2.18.2</jackson.version>
+        <fastjson2.version>2.0.55</fastjson2.version>
         
         <!-- 任务调度 -->
         <quartz.version>2.5.0</quartz.version>
@@ -283,6 +284,18 @@
                 <groupId>com.aliyun</groupId>
                 <artifactId>dysmsapi20170525</artifactId>
                 <version>${aliyun-dysmsapi.version}</version>
+            </dependency>
+
+            <!-- FastJSON2 -->
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2-extension-spring6</artifactId>
+                <version>${fastjson2.version}</version>
             </dependency>
 
             <!-- Velocity 模板引擎 -->

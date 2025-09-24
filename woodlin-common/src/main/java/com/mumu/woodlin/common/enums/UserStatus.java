@@ -12,7 +12,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatus {
+public enum UserStatus implements DictEnum {
     
     /**
      * 启用
@@ -33,6 +33,16 @@ public enum UserStatus {
      * 状态描述
      */
     private final String description;
+    
+    @Override
+    public Object getValue() {
+        return code;
+    }
+    
+    @Override
+    public String getLabel() {
+        return description;
+    }
     
     /**
      * 根据状态码获取枚举

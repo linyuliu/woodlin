@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,12 +46,18 @@ public class JacksonConfig {
     public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
         ObjectMapper objectMapper = builder.createXmlMapper(false).build();
         
-        // 忽略未知属性
+        // 反序列化配置
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false);
+        objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+        objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT, true);
+        objectMapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
         
-        // 忽略空的JavaBean
+        // 序列化配置
         objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        objectMapper.configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING, false);
+        objectMapper.configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false);
         
         // 不写入null值
         objectMapper.setDefaultPropertyInclusion(
@@ -61,12 +68,13 @@ public class JacksonConfig {
         );
         
         // 注册自定义模块
-        SimpleModule simpleModule = new SimpleModule();
+        SimpleModule simpleModule = new SimpleModule("WoodlinModule");
         
-        // Long类型序列化为String，避免JavaScript精度丢失
+        // 数值类型序列化为String，避免JavaScript精度丢失
         simpleModule.addSerializer(Long.class, ToStringSerializer.instance);
         simpleModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
         simpleModule.addSerializer(BigInteger.class, ToStringSerializer.instance);
+        simpleModule.addSerializer(BigDecimal.class, ToStringSerializer.instance);
         
         // 时间序列化配置
         simpleModule.addSerializer(LocalDateTime.class, 
@@ -84,6 +92,7 @@ public class JacksonConfig {
         simpleModule.addDeserializer(LocalTime.class, 
             new LocalTimeDeserializer(DateTimeFormatter.ofPattern(DatePattern.NORM_TIME_PATTERN)));
         
+        // 注册模块
         objectMapper.registerModule(simpleModule);
         objectMapper.registerModule(new JavaTimeModule());
         

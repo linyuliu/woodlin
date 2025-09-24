@@ -12,7 +12,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum Gender {
+public enum Gender implements DictEnum {
     
     /**
      * 未知
@@ -38,6 +38,16 @@ public enum Gender {
      * 性别描述
      */
     private final String description;
+    
+    @Override
+    public Object getValue() {
+        return code;
+    }
+    
+    @Override
+    public String getLabel() {
+        return description;
+    }
     
     /**
      * 根据代码获取枚举

@@ -1,9 +1,11 @@
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/config/JacksonConfig.java
+/home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/config/RedisConfig.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/constant/CommonConstant.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/constant/PageConstant.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/constant/SystemConstant.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/constant/UserConstant.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/entity/BaseEntity.java
+/home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/enums/DictEnum.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/enums/Gender.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/enums/ResultCode.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/enums/UserStatus.java
@@ -12,6 +14,7 @@
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/response/PageResult.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/response/R.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/response/Result.java
+/home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/util/DictUtil.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/util/PageUtil.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/util/RedisUtil.java
 /home/runner/work/woodlin/woodlin/woodlin-common/src/main/java/com/mumu/woodlin/common/util/ValidateUtil.java
