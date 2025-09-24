@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -245,7 +246,7 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
             // 导出模板
             EasyExcel.write(response.getOutputStream(), SysUserExcelDto.class)
                     .sheet("用户数据")
-                    .doWrite(null);
+                    .doWrite(Collections.emptyList());
                     
             log.info("用户导入模板下载完成");
         } catch (Exception e) {
