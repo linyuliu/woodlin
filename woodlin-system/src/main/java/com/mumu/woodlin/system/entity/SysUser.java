@@ -154,6 +154,27 @@ public class SysUser extends BaseEntity {
     private LocalDateTime lockTime;
     
     /**
+     * 密码最后修改时间
+     */
+    @TableField("pwd_change_time")
+    @Schema(description = "密码最后修改时间")
+    private LocalDateTime pwdChangeTime;
+    
+    /**
+     * 是否首次登录
+     */
+    @TableField("is_first_login")
+    @Schema(description = "是否首次登录")
+    private Boolean isFirstLogin;
+    
+    /**
+     * 密码过期天数（0表示永不过期，优先于系统配置）
+     */
+    @TableField("pwd_expire_days")
+    @Schema(description = "密码过期天数")
+    private Integer pwdExpireDays;
+    
+    /**
      * 备注
      */
     @TableField("remark")

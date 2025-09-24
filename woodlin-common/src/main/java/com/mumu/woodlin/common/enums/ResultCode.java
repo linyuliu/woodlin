@@ -40,6 +40,11 @@ public enum ResultCode {
     PASSWORD_ERROR(1006, "密码错误"),
     USER_DISABLED(1007, "用户已被禁用"),
     USER_LOCKED(1008, "用户已被锁定"),
+    ACCOUNT_LOCKED(1009, "账号已被锁定"),
+    PASSWORD_EXPIRED(1010, "密码已过期"),
+    PASSWORD_POLICY_VIOLATION(1011, "密码不符合策略要求"),
+    OLD_PASSWORD_ERROR(1012, "旧密码错误"),
+    PASSWORD_MISMATCH(1013, "密码和确认密码不一致"),
     
     // 权限错误 2xxx
     PERMISSION_DENIED(2001, "权限不足"),
