@@ -343,7 +343,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NInputNumber, NSwitch, NSelect, NButton, NSpace, NDivider, useMessage } from 'naive-ui'
-import { getConfigsByCategory, batchUpdateConfig, type ConfigUpdateDto } from '../api/config'
+import { getConfigsByCategory, batchUpdateConfig, type ConfigUpdateDto } from '../../api/config'
 
 const message = useMessage()
 
