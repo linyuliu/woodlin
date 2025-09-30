@@ -16,7 +16,7 @@ export function useActivityMonitoring() {
     warningBeforeTimeoutSeconds: 300
   })
 
-  let activityTimer: number | null = null
+  const activityTimer: number | null = null
   let statusCheckTimer: number | null = null
   let lastActivityTime = Date.now()
 
