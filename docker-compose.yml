@@ -66,21 +66,21 @@ services:
       DATABASE_URL: jdbc:mysql://mysql:3306/${DATABASE_NAME:-woodlin}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
       DATABASE_USERNAME: ${DATABASE_USERNAME:-woodlin}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-Passw0rd}
-      
+
       # Redis配置
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-Passw0rd}
       REDISSON_ADDRESS: redis://redis:6379
       REDISSON_PASSWORD: ${REDIS_PASSWORD:-Passw0rd}
-      
+
       # 服务器配置
       SERVER_PORT: 8080
       SERVER_CONTEXT_PATH: /api
-      
+
       # Spring配置
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      
+
       # JVM配置
       JAVA_OPTS: -Xms512m -Xmx1024m -Duser.timezone=Asia/Shanghai
     volumes:
