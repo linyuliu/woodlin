@@ -60,6 +60,15 @@ const router = createRouter({
           }
         },
         {
+          path: 'system-settings',
+          name: 'SystemSettings',
+          component: () => import('../views/system/SystemSettingsView.vue'),
+          meta: {
+            title: '系统设置',
+            icon: 'settings-outline'
+          }
+        },
+        {
           path: 'tenant-list',
           name: 'TenantList',
           component: () => import('../views/tenant/TenantView.vue'),
