@@ -26,6 +26,11 @@ public class CacheProperties {
      */
     private DictionaryCache dictionary = new DictionaryCache();
 
+    /**
+     * 系统配置缓存配置
+     */
+    private ConfigCache config = new ConfigCache();
+
     @Data
     public static class DictionaryCache {
         /**
@@ -42,5 +47,23 @@ public class CacheProperties {
          * 缓存刷新间隔（秒）
          */
         private Long refreshIntervalSeconds = 1800L;
+    }
+
+    @Data
+    public static class ConfigCache {
+        /**
+         * 是否启用配置缓存
+         */
+        private Boolean enabled = true;
+
+        /**
+         * 缓存过期时间（秒）
+         */
+        private Long expireSeconds = 7200L;
+
+        /**
+         * 缓存刷新间隔（秒）
+         */
+        private Long refreshIntervalSeconds = 3600L;
     }
 }
