@@ -114,7 +114,7 @@ woodlin
 5. **访问系统**
    - 后台地址: http://localhost:8080/api
    - API 文档: http://localhost:8080/api/doc.html
-   - 默认账号: admin / 123456
+   - 默认账号: admin / Passw0rd
 
 ### 环境变量配置
 
@@ -130,13 +130,13 @@ export SERVER_CONTEXT_PATH=/api                # 应用上下文路径
 ```bash
 export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8"
 export DATABASE_USERNAME=root                   # 数据库用户名
-export DATABASE_PASSWORD=123456                 # 数据库密码
+export DATABASE_PASSWORD=Passw0rd               # 数据库密码
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver # 数据库驱动
 export DATABASE_DRUID_INITIAL_SIZE=5            # Druid连接池初始大小
 export DATABASE_DRUID_MIN_IDLE=5                # Druid连接池最小空闲连接数
 export DATABASE_DRUID_MAX_ACTIVE=20             # Druid连接池最大连接数
 export DATABASE_DRUID_USERNAME=admin            # Druid监控用户名
-export DATABASE_DRUID_PASSWORD=123456           # Druid监控密码
+export DATABASE_DRUID_PASSWORD=Passw0rd         # Druid监控密码
 ```
 
 #### 📦 Redis 配置
@@ -398,7 +398,7 @@ spring:
         master:
           url: jdbc:mysql://localhost:3306/woodlin
           username: root
-          password: 123456
+          password: Passw0rd
           driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
