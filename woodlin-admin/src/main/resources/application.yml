@@ -331,3 +331,11 @@ woodlin:
       expire-seconds: ${CACHE_DICTIONARY_EXPIRE:3600}
       # 缓存刷新间隔（秒）
       refresh-interval-seconds: ${CACHE_DICTIONARY_REFRESH:1800}
+    # 系统配置缓存配置
+    config:
+      # 是否启用配置缓存
+      enabled: ${CACHE_CONFIG_ENABLED:true}
+      # 缓存过期时间（秒）
+      expire-seconds: ${CACHE_CONFIG_EXPIRE:7200}
+      # 缓存刷新间隔（秒）
+      refresh-interval-seconds: ${CACHE_CONFIG_REFRESH:3600}
