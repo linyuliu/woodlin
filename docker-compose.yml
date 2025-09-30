@@ -1,6 +1,6 @@
 # ====================================================================================
 # Woodlin 多租户管理系统 - Docker Compose 配置
-# 
+#
 # 本配置文件定义了完整的 Woodlin 系统运行环境，包括:
 # - MySQL 8.0 数据库
 # - Redis 7.x 缓存
@@ -18,20 +18,20 @@
 services:
   # ====================================================================================
   # MySQL 数据库服务
-  # 
+  #
   # 用途: 存储系统核心数据 (用户、角色、权限、租户等)
   # 版本: MySQL 8.0 (支持更好的性能和安全特性)
   # ====================================================================================
   mysql:
     image: mysql:8.0
     container_name: woodlin-mysql
-    
+
     # 重启策略: 除非手动停止，否则总是重启
     restart: unless-stopped
-    
+
     # ====================================================================================
     # 环境变量配置
-    # 
+    #
     # MYSQL_ROOT_PASSWORD: root 用户密码 (生产环境必须修改)
     # MYSQL_DATABASE: 默认创建的数据库名称
     # MYSQL_USER: 创建的普通用户 (会自动授权访问 MYSQL_DATABASE)
@@ -44,10 +44,10 @@ services:
       MYSQL_USER: ${DATABASE_USERNAME:-woodlin}
       MYSQL_PASSWORD: ${DATABASE_PASSWORD:-123456}
       TZ: Asia/Shanghai
-    
+
     # ====================================================================================
     # MySQL 启动参数
-    # 
+    #
     # --default-authentication-plugin: 使用传统密码认证 (兼容性更好)
     # --character-set-server: 服务器字符集 utf8mb4 (支持 emoji 等)
     # --collation-server: 排序规则 utf8mb4_unicode_ci (不区分大小写)
@@ -63,7 +63,7 @@ services:
     # --slow_query_log_file: 慢查询日志文件
     # --long_query_time: 慢查询阈值 (秒)
     # ====================================================================================
-    command: 
+    command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -78,28 +78,28 @@ services:
       - --slow_query_log=1
       - --slow_query_log_file=/var/lib/mysql/slow.log
       - --long_query_time=2
-    
+
     # 端口映射: 宿主机端口:容器端口
     ports:
       - "${DATABASE_PORT:-3306}:3306"
-    
+
     # ====================================================================================
     # 数据卷挂载
-    # 
+    #
     # mysql_data: 数据持久化 (数据库文件)
     # ./sql: 初始化 SQL 脚本目录 (容器启动时自动执行)
     # ====================================================================================
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql:/docker-entrypoint-initdb.d:ro
-    
+
     # 网络配置
     networks:
       - woodlin-network
-    
+
     # ====================================================================================
     # 健康检查配置
-    # 
+    #
     # test: 健康检查命令 (使用 mysqladmin ping)
     # interval: 检查间隔 30 秒
     # timeout: 超时时间 10 秒
@@ -112,14 +112,14 @@ services:
       timeout: 10s
       retries: 10
       start_period: 40s
-    
+
     # ====================================================================================
     # 系统资源限制
-    # 
+    #
     # ulimits: 文件描述符等系统限制
     #   - nofile: 最大打开文件数 (软限制 / 硬限制)
     #     MySQL 需要较多的文件描述符来处理连接和表文件
-    # 
+    #
     # deploy.resources: 容器资源限制 (Docker Swarm / Compose v3.8+)
     #   - limits: 资源上限
     #     - cpus: CPU 核心数限制
@@ -132,7 +132,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    
+
     deploy:
       resources:
         limits:
@@ -144,7 +144,7 @@ services:
 
   # ====================================================================================
   # Redis 缓存服务
-  # 
+  #
   # 用途: 缓存热点数据、Session 管理、分布式锁等
   # 版本: Redis 7.x Alpine (轻量级镜像)
   # ====================================================================================
@@ -152,10 +152,10 @@ services:
     image: redis:7-alpine
     container_name: woodlin-redis
     restart: unless-stopped
-    
+
     # ====================================================================================
     # Redis 启动参数
-    # 
+    #
     # --requirepass: 设置密码 (生产环境必须设置)
     # --appendonly yes: 启用 AOF 持久化 (更安全)
     # --maxmemory: 最大内存限制 (超出后会根据淘汰策略删除数据)
@@ -170,7 +170,7 @@ services:
     # --timeout: 客户端空闲超时时间 (0=永不超时)
     # --tcp-keepalive: TCP keepalive 间隔 (秒)
     # ====================================================================================
-    command: 
+    command:
       - redis-server
       - --requirepass
       - ${REDIS_PASSWORD:-123456}
@@ -192,27 +192,27 @@ services:
       - "300"
       - --tcp-keepalive
       - "60"
-    
+
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    
+
     # ====================================================================================
     # 数据卷挂载
-    # 
+    #
     # redis_data: Redis 数据持久化目录 (AOF 和 RDB 文件)
     # ====================================================================================
     volumes:
       - redis_data:/data
-    
+
     networks:
       - woodlin-network
-    
+
     environment:
       TZ: Asia/Shanghai
-    
+
     # ====================================================================================
     # 健康检查配置
-    # 
+    #
     # 使用 redis-cli ping 检查服务是否正常
     # ====================================================================================
     healthcheck:
@@ -221,10 +221,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    
+
     # ====================================================================================
     # 系统资源限制
-    # 
+    #
     # ulimits: 文件描述符等系统限制
     #   - nofile: Redis 需要较多文件描述符处理大量连接
     # ====================================================================================
@@ -232,7 +232,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    
+
     deploy:
       resources:
         limits:
@@ -244,7 +244,7 @@ services:
 
   # ====================================================================================
   # Woodlin 后端应用服务
-  # 
+  #
   # 用途: Spring Boot 应用，提供 RESTful API 服务
   # 技术栈: Spring Boot 3.4.1 + Java 17 + MyBatis-Plus + Sa-Token
   # ====================================================================================
@@ -256,13 +256,13 @@ services:
       # 构建参数 (可选)
       args:
         - MAVEN_OPTS=-Dmaven.repo.local=/root/.m2/repository
-    
+
     container_name: woodlin-app
     restart: unless-stopped
-    
+
     # ====================================================================================
     # 服务依赖
-    # 
+    #
     # depends_on: 定义服务启动顺序和健康检查依赖
     #   - condition: service_healthy: 等待依赖服务健康检查通过后才启动
     # ====================================================================================
@@ -271,19 +271,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    
+
     ports:
       - "${SERVER_PORT:-8080}:8080"
-    
+
     # ====================================================================================
     # 环境变量配置
-    # 
+    #
     # 数据库配置:
     #   - DATABASE_URL: JDBC 连接字符串
     #   - DATABASE_USERNAME: 数据库用户名
     #   - DATABASE_PASSWORD: 数据库密码
     #   - DATABASE_DRIVER: 数据库驱动类
-    # 
+    #
     # Redis 配置:
     #   - REDIS_HOST: Redis 主机地址
     #   - REDIS_PORT: Redis 端口
@@ -292,14 +292,14 @@ services:
     #   - REDIS_TIMEOUT: Redis 连接超时时间
     #   - REDISSON_ADDRESS: Redisson 连接地址
     #   - REDISSON_PASSWORD: Redisson 密码
-    # 
+    #
     # 服务器配置:
     #   - SERVER_PORT: 应用端口
     #   - SERVER_CONTEXT_PATH: 应用上下文路径
-    # 
+    #
     # Spring 配置:
     #   - SPRING_PROFILES_ACTIVE: 激活的 Spring Profile (dev/test/prod)
-    # 
+    #
     # JVM 配置:
     #   - JAVA_OPTS: JVM 启动参数 (已在 Dockerfile ENTRYPOINT 中配置)
     # ====================================================================================
@@ -309,7 +309,7 @@ services:
       DATABASE_USERNAME: ${DATABASE_USERNAME:-woodlin}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-123456}
       DATABASE_DRIVER: com.mysql.cj.jdbc.Driver
-      
+
       # Redis 配置
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -318,34 +318,34 @@ services:
       REDIS_TIMEOUT: ${REDIS_TIMEOUT:-10s}
       REDISSON_ADDRESS: redis://redis:6379
       REDISSON_PASSWORD: ${REDIS_PASSWORD:-123456}
-      
+
       # 服务器配置
       SERVER_PORT: 8080
       SERVER_CONTEXT_PATH: /api
-      
+
       # Spring 配置
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      
+
       # 时区和编码
       TZ: Asia/Shanghai
       LANG: zh_CN.UTF-8
-    
+
     # ====================================================================================
     # 数据卷挂载
-    # 
+    #
     # app_logs: 应用日志目录 (包括应用日志、GC 日志、堆转储等)
     # app_temp: 临时文件目录
     # ====================================================================================
     volumes:
       - app_logs:/app/logs
       - app_temp:/app/temp
-    
+
     networks:
       - woodlin-network
-    
+
     # ====================================================================================
     # 健康检查配置
-    # 
+    #
     # 使用 Spring Boot Actuator 的 health 端点进行健康检查
     # start_period 设置为 90 秒，因为 Spring Boot 应用启动较慢
     # ====================================================================================
@@ -355,19 +355,19 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-    
+
     # ====================================================================================
     # 系统资源限制
-    # 
+    #
     # ulimits: 文件描述符和进程数限制
     #   - nofile: 最大打开文件数
     #     Java 应用需要大量文件描述符 (类文件、socket 连接、日志文件等)
     #   - nproc: 最大进程/线程数
     #     Java 应用会创建大量线程 (Tomcat 线程池、数据库连接池、异步任务等)
-    # 
+    #
     # security_opt: 安全选项
     #   - no-new-privileges:true: 禁止进程获取新权限 (安全加固)
-    # 
+    #
     # 注意: 宿主机也需要配置足够的限制
     #   - 编辑 /etc/security/limits.conf 添加:
     #     * soft nofile 65536
@@ -387,11 +387,11 @@ services:
       nproc:
         soft: 65536
         hard: 65536
-    
+
     # 安全选项
     security_opt:
       - no-new-privileges:true
-    
+
     # 资源限制
     deploy:
       resources:
@@ -404,7 +404,7 @@ services:
 
   # ====================================================================================
   # Nginx 前端服务 (可选)
-  # 
+  #
   # 用途: 提供前端静态资源服务
   # 说明: 使用 profiles 控制，只在需要时启动
   #       启动命令: docker-compose --profile frontend up -d
@@ -413,13 +413,13 @@ services:
     image: nginx:alpine
     container_name: woodlin-nginx
     restart: unless-stopped
-    
+
     ports:
       - "${NGINX_PORT:-3000}:80"
-    
+
     # ====================================================================================
     # 数据卷挂载
-    # 
+    #
     # ./web: 前端构建产物目录 (npm run build 生成的 dist 目录)
     # ./nginx.conf: Nginx 配置文件 (只读)
     # nginx_cache: Nginx 缓存目录
@@ -428,29 +428,29 @@ services:
       - ./web:/usr/share/nginx/html:ro
       - ./scripts/nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_cache:/var/cache/nginx
-    
+
     networks:
       - woodlin-network
-    
+
     depends_on:
       - woodlin-app
-    
+
     # ====================================================================================
     # Profiles 配置
-    # 
+    #
     # 只在指定 profile 时启动此服务
     # 使用方法: docker-compose --profile frontend up -d
     # ====================================================================================
     profiles:
       - frontend
-    
+
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-    
+
     # 资源限制
     deploy:
       resources:
@@ -463,25 +463,25 @@ services:
 
 # ====================================================================================
 # 数据卷定义
-# 
+#
 # 用途: 持久化存储容器数据，即使容器删除数据也不会丢失
-# 
+#
 # mysql_data: MySQL 数据库文件
 # redis_data: Redis 持久化数据 (AOF/RDB)
 # app_logs: 应用日志 (应用日志、GC 日志、堆转储等)
 # app_temp: 应用临时文件
 # nginx_cache: Nginx 缓存文件
-# 
+#
 # 管理命令:
 #   - 查看所有卷: docker volume ls
 #   - 查看卷详情: docker volume inspect <volume_name>
 #   - 删除卷: docker volume rm <volume_name>
 #   - 清理未使用的卷: docker volume prune
-# 
+#
 # 备份数据卷:
 #   docker run --rm -v woodlin_mysql_data:/data -v $(pwd):/backup \
 #     alpine tar czf /backup/mysql_backup.tar.gz -C /data .
-# 
+#
 # 恢复数据卷:
 #   docker run --rm -v woodlin_mysql_data:/data -v $(pwd):/backup \
 #     alpine tar xzf /backup/mysql_backup.tar.gz -C /data
@@ -493,37 +493,37 @@ volumes:
     #   type: none
     #   o: bind
     #   device: /data/woodlin/mysql
-  
+
   redis_data:
     driver: local
     # driver_opts:
     #   type: none
     #   o: bind
     #   device: /data/woodlin/redis
-  
+
   app_logs:
     driver: local
     # driver_opts:
     #   type: none
     #   o: bind
     #   device: /data/woodlin/logs
-  
+
   app_temp:
     driver: local
-  
+
   nginx_cache:
     driver: local
 
 # ====================================================================================
 # 网络定义
-# 
+#
 # woodlin-network: 桥接网络，连接所有服务
-# 
+#
 # 网络特性:
 #   - 服务间可以通过服务名互相访问 (如: mysql, redis, woodlin-app)
 #   - 自动进行 DNS 解析
 #   - 与宿主机网络隔离，提高安全性
-# 
+#
 # 管理命令:
 #   - 查看网络: docker network ls
 #   - 查看网络详情: docker network inspect woodlin_woodlin-network

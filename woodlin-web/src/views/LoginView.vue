@@ -10,7 +10,7 @@ const message = useMessage()
 
 const loginForm = ref({
   username: 'admin',
-  password: '123456'
+  password: 'Passw0rd'
 })
 
 const loading = ref(false)
@@ -121,7 +121,7 @@ const handlePasswordChangeCancel = () => {
       
       <div class="login-footer">
         <p style="text-align: center; color: #999; margin-top: 20px;">
-          默认账号: admin / 123456
+          默认账号: admin / Passw0rd
         </p>
       </div>
     </NCard>
