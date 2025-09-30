@@ -143,6 +143,11 @@
                 <artifactId>woodlin-generator</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-sql2api</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
 
             <!-- Sa-Token 安全框架 -->
             <dependency>
