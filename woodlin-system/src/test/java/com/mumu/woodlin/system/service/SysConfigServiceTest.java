@@ -18,7 +18,7 @@ import static org.mockito.Mockito.*;
  * 系统配置服务测试
  * 
  * @author mumu
- * @description 测试系统配置服务的缓存功能
+ * @description 测试系统配置服务的缓存功能（只读访问）
  * @since 2025-01-01
  */
 class SysConfigServiceTest {
@@ -105,40 +105,6 @@ class SysConfigServiceTest {
         assertNotNull(actualConfig);
         assertEquals(configKey, actualConfig.getConfigKey());
         assertEquals("true", actualConfig.getConfigValue());
-    }
-    
-    @Test
-    void testSaveOrUpdateConfig() {
-        // 准备测试数据
-        SysConfig config = new SysConfig();
-        config.setConfigKey("test.config.key");
-        config.setConfigValue("test.value");
-        
-        // 模拟服务行为
-        when(configService.saveOrUpdateConfig(config)).thenReturn(true);
-        
-        // 执行测试
-        boolean result = configService.saveOrUpdateConfig(config);
-        
-        // 验证结果
-        assertTrue(result);
-        verify(configService, times(1)).saveOrUpdateConfig(config);
-    }
-    
-    @Test
-    void testDeleteConfig() {
-        // 准备测试数据
-        Long configId = 1L;
-        
-        // 模拟服务行为
-        when(configService.deleteConfig(configId)).thenReturn(true);
-        
-        // 执行测试
-        boolean result = configService.deleteConfig(configId);
-        
-        // 验证结果
-        assertTrue(result);
-        verify(configService, times(1)).deleteConfig(configId);
     }
     
     @Test
