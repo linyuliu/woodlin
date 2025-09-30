@@ -23,6 +23,7 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 - 🔧 **代码生成**: 智能化的开发工具
 - 📝 **操作审计**: 完整的操作日志记录
 - 🎨 **统一响应**: 标准化的 API 响应格式
+- 🚀 **SQL2API**: 通过配置 SQL 直接生成 RESTful API（新增）
 
 ## 🏗️ 技术架构
 
@@ -52,6 +53,7 @@ woodlin
 ├── woodlin-file            # 文件管理模块
 ├── woodlin-task            # 任务调度模块
 ├── woodlin-generator       # 代码生成模块
+├── woodlin-sql2api         # SQL2API 动态接口模块（新增）
 ├── woodlin-admin           # 管理后台应用
 └── sql                     # 数据库脚本
 ```
@@ -415,6 +417,63 @@ sa-token:
 3. 提交修改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 打开 Pull Request
+
+## 🚀 SQL2API 功能
+
+SQL2API 是 Woodlin 系统的动态 API 生成模块，允许通过配置 SQL 语句快速生成 RESTful API 接口。
+
+### 核心特性
+
+- ✅ **零代码开发**: 通过配置 SQL 直接生成 API，无需编写代码
+- ✅ **多数据库支持**: 支持 MySQL、PostgreSQL、Oracle 等 20+ 种数据库
+- ✅ **简化 DSL 语法**: 提供比 MyBatis 更简单的参数绑定语法
+- ✅ **元数据自动提取**: 自动提取数据库表结构、字段注释等信息
+- ✅ **API 编排**: 支持多个 API 之间的编排和数据流转
+- ✅ **安全认证**: 支持 Token、API Key 等多种认证方式
+- ✅ **性能优化**: 内置 Redis 缓存和 Sentinel 流控
+- ✅ **加密支持**: 可配置 AES、RSA、SM4 等加密算法
+- ✅ **SPI 扩展**: 支持通过 SPI 机制扩展数据库支持
+
+### 快速示例
+
+1. **创建 SQL API 配置**
+
+```sql
+INSERT INTO sql2api_config (
+    api_name, api_path, http_method, 
+    datasource_name, sql_type, sql_content, 
+    params_config, result_type, enabled
+) VALUES (
+    '查询用户列表', '/api/users', 'GET',
+    'master', 'SELECT', 
+    'SELECT * FROM sys_user WHERE status = #{status}',
+    '[{"name":"status","type":"Integer","required":true}]',
+    'list', 1
+);
+```
+
+2. **访问生成的 API**
+
+```bash
+curl "http://localhost:8080/api/users?status=0"
+```
+
+3. **支持动态 SQL**
+
+```sql
+SELECT * FROM users 
+WHERE 1=1
+<if test="username != null">
+  AND username LIKE CONCAT('%', #{username}, '%')
+</if>
+<if test="status != null">
+  AND status = #{status}
+</if>
+```
+
+### 详细文档
+
+完整的 SQL2API 使用指南请查看：[SQL2API 功能文档](docs/SQL2API_GUIDE.md)
 
 ## 📄 开源协议
 
