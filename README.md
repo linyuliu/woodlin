@@ -23,6 +23,10 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 - 🔧 **代码生成**: 智能化的开发工具
 - 📝 **操作审计**: 完整的操作日志记录
 - 🎨 **统一响应**: 标准化的 API 响应格式
+- 🔐 **API 加密**: 支持 AES、RSA、SM4 多种加密算法
+- 🔑 **密码策略**: 灵活的密码安全策略配置
+- 👁️ **活动监控**: 用户活动监控和会话管理
+- ⚙️ **系统设置**: 统一的前端配置管理界面
 
 ## 🏗️ 技术架构
 
@@ -356,6 +360,13 @@ public class YourController {
     }
 }
 ```
+
+## 📚 文档
+
+- [API 加密配置文档](docs/API_ENCRYPTION.md)
+- [系统配置管理文档](docs/SYSTEM_CONFIG.md)
+- [实现总结](docs/IMPLEMENTATION_SUMMARY.md)
+- [贡献指南](CONTRIBUTING.md)
 
 ## 🛠️ 配置说明
 

@@ -78,8 +78,8 @@ const warmupDictionaryCache = async (dictType: string) => {
 }
 
 const formatTime = (seconds: number) => {
-  if (seconds < 60) return `${seconds}秒`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`
+  if (seconds < 60) {return `${seconds}秒`}
+  if (seconds < 3600) {return `${Math.floor(seconds / 60)}分钟`}
   return `${Math.floor(seconds / 3600)}小时`
 }
 
