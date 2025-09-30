@@ -16,7 +16,8 @@ import java.util.List;
  * 系统配置服务实现
  * 
  * @author mumu
- * @description 系统配置业务逻辑实现，集成Redis二级缓存优化
+ * @description 系统配置业务逻辑实现，集成Redis二级缓存优化（只读访问）
+ *              配置的增删改操作由前端直接管理，本服务仅提供缓存优化的查询功能
  * @since 2025-01-01
  */
 @Slf4j
@@ -63,47 +64,9 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
     }
     
     @Override
-    public boolean saveOrUpdateConfig(SysConfig config) {
-        boolean result = saveOrUpdate(config);
-        if (result) {
-            // 清除缓存
-            evictCache();
-            // 清除特定key的缓存
-            if (config.getConfigKey() != null) {
-                String cacheType = CONFIG_CACHE_TYPE + ":" + CONFIG_KEY_PREFIX + config.getConfigKey();
-                redisCacheService.evictConfigCache(cacheType);
-            }
-            log.info("配置更新成功，已清除缓存: {}", config.getConfigKey());
-        }
-        return result;
-    }
-    
-    @Override
-    public boolean deleteConfig(Long configId) {
-        SysConfig config = getById(configId);
-        if (config != null) {
-            // 软删除
-            config.setDeleted("1");
-            boolean result = updateById(config);
-            if (result) {
-                // 清除缓存
-                evictCache();
-                // 清除特定key的缓存
-                if (config.getConfigKey() != null) {
-                    String cacheType = CONFIG_CACHE_TYPE + ":" + CONFIG_KEY_PREFIX + config.getConfigKey();
-                    redisCacheService.evictConfigCache(cacheType);
-                }
-                log.info("配置删除成功，已清除缓存: {}", config.getConfigKey());
-            }
-            return result;
-        }
-        return false;
-    }
-    
-    @Override
     public void evictCache() {
         redisCacheService.evictConfigCache(CONFIG_CACHE_TYPE);
-        log.info("已清除所有配置缓存");
+        log.info("已清除所有配置缓存（由前端管理配置后调用）");
     }
     
     @Override
