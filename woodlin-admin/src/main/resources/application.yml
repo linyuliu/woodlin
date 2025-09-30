@@ -33,7 +33,7 @@ spring:
         master:
           url: ${DATABASE_URL:jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
           username: ${DATABASE_USERNAME:root}
-          password: ${DATABASE_PASSWORD:123456}
+          password: ${DATABASE_PASSWORD:Passw0rd}
           driver-class-name: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
           type: com.alibaba.druid.pool.DruidDataSource
           druid:
@@ -60,7 +60,7 @@ spring:
               url-pattern: "/druid/*"
               reset-enable: false
               login-username: ${DATABASE_DRUID_USERNAME:admin}
-              login-password: ${DATABASE_DRUID_PASSWORD:123456}
+              login-password: ${DATABASE_DRUID_PASSWORD:Passw0rd}
               allow: ${DATABASE_DRUID_ALLOW:}
   
   # Redis配置
