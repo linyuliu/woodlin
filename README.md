@@ -32,7 +32,6 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 |------|------|------|
 | Java | 17+ | 编程语言 |
 | Spring Boot | 3.4.1 | 基础框架 |
-| Spring Cloud | 2024.0.0 | 微服务框架 |
 | MyBatis Plus | 3.5.9 | ORM 框架 |
 | Sa-Token | 1.39.0 | 认证授权框架 |
 | Dynamic DataSource | 4.3.1 | 动态数据源 |

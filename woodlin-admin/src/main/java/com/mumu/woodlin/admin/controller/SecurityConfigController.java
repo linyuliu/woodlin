@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  * @description 系统安全相关的配置管理，包括用户活动监控等
  * @since 2025-01-01
  */
-@Tag(name = "系统安全配置", description = "系统安全相关配置管理接口")
+@Tag(name = "系统安全配置", description = "系统安全相关配置管理接口，包括用户活动监控、会话管理等功能")
 @RestController
 @RequestMapping("/api/security")
 @RequiredArgsConstructor
@@ -27,7 +27,10 @@ public class SecurityConfigController {
     /**
      * 获取用户活动监控配置
      */
-    @Operation(summary = "获取用户活动监控配置", description = "获取当前的用户活动监控配置信息")
+    @Operation(
+        summary = "获取用户活动监控配置",
+        description = "获取当前系统的用户活动监控配置信息，包括超时时间、检查间隔等参数"
+    )
     @GetMapping("/activity-monitoring/config")
     public ActivityMonitoringProperties getActivityMonitoringConfig() {
         return activityMonitoringService.getConfig();
@@ -36,7 +39,10 @@ public class SecurityConfigController {
     /**
      * 记录用户交互活动
      */
-    @Operation(summary = "记录用户交互活动", description = "前端调用此接口记录用户的键盘鼠标等交互活动")
+    @Operation(
+        summary = "记录用户交互活动",
+        description = "前端调用此接口记录用户的键盘、鼠标等交互活动，用于更新用户活动时间，防止会话超时"
+    )
     @PostMapping("/activity-monitoring/record-interaction")
     public void recordUserInteraction() {
         // 由拦截器自动记录API活动，这里只是提供一个明确的接口供前端调用
@@ -46,7 +52,10 @@ public class SecurityConfigController {
     /**
      * 检查当前用户活动状态
      */
-    @Operation(summary = "检查用户活动状态", description = "检查当前用户的活动状态，包括是否需要警告等")
+    @Operation(
+        summary = "检查用户活动状态",
+        description = "检查当前登录用户的活动状态，包括是否需要警告、剩余活动时间等信息"
+    )
     @GetMapping("/activity-monitoring/status")
     public ActivityStatusResponse getActivityStatus() {
         // 这个方法会由拦截器自动记录为API活动
