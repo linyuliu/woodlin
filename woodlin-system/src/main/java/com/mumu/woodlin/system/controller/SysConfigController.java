@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * 系统配置控制器
- * 
+ *
  * @author mumu
  * @description 系统配置管理控制器，提供配置的增删改查功能
  * @since 2025-01-01
@@ -32,9 +32,9 @@ import java.util.stream.Collectors;
 @Validated
 @Tag(name = "系统配置管理", description = "系统配置管理相关接口，包括API加密配置、密码策略配置等")
 public class SysConfigController {
-    
+
     private final ISysConfigService configService;
-    
+
     /**
      * 获取所有配置列表
      */
@@ -47,7 +47,7 @@ public class SysConfigController {
         List<SysConfig> configs = configService.list();
         return R.ok(configs);
     }
-    
+
     /**
      * 根据配置键名获取配置
      */
@@ -57,12 +57,12 @@ public class SysConfigController {
         description = "通过配置键名获取配置的详细信息"
     )
     public R<SysConfig> getByKey(
-            @Parameter(description = "配置键名", required = true, example = "sys.user.initPassword") 
+            @Parameter(description = "配置键名", required = true, example = "sys.user.initPassword")
             @PathVariable String configKey) {
         SysConfig config = configService.selectConfigByKey(configKey);
         return R.ok(config);
     }
-    
+
     /**
      * 根据配置键名获取配置值
      */
@@ -72,12 +72,12 @@ public class SysConfigController {
         description = "通过配置键名获取配置值"
     )
     public R<String> getValueByKey(
-            @Parameter(description = "配置键名", required = true, example = "sys.user.initPassword") 
+            @Parameter(description = "配置键名", required = true, example = "sys.user.initPassword")
             @PathVariable String configKey) {
         String value = configService.selectConfigValueByKey(configKey);
         return R.ok(value);
     }
-    
+
     /**
      * 根据配置分类获取配置列表
      */
@@ -87,14 +87,14 @@ public class SysConfigController {
         description = "通过配置分类获取该分类下的所有配置，返回配置键值对"
     )
     public R<Map<String, String>> getByCategory(
-            @Parameter(description = "配置分类", required = true, example = "api.encryption") 
+            @Parameter(description = "配置分类", required = true, example = "api.encryption")
             @PathVariable String category) {
         List<SysConfig> configs = configService.selectConfigListByCategory(category);
         Map<String, String> configMap = configs.stream()
                 .collect(Collectors.toMap(SysConfig::getConfigKey, SysConfig::getConfigValue));
         return R.ok(configMap);
     }
-    
+
     /**
      * 根据配置ID获取详细信息
      */
@@ -104,12 +104,12 @@ public class SysConfigController {
         description = "通过配置ID获取配置的详细信息"
     )
     public R<SysConfig> getInfo(
-            @Parameter(description = "配置ID", required = true, example = "1") 
+            @Parameter(description = "配置ID", required = true, example = "1")
             @PathVariable Long configId) {
         SysConfig config = configService.getById(configId);
         return R.ok(config);
     }
-    
+
     /**
      * 新增配置
      */
@@ -122,7 +122,7 @@ public class SysConfigController {
         boolean result = configService.insertConfig(config);
         return result ? R.ok("新增配置成功") : R.fail("新增配置失败");
     }
-    
+
     /**
      * 修改配置
      */
@@ -135,7 +135,7 @@ public class SysConfigController {
         boolean result = configService.updateConfig(config);
         return result ? R.ok("修改配置成功") : R.fail("修改配置失败");
     }
-    
+
     /**
      * 根据配置键名更新配置值
      */
@@ -145,14 +145,14 @@ public class SysConfigController {
         description = "通过配置键名更新配置值"
     )
     public R<Void> updateByKey(
-            @Parameter(description = "配置键名", required = true) 
+            @Parameter(description = "配置键名", required = true)
             @PathVariable String configKey,
-            @Parameter(description = "配置值", required = true) 
+            @Parameter(description = "配置值", required = true)
             @RequestParam String configValue) {
         boolean result = configService.updateConfigByKey(configKey, configValue);
         return result ? R.ok("更新配置成功") : R.fail("更新配置失败");
     }
-    
+
     /**
      * 批量更新配置
      */
@@ -164,7 +164,7 @@ public class SysConfigController {
     public R<Void> batchUpdate(@Valid @RequestBody ConfigUpdateDto updateDto) {
         // 先获取该分类下的所有配置
         List<SysConfig> configs = configService.selectConfigListByCategory(updateDto.getCategory());
-        
+
         // 更新配置值
         Map<String, String> updateMap = updateDto.getConfigs();
         configs.forEach(config -> {
@@ -173,11 +173,11 @@ public class SysConfigController {
                 config.setConfigValue(updateMap.get(key));
             }
         });
-        
+
         boolean result = configService.batchUpdateConfig(configs);
         return result ? R.ok("批量更新配置成功") : R.fail("批量更新配置失败");
     }
-    
+
     /**
      * 删除配置
      */
@@ -187,7 +187,7 @@ public class SysConfigController {
         description = "根据配置ID删除配置，支持批量删除，多个ID用逗号分隔"
     )
     public R<Void> remove(
-            @Parameter(description = "配置ID，多个用逗号分隔", required = true, example = "1,2,3") 
+            @Parameter(description = "配置ID，多个用逗号分隔", required = true, example = "1,2,3")
             @PathVariable String configIds) {
         List<Long> ids = Arrays.stream(configIds.split(","))
                 .map(Long::parseLong)
