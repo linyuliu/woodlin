@@ -167,7 +167,7 @@ fi
 echo
 echo "🔑 默认账号:"
 echo "  用户名: admin"
-echo "  密码:   123456"
+echo "  密码:   Passw0rd"
 echo
 echo "📊 管理命令:"
 echo "  查看日志: docker-compose logs -f woodlin-app"
