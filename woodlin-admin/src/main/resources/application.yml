@@ -271,6 +271,54 @@ woodlin:
       require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:false}
       # 是否要求包含特殊字符
       require-special-chars: ${PASSWORD_REQUIRE_SPECIAL_CHARS:false}
+  # API加密配置
+  api:
+    encryption:
+      # 是否启用加密功能
+      enabled: ${API_ENCRYPTION_ENABLED:false}
+      # 加密算法类型：AES, RSA, SM4
+      algorithm: ${API_ENCRYPTION_ALGORITHM:AES}
+      # AES 加密密钥（Base64编码，建议使用128/192/256位密钥）
+      aes-key: ${API_ENCRYPTION_AES_KEY:}
+      # AES 初始化向量 IV（Base64编码）
+      aes-iv: ${API_ENCRYPTION_AES_IV:}
+      # AES 加密模式：CBC, ECB, CFB, OFB, CTR
+      aes-mode: ${API_ENCRYPTION_AES_MODE:CBC}
+      # AES 填充方式：PKCS5Padding, PKCS7Padding, NoPadding
+      aes-padding: ${API_ENCRYPTION_AES_PADDING:PKCS5Padding}
+      # RSA 公钥（Base64编码）
+      rsa-public-key: ${API_ENCRYPTION_RSA_PUBLIC_KEY:}
+      # RSA 私钥（Base64编码）
+      rsa-private-key: ${API_ENCRYPTION_RSA_PRIVATE_KEY:}
+      # RSA 密钥长度：1024, 2048, 4096
+      rsa-key-size: ${API_ENCRYPTION_RSA_KEY_SIZE:2048}
+      # SM4 加密密钥（Base64编码）
+      sm4-key: ${API_ENCRYPTION_SM4_KEY:}
+      # SM4 初始化向量 IV（Base64编码）
+      sm4-iv: ${API_ENCRYPTION_SM4_IV:}
+      # SM4 加密模式：CBC, ECB
+      sm4-mode: ${API_ENCRYPTION_SM4_MODE:CBC}
+      # 需要加密的接口路径模式列表（支持Ant风格通配符）
+      include-patterns:
+        # 示例配置（默认为空，表示不加密任何接口）
+        # - /api/user/**        # 用户相关接口
+        # - /api/*/sensitive/** # 所有模块的敏感数据接口
+        # - /api/payment/**     # 支付相关接口
+      # 排除加密的接口路径模式列表（优先级高于include-patterns）
+      exclude-patterns:
+        - /auth/login           # 登录接口通常不加密
+        - /auth/logout          # 登出接口
+        - /actuator/**          # 健康检查接口
+      # 是否加密请求体
+      encrypt-request: ${API_ENCRYPTION_REQUEST:true}
+      # 是否加密响应体
+      encrypt-response: ${API_ENCRYPTION_RESPONSE:true}
+      # 加密数据的字段名
+      encrypted-field-name: ${API_ENCRYPTION_FIELD_NAME:encryptedData}
+      # 是否在响应头中添加加密标识
+      add-encryption-header: ${API_ENCRYPTION_HEADER:true}
+      # 加密标识响应头名称
+      encryption-header-name: ${API_ENCRYPTION_HEADER_NAME:X-Encrypted}
   # 缓存配置
   cache:
     # 是否启用Redis二级缓存
