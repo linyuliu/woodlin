@@ -1,8 +1,8 @@
 com/mumu/woodlin/common/util/ValidateUtil.class
 com/mumu/woodlin/common/config/JacksonConfig.class
 com/mumu/woodlin/common/entity/BaseEntity.class
-com/mumu/woodlin/common/enums/ResultCode.class
 com/mumu/woodlin/common/config/RedisConfig$FastJson2RedisSerializer.class
+com/mumu/woodlin/common/enums/ResultCode.class
 com/mumu/woodlin/common/enums/UserStatus.class
 com/mumu/woodlin/common/enums/DictEnum$DictItem.class
 com/mumu/woodlin/common/constant/PageConstant.class
@@ -10,8 +10,8 @@ com/mumu/woodlin/common/service/RedisCacheService.class
 com/mumu/woodlin/common/util/DictUtil.class
 com/mumu/woodlin/common/response/R.class
 com/mumu/woodlin/common/exception/BusinessException.class
-com/mumu/woodlin/common/enums/DictEnum.class
 com/mumu/woodlin/common/config/RedisConfig.class
+com/mumu/woodlin/common/enums/DictEnum.class
 com/mumu/woodlin/common/constant/UserConstant.class
 com/mumu/woodlin/common/util/PageUtil.class
 com/mumu/woodlin/common/exception/GlobalExceptionHandler.class
