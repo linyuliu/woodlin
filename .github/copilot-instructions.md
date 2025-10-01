@@ -118,7 +118,7 @@ For complete validation, test these user scenarios:
    ```
 
 2. **Backend API Access** (requires database):
-   - Default credentials: `admin` / `123456`
+   - Default credentials: `admin` / `Passw0rd`
    - API documentation: http://localhost:8080/api/doc.html
    - Database monitoring: http://localhost:8080/api/druid
 
@@ -230,7 +230,7 @@ export SERVER_PORT=8080
 
 ## Additional Notes
 
-- **Default Credentials**: admin / 123456 (defined in SystemConstant.DEFAULT_PASSWORD)
+- **Default Credentials**: admin / Passw0rd (defined in SystemConstant.DEFAULT_PASSWORD)
 - **Multi-tenant**: System supports tenant data isolation  
 - **API Documentation**: Auto-generated with SpringDoc at `/api/doc.html`
 - **Database Monitoring**: Druid monitoring at `/api/druid`
