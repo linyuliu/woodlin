@@ -24,6 +24,10 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 - 📝 **操作审计**: 完整的操作日志记录
 - 🎨 **统一响应**: 标准化的 API 响应格式
 - 🚀 **SQL2API**: 通过配置 SQL 直接生成 RESTful API（新增）
+- 🔐 **API 加密**: 支持 AES、RSA、SM4 多种加密算法
+- 🔑 **密码策略**: 灵活的密码安全策略配置
+- 👁️ **活动监控**: 用户活动监控和会话管理
+- ⚙️ **系统设置**: 统一的前端配置管理界面
 
 ## 🏗️ 技术架构
 
@@ -112,7 +116,7 @@ woodlin
 5. **访问系统**
    - 后台地址: http://localhost:8080/api
    - API 文档: http://localhost:8080/api/doc.html
-   - 默认账号: admin / 123456
+   - 默认账号: admin / Passw0rd
 
 ### 环境变量配置
 
@@ -128,13 +132,13 @@ export SERVER_CONTEXT_PATH=/api                # 应用上下文路径
 ```bash
 export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8"
 export DATABASE_USERNAME=root                   # 数据库用户名
-export DATABASE_PASSWORD=123456                 # 数据库密码
+export DATABASE_PASSWORD=Passw0rd               # 数据库密码
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver # 数据库驱动
 export DATABASE_DRUID_INITIAL_SIZE=5            # Druid连接池初始大小
 export DATABASE_DRUID_MIN_IDLE=5                # Druid连接池最小空闲连接数
 export DATABASE_DRUID_MAX_ACTIVE=20             # Druid连接池最大连接数
 export DATABASE_DRUID_USERNAME=admin            # Druid监控用户名
-export DATABASE_DRUID_PASSWORD=123456           # Druid监控密码
+export DATABASE_DRUID_PASSWORD=Passw0rd         # Druid监控密码
 ```
 
 #### 📦 Redis 配置
@@ -359,6 +363,13 @@ public class YourController {
 }
 ```
 
+## 📚 文档
+
+- [API 加密配置文档](docs/API_ENCRYPTION.md)
+- [系统配置管理文档](docs/SYSTEM_CONFIG.md)
+- [实现总结](docs/IMPLEMENTATION_SUMMARY.md)
+- [贡献指南](CONTRIBUTING.md)
+
 ## 🛠️ 配置说明
 
 ### 数据库配置
@@ -373,7 +384,7 @@ spring:
         master:
           url: jdbc:mysql://localhost:3306/woodlin
           username: root
-          password: 123456
+          password: Passw0rd
           driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
