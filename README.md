@@ -175,15 +175,31 @@ export SNAIL_JOB_GROUP_NAME=woodlin-admin       # 组名称
 ```
 
 #### 🐳 Docker 部署示例
+
+详细的 Docker 部署文档请参考: [Docker 部署文档](docs/DOCKER.md)
+
 ```bash
-docker run -d \
-  -p 8080:8080 \
-  -e DATABASE_URL="jdbc:mysql://mysql-server:3306/woodlin" \
-  -e DATABASE_USERNAME=root \
-  -e DATABASE_PASSWORD=yourpassword \
-  -e REDIS_HOST=redis-server \
-  -e REDIS_PORT=6379 \
-  woodlin:latest
+# 快速启动
+docker compose up -d
+
+# 查看服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f woodlin-app
+```
+
+**特性**:
+- ✅ 基于 BellSoft Liberica JDK 17 (优化的 OpenJDK 发行版)
+- ✅ 支持中文字体，防止乱码 (文泉驿正黑、微米黑)
+- ✅ 内置诊断工具 (curl, wget, netcat, telnet, ping, jq 等)
+- ✅ 完整的系统优化 (ulimit, 资源限制, 健康检查)
+- ✅ 详细的参数注释和使用说明
+
+**使用环境检查脚本**:
+```bash
+# 运行环境检查
+./scripts/check-docker-env.sh
 ```
 
 ### 🚀 一键部署
