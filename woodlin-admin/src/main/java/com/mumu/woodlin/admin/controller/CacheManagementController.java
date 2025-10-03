@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/cache")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "woodlin.cache.redis-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "woodlin.cache.redis-enabled", havingValue = "true")
 public class CacheManagementController {
 
     private final RedisCacheService redisCacheService;
