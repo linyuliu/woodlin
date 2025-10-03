@@ -9,73 +9,44 @@ import java.util.List;
  * 系统配置服务接口
  *
  * @author mumu
- * @description 系统配置服务接口，提供配置管理的业务功能
+ * @description 系统配置服务接口，提供配置缓存优化的只读查询功能
+ *              配置的增删改操作由前端直接管理，后端专注于缓存优化
  * @since 2025-01-01
  */
 public interface ISysConfigService extends IService<SysConfig> {
 
     /**
-     * 根据配置键名获取配置
-     *
-     * @param configKey 配置键名
-     * @return 配置信息
-     */
-    SysConfig selectConfigByKey(String configKey);
-
-    /**
-     * 根据配置键名获取配置值
+     * 根据配置键名获取配置值（使用缓存）
      *
      * @param configKey 配置键名
      * @return 配置值
      */
-    String selectConfigValueByKey(String configKey);
+    String getConfigValueByKey(String configKey);
 
     /**
-     * 根据配置分类获取配置列表
+     * 查询所有配置列表（使用缓存）
      *
-     * @param category 配置分类（如：api.encryption, password.policy等）
      * @return 配置列表
      */
-    List<SysConfig> selectConfigListByCategory(String category);
+    List<SysConfig> listWithCache();
 
     /**
-     * 新增配置
-     *
-     * @param config 配置信息
-     * @return 结果
-     */
-    boolean insertConfig(SysConfig config);
-
-    /**
-     * 修改配置
-     *
-     * @param config 配置信息
-     * @return 结果
-     */
-    boolean updateConfig(SysConfig config);
-
-    /**
-     * 根据配置键名更新配置值
+     * 根据配置键名获取配置对象（使用缓存）
      *
      * @param configKey 配置键名
-     * @param configValue 配置值
-     * @return 结果
+     * @return 配置对象
      */
-    boolean updateConfigByKey(String configKey, String configValue);
+    SysConfig getByKeyWithCache(String configKey);
 
     /**
-     * 批量更新配置
-     *
-     * @param configs 配置列表
-     * @return 结果
+     * 清除配置缓存
+     * 前端更新配置后应调用此方法刷新缓存
      */
-    boolean batchUpdateConfig(List<SysConfig> configs);
+    void evictCache();
 
     /**
-     * 删除配置
-     *
-     * @param configIds 配置ID数组
-     * @return 结果
+     * 预热配置缓存
+     * 系统启动时调用，提前加载配置到缓存
      */
-    boolean deleteConfigByIds(List<Long> configIds);
+    void warmupCache();
 }

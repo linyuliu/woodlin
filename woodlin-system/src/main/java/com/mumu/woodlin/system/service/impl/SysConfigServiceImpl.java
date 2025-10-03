@@ -63,44 +63,6 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
     }
 
     @Override
-    public boolean saveOrUpdateConfig(SysConfig config) {
-        boolean result = saveOrUpdate(config);
-        if (result) {
-            // 清除缓存
-            evictCache();
-            // 清除特定key的缓存
-            if (config.getConfigKey() != null) {
-                String cacheType = CONFIG_CACHE_TYPE + ":" + CONFIG_KEY_PREFIX + config.getConfigKey();
-                redisCacheService.evictConfigCache(cacheType);
-            }
-            log.info("配置更新成功，已清除缓存: {}", config.getConfigKey());
-        }
-        return result;
-    }
-
-    @Override
-    public boolean deleteConfig(Long configId) {
-        SysConfig config = getById(configId);
-        if (config != null) {
-            // 软删除
-            config.setDeleted("1");
-            boolean result = updateById(config);
-            if (result) {
-                // 清除缓存
-                evictCache();
-                // 清除特定key的缓存
-                if (config.getConfigKey() != null) {
-                    String cacheType = CONFIG_CACHE_TYPE + ":" + CONFIG_KEY_PREFIX + config.getConfigKey();
-                    redisCacheService.evictConfigCache(cacheType);
-                }
-                log.info("配置删除成功，已清除缓存: {}", config.getConfigKey());
-            }
-            return result;
-        }
-        return false;
-    }
-
-    @Override
     public void evictCache() {
         redisCacheService.evictConfigCache(CONFIG_CACHE_TYPE);
         log.info("已清除所有配置缓存");
