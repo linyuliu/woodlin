@@ -1,19 +1,18 @@
 package com.mumu.woodlin.admin.interceptor;
 
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Druid 广告移除配置
- * 
+ *
  * @author mumu
  * @description 移除Druid监控页面底部的广告信息
  * @since 2025-01-01
@@ -39,16 +38,15 @@ public class DruidAdRemovalConfiguration {
      * 自定义过滤器，移除广告
      */
     public static class DruidAdRemovalFilter implements Filter {
-        
+
         @Override
-        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) 
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
-            
-            if (response instanceof HttpServletResponse) {
-                HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+            if (response instanceof HttpServletResponse httpResponse) {
                 DruidResponseWrapper wrapper = new DruidResponseWrapper(httpResponse);
                 chain.doFilter(request, wrapper);
-                
+
                 String content = wrapper.getContent();
                 if (content != null && content.contains("支持")) {
                     // 移除广告相关内容
@@ -56,8 +54,9 @@ public class DruidAdRemovalConfiguration {
                     content = content.replaceAll("支持.*?阿里云.*?</div>", "</div>");
                     content = content.replace("powered by Alibaba", "");
                 }
-                
-                httpResponse.getOutputStream().write(content.getBytes("UTF-8"));
+                if (content != null) {
+                    httpResponse.getOutputStream().write(content.getBytes(StandardCharsets.UTF_8));
+                }
             } else {
                 chain.doFilter(request, response);
             }
@@ -68,21 +67,21 @@ public class DruidAdRemovalConfiguration {
      * 响应包装器
      */
     private static class DruidResponseWrapper extends jakarta.servlet.http.HttpServletResponseWrapper {
-        private java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
-        private jakarta.servlet.ServletOutputStream stream = new ServletOutputStreamWrapper(buffer);
-        
+        private final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        private final jakarta.servlet.ServletOutputStream stream = new ServletOutputStreamWrapper(buffer);
+
         public DruidResponseWrapper(HttpServletResponse response) {
             super(response);
         }
-        
+
         @Override
         public jakarta.servlet.ServletOutputStream getOutputStream() throws IOException {
             return stream;
         }
-        
+
         public String getContent() {
             try {
-                return buffer.toString("UTF-8");
+                return buffer.toString(StandardCharsets.UTF_8);
             } catch (Exception e) {
                 return null;
             }
@@ -93,22 +92,22 @@ public class DruidAdRemovalConfiguration {
      * ServletOutputStream 包装器
      */
     private static class ServletOutputStreamWrapper extends ServletOutputStream {
-        private java.io.ByteArrayOutputStream buffer;
-        
+        private final java.io.ByteArrayOutputStream buffer;
+
         public ServletOutputStreamWrapper(java.io.ByteArrayOutputStream buffer) {
             this.buffer = buffer;
         }
-        
+
         @Override
         public void write(int b) throws IOException {
             buffer.write(b);
         }
-        
+
         @Override
         public boolean isReady() {
             return true;
         }
-        
+
         @Override
         public void setWriteListener(WriteListener listener) {
             // Not implemented
