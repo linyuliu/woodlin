@@ -12,6 +12,7 @@ import org.redisson.api.RRateLimiter;
 import org.redisson.api.RSet;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.listener.MessageListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -414,7 +415,7 @@ public class RedisUtil {
      * @param listener 消息监听器
      * @return 监听器ID
      */
-    public <T> int subscribe(String channel, org.redisson.api.listener.MessageListener<T> listener) {
+    public <T> int subscribe(String channel, MessageListener<T> listener) {
         RTopic topic = redissonClient.getTopic(channel);
         return topic.addListener(Object.class, listener);
     }
