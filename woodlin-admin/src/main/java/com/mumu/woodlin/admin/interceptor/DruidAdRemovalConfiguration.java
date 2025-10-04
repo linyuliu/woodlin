@@ -8,11 +8,13 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -72,16 +74,16 @@ public class DruidAdRemovalConfiguration {
     /**
      * 响应包装器
      */
-    private static class DruidResponseWrapper extends jakarta.servlet.http.HttpServletResponseWrapper {
-        private final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
-        private final jakarta.servlet.ServletOutputStream stream = new ServletOutputStreamWrapper(buffer);
+    private static class DruidResponseWrapper extends HttpServletResponseWrapper {
+        private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        private final ServletOutputStream stream = new ServletOutputStreamWrapper(buffer);
 
         public DruidResponseWrapper(HttpServletResponse response) {
             super(response);
         }
 
         @Override
-        public jakarta.servlet.ServletOutputStream getOutputStream() throws IOException {
+        public ServletOutputStream getOutputStream() throws IOException {
             return stream;
         }
 
@@ -98,9 +100,9 @@ public class DruidAdRemovalConfiguration {
      * ServletOutputStream 包装器
      */
     private static class ServletOutputStreamWrapper extends ServletOutputStream {
-        private final java.io.ByteArrayOutputStream buffer;
+        private final ByteArrayOutputStream buffer;
 
-        public ServletOutputStreamWrapper(java.io.ByteArrayOutputStream buffer) {
+        public ServletOutputStreamWrapper(ByteArrayOutputStream buffer) {
             this.buffer = buffer;
         }
 
