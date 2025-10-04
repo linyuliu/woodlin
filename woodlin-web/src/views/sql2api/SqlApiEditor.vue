@@ -306,7 +306,7 @@ const detectedParams = computed(() => {
   let match
   while ((match = paramPattern.exec(sql)) !== null) {
     const param = match[1] || match[2] || match[3]
-    if (param) params.add(param)
+    if (param) {params.add(param)}
   }
   
   return Array.from(params)
