@@ -7,7 +7,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import Layout from '../components/Layout.vue'
+import Layout from '@/components/Layout.vue'
 
 /**
  * 创建路由实例
@@ -26,7 +26,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'Dashboard',
-          component: () => import('../views/DashboardView.vue'),
+          component: () => import('@/views/DashboardView.vue'),
           meta: {
             title: '仪表板',
             icon: 'dashboard-outline'
@@ -35,7 +35,7 @@ const router = createRouter({
         {
           path: 'user',
           name: 'UserManagement',
-          component: () => import('../views/system/UserView.vue'),
+          component: () => import('@/views/system/UserView.vue'),
           meta: {
             title: '用户管理',
             icon: 'people-outline'
@@ -44,7 +44,7 @@ const router = createRouter({
         {
           path: 'role',
           name: 'RoleManagement',
-          component: () => import('../views/system/RoleView.vue'),
+          component: () => import('@/views/system/RoleView.vue'),
           meta: {
             title: '角色管理',
             icon: 'shield-outline'
@@ -53,7 +53,7 @@ const router = createRouter({
         {
           path: 'dept',
           name: 'DeptManagement',
-          component: () => import('../views/system/DeptView.vue'),
+          component: () => import('@/views/system/DeptView.vue'),
           meta: {
             title: '部门管理',
             icon: 'business-outline'
@@ -62,7 +62,7 @@ const router = createRouter({
         {
           path: 'system-settings',
           name: 'SystemSettings',
-          component: () => import('../views/system/SystemSettingsView.vue'),
+          component: () => import('@/views/system/SystemSettingsView.vue'),
           meta: {
             title: '系统设置',
             icon: 'settings-outline'
@@ -71,7 +71,7 @@ const router = createRouter({
         {
           path: 'tenant-list',
           name: 'TenantList',
-          component: () => import('../views/tenant/TenantView.vue'),
+          component: () => import('@/views/tenant/TenantView.vue'),
           meta: {
             title: '租户管理',
             icon: 'home-outline'
@@ -82,7 +82,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'Login',
-      component: () => import('../views/LoginView.vue'),
+      component: () => import('@/views/LoginView.vue'),
       meta: {
         title: '登录',
         hideInMenu: true
