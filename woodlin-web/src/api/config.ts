@@ -6,7 +6,7 @@
  * @since 2025-01-01
  */
 
-import request from '../utils/request'
+import request from '@/utils/request'
 
 /**
  * 系统配置数据类型
