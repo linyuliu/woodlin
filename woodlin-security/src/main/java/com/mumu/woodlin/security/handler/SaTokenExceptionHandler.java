@@ -11,7 +11,8 @@ import com.mumu.woodlin.common.response.Result;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import static com.mumu.woodlin.common.constant.CommonConstant.*;
+import static com.mumu.woodlin.common.constant.CommonConstant.FORBIDDEN_CODE;
+import static com.mumu.woodlin.common.constant.CommonConstant.UNAUTHORIZED_CODE;
 
 /**
  * Sa-Token 异常处理器

@@ -9,7 +9,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-import static com.mumu.woodlin.common.constant.CommonConstant.*;
+import static com.mumu.woodlin.common.constant.CommonConstant.FAIL_CODE;
+import static com.mumu.woodlin.common.constant.CommonConstant.SUCCESS_CODE;
 
 /**
  * 统一响应结果封装
