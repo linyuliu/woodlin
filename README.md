@@ -502,6 +502,53 @@ WHERE 1=1
 
 完整的 SQL2API 使用指南请查看：[SQL2API 功能文档](docs/SQL2API_GUIDE.md)
 
+## 📘 完整文档
+
+Woodlin 提供了基于 VitePress 构建的完整文档系统，详细说明每个模块的功能、开发和部署等所有细节。
+
+### 在线文档
+
+访问完整文档：[Woodlin 文档站点](https://woodlin.example.com)
+
+### 本地查看文档
+
+```bash
+# 进入文档目录
+cd documentation
+
+# 安装依赖
+npm install
+
+# 启动文档开发服务器
+npm run docs:dev
+
+# 访问 http://localhost:5173
+```
+
+### 构建文档
+
+```bash
+cd documentation
+npm run docs:build
+```
+
+### 文档特性
+
+- ✅ **VitePress 驱动**：基于 Vue 3 的现代化文档系统
+- ✅ **中文字体优化**：使用 LXGW WenKai（霞鹜文楷）字体，阅读体验优异
+- ✅ **代码高亮**：支持 Java、TypeScript、Vue、LaTeX 等多种语言
+- ✅ **完整详细**：每个模块都有详尽的文档说明，不省略任何细节
+- ✅ **全文搜索**：内置本地搜索功能
+- ✅ **响应式设计**：完美支持移动端和桌面端
+
+### 文档内容
+
+- **快速开始**：5 分钟快速上手指南
+- **模块文档**：11 个模块的完整说明（dependencies、common、security、system、tenant、file、task、generator、sql2api、admin、web）
+- **开发指南**：代码规范、环境搭建、调试技巧、测试指南
+- **部署指南**：本地部署、Docker 部署、K8s 部署、生产环境配置
+- **API 文档**：所有 API 接口的详细说明
+
 ## 📄 开源协议
 
 本项目基于 [MIT 协议](LICENSE) 开源，你可以自由使用、修改和分发本项目。
