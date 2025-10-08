@@ -1,0 +1,142 @@
+/**
+ * 自定义样式
+ * 
+ * @author mumu
+ * @description 包含中文字体配置和其他自定义样式
+ */
+
+/* ===== 中文字体配置 ===== */
+
+/**
+ * 使用 LXGW Bright Code 和霞鹜文楷字体作为中文字体
+ * 
+ * - LXGW WenKai: 优雅的中文字体，适合正文阅读
+ * - LXGW WenKai Screen: 针对屏幕显示优化的版本
+ * - 代码字体使用系统等宽字体 + LXGW Bright Code
+ */
+
+:root {
+  /* 正文字体 */
+  --vp-font-family-base: 'LXGW WenKai Screen', 'LXGW WenKai', -apple-system, 
+    BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  
+  /* 代码字体 */
+  --vp-font-family-mono: 'LXGW Bright Code', 'Cascadia Code', 'Fira Code', 
+    Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* 强制代码块使用等宽字体 */
+code,
+pre,
+.vp-code {
+  font-family: var(--vp-font-family-mono) !important;
+}
+
+/* 优化中文排版 */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 中文标点符号优化 */
+.vp-doc {
+  hanging-punctuation: allow-end;
+  text-spacing: ideograph-alpha ideograph-numeric;
+}
+
+/* ===== 代码块样式优化 ===== */
+
+/* 代码块行号样式 */
+.vp-code-group .line-numbers-mode .line-numbers {
+  font-family: var(--vp-font-family-mono);
+}
+
+/* 代码块标题栏 */
+.vp-code-group .tabs {
+  font-family: var(--vp-font-family-base);
+}
+
+/* 内联代码样式 */
+.vp-doc :not(pre) > code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background-color: var(--vp-c-mute);
+}
+
+/* ===== LaTeX 数学公式支持 ===== */
+
+/* 数学公式使用专用字体 */
+.katex,
+.MathJax {
+  font-family: 'Latin Modern Math', 'STIX Two Math', 'KaTeX_Math', serif;
+}
+
+/* ===== 表格样式优化 ===== */
+
+.vp-doc table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== 自定义容器样式 ===== */
+
+/* 提示框 */
+.vp-doc .tip,
+.vp-doc .warning,
+.vp-doc .danger,
+.vp-doc .info {
+  border-left-width: 4px;
+  padding: 16px 16px 16px 20px;
+}
+
+/* ===== 导航栏和侧边栏优化 ===== */
+
+/* 确保导航栏使用中文字体 */
+.VPNav,
+.VPSidebar {
+  font-family: var(--vp-font-family-base);
+}
+
+/* ===== 搜索框优化 ===== */
+
+.VPLocalSearchBox {
+  font-family: var(--vp-font-family-base);
+}
+
+/* ===== 响应式字体大小 ===== */
+
+@media (max-width: 768px) {
+  :root {
+    --vp-doc-font-size: 15px;
+  }
+}
+
+@media (min-width: 769px) {
+  :root {
+    --vp-doc-font-size: 16px;
+  }
+}
+
+/* ===== 代码高亮颜色自定义 ===== */
+
+/* 可以根据需要自定义代码高亮颜色 */
+.vp-code .highlighted {
+  background-color: var(--vp-code-line-highlight-color);
+  transition: background-color 0.5s;
+}
+
+/* ===== 打印样式 ===== */
+
+@media print {
+  body {
+    font-family: var(--vp-font-family-base);
+  }
+  
+  code,
+  pre {
+    font-family: var(--vp-font-family-mono);
+  }
+}

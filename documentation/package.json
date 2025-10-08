@@ -1,0 +1,22 @@
+{
+  "name": "woodlin-documentation",
+  "version": "1.0.0",
+  "description": "Woodlin 多租户管理系统完整文档",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "woodlin",
+    "documentation",
+    "vitepress"
+  ],
+  "author": "mumu",
+  "license": "MIT",
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.22"
+  }
+}
