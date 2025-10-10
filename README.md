@@ -47,19 +47,19 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 
 ### 模块结构
 
-```
+```text
 woodlin
-├── woodlin-dependencies     # 依赖管理模块
-├── woodlin-common          # 通用模块
-├── woodlin-security        # 安全认证模块
-├── woodlin-system          # 系统核心模块
-├── woodlin-tenant          # 多租户模块
-├── woodlin-file            # 文件管理模块
-├── woodlin-task            # 任务调度模块
-├── woodlin-generator       # 代码生成模块
-├── woodlin-sql2api         # SQL2API 动态接口模块（新增）
-├── woodlin-admin           # 管理后台应用
-└── sql                     # 数据库脚本
+├── woodlin-dependencies     # 依赖管理模块（BOM 统一版本管理）
+├── woodlin-common          # 通用模块（工具类、常量、配置）
+├── woodlin-security        # 安全认证模块（Sa-Token 集成）
+├── woodlin-system          # 系统核心模块（用户、角色、权限）
+├── woodlin-tenant          # 多租户模块（租户隔离）
+├── woodlin-file            # 文件管理模块（文件上传、下载）
+├── woodlin-task            # 任务调度模块（Quartz 定时任务）
+├── woodlin-generator       # 代码生成模块（智能代码生成）
+├── woodlin-sql2api         # SQL2API 动态接口模块（SQL 转 API）
+├── woodlin-admin           # 管理后台应用（主应用入口）
+└── sql                     # 数据库脚本（DDL 和初始化数据）
 ```
 
 ## 🚀 快速开始
@@ -120,34 +120,48 @@ woodlin
 
 ### 环境变量配置
 
-为了更好的部署体验，系统支持通过环境变量配置各项参数：
+系统支持通过环境变量配置各项参数，便于容器化部署：
 
-#### 🌐 服务器配置
+::: code-tabs#env
+
+@tab 服务器配置
+
 ```bash
+# ========== 服务器配置 ==========
 export SERVER_PORT=8080                        # 服务端口
 export SERVER_CONTEXT_PATH=/api                # 应用上下文路径
+export SPRING_PROFILES_ACTIVE=prod             # 运行环境：dev/test/prod
 ```
 
-#### 🗄️ 数据库配置
+@tab 数据库配置
+
 ```bash
-export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8"
+# ========== 数据库配置 ==========
+# 主数据源
+export DATABASE_URL="jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 export DATABASE_USERNAME=root                   # 数据库用户名
 export DATABASE_PASSWORD=Passw0rd               # 数据库密码
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver # 数据库驱动
-export DATABASE_DRUID_INITIAL_SIZE=5            # Druid连接池初始大小
-export DATABASE_DRUID_MIN_IDLE=5                # Druid连接池最小空闲连接数
-export DATABASE_DRUID_MAX_ACTIVE=20             # Druid连接池最大连接数
-export DATABASE_DRUID_USERNAME=admin            # Druid监控用户名
-export DATABASE_DRUID_PASSWORD=Passw0rd         # Druid监控密码
+
+# Druid 连接池配置
+export DATABASE_DRUID_INITIAL_SIZE=5            # 初始连接数
+export DATABASE_DRUID_MIN_IDLE=5                # 最小空闲连接数
+export DATABASE_DRUID_MAX_ACTIVE=20             # 最大活动连接数
+
+# Druid 监控配置
+export DATABASE_DRUID_USERNAME=admin            # Druid 监控用户名
+export DATABASE_DRUID_PASSWORD=Passw0rd         # Druid 监控密码
 ```
 
-#### 📦 Redis 配置
+@tab Redis 配置
+
 ```bash
-export REDIS_HOST=localhost                     # Redis 主机
+# ========== Redis 配置 ==========
+export REDIS_HOST=localhost                     # Redis 主机地址
 export REDIS_PORT=6379                          # Redis 端口
-export REDIS_DATABASE=0                         # Redis 数据库索引
-export REDIS_PASSWORD=                          # Redis 密码(可选)
-export REDIS_TIMEOUT=10s                        # Redis 超时时间
+export REDIS_DATABASE=0                         # Redis 数据库索引（0-15）
+export REDIS_PASSWORD=                          # Redis 密码（可选）
+export REDIS_TIMEOUT=10s                        # 连接超时时间
 ```
 
 #### 🔐 Sa-Token 安全配置

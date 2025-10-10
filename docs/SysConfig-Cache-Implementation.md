@@ -61,26 +61,32 @@ woodlin:
 - 增删改操作自动清除相关缓存
 - 支持按配置key的精确缓存
 
-#### 2.4 SysConfig控制器
+#### 2.4 SysConfig 控制器
 
-提供完整的RESTful API：
+提供完整的 RESTful API：
 
-```
-GET  /api/system/config/list                  # 查询配置列表
-GET  /api/system/config/key/{configKey}       # 根据键名查询配置
-GET  /api/system/config/value/{configKey}     # 根据键名查询配置值
-POST /api/system/config                       # 新增或更新配置
-DELETE /api/system/config/{configId}          # 删除配置
-DELETE /api/system/config/cache               # 清除配置缓存
-POST /api/system/config/cache/warmup          # 预热配置缓存
+```http
+GET    /api/system/config/list                # 查询配置列表（带缓存）
+GET    /api/system/config/key/{configKey}     # 根据键名查询配置（带缓存）
+GET    /api/system/config/value/{configKey}   # 根据键名查询配置值（带缓存）
+POST   /api/system/config                     # 新增或更新配置（自动清除缓存）
+DELETE /api/system/config/{configId}          # 删除配置（软删除，自动清除缓存）
+DELETE /api/system/config/cache               # 手动清除配置缓存
+POST   /api/system/config/cache/warmup        # 预热配置缓存
 ```
 
 ### 3. 缓存策略
 
 #### 3.1 缓存键设计
 
-- 全局配置列表：`config:sys_config`
-- 特定键配置：`config:sys_config:config_key:{configKey}`
+::: tip 缓存键命名规范
+- **全局配置列表**：`config:sys_config`
+- **特定键配置**：`config:sys_config:config_key:{configKey}`
+
+示例：
+- `config:sys_config` - 缓存所有配置列表
+- `config:sys_config:config_key:sys.user.initPassword` - 缓存特定配置
+:::
 
 #### 3.2 缓存更新策略
 
@@ -88,16 +94,18 @@ POST /api/system/config/cache/warmup          # 预热配置缓存
 - **查询操作**：优先从缓存获取，缓存不存在时从数据库加载并缓存
 - **预热机制**：支持手动预热，在系统启动或业务高峰前加载热点配置
 
-### 4. 与字典序列化的一致性
+### 4. 与字典缓存的一致性
 
-本实现与现有的DictEnum字典序列化保持一致：
+本实现与现有的字典（DictEnum）缓存机制保持完全一致：
 
-1. **统一的缓存服务**：使用相同的`RedisCacheService`
-2. **相同的缓存策略**：
-   - 使用Redis作为二级缓存
-   - 采用分布式锁防止缓存击穿
-   - 支持双重检查
-   - 异常降级处理
+| 特性 | 字典缓存 | 配置缓存 | 说明 |
+|------|---------|---------|------|
+| **缓存服务** | ✅ RedisCacheService | ✅ RedisCacheService | 使用统一的缓存服务 |
+| **二级缓存** | ✅ Redis | ✅ Redis | 使用 Redis 作为二级缓存 |
+| **分布式锁** | ✅ 支持 | ✅ 支持 | 防止缓存击穿 |
+| **双重检查** | ✅ 支持 | ✅ 支持 | 确保并发安全 |
+| **降级策略** | ✅ 支持 | ✅ 支持 | 缓存异常时降级到数据库 |
+| **序列化方式** | FastJSON2 | FastJSON2 | 统一的序列化方式 |
 
 3. **统一的配置方式**：
    - 通过`CacheProperties`统一管理
