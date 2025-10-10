@@ -6,6 +6,9 @@ node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/.vitepress/.temp/
+docs/.vuepress/dist/
+docs/.vuepress/cache/
+docs/.vuepress/.temp/
 
 # 日志
 npm-debug.log*
