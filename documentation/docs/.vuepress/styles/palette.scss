@@ -1,0 +1,30 @@
+/**
+ * VuePress Theme Hope 调色板配置
+ * 
+ * @author mumu
+ * @description 自定义主题颜色和样式变量
+ * @see https://theme-hope.vuejs.press/zh/config/style.html
+ */
+
+/* 主题色 */
+$theme-color: #646cff;
+$theme-color-light: #747bff;
+
+/* 响应式断点 */
+$mobile: 768px;
+$tablet: 959px;
+$pad: 1280px;
+$desktop: 1440px;
+
+/* 字体大小 */
+$font-size-base: 16px;
+$font-size-small: 14px;
+$font-size-large: 18px;
+
+/* 代码块样式 */
+$code-bg-color: #f6f6f7;
+$code-color: #476582;
+
+/* 深色模式代码块 */
+// $code-bg-color-dark: #282c34;
+// $code-color-dark: #abb2bf;

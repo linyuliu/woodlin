@@ -1,26 +1,29 @@
 # Woodlin 项目文档
 
-这是 Woodlin 多租户中后台管理系统的完整文档，使用 VitePress 构建。
+这是 Woodlin 多租户中后台管理系统的完整文档，使用 VuePress Theme Hope v2 构建。
 
 ## 🌟 特性
 
-- ✅ **VitePress 驱动**：基于 Vue 3 的静态站点生成器
-- ✅ **中文字体优化**：使用 LXGW WenKai（霞鹜文楷）字体
-- ✅ **代码高亮**：支持多种编程语言，包括 LaTeX
-- ✅ **响应式设计**：完美支持移动端和桌面端
-- ✅ **全文搜索**：内置本地搜索功能
-- ✅ **详尽完整**：每个模块都有详细的文档说明
+- ✅ **VuePress Theme Hope v2**：功能强大的 VuePress 主题，专为中文用户优化
+- ✅ **中文字体优化**：使用 LXGW WenKai（霞鹜文楷）字体，阅读体验更佳
+- ✅ **代码高亮增强**：支持多种编程语言，包括 Java、TypeScript、Vue、LaTeX 等
+- ✅ **代码组功能**：支持多标签页代码展示，方便比较不同实现
+- ✅ **响应式设计**：完美支持移动端和桌面端，自适应各种屏幕
+- ✅ **全文搜索增强**：强大的 SearchPro 插件，支持自定义字段搜索
+- ✅ **Markdown 增强**：支持提示容器、任务列表、图表、数学公式等丰富功能
+- ✅ **详尽完整**：每个模块都有详细的文档说明和代码示例
 
 ## 📚 文档结构
 
 ```
 documentation/
 ├── docs/
-│   ├── .vitepress/          # VitePress 配置
-│   │   ├── config.mts       # 主配置文件
-│   │   └── theme/           # 自定义主题
-│   │       ├── index.ts     # 主题入口
-│   │       └── custom.css   # 自定义样式（中文字体配置）
+│   ├── .vuepress/           # VuePress 配置
+│   │   ├── config.ts        # 主配置文件
+│   │   ├── client.ts        # 客户端配置
+│   │   └── styles/          # 自定义样式
+│   │       ├── index.scss   # 自定义样式（中文字体配置）
+│   │       └── palette.scss # 主题颜色配置
 │   ├── index.md             # 首页
 │   ├── guide/               # 指南
 │   │   ├── introduction.md  # 项目介绍
@@ -112,11 +115,11 @@ npm run docs:preview
 
 ### Markdown 扩展
 
-VitePress 支持以下 Markdown 扩展：
+VuePress Theme Hope 支持强大的 Markdown 扩展功能：
 
 #### 1. 代码块高亮
 
-支持多种编程语言，包括 Java、TypeScript、Vue、LaTeX 等：
+支持多种编程语言，包括 Java、TypeScript、Vue、LaTeX 等，并支持行号和高亮：
 
 ````markdown
 ```java
@@ -134,43 +137,61 @@ E = mc^2
 ```
 ````
 
-#### 2. 自定义容器
+#### 2. 代码标签页（Code Tabs）
+
+使用代码标签页展示不同语言或不同方案的实现：
+
+`````markdown
+::: code-tabs#shell
+
+@tab Maven
+
+```bash
+mvn clean package
+```
+
+@tab Gradle
+
+```bash
+gradle build
+```
+
+@tab npm
+
+```bash
+npm run build
+```
+
+:::
+`````
+
+#### 3. 自定义容器
 
 ```markdown
 ::: tip 提示
-这是一个提示框
+这是一个提示框，用于提供有用的信息
 :::
 
 ::: warning 警告
-这是一个警告框
+这是一个警告框，提醒用户注意
 :::
 
 ::: danger 危险
-这是一个危险框
+这是一个危险框，警告严重问题
 :::
 
 ::: info 信息
-这是一个信息框
+这是一个信息框，展示一般信息
+:::
+
+::: note 注意
+这是一个注释框
+:::
+
+::: important 重要
+这是一个重要信息框
 :::
 ```
-
-#### 3. 代码组
-
-````markdown
-::: code-group
-```java [User.java]
-public class User {
-    private String name;
-}
-```
-
-```typescript [user.ts]
-interface User {
-  name: string
-}
-```
-:::
-````
 
 #### 4. 表格
 
@@ -185,6 +206,36 @@ interface User {
 ```markdown
 - [x] 完成的任务
 - [ ] 未完成的任务
+```
+
+#### 6. 数学公式（KaTeX）
+
+```markdown
+行内公式：$E = mc^2$
+
+块级公式：
+
+$$
+\frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+```
+
+#### 7. 图表（Mermaid）
+
+````markdown
+```mermaid
+graph LR
+    A[开始] --> B[处理]
+    B --> C[结束]
+```
+````
+
+#### 8. 徽章和卡片
+
+```markdown
+<Badge text="新功能" type="tip" />
+<Badge text="已废弃" type="warning" />
+<Badge text="重要" type="danger" />
 ```
 
 ### 文档编写规范
@@ -211,7 +262,7 @@ interface User {
 - **正文字体**：LXGW WenKai Screen - 优雅的中文字体，适合正文阅读
 - **代码字体**：LXGW Bright Code - 专为代码显示设计的等宽字体
 
-**配置位置**：`docs/.vitepress/theme/custom.css`
+**配置位置**：`docs/.vuepress/styles/index.scss`
 
 **注意事项**：
 - 字体通过 CDN 自动加载，但在某些环境下可能被拦截
@@ -229,33 +280,55 @@ interface User {
 
 ### 修改主题颜色
 
-编辑 `docs/.vitepress/theme/custom.css`，修改 CSS 变量：
+编辑 `docs/.vuepress/styles/palette.scss`，修改 SCSS 变量：
 
-```css
-:root {
-  --vp-c-brand: #646cff;
-  --vp-c-brand-light: #747bff;
-  /* 更多变量... */
+```scss
+/* 主题色 */
+$theme-color: #646cff;
+$theme-color-light: #747bff;
+
+/* 响应式断点 */
+$mobile: 768px;
+$tablet: 959px;
+$pad: 1280px;
+$desktop: 1440px;
+```
+
+### 修改自定义样式
+
+编辑 `docs/.vuepress/styles/index.scss`，添加自定义样式：
+
+```scss
+/* 自定义样式 */
+.theme-hope-content {
+  /* 你的样式 */
 }
 ```
 
-### 修改布局
+### 修改配置
 
-编辑 `docs/.vitepress/theme/index.ts`，扩展默认主题：
+编辑 `docs/.vuepress/config.ts`，自定义站点配置：
 
 ```typescript
-import DefaultTheme from 'vitepress/theme'
-import './custom.css'
+import { defineUserConfig } from "vuepress"
+import { hopeTheme } from "vuepress-theme-hope"
 
-export default {
-  extends: DefaultTheme,
-  // 自定义布局组件
-}
+export default defineUserConfig({
+  theme: hopeTheme({
+    // 主题配置选项
+    plugins: {
+      mdEnhance: {
+        // Markdown 增强配置
+      },
+    },
+  }),
+})
 ```
 
 ## 📖 参考资源
 
-- [VitePress 官方文档](https://vitepress.dev/)
+- [VuePress 官方文档](https://vuejs.press/zh/)
+- [VuePress Theme Hope 文档](https://theme-hope.vuejs.press/zh/)
 - [Markdown 语法](https://www.markdownguide.org/)
 - [LXGW WenKai 字体](https://github.com/lxgw/LxgwWenKai)
 - [Vue 3 文档](https://vuejs.org/)
@@ -288,7 +361,8 @@ export default {
 
 感谢以下项目提供的支持：
 
-- [VitePress](https://vitepress.dev/) - 静态站点生成器
+- [VuePress](https://vuejs.press/zh/) - 静态站点生成器
+- [VuePress Theme Hope](https://theme-hope.vuejs.press/zh/) - 功能强大的 VuePress 主题
 - [Vue.js](https://vuejs.org/) - 渐进式 JavaScript 框架
 - [LXGW WenKai](https://github.com/lxgw/LxgwWenKai) - 优美的中文字体
 

@@ -37,10 +37,30 @@
 
 #### 1. 克隆项目
 
+::: code-tabs#shell
+
+@tab HTTPS
+
 ```bash
 git clone https://github.com/linyuliu/woodlin.git
 cd woodlin
 ```
+
+@tab SSH
+
+```bash
+git clone git@github.com:linyuliu/woodlin.git
+cd woodlin
+```
+
+@tab GitHub CLI
+
+```bash
+gh repo clone linyuliu/woodlin
+cd woodlin
+```
+
+:::
 
 #### 2. 配置环境变量
 
@@ -127,9 +147,13 @@ mysql -u root -p woodlin < sql/woodlin_schema.sql
 mysql -u root -p woodlin < sql/woodlin_data.sql
 ```
 
-#### 4. 配置数据库连接
+#### 4. 配置数据库和 Redis 连接
 
 编辑 `woodlin-admin/src/main/resources/application.yml`：
+
+::: code-tabs#yaml
+
+@tab 数据库配置
 
 ```yaml
 spring:
@@ -142,9 +166,7 @@ spring:
           password: your_password
 ```
 
-#### 5. 配置 Redis 连接
-
-编辑 `woodlin-admin/src/main/resources/application.yml`：
+@tab Redis 配置
 
 ```yaml
 spring:
@@ -156,7 +178,32 @@ spring:
       database: 0
 ```
 
-#### 6. 构建后端项目
+@tab 完整配置
+
+```yaml
+spring:
+  datasource:
+    dynamic:
+      datasource:
+        master:
+          url: jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          username: your_username
+          password: your_password
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: your_redis_password
+      database: 0
+```
+
+:::
+
+#### 5. 构建后端项目
+
+::: code-tabs#shell
+
+@tab Maven 构建
 
 ```bash
 # 清理并编译项目（首次构建需要 1-2 分钟）
@@ -166,28 +213,55 @@ mvn clean package -DskipTests
 mvn install -DskipTests
 ```
 
+@tab 开发脚本
+
+```bash
+# 使用开发脚本一键构建
+./scripts/dev.sh build
+```
+
+:::
+
 ::: tip 构建时间
 首次构建需要下载依赖，可能需要 1-2 分钟。后续构建通常在 15-20 秒内完成。
 :::
 
-#### 7. 启动后端服务
+#### 6. 启动后端服务
+
+::: code-tabs#shell
+
+@tab Maven 启动
 
 ```bash
-# 方式 1：使用 Maven 启动
+# 使用 Maven 启动
 mvn spring-boot:run -pl woodlin-admin
+```
 
-# 方式 2：使用 jar 包启动
+@tab JAR 包启动
+
+```bash
+# 使用 jar 包启动
 java -jar woodlin-admin/target/woodlin-admin-1.0.0.jar
+```
 
-# 方式 3：使用开发脚本启动
+@tab 开发脚本
+
+```bash
+# 使用开发脚本启动
 ./scripts/dev.sh backend
 ```
+
+:::
 
 ::: tip 启动时间
 后端服务启动通常需要 30-45 秒。
 :::
 
-#### 8. 构建并启动前端（可选）
+#### 7. 构建并启动前端（可选）
+
+::: code-tabs#shell
+
+@tab 开发模式
 
 ```bash
 # 进入前端目录
@@ -198,19 +272,40 @@ npm install
 
 # 启动开发服务器（约 600ms 启动）
 npm run dev
+```
 
-# 或者构建生产版本（约 8-9 秒）
+@tab 生产构建
+
+```bash
+# 进入前端目录
+cd woodlin-web
+
+# 安装依赖
+npm install
+
+# 构建生产版本（约 8-9 秒）
 npm run build
 ```
 
+@tab 开发脚本
+
+```bash
+# 使用开发脚本启动前端
+./scripts/dev.sh frontend
+```
+
+:::
+
 前端开发服务器默认运行在 http://localhost:5173
 
-#### 9. 访问应用
+#### 8. 访问应用
 
-- **后端 API**：http://localhost:8080/api
-- **API 文档**：http://localhost:8080/api/doc.html
-- **前端开发服务器**：http://localhost:5173
-- **数据库监控**：http://localhost:8080/api/druid
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| 后端 API | http://localhost:8080/api | 后端服务接口 |
+| API 文档 | http://localhost:8080/api/doc.html | Swagger UI 接口文档 |
+| 前端开发 | http://localhost:5173 | Vite 开发服务器 |
+| 数据库监控 | http://localhost:8080/api/druid | Druid 监控面板 |
 
 ## 验证安装
 
