@@ -89,26 +89,105 @@
 
 #### 获取配置列表
 
+::: code-tabs#api
+
+@tab 接口定义
+
 ```http
 GET /system/config/list
 ```
 
+@tab 请求示例
+
+```bash
+curl -X GET "http://localhost:8080/system/config/list" \
+  -H "Authorization: Bearer your-token"
+```
+
+@tab 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "configId": 1,
+      "configName": "API加密启用",
+      "configKey": "api.encryption.enabled",
+      "configValue": "false"
+    }
+  ]
+}
+```
+
+:::
+
 #### 根据配置分类获取配置
+
+::: code-tabs#api
+
+@tab 接口定义
 
 ```http
 GET /system/config/category/{category}
 ```
 
-参数：
+**路径参数：**
 - `category`: 配置分类，如 `api.encryption`、`password.policy`、`activity.monitoring`
+
+@tab 请求示例
+
+```bash
+curl -X GET "http://localhost:8080/system/config/category/api.encryption" \
+  -H "Authorization: Bearer your-token"
+```
+
+@tab 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "api.encryption.enabled": "false",
+    "api.encryption.algorithm": "AES",
+    "api.encryption.aes-key": ""
+  }
+}
+```
+
+:::
 
 #### 批量更新配置
 
+::: code-tabs#api
+
+@tab 接口定义
+
 ```http
 PUT /system/config/batch
+Content-Type: application/json
 ```
 
-请求体：
+@tab 请求示例
+
+```bash
+curl -X PUT "http://localhost:8080/system/config/batch" \
+  -H "Authorization: Bearer your-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "api.encryption",
+    "configs": {
+      "api.encryption.enabled": "true",
+      "api.encryption.algorithm": "AES",
+      "api.encryption.aes-key": "your-base64-key"
+    }
+  }'
+```
+
+@tab 请求体格式
+
 ```json
 {
   "category": "api.encryption",
@@ -119,6 +198,17 @@ PUT /system/config/batch
   }
 }
 ```
+
+@tab 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "配置更新成功"
+}
+```
+
+:::
 
 ## 数据库结构
 
@@ -142,53 +232,53 @@ CREATE TABLE `sys_config` (
 
 ### API 加密配置键名
 
-| 配置键名 | 说明 | 默认值 |
-|---------|------|--------|
-| api.encryption.enabled | 是否启用加密 | false |
-| api.encryption.algorithm | 加密算法 | AES |
-| api.encryption.aes-key | AES密钥 | - |
-| api.encryption.aes-iv | AES向量 | - |
-| api.encryption.aes-mode | AES模式 | CBC |
-| api.encryption.aes-padding | AES填充 | PKCS5Padding |
-| api.encryption.rsa-public-key | RSA公钥 | - |
-| api.encryption.rsa-private-key | RSA私钥 | - |
-| api.encryption.rsa-key-size | RSA密钥长度 | 2048 |
-| api.encryption.sm4-key | SM4密钥 | - |
-| api.encryption.sm4-iv | SM4向量 | - |
-| api.encryption.sm4-mode | SM4模式 | CBC |
-| api.encryption.include-patterns | 包含路径 | - |
-| api.encryption.exclude-patterns | 排除路径 | - |
-| api.encryption.encrypt-request | 加密请求 | true |
-| api.encryption.encrypt-response | 加密响应 | true |
+| 配置键名 | 说明 | 类型 | 默认值 | 示例 |
+|---------|------|------|--------|------|
+| `api.encryption.enabled` | 是否启用加密 | Boolean | `false` | `true` |
+| `api.encryption.algorithm` | 加密算法 | String | `AES` | `AES`/`RSA`/`SM4` |
+| `api.encryption.aes-key` | AES 密钥 | String | - | Base64 编码的密钥 |
+| `api.encryption.aes-iv` | AES 初始化向量 | String | - | Base64 编码的 IV |
+| `api.encryption.aes-mode` | AES 加密模式 | String | `CBC` | `CBC`/`ECB`/`CFB` |
+| `api.encryption.aes-padding` | AES 填充方式 | String | `PKCS5Padding` | `PKCS5Padding` |
+| `api.encryption.rsa-public-key` | RSA 公钥 | String | - | Base64 编码的公钥 |
+| `api.encryption.rsa-private-key` | RSA 私钥 | String | - | Base64 编码的私钥 |
+| `api.encryption.rsa-key-size` | RSA 密钥长度 | Integer | `2048` | `1024`/`2048`/`4096` |
+| `api.encryption.sm4-key` | SM4 密钥 | String | - | Base64 编码的密钥 |
+| `api.encryption.sm4-iv` | SM4 初始化向量 | String | - | Base64 编码的 IV |
+| `api.encryption.sm4-mode` | SM4 加密模式 | String | `CBC` | `CBC`/`ECB` |
+| `api.encryption.include-patterns` | 包含路径模式 | String | - | `/api/user/**` |
+| `api.encryption.exclude-patterns` | 排除路径模式 | String | - | `/api/public/**` |
+| `api.encryption.encrypt-request` | 是否加密请求 | Boolean | `true` | `true`/`false` |
+| `api.encryption.encrypt-response` | 是否加密响应 | Boolean | `true` | `true`/`false` |
 
 ### 密码策略配置键名
 
-| 配置键名 | 说明 | 默认值 |
-|---------|------|--------|
-| password.policy.enabled | 是否启用密码策略 | true |
-| password.policy.require-change-on-first-login | 首次登录修改密码 | false |
-| password.policy.expire-days | 密码过期天数 | 0 |
-| password.policy.warning-days | 提醒天数 | 7 |
-| password.policy.max-error-count | 最大错误次数 | 5 |
-| password.policy.lock-duration-minutes | 锁定时长 | 30 |
-| password.policy.strong-password-required | 强密码要求 | false |
-| password.policy.min-length | 最小长度 | 6 |
-| password.policy.max-length | 最大长度 | 20 |
-| password.policy.require-digits | 要求数字 | false |
-| password.policy.require-lowercase | 要求小写字母 | false |
-| password.policy.require-uppercase | 要求大写字母 | false |
-| password.policy.require-special-chars | 要求特殊字符 | false |
+| 配置键名 | 说明 | 类型 | 默认值 | 示例 |
+|---------|------|------|--------|------|
+| `password.policy.enabled` | 是否启用密码策略 | Boolean | `true` | `true`/`false` |
+| `password.policy.require-change-on-first-login` | 首次登录修改密码 | Boolean | `false` | `true`/`false` |
+| `password.policy.expire-days` | 密码过期天数 | Integer | `0` | `90`（0表示不过期） |
+| `password.policy.warning-days` | 过期前提醒天数 | Integer | `7` | `7` |
+| `password.policy.max-error-count` | 最大错误次数 | Integer | `5` | `5` |
+| `password.policy.lock-duration-minutes` | 锁定时长（分钟） | Integer | `30` | `30` |
+| `password.policy.strong-password-required` | 启用强密码策略 | Boolean | `false` | `true`/`false` |
+| `password.policy.min-length` | 最小密码长度 | Integer | `6` | `8` |
+| `password.policy.max-length` | 最大密码长度 | Integer | `20` | `32` |
+| `password.policy.require-digits` | 要求包含数字 | Boolean | `false` | `true`/`false` |
+| `password.policy.require-lowercase` | 要求包含小写字母 | Boolean | `false` | `true`/`false` |
+| `password.policy.require-uppercase` | 要求包含大写字母 | Boolean | `false` | `true`/`false` |
+| `password.policy.require-special-chars` | 要求包含特殊字符 | Boolean | `false` | `true`/`false` |
 
 ### 活动监控配置键名
 
-| 配置键名 | 说明 | 默认值 |
-|---------|------|--------|
-| activity.monitoring.enabled | 是否启用活动监控 | true |
-| activity.monitoring.timeout-seconds | 超时时间（秒） | 1800 |
-| activity.monitoring.check-interval-seconds | 检查间隔（秒） | 60 |
-| activity.monitoring.monitor-api-requests | 监控API请求 | true |
-| activity.monitoring.monitor-user-interactions | 监控用户交互 | true |
-| activity.monitoring.warning-before-timeout-seconds | 警告提前时间（秒） | 300 |
+| 配置键名 | 说明 | 类型 | 默认值 | 示例 |
+|---------|------|------|--------|------|
+| `activity.monitoring.enabled` | 是否启用活动监控 | Boolean | `true` | `true`/`false` |
+| `activity.monitoring.timeout-seconds` | 超时时间（秒） | Integer | `1800` | `1800`（-1表示不限制） |
+| `activity.monitoring.check-interval-seconds` | 检查间隔（秒） | Integer | `60` | `60` |
+| `activity.monitoring.monitor-api-requests` | 监控 API 请求 | Boolean | `true` | `true`/`false` |
+| `activity.monitoring.monitor-user-interactions` | 监控用户交互 | Boolean | `true` | `true`/`false` |
+| `activity.monitoring.warning-before-timeout-seconds` | 警告提前时间（秒） | Integer | `300` | `300` |
 
 ## 初始化数据
 

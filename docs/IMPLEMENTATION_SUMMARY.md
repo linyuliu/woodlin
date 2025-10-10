@@ -138,7 +138,8 @@ woodlin:
 ## 构建验证
 
 ✅ **所有模块编译成功**
-```
+
+```text
 [INFO] BUILD SUCCESS
 [INFO] Total time:  20.585 s
 ```
@@ -180,26 +181,72 @@ woodlin:
 
 ### 启用 API 加密
 
+::: code-tabs#usage
+
+@tab YAML 配置
+
 ```yaml
 woodlin:
   api:
     encryption:
+      # 启用加密功能
       enabled: true
+      # 选择加密算法
       algorithm: AES
+      # AES 密钥（Base64 编码）
       aes-key: "生成的Base64密钥"
+      # AES 初始化向量
       aes-iv: "生成的Base64 IV"
+      # 需要加密的接口路径
       include-patterns:
         - /api/user/**
         - /api/payment/**
 ```
 
+@tab 环境变量
+
+```bash
+export WOODLIN_API_ENCRYPTION_ENABLED=true
+export WOODLIN_API_ENCRYPTION_ALGORITHM=AES
+export WOODLIN_API_ENCRYPTION_AES_KEY="生成的Base64密钥"
+export WOODLIN_API_ENCRYPTION_AES_IV="生成的Base64 IV"
+```
+
+:::
+
 ### 生成密钥
 
+::: code-tabs#keygen
+
+@tab Java 代码
+
 ```java
-// Java 代码生成
+import com.mumu.woodlin.common.util.ApiEncryptionUtil;
+
+// 生成 AES 密钥（256位）
 String aesKey = ApiEncryptionUtil.generateAesKey(256);
+System.out.println("AES Key: " + aesKey);
+
+// 生成 RSA 密钥对（2048位）
 String[] rsaKeys = ApiEncryptionUtil.generateRsaKeyPair(2048);
+String publicKey = rsaKeys[0];
+String privateKey = rsaKeys[1];
+System.out.println("RSA Public Key: " + publicKey);
+System.out.println("RSA Private Key: " + privateKey);
 ```
+
+@tab OpenSSL 命令
+
+```bash
+# 生成 AES 密钥
+openssl rand -base64 32
+
+# 生成 RSA 密钥对
+openssl genrsa -out private.pem 2048
+openssl rsa -in private.pem -pubout -out public.pem
+```
+
+:::
 
 ## 总结
 

@@ -21,7 +21,7 @@ SQL2API 是 Woodlin 系统的动态 API 生成模块，允许通过配置 SQL �
 
 SQL2API 采用 SPI（Service Provider Interface）机制实现数据库元数据提取，支持扩展：
 
-```
+```text
 DatabaseMetadataExtractor (SPI接口)
 ├── MySQLMetadataExtractor (MySQL实现)
 ├── PostgreSQLMetadataExtractor (PostgreSQL实现)
@@ -31,7 +31,7 @@ DatabaseMetadataExtractor (SPI接口)
 
 ### 模块结构
 
-```
+```text
 woodlin-sql2api/
 ├── spi/                    # SPI接口和实现
 │   ├── DatabaseMetadataExtractor.java
@@ -69,6 +69,10 @@ mysql -u root -p woodlin < sql/sql2api_schema.sql
 
 在 `application.yml` 中配置动态数据源：
 
+::: code-tabs#config
+
+@tab application.yml
+
 ```yaml
 spring:
   datasource:
@@ -79,7 +83,19 @@ spring:
           url: jdbc:mysql://localhost:3306/woodlin
           username: root
           password: 123456
+          driver-class-name: com.mysql.cj.jdbc.Driver
 ```
+
+@tab 环境变量
+
+```bash
+export SPRING_DATASOURCE_DYNAMIC_PRIMARY=master
+export SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_URL=jdbc:mysql://localhost:3306/woodlin
+export SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_USERNAME=root
+export SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD=123456
+```
+
+:::
 
 ### 3. 创建 SQL API 配置
 
@@ -104,10 +120,32 @@ INSERT INTO sql2api_config (
 
 ### 4. 访问 API
 
+::: code-tabs#request
+
+@tab cURL
+
 ```bash
 # 查询用户列表
 curl "http://localhost:8080/api/users?status=0&username=admin"
 ```
+
+@tab HTTPie
+
+```bash
+# 使用 HTTPie 工具
+http GET "http://localhost:8080/api/users" status==0 username==admin
+```
+
+@tab JavaScript
+
+```javascript
+// 前端调用示例
+fetch('/api/users?status=0&username=admin')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+:::
 
 ## DSL 语法说明
 
@@ -204,21 +242,28 @@ JSON 格式的参数定义：
 
 ### 返回结果类型
 
-1. **single** - 单条记录
+::: code-tabs#result
+
+@tab single - 单条记录
+
 ```json
 {
   "code": 200,
+  "message": "操作成功",
   "data": {
     "id": 1,
-    "name": "admin"
+    "name": "admin",
+    "email": "admin@example.com"
   }
 }
 ```
 
-2. **list** - 列表
+@tab list - 列表
+
 ```json
 {
   "code": 200,
+  "message": "操作成功",
   "data": [
     {"id": 1, "name": "admin"},
     {"id": 2, "name": "user"}
@@ -226,21 +271,26 @@ JSON 格式的参数定义：
 }
 ```
 
-3. **page** - 分页
+@tab page - 分页
+
 ```json
 {
   "code": 200,
+  "message": "操作成功",
   "data": {
     "total": 100,
     "pageNum": 1,
     "pageSize": 10,
     "pages": 10,
     "records": [
-      {"id": 1, "name": "admin"}
+      {"id": 1, "name": "admin"},
+      {"id": 2, "name": "user"}
     ]
   }
 }
 ```
+
+:::
 
 ## 数据库元数据提取
 
@@ -318,22 +368,31 @@ API 编排允许组合多个 API 调用：
 
 启用 Redis 缓存：
 
+::: code-tabs#cache
+
+@tab application.yml
+
 ```yaml
 woodlin:
   sql2api:
     cache:
       enabled: true
       expire: 300  # 默认过期时间（秒）
+      key-prefix: sql2api  # 缓存键前缀
 ```
 
-在 SQL API 配置中启用：
+@tab API 配置
 
 ```json
 {
+  "apiName": "查询用户",
   "cacheEnabled": true,
-  "cacheExpire": 600
+  "cacheExpire": 600,
+  "cacheKey": "user:${userId}"
 }
 ```
+
+:::
 
 ### 流量控制
 
@@ -348,7 +407,9 @@ woodlin:
 
 ## 安全认证
 
-### Token 认证
+::: code-tabs#auth
+
+@tab Token 认证
 
 ```yaml
 woodlin:
@@ -357,9 +418,11 @@ woodlin:
       token:
         enabled: true
         header: Authorization
+        # Token 验证方式
+        validator: jwt  # jwt 或 custom
 ```
 
-### API Key 认证
+@tab API Key 认证
 
 ```yaml
 woodlin:
@@ -368,7 +431,23 @@ woodlin:
       api-key:
         enabled: true
         header: X-API-Key
+        # API Key 存储方式
+        storage: redis  # redis 或 database
 ```
+
+@tab 请求示例
+
+```bash
+# Token 认证
+curl -H "Authorization: Bearer your-token" \
+     "http://localhost:8080/api/users"
+
+# API Key 认证
+curl -H "X-API-Key: your-api-key" \
+     "http://localhost:8080/api/users"
+```
+
+:::
 
 ## 扩展开发
 
@@ -400,7 +479,7 @@ public class DM8MetadataExtractor implements DatabaseMetadataExtractor {
 
 SPI 配置文件 `META-INF/services/com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor`：
 
-```
+```text
 com.example.DM8MetadataExtractor
 ```
 

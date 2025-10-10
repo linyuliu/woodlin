@@ -90,7 +90,7 @@
 
 ### 后端架构
 
-```
+```text
 Controller (RESTful API)
     ↓
 Service (业务逻辑)
@@ -102,7 +102,7 @@ Database (sys_config 表)
 
 ### 前端架构
 
-```
+```text
 View (SystemSettingsView.vue)
     ↓
 API Service (config.ts)
@@ -165,11 +165,16 @@ Backend API
 
 ### 开发者集成
 
+::: code-tabs#integration
+
+@tab TypeScript
+
 ```typescript
 // 获取配置
 import { getConfigsByCategory } from '@/api/config'
 
 const configs = await getConfigsByCategory('api.encryption')
+console.log('API加密配置:', configs)
 
 // 批量更新配置
 import { batchUpdateConfig } from '@/api/config'
@@ -182,6 +187,27 @@ await batchUpdateConfig({
   }
 })
 ```
+
+@tab Java
+
+```java
+@Autowired
+private ISysConfigService configService;
+
+// 获取配置分类
+Map<String, String> configs = configService.getConfigsByCategory("api.encryption");
+
+// 批量更新配置
+ConfigUpdateDto updateDto = new ConfigUpdateDto();
+updateDto.setCategory("api.encryption");
+Map<String, String> configMap = new HashMap<>();
+configMap.put("api.encryption.enabled", "true");
+configMap.put("api.encryption.algorithm", "AES");
+updateDto.setConfigs(configMap);
+configService.batchUpdateConfig(updateDto);
+```
+
+:::
 
 ## 📚 相关文档
 

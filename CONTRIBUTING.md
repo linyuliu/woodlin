@@ -177,7 +177,7 @@ npm run dev
 
 ### 提交格式
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
