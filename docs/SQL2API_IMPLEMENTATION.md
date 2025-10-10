@@ -15,7 +15,8 @@
 - ✅ 优先级机制确保正确的提取器被选用
 
 #### 模块结构
-```
+
+```text
 woodlin-sql2api/
 ├── config/          # 配置类
 ├── dsl/            # 简化 DSL
@@ -76,7 +77,8 @@ SqlParam.builder()
 ### 5. 配置实体 ✅
 
 #### SqlApiConfig - SQL API 配置
-```java
+
+```text
 - api_name          // API名称
 - api_path          // API路径
 - http_method       // 请求方法
@@ -91,7 +93,8 @@ SqlParam.builder()
 ```
 
 #### ApiOrchestration - API 编排配置
-```java
+
+```text
 - orchestration_name    // 编排名称
 - orchestration_config  // 编排配置
 - execution_order       // 执行顺序
@@ -265,7 +268,8 @@ SqlParam.builder()
 ## 构建验证
 
 ✅ **编译成功**
-```
+
+```text
 [INFO] BUILD SUCCESS
 [INFO] Total time:  9.646 s
 ```
