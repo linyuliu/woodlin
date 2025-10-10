@@ -16,7 +16,7 @@
 
 ## 文件变更统计
 
-```
+```diff
  .env.example                   | 175 +++++++++++++++++++++--
  README.md                      |  32 +++--
  docker-compose.yml             | 465 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
@@ -38,7 +38,8 @@
 - 优势: 更好的性能、JFR 支持、及时安全更新
 
 **中文字体支持**:
-```bash
+
+```text
 ✓ fontconfig (字体配置库)
 ✓ fonts-wqy-zenhei (文泉驿正黑)
 ✓ fonts-wqy-microhei (文泉驿微米黑)
@@ -47,7 +48,8 @@
 ```
 
 **诊断工具集**:
-```bash
+
+```text
 网络诊断: curl, wget, netcat, telnet, ping, dig, nslookup
 进程监控: ps, top, netstat
 文本编辑: vim-tiny, less
@@ -56,7 +58,8 @@
 ```
 
 **JVM 优化参数**:
-```bash
+
+```text
 内存配置: -Xms512m -Xmx1024m -XX:MetaspaceSize=128m
 垃圾回收: -XX:+UseG1GC -XX:MaxGCPauseMillis=200
 性能优化: -XX:+UseStringDeduplication -XX:+ParallelRefProcEnabled
@@ -73,6 +76,7 @@ GC 日志: -Xloggc:/app/logs/gc.log -XX:+UseGCLogFileRotation
 ### 2. 优化的 docker-compose.yml
 
 **MySQL 服务优化**:
+
 ```yaml
 ✓ 连接配置: max_connections=500, max_allowed_packet=64M
 ✓ InnoDB 优化: buffer_pool_size=256M, log_file_size=128M
@@ -82,6 +86,7 @@ GC 日志: -Xloggc:/app/logs/gc.log -XX:+UseGCLogFileRotation
 ```
 
 **Redis 服务优化**:
+
 ```yaml
 ✓ 内存管理: maxmemory=512mb, maxmemory-policy=allkeys-lru
 ✓ 持久化: RDB (900/300/60 秒) + AOF
@@ -90,10 +95,11 @@ GC 日志: -Xloggc:/app/logs/gc.log -XX:+UseGCLogFileRotation
 ✓ 共计: 8+ 参数
 ```
 
-**ulimits 配置** (所有服务):
+**ulimits 配置**（所有服务）:
+
 ```yaml
-nofile: 65536 (文件描述符)
-nproc: 65536 (进程/线程数)
+nofile: 65536  # 文件描述符限制
+nproc: 65536   # 进程/线程数限制
 ```
 
 **资源限制**:
