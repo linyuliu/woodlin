@@ -126,3 +126,277 @@ div[class*="language-"] pre {
     font-family: var(--font-family-code);
   }
 }
+
+/* ===== Mermaid 流程图样式优化 ===== */
+
+/* Mermaid 图表容器 */
+.mermaid {
+  text-align: center;
+  margin: 1.5em 0;
+  background-color: var(--bg-color, #ffffff);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 暗色模式下的 Mermaid 图表 */
+html.dark .mermaid {
+  background-color: var(--bg-color-dark, #1e1e1e);
+}
+
+/* Mermaid 节点样式 */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node polygon {
+  fill: var(--mermaid-node-bg, #f0f0f0);
+  stroke: var(--mermaid-node-border, #999);
+  stroke-width: 2px;
+}
+
+/* Mermaid 文字样式 */
+.mermaid .nodeLabel,
+.mermaid .edgeLabel {
+  font-family: var(--font-family);
+  font-size: 14px;
+  color: var(--text-color, #333);
+}
+
+/* 暗色模式下的 Mermaid 节点和文字 */
+html.dark .mermaid .node rect,
+html.dark .mermaid .node circle,
+html.dark .mermaid .node polygon {
+  fill: var(--mermaid-node-bg-dark, #2d2d2d);
+  stroke: var(--mermaid-node-border-dark, #555);
+}
+
+html.dark .mermaid .nodeLabel,
+html.dark .mermaid .edgeLabel {
+  color: var(--text-color-dark, #ddd);
+  fill: var(--text-color-dark, #ddd);
+}
+
+/* ===== 图标字体优化 ===== */
+
+/* 确保图标正确显示 */
+.icon,
+[class*="icon-"],
+.iconify {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+/* Feature 图标样式 */
+.feature-icon {
+  font-size: 2em;
+  margin-bottom: 0.5em;
+}
+
+/* ===== 表格样式优化 ===== */
+
+/* 表格容器 */
+.theme-hope-content table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  margin: 1.5em 0;
+  border-collapse: collapse;
+}
+
+/* 表格样式 */
+.theme-hope-content table th,
+.theme-hope-content table td {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color, #ddd);
+  text-align: left;
+}
+
+.theme-hope-content table th {
+  background-color: var(--table-header-bg, #f5f5f5);
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+/* 暗色模式下的表格 */
+html.dark .theme-hope-content table th {
+  background-color: var(--table-header-bg-dark, #2d2d2d);
+  color: var(--text-color-dark, #ddd);
+}
+
+html.dark .theme-hope-content table th,
+html.dark .theme-hope-content table td {
+  border-color: var(--border-color-dark, #444);
+}
+
+/* 斑马纹表格 */
+.theme-hope-content table tbody tr:nth-child(even) {
+  background-color: var(--table-row-bg, #fafafa);
+}
+
+html.dark .theme-hope-content table tbody tr:nth-child(even) {
+  background-color: var(--table-row-bg-dark, #252525);
+}
+
+/* ===== 列表样式优化 ===== */
+
+/* 有序列表和无序列表 */
+.theme-hope-content ul,
+.theme-hope-content ol {
+  line-height: 1.8;
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.theme-hope-content li {
+  margin: 0.5em 0;
+}
+
+/* 嵌套列表缩进 */
+.theme-hope-content li > ul,
+.theme-hope-content li > ol {
+  margin: 0.5em 0;
+}
+
+/* ===== 代码块增强样式 ===== */
+
+/* 代码标签页样式 */
+.code-tabs {
+  margin: 1.5em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 代码标签按钮 */
+.code-tabs-nav {
+  background-color: var(--code-tabs-bg, #f5f5f5);
+  border-bottom: 1px solid var(--border-color, #ddd);
+  padding: 0;
+  display: flex;
+  gap: 0;
+}
+
+html.dark .code-tabs-nav {
+  background-color: var(--code-tabs-bg-dark, #2d2d2d);
+  border-bottom-color: var(--border-color-dark, #444);
+}
+
+/* ===== 提示容器样式优化 ===== */
+
+/* 提示、警告、危险等容器 */
+.hint-container {
+  margin: 1.5em 0;
+  padding: 1em 1.5em;
+  border-radius: 8px;
+  border-left: 4px solid;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.hint-container.tip {
+  border-left-color: #42b983;
+  background-color: rgba(66, 185, 131, 0.1);
+}
+
+.hint-container.warning {
+  border-left-color: #e7c000;
+  background-color: rgba(231, 192, 0, 0.1);
+}
+
+.hint-container.danger {
+  border-left-color: #cc0000;
+  background-color: rgba(204, 0, 0, 0.1);
+}
+
+.hint-container.info {
+  border-left-color: #0078d4;
+  background-color: rgba(0, 120, 212, 0.1);
+}
+
+/* ===== 徽章样式 ===== */
+
+/* Badge 组件样式优化 */
+.badge {
+  display: inline-block;
+  padding: 0.25em 0.6em;
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin: 0 0.3em;
+}
+
+/* ===== 可读性增强 ===== */
+
+/* 行高和段落间距 */
+.theme-hope-content p {
+  line-height: 1.8;
+  margin: 1em 0;
+}
+
+/* 标题间距 */
+.theme-hope-content h1,
+.theme-hope-content h2,
+.theme-hope-content h3,
+.theme-hope-content h4,
+.theme-hope-content h5,
+.theme-hope-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+/* 首个标题顶部间距 */
+.theme-hope-content h1:first-child,
+.theme-hope-content h2:first-child,
+.theme-hope-content h3:first-child {
+  margin-top: 0;
+}
+
+/* 引用样式 */
+.theme-hope-content blockquote {
+  margin: 1.5em 0;
+  padding: 1em 1.5em;
+  border-left: 4px solid var(--blockquote-border, #ddd);
+  background-color: var(--blockquote-bg, #f9f9f9);
+  border-radius: 4px;
+}
+
+html.dark .theme-hope-content blockquote {
+  border-left-color: var(--blockquote-border-dark, #444);
+  background-color: var(--blockquote-bg-dark, #252525);
+}
+
+/* 水平分割线 */
+.theme-hope-content hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid var(--border-color, #ddd);
+}
+
+html.dark .theme-hope-content hr {
+  border-top-color: var(--border-color-dark, #444);
+}
+
+/* ===== 链接样式优化 ===== */
+
+.theme-hope-content a {
+  color: var(--link-color, #3eaf7c);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.theme-hope-content a:hover {
+  color: var(--link-hover-color, #2d8659);
+  text-decoration: underline;
+}
+
+html.dark .theme-hope-content a {
+  color: var(--link-color-dark, #4fc08d);
+}
+
+html.dark .theme-hope-content a:hover {
+  color: var(--link-hover-color-dark, #42a577);
+}

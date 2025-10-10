@@ -238,6 +238,45 @@ export default defineUserConfig({
         gfm: true,
         // 启用代码演示
         demo: true,
+        // 启用 Mermaid 流程图
+        mermaid: true,
+        // 启用组件
+        component: true,
+        // 启用包含文件
+        include: true,
+        // 启用样式化
+        stylize: [
+          {
+            matcher: "Recommended",
+            replacer: ({ tag }) => {
+              if (tag === "em")
+                return {
+                  tag: "Badge",
+                  attrs: { type: "tip" },
+                  content: "Recommended",
+                };
+            },
+          },
+        ],
+      },
+
+      // 数学公式支持 (使用 markdownMath 替代 katex)
+      markdownMath: {
+        type: "katex",
+      },
+
+      // Markdown 标签页 (使用 markdownTab 替代 codetabs)
+      markdownTab: {
+        tabs: true,
+        codeTabs: true,
+      },
+
+      // Markdown 图片增强
+      markdownImage: {
+        figure: true,
+        lazyload: true,
+        mark: true,
+        size: true,
       },
 
       // 代码复制
