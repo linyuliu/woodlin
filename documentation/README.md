@@ -198,12 +198,32 @@ interface User {
 
 ### 中文字体配置
 
-文档已配置使用 LXGW WenKai（霞鹜文楷）字体：
+文档配置了完整的中文字体回退链，确保在各种环境下都能正确显示中文：
 
-- **正文字体**：LXGW WenKai Screen - 针对屏幕显示优化
+**字体优先级**：
+1. **LXGW WenKai（霞鹜文楷）** - 优先使用，通过 CDN 加载（如果可用）
+2. **系统中文字体** - 自动使用系统内置的中文字体
+   - macOS: PingFang SC, Hiragino Sans GB, Heiti SC
+   - Windows: Microsoft YaHei (微软雅黑), SimSun (宋体)
+   - Linux: WenQuanYi Micro Hei, Noto Sans CJK SC
+
+**字体说明**：
+- **正文字体**：LXGW WenKai Screen - 优雅的中文字体，适合正文阅读
 - **代码字体**：LXGW Bright Code - 专为代码显示设计的等宽字体
 
-字体配置在 `docs/.vitepress/theme/custom.css` 中，通过 CDN 自动加载。
+**配置位置**：`docs/.vitepress/theme/custom.css`
+
+**注意事项**：
+- 字体通过 CDN 自动加载，但在某些环境下可能被拦截
+- 即使 CDN 字体加载失败，系统内置字体也能保证中文正常显示
+- 在 Linux 环境下，如果需要最佳显示效果，建议安装中文字体包：
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install fonts-wqy-zenhei fonts-wqy-microhei
+  
+  # CentOS/RHEL
+  sudo yum install wqy-zenhei-fonts wqy-microhei-fonts
+  ```
 
 ## 🎨 主题定制
 
