@@ -13,17 +13,47 @@
  * - LXGW WenKai: 优雅的中文字体，适合正文阅读
  * - LXGW WenKai Screen: 针对屏幕显示优化的版本
  * - 代码字体使用系统等宽字体 + LXGW Bright Code
+ * - 添加了完整的中文字体回退链，确保在任何环境下都能正确显示中文
  */
 
 :root {
-  /* 正文字体 */
-  --vp-font-family-base: 'LXGW WenKai Screen', 'LXGW WenKai', -apple-system, 
-    BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  /* 正文字体 - 优先使用系统内置中文字体，确保字体一定能显示 */
+  --vp-font-family-base: 
+    /* 首选：LXGW 霞鹜文楷字体（如果CDN加载成功） */
+    'LXGW WenKai Screen', 'LXGW WenKai',
+    /* macOS 系统中文字体 */
+    'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'STHeiti',
+    /* Windows 系统中文字体 */
+    'Microsoft YaHei', 'Microsoft YaHei UI', '微软雅黑',
+    'SimSun', '宋体', 'SimHei', '黑体',
+    /* Linux 系统中文字体 */
+    'WenQuanYi Micro Hei', 'WenQuanYi Zen Hei', 'Noto Sans CJK SC', 'Source Han Sans SC',
+    /* 通用 CJK 字体 */
+    'Noto Sans SC', 'Droid Sans Fallback',
+    /* 西文字体 */
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, 
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif,
+    /* Emoji 字体 */
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   
-  /* 代码字体 */
-  --vp-font-family-mono: 'LXGW Bright Code', 'Cascadia Code', 'Fira Code', 
-    Menlo, Monaco, Consolas, 'Courier New', monospace;
+  /* 代码字体 - 优先使用系统内置等宽中文字体 */
+  --vp-font-family-mono: 
+    /* 首选：LXGW 明亮体（如果CDN加载成功） */
+    'LXGW Bright Code',
+    /* 优质等宽字体 */
+    'Cascadia Code', 'Fira Code', 'JetBrains Mono',
+    /* macOS 等宽字体 */
+    'SF Mono', Menlo, Monaco,
+    /* Windows 等宽字体 */
+    'Consolas', 'Courier New',
+    /* 中文等宽字体（用于中文字符） */
+    'PingFang SC', 'Microsoft YaHei Mono', 'Microsoft YaHei',
+    'SimSun', 'Source Han Sans CN', 'Noto Sans Mono CJK SC',
+    'WenQuanYi Micro Hei Mono', 'WenQuanYi Zen Hei Mono',
+    /* 通用等宽字体 */
+    'Courier', monospace,
+    /* Emoji 字体 */
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 }
 
 /* 强制代码块使用等宽字体 */

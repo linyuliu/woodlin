@@ -256,15 +256,30 @@ export default defineConfig({
     ['link', { rel: 'icon', href: '/favicon.ico' }],
     ['meta', { name: 'author', content: 'mumu' }],
     ['meta', { name: 'keywords', content: 'Woodlin, Spring Boot, 多租户, 管理系统, Java, Vue' }],
-    // 中文字体配置
+    // DNS 预连接优化
+    ['link', { rel: 'preconnect', href: 'https://cdn.jsdelivr.net' }],
+    ['link', { rel: 'dns-prefetch', href: 'https://cdn.jsdelivr.net' }],
+    // 中文字体配置 - 使用 preload 优化加载
     ['link', { 
       rel: 'stylesheet', 
-      href: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css'
+      href: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css',
+      media: 'all'
     }],
     ['link', { 
       rel: 'stylesheet', 
-      href: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css'
-    }]
+      href: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css',
+      media: 'all'
+    }],
+    // 添加中文字体的 fallback 保证
+    ['style', {}, `
+      @font-face {
+        font-family: 'Fallback Chinese';
+        src: local('PingFang SC'), local('Microsoft YaHei'), local('SimSun'), local('STHeiti'), local('WenQuanYi Micro Hei');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+    `]
   ],
 
   // 站点地图
