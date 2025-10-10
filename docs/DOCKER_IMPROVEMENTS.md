@@ -15,13 +15,30 @@
 ### 1. Dockerfile 优化
 
 #### 基础镜像变更
-```diff
-- FROM openjdk:17-jdk-slim as builder
-+ FROM bellsoft/liberica-openjdk-debian:17 as builder
 
-- FROM openjdk:17-jre-slim
-+ FROM bellsoft/liberica-openjre-debian:17
+::: code-tabs#dockerfile
+
+@tab 修改前
+
+```dockerfile
+FROM openjdk:17-jdk-slim as builder
+# ... 构建步骤 ...
+
+FROM openjdk:17-jre-slim
+# ... 运行配置 ...
 ```
+
+@tab 修改后
+
+```dockerfile
+FROM bellsoft/liberica-openjdk-debian:17 as builder
+# ... 构建步骤 ...
+
+FROM bellsoft/liberica-openjre-debian:17
+# ... 运行配置 ...
+```
+
+:::
 
 **优势**:
 - BellSoft Liberica 是经过全面测试和优化的 OpenJDK 发行版
@@ -36,7 +53,9 @@
 - `fonts-dejavu-core`: DejaVu 字体
 
 配置本地化环境：
+
 ```dockerfile
+# 设置中文本地化环境
 ENV LANG=zh_CN.UTF-8 \
     LANGUAGE=zh_CN:zh \
     LC_ALL=zh_CN.UTF-8
@@ -62,42 +81,47 @@ docker exec woodlin-app less /app/logs/app.log
 ```
 
 #### JVM 参数优化
+
 新增配置：
-```dockerfile
-# 内存配置
--Xms512m
--Xmx1024m
--XX:MetaspaceSize=128m
--XX:MaxMetaspaceSize=256m
 
-# GC 配置
--XX:+UseG1GC                      # 使用 G1 垃圾回收器
--XX:MaxGCPauseMillis=200          # GC 最大暂停时间
--XX:+UseStringDeduplication       # 字符串去重
--XX:+ParallelRefProcEnabled       # 并行处理引用
--XX:+DisableExplicitGC            # 禁用显式 GC
+```bash
+# ========== 内存配置 ==========
+-Xms512m                          # 初始堆内存大小
+-Xmx1024m                         # 最大堆内存大小
+-XX:MetaspaceSize=128m            # 元空间初始大小
+-XX:MaxMetaspaceSize=256m         # 元空间最大大小
 
-# OOM 处理
--XX:+HeapDumpOnOutOfMemoryError   # OOM 时生成堆转储
--XX:HeapDumpPath=/app/logs/
+# ========== GC 配置 ==========
+-XX:+UseG1GC                      # 使用 G1 垃圾回收器（推荐）
+-XX:MaxGCPauseMillis=200          # GC 最大暂停时间 200ms
+-XX:+UseStringDeduplication       # 字符串去重优化
+-XX:+ParallelRefProcEnabled       # 并行处理引用对象
+-XX:+DisableExplicitGC            # 禁用显式 System.gc() 调用
 
-# GC 日志
--XX:+PrintGCDetails
--XX:+PrintGCDateStamps
--Xloggc:/app/logs/gc.log
--XX:+UseGCLogFileRotation
--XX:NumberOfGCLogFiles=10
--XX:GCLogFileSize=10M
+# ========== OOM 处理 ==========
+-XX:+HeapDumpOnOutOfMemoryError   # OOM 时自动生成堆转储文件
+-XX:HeapDumpPath=/app/logs/       # 堆转储文件保存路径
+
+# ========== GC 日志 ==========
+-XX:+PrintGCDetails               # 打印详细 GC 日志
+-XX:+PrintGCDateStamps            # 打印 GC 时间戳
+-Xloggc:/app/logs/gc.log          # GC 日志文件路径
+-XX:+UseGCLogFileRotation         # 启用 GC 日志轮转
+-XX:NumberOfGCLogFiles=10         # 保留最近 10 个 GC 日志文件
+-XX:GCLogFileSize=10M             # 每个 GC 日志文件最大 10MB
 ```
 
 ### 2. docker-compose.yml 优化
 
 #### MySQL 配置增强
+
 新增启动参数：
+
 ```yaml
---max_connections=500              # 最大连接数
---max_allowed_packet=64M           # 最大数据包
---innodb_buffer_pool_size=256M     # InnoDB 缓冲池
+command:
+  - --max_connections=500              # 最大连接数
+  - --max_allowed_packet=64M           # 最大数据包大小
+  - --innodb_buffer_pool_size=256M     # InnoDB 缓冲池大小
 --innodb_log_file_size=128M        # 日志文件大小
 --innodb_flush_log_at_trx_commit=2 # 刷盘策略
 --slow_query_log=1                 # 慢查询日志
