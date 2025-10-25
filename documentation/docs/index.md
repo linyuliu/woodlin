@@ -74,7 +74,7 @@ footer: 基于 MIT 许可发布 | Copyright © 2024-present mumu
 
 ### 后端技术
 
-- **Java 17+**: 最新的 LTS 版本，性能优异
+- **Java 25**: 最新的 LTS 版本，性能卓越
 - **Spring Boot 3.4.1**: 最新的 Spring Boot 框架
 - **MyBatis Plus 3.5.9**: 强大的 ORM 框架
 - **Sa-Token 1.39.0**: 轻量级 Java 权限认证框架

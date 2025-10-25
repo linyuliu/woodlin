@@ -2,7 +2,7 @@
 
 > 注重设计与代码细节的高质量多租户中后台管理系统框架
 
-[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
+[![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![MyBatis Plus](https://img.shields.io/badge/MyBatis%20Plus-3.5.9-red.svg)](https://baomidou.com/)
 [![Sa-Token](https://img.shields.io/badge/Sa--Token-1.39.0-blue.svg)](https://sa-token.cc/)
@@ -35,7 +35,7 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| Java | 17+ | 编程语言 |
+| Java | 25 | 编程语言 |
 | Spring Boot | 3.4.1 | 基础框架 |
 | MyBatis Plus | 3.5.9 | ORM 框架 |
 | Sa-Token | 1.39.0 | 认证授权框架 |
@@ -66,7 +66,7 @@ woodlin
 
 ### 环境要求
 
-- **JDK**: 17 或更高版本
+- **JDK**: 25 或更高版本
 - **Maven**: 3.8 或更高版本
 - **MySQL**: 8.0 或更高版本
 - **Redis**: 6.0 或更高版本
@@ -206,7 +206,7 @@ docker compose logs -f woodlin-app
 ```
 
 **特性**:
-- ✅ 基于 BellSoft Liberica JDK 17 (优化的 OpenJDK 发行版)
+- ✅ 基于 Eclipse Temurin JDK 25 (LTS OpenJDK 发行版)
 - ✅ 支持中文字体，防止乱码 (文泉驿正黑、微米黑)
 - ✅ 内置诊断工具 (curl, wget, netcat, telnet, ping, jq 等)
 - ✅ 完整的系统优化 (ulimit, 资源限制, 健康检查)
