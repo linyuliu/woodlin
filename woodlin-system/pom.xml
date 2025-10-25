@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 
+    <!--
         Woodlin 系统核心模块
         作者: mumu
         描述: 系统核心业务模块，包含用户管理、角色管理、菜单管理、部门管理等功能
@@ -75,7 +75,7 @@
         <!-- MyBatis Plus -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
         <!-- 动态数据源 -->
@@ -100,12 +100,6 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
-        </dependency>
-
-        <!-- Crane4j 对象映射 -->
-        <dependency>
-            <groupId>cn.crane4j</groupId>
-            <artifactId>crane4j-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- 测试依赖 -->

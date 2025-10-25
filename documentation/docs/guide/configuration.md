@@ -292,7 +292,7 @@ sa-token:
   # Token 有效期（单位：秒）-1 代表永不过期
   timeout: 2592000  # 30 天
   # Token 临时有效期（指定时间内无操作就视为 Token 过期）-1 代表禁用
-  activity-timeout: 1800  # 30 分钟
+  active-timeout: 1800  # 30 分钟
   # 是否允许同一账号并发登录（为 false 时新登录挤掉旧登录）
   is-concurrent: true
   # 在多人登录同一账号时，是否共用一个 Token（为 false 时每次登录新建一个 Token）
