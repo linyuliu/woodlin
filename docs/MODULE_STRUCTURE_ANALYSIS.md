@@ -96,14 +96,19 @@ woodlin (parent)
 
 ### 1. 优化组件扫描
 
-在 `WoodlinAdminApplication` 中更精确地配置扫描范围：
+在 `WoodlinAdminApplication` 中明确指定所有需要扫描的模块包：
 
 ```java
 @SpringBootApplication(scanBasePackages = {
-    "com.mumu.woodlin.admin",
-    "com.mumu.woodlin.system.controller",
-    "com.mumu.woodlin.security.config",
-    "com.mumu.woodlin.security.handler"
+    "com.mumu.woodlin.admin",           // 管理后台模块
+    "com.mumu.woodlin.common",          // 通用模块
+    "com.mumu.woodlin.security",        // 安全模块
+    "com.mumu.woodlin.system",          // 系统管理模块
+    "com.mumu.woodlin.tenant",          // 多租户模块
+    "com.mumu.woodlin.file",            // 文件管理模块
+    "com.mumu.woodlin.task",            // 任务调度模块
+    "com.mumu.woodlin.generator",       // 代码生成模块
+    "com.mumu.woodlin.sql2api"          // SQL2API模块
 })
 @MapperScan("com.mumu.woodlin.**.mapper")
 public class WoodlinAdminApplication {
@@ -112,6 +117,12 @@ public class WoodlinAdminApplication {
     }
 }
 ```
+
+**优势：**
+- 明确列出所有需要扫描的模块
+- 更好的可读性和文档性
+- 便于理解系统依赖关系
+- 避免隐式扫描带来的不确定性
 
 ### 2. 模块职责明确化
 
