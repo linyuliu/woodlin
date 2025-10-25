@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 
+    <!--
         Woodlin 依赖管理模块
         作者: mumu
         描述: 统一管理所有第三方依赖版本，确保版本一致性
@@ -24,82 +24,82 @@
     <properties>
         <!-- 安全认证框架 -->
         <sa-token.version>1.39.0</sa-token.version>
-        
+
         <!-- 数据库框架 -->
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <dynamic-datasource.version>4.3.1</dynamic-datasource.version>
         <druid.version>1.2.24</druid.version>
-        
+
         <!-- 缓存框架 -->
-        <redisson.version>3.37.0</redisson.version>
-        <jetcache.version>2.7.6</jetcache.version>
-        
+        <redisson.version>3.52.0</redisson.version>
+        <jetcache.version>2.7.8</jetcache.version>
+
         <!-- Excel处理 -->
         <easyexcel.version>4.0.3</easyexcel.version>
-        
+
         <!-- ID生成器 -->
         <cosid.version>2.9.8</cosid.version>
-        
+
         <!-- 第三方登录 -->
         <justauth.version>1.16.6</justauth.version>
-        
+
         <!-- 对象映射 -->
-        <crane4j.version>2.9.0</crane4j.version>
-        
+        <!--        <crane4j.version>2.9.0</crane4j.version>-->
+
         <!-- API文档 -->
         <springdoc.version>2.7.0</springdoc.version>
-        
+
         <!-- 工具库 -->
-        <hutool.version>5.8.34</hutool.version>
-        <lombok.version>1.18.36</lombok.version>
-        
+        <hutool.version>5.8.41</hutool.version>
+        <lombok.version>1.18.38</lombok.version>
+
         <!-- 数据库驱动 -->
         <mysql.version>8.4.0</mysql.version>
         <postgresql.version>42.7.4</postgresql.version>
-        
+
         <!-- 验证框架 -->
         <validation-api.version>3.1.0</validation-api.version>
-        
+
         <!-- JSON处理 -->
         <jackson.version>2.18.2</jackson.version>
-        <fastjson2.version>2.0.55</fastjson2.version>
-        
+        <fastjson2.version>2.0.59</fastjson2.version>
+
         <!-- 任务调度 -->
         <quartz.version>2.5.0</quartz.version>
         <snail-job.version>1.1.0</snail-job.version>
-        
+
         <!-- 对象存储 -->
         <minio.version>8.5.14</minio.version>
         <aws-java-sdk-s3.version>1.12.780</aws-java-sdk-s3.version>
-        
+
         <!-- 邮件发送 -->
         <mail.version>2.1.3</mail.version>
-        
+
         <!-- 短信服务 -->
         <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
-        
+
         <!-- 验证码 -->
         <easy-captcha.version>1.6.2</easy-captcha.version>
-        
+
         <!-- IP地址解析 -->
         <ip2region.version>3.1.11</ip2region.version>
-        
+
         <!-- 模板引擎 -->
         <velocity.version>2.4.1</velocity.version>
-        
+
         <!-- 测试框架 -->
         <testcontainers.version>1.20.4</testcontainers.version>
         <mockito.version>5.14.2</mockito.version>
         <assertj.version>3.26.3</assertj.version>
-        
+
         <!-- 性能监控 -->
         <micrometer.version>1.14.2</micrometer.version>
-        
+
         <!-- Apache Commons -->
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <commons-collections4.version>4.4</commons-collections4.version>
         <commons-io.version>2.18.0</commons-io.version>
-        
+
         <!-- Google Guava -->
         <guava.version>33.3.1-jre</guava.version>
     </properties>
@@ -164,7 +164,7 @@
             <!-- MyBatis Plus -->
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
@@ -261,7 +261,7 @@
                 <artifactId>quartz</artifactId>
                 <version>${quartz.version}</version>
             </dependency>
-            
+
             <!-- SnailJob 分布式任务调度 -->
             <dependency>
                 <groupId>com.aizuda</groupId>
@@ -331,7 +331,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            
+
             <!-- Mockito 测试框架 -->
             <dependency>
                 <groupId>org.mockito</groupId>
@@ -345,7 +345,7 @@
                 <version>${mockito.version}</version>
                 <scope>test</scope>
             </dependency>
-            
+
             <!-- AssertJ 断言库 -->
             <dependency>
                 <groupId>org.assertj</groupId>
@@ -353,7 +353,7 @@
                 <version>${assertj.version}</version>
                 <scope>test</scope>
             </dependency>
-            
+
             <!-- Micrometer 性能监控 -->
             <dependency>
                 <groupId>io.micrometer</groupId>
@@ -365,7 +365,7 @@
                 <artifactId>micrometer-registry-prometheus</artifactId>
                 <version>${micrometer.version}</version>
             </dependency>
-            
+
             <!-- Apache Commons 工具库 -->
             <dependency>
                 <groupId>org.apache.commons</groupId>
@@ -382,7 +382,7 @@
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
             </dependency>
-            
+
             <!-- Google Guava -->
             <dependency>
                 <groupId>com.google.guava</groupId>
