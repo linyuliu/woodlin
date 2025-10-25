@@ -1,6 +1,6 @@
 # Woodlin Multi-Tenant Management System
 
-Woodlin is a Spring Boot 3.4.1 + Java 17 multi-tenant backend management system with Vue 3 + TypeScript + Naive UI frontend. This is a multi-module Maven project providing comprehensive enterprise-level features including user management, RBAC permissions, file management, and task scheduling.
+Woodlin is a Spring Boot 3.5.6 + Java 25 multi-tenant backend management system with Vue 3 + TypeScript + Naive UI frontend. This is a multi-module Maven project providing comprehensive enterprise-level features including user management, RBAC permissions, file management, and task scheduling.
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
@@ -181,7 +181,7 @@ woodlin/
 ## Environment Requirements and Setup
 
 ### Development Environment
-- **Java**: 17 or higher (OpenJDK 17.0.16 verified working)
+- **Java**: 25 or higher (OpenJDK 25+36-LTS verified working)
 - **Maven**: 3.8+ (Apache Maven 3.9.11 verified working)  
 - **Node.js**: 20.19+ or 22.12+ (Node.js 20.19.5 verified working)
 - **npm**: 10.8+ (npm 10.8.2 verified working)
