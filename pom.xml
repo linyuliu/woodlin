@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 
+    <!--
         Woodlin 多租户中后台管理系统框架
         作者: mumu
         描述: 高质量多租户中后台管理系统框架，注重设计与代码细节
@@ -33,16 +33,16 @@
     <!-- 统一属性配置 -->
     <properties>
         <!-- 编译配置 -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        
+
         <!-- 版本定义 -->
         <woodlin.version>1.0.0</woodlin.version>
-        <spring-boot.version>3.4.1</spring-boot.version>
-        
+        <spring-boot.version>3.5.6</spring-boot.version>
+
         <!-- Maven插件版本 -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
@@ -97,7 +97,7 @@
                         </compilerArgs>
                     </configuration>
                 </plugin>
-                
+
                 <!-- 单元测试插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -114,7 +114,7 @@
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
-                
+
                 <!-- 集成测试插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -129,7 +129,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- Spring Boot插件 -->
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
@@ -154,7 +154,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- 资源插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -164,7 +164,7 @@
                         <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
                 </plugin>
-                
+
                 <!-- 源码插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -179,7 +179,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- Javadoc插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -202,35 +202,35 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- 清理插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
                     <version>${maven-clean-plugin.version}</version>
                 </plugin>
-                
+
                 <!-- 安装插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-install-plugin</artifactId>
                     <version>${maven-install-plugin.version}</version>
                 </plugin>
-                
+
                 <!-- 部署插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
                     <version>${maven-deploy-plugin.version}</version>
                 </plugin>
-                
+
                 <!-- 站点插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-site-plugin</artifactId>
                     <version>${maven-site-plugin.version}</version>
                 </plugin>
-                
+
                 <!-- 依赖强制插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -255,14 +255,14 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- 依赖分析插件 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${maven-dependency-plugin.version}</version>
                 </plugin>
-                
+
                 <!-- 代码覆盖率插件 -->
                 <plugin>
                     <groupId>org.jacoco</groupId>
@@ -283,7 +283,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                
+
                 <!-- SpotBugs静态分析插件 -->
                 <plugin>
                     <groupId>com.github.spotbugs</groupId>
@@ -303,22 +303,11 @@
     <developers>
         <developer>
             <name>mumu</name>
-            <email>mumu@woodlin.com</email>
-            <organization>Woodlin</organization>
+            <email>yulin.1996@foxmail.com</email>
             <roles>
                 <role>architect</role>
                 <role>developer</role>
             </roles>
         </developer>
     </developers>
-
-    <!-- 许可证信息 -->
-    <licenses>
-        <license>
-            <name>MIT License</name>
-            <url>https://opensource.org/licenses/MIT</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-
 </project>
