@@ -69,10 +69,14 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
                     "/auth/forgot-password",
                     "/error",
                     "/favicon.ico",
+                    // Knife4j 文档相关路径
                     "/doc.html",
+                    "/swagger-ui.html",
                     "/swagger-ui/**",
+                    "/swagger-resources/**",
                     "/v3/api-docs/**",
                     "/webjars/**",
+                    // 健康检查
                     "/actuator/**"
                 );
 
@@ -90,10 +94,14 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
                             "/auth/forgot-password",// 忘记密码接口
                             "/error",               // 错误页面
                             "/favicon.ico",         // 网站图标
-                            "/doc.html",            // 接口文档
-                            "/swagger-ui/**",       // Swagger UI
+                            // Knife4j 文档相关路径
+                            "/doc.html",            // Knife4j 接口文档
+                            "/swagger-ui.html",     // Swagger UI HTML
+                            "/swagger-ui/**",       // Swagger UI 资源
+                            "/swagger-resources/**",// Swagger 资源
                             "/v3/api-docs/**",      // OpenAPI 文档
                             "/webjars/**",          // 静态资源
+                            // 健康检查
                             "/actuator/**"          // 监控端点
                     )
                     .check(r -> StpUtil.checkLogin()); // 执行鉴权操作
