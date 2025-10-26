@@ -162,6 +162,54 @@ springdoc:
     license:
       name: MIT License
       url: https://opensource.org/licenses/MIT
+  # 分组排序
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: 'com.mumu.woodlin'
+
+# Knife4j配置
+knife4j:
+  # 是否启用Knife4j增强模式
+  enable: ${KNIFE4J_ENABLE:true}
+  # 是否启用Knife4j的Basic认证功能
+  basic:
+    enable: ${KNIFE4J_BASIC_ENABLE:false}
+    username: ${KNIFE4J_BASIC_USERNAME:admin}
+    password: ${KNIFE4J_BASIC_PASSWORD:123456}
+  # 是否启用生产环境屏蔽
+  production: ${KNIFE4J_PRODUCTION:false}
+  # 前端Ui的个性化配置属性
+  setting:
+    # 自定义页脚
+    enable-footer: true
+    enable-footer-custom: true
+    footer-custom-content: 'Copyright © 2025 Woodlin | Powered by Knife4j'
+    # 是否启用动态参数调试功能
+    enable-dynamic-parameter: true
+    # 是否启用过滤功能
+    enable-filter-multipart-apis: false
+    # 是否开启请求参数缓存
+    enable-request-cache: true
+    # 是否启用Host
+    enable-host: false
+    # 是否显示SwaggerModel
+    enable-swagger-models: true
+    # 是否显示对应的请求类型
+    enable-reload-cache-parameter: true
+    # 主页自定义Markdown文档
+    enable-home-custom: true
+    home-custom-path: 'classpath:markdown/home.md'
+    # 是否启用搜索框
+    enable-search: true
+    # 是否启用调试
+    enable-debug: true
+    # 是否开启动态请求参数
+    enable-open-api: true
+    # 是否启用界面中SwaggerModel展示
+    enable-response-code: true
+  # CORS跨域配置
+  cors: false
 
 # 日志配置
 logging:
