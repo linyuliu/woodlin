@@ -48,6 +48,7 @@
 
         <!-- API文档 -->
         <springdoc.version>2.7.0</springdoc.version>
+        <knife4j.version>4.5.0</knife4j.version>
 
         <!-- 工具库 -->
         <hutool.version>5.8.41</hutool.version>
@@ -227,6 +228,13 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Knife4j -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
             </dependency>
 
             <!-- Hutool -->
