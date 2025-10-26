@@ -32,10 +32,15 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/error",
                         "/druid/**",
+                        // Knife4j 文档相关路径
                         "/doc.html",
+                        "/swagger-ui.html",
                         "/swagger-ui/**",
+                        "/swagger-resources/**",
                         "/v3/api-docs/**",
                         "/webjars/**",
+                        "/favicon.ico",
+                        // 健康检查
                         "/actuator/**"
                 );
         
@@ -46,10 +51,15 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                     .excludePathPatterns(
                             "/error",
                             "/druid/**",
+                            // Knife4j 文档相关路径
                             "/doc.html",
+                            "/swagger-ui.html",
                             "/swagger-ui/**",
+                            "/swagger-resources/**",
                             "/v3/api-docs/**",
                             "/webjars/**",
+                            "/favicon.ico",
+                            // 健康检查
                             "/actuator/**"
                     );
         }
