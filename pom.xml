@@ -27,6 +27,7 @@
         <module>woodlin-task</module>
         <module>woodlin-generator</module>
         <module>woodlin-sql2api</module>
+        <module>woodlin-dsl</module>
         <module>woodlin-admin</module>
     </modules>
 
