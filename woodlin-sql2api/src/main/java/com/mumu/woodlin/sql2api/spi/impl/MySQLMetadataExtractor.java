@@ -1,13 +1,5 @@
 package com.mumu.woodlin.sql2api.spi.impl;
 
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.SchemaMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -16,6 +8,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
+
+import lombok.extern.slf4j.Slf4j;
+
+import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
+import com.mumu.woodlin.sql2api.model.SchemaMetadata;
+import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 
 /**
  * MySQL数据库元数据提取器

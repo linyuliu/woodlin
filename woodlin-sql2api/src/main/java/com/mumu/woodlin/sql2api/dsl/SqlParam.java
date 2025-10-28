@@ -1,9 +1,9 @@
 package com.mumu.woodlin.sql2api.dsl;
 
-import lombok.Data;
-import lombok.Builder;
-
 import java.util.Map;
+
+import lombok.Builder;
+import lombok.Data;
 
 /**
  * SQL参数定义

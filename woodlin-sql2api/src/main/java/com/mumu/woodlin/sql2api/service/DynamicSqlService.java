@@ -1,9 +1,9 @@
 package com.mumu.woodlin.sql2api.service;
 
-import com.mumu.woodlin.sql2api.entity.SqlApiConfig;
-
 import java.util.List;
 import java.util.Map;
+
+import com.mumu.woodlin.sql2api.entity.SqlApiConfig;
 
 /**
  * 动态SQL执行服务接口

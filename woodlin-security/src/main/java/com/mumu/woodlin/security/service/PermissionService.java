@@ -1,8 +1,9 @@
 package com.mumu.woodlin.security.service;
 
-import com.mumu.woodlin.security.util.SecurityUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import com.mumu.woodlin.security.util.SecurityUtil;
 
 /**
  * 权限验证服务

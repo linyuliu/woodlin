@@ -1,10 +1,7 @@
 package com.mumu.woodlin.admin.controller;
 
-import com.mumu.woodlin.common.response.R;
-import com.mumu.woodlin.security.dto.LoginRequest;
-import com.mumu.woodlin.security.dto.LoginResponse;
-import com.mumu.woodlin.security.dto.ChangePasswordRequest;
-import com.mumu.woodlin.security.service.AuthenticationService;
+import jakarta.validation.Valid;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +15,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
+import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.security.dto.ChangePasswordRequest;
+import com.mumu.woodlin.security.dto.LoginRequest;
+import com.mumu.woodlin.security.dto.LoginResponse;
+import com.mumu.woodlin.security.service.AuthenticationService;
 
 /**
  * 认证控制器

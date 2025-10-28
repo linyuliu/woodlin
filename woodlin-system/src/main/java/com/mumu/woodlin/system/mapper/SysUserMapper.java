@@ -1,9 +1,10 @@
 package com.mumu.woodlin.system.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.mumu.woodlin.system.entity.SysUser;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.mumu.woodlin.system.entity.SysUser;
 
 /**
  * 用户信息Mapper接口
