@@ -216,6 +216,7 @@ interface ParamConfig {
   required: boolean
   defaultValue: string
   description: string
+  validation?: string
 }
 
 /**
@@ -341,31 +342,49 @@ const nodeProps = () => ({
 })
 
 // 添加参数
+/**
+ * 添加参数
+ */
 const handleAddParam = () => {
   apiConfig.value.params.push({
     name: '',
     type: 'String',
     required: false,
+    defaultValue: '',
     description: '',
     validation: ''
   })
 }
 
-// 删除参数
+/**
+ * 删除参数
+ */
 const handleRemoveParam = (index: number) => {
   apiConfig.value.params.splice(index, 1)
 }
 
-// 保存配置
+/**
+ * 保存配置
+ */
 const handleSave = () => {
-  // TODO: 调用API保存配置
   message.success('保存成功')
 }
 
-// 测试API
-const testResult = ref(null)
+interface TestResult {
+  code: number
+  message: string
+  data: unknown[]
+}
+
+/**
+ * 测试结果
+ */
+const testResult = ref<TestResult | null>(null)
+
+/**
+ * 测试API
+ */
 const handleTest = () => {
-  // TODO: 调用测试API
   testResult.value = {
     code: 200,
     message: 'Success',
