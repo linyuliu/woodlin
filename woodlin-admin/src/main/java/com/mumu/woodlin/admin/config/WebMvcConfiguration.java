@@ -1,12 +1,13 @@
 package com.mumu.woodlin.admin.config;
 
-import com.mumu.woodlin.admin.interceptor.ApiEncryptionInterceptor;
-import com.mumu.woodlin.admin.interceptor.PageValidationInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.mumu.woodlin.admin.interceptor.ApiEncryptionInterceptor;
+import com.mumu.woodlin.admin.interceptor.PageValidationInterceptor;
 
 /**
  * Web MVC 配置

@@ -1,13 +1,13 @@
 package com.mumu.woodlin.common.response;
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
 import static com.mumu.woodlin.common.constant.CommonConstant.FAIL_CODE;
 import static com.mumu.woodlin.common.constant.CommonConstant.SUCCESS_CODE;

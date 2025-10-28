@@ -1,9 +1,10 @@
 package com.mumu.woodlin.common.exception;
 
-import com.mumu.woodlin.common.enums.ResultCode;
+import java.io.Serial;
+
 import lombok.Getter;
 
-import java.io.Serial;
+import com.mumu.woodlin.common.enums.ResultCode;
 
 /**
  * 业务异常类

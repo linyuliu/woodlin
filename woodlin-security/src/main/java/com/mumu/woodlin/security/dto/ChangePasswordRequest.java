@@ -1,10 +1,10 @@
 package com.mumu.woodlin.security.dto;
 
-import lombok.Data;
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
 
 /**
  * 修改密码请求DTO

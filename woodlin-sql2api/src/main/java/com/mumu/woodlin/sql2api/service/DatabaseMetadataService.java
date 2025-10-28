@@ -1,10 +1,10 @@
 package com.mumu.woodlin.sql2api.service;
 
+import java.util.List;
+
+import com.mumu.woodlin.sql2api.model.ColumnMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
 import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-
-import java.util.List;
 
 /**
  * 数据库元数据服务接口

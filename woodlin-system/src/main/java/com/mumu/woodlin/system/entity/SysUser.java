@@ -1,17 +1,18 @@
 package com.mumu.woodlin.system.entity;
 
+import java.io.Serial;
+import java.time.LocalDateTime;
+
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.mumu.woodlin.common.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
-import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.io.Serial;
-import java.time.LocalDateTime;
+import com.mumu.woodlin.common.entity.BaseEntity;
 
 /**
  * 用户信息实体

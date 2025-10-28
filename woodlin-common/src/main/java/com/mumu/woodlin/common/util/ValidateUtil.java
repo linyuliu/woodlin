@@ -1,10 +1,10 @@
 package com.mumu.woodlin.common.util;
 
+import java.util.regex.Pattern;
+
 import cn.hutool.core.util.StrUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-
-import java.util.regex.Pattern;
 
 /**
  * 验证工具类

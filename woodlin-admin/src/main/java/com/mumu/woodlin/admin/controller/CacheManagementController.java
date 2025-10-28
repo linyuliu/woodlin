@@ -1,7 +1,5 @@
 package com.mumu.woodlin.admin.controller;
 
-import com.mumu.woodlin.common.config.CacheProperties;
-import com.mumu.woodlin.common.service.RedisCacheService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -15,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.mumu.woodlin.common.config.CacheProperties;
+import com.mumu.woodlin.common.service.RedisCacheService;
 
 /**
  * 缓存管理控制器

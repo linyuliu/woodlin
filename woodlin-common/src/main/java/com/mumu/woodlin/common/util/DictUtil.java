@@ -1,12 +1,13 @@
 package com.mumu.woodlin.common.util;
 
-import com.mumu.woodlin.common.enums.DictEnum;
-import org.springframework.stereotype.Component;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.mumu.woodlin.common.enums.DictEnum;
 
 /**
  * 字典工具类

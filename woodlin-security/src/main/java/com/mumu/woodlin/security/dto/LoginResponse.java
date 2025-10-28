@@ -1,8 +1,8 @@
 package com.mumu.woodlin.security.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.experimental.Accessors;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 登录响应DTO

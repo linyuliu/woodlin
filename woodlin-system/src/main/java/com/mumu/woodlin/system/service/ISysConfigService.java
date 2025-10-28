@@ -1,9 +1,10 @@
 package com.mumu.woodlin.system.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import com.mumu.woodlin.system.entity.SysConfig;
-
 import java.util.List;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+
+import com.mumu.woodlin.system.entity.SysConfig;
 
 /**
  * 系统配置服务接口

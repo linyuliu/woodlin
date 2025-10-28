@@ -1,16 +1,17 @@
 package com.mumu.woodlin.sql2api.config;
 
-import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.MySQLMetadataExtractor;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ServiceLoader;
+import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.MySQLMetadataExtractor;
 
 /**
  * SQL2API模块配置类

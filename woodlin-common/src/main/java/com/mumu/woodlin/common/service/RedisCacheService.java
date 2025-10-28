@@ -1,15 +1,16 @@
 package com.mumu.woodlin.common.service;
 
-import com.mumu.woodlin.common.config.CacheProperties;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import com.mumu.woodlin.common.config.CacheProperties;
 
 /**
  * Redis二级缓存服务
