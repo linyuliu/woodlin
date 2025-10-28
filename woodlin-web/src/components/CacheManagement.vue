@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import { 
-  NCard, NButton, NSpace, NTable, NSwitch, NDescriptions, 
+  NCard, NButton, NSpace, NTable, NDescriptions, 
   NDescriptionsItem, NTag, NPopconfirm, useMessage, NSpin 
 } from 'naive-ui'
 import axios from 'axios'
@@ -97,7 +97,7 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    render: (row: any) => [
+    render: (row: { type: string; name: string }) => [
       h(NButton, 
         { 
           text: true, 

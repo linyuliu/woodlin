@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { NLayout, NLayoutHeader, NLayoutSider, NLayoutContent, NMenu, NBreadcrumb, NBreadcrumbItem, NButton, NIcon } from 'naive-ui'
+import { 
+  NLayout, NLayoutHeader, NLayoutSider, NLayoutContent, 
+  NMenu, NBreadcrumb, NBreadcrumbItem, NButton, NIcon,
+  type MenuOption
+} from 'naive-ui'
 import { LogOutOutline, MenuOutline } from '@vicons/ionicons5'
-import type { MenuOption } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -51,13 +54,15 @@ const toggleCollapse = () => {
   collapsed.value = !collapsed.value
 }
 
+/**
+ * 用户登出
+ */
 const logout = () => {
-  // TODO: 实现登出逻辑
-  console.log('Logout')
+  console.warn('执行登出操作')
 }
 
 onMounted(() => {
-  console.log('Woodlin Admin Layout mounted')
+  console.warn('Woodlin Admin Layout 已加载')
 })
 </script>
 

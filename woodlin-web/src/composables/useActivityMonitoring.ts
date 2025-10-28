@@ -16,11 +16,12 @@ export function useActivityMonitoring() {
     warningBeforeTimeoutSeconds: 300
   })
 
-  const activityTimer: number | null = null
   let statusCheckTimer: number | null = null
   let lastActivityTime = Date.now()
 
-  // 记录用户交互活动
+  /**
+   * 记录用户交互活动
+   */
   const recordInteraction = async () => {
     if (!config.value.enabled || !config.value.monitorUserInteractions) {
       return
@@ -34,10 +35,12 @@ export function useActivityMonitoring() {
     }
   }
 
-  // 节流函数，避免频繁调用
+  /**
+   * 节流函数,避免频繁调用
+   */
   const throttleRecordInteraction = (() => {
     let lastTime = 0
-    const delay = 5000 // 5秒内最多记录一次
+    const delay = 5000
 
     return () => {
       const now = Date.now()
@@ -48,7 +51,9 @@ export function useActivityMonitoring() {
     }
   })()
 
-  // 检查活动状态
+  /**
+   * 检查活动状态
+   */
   const checkActivityStatus = async () => {
     if (!config.value.enabled) {
       return
@@ -56,15 +61,17 @@ export function useActivityMonitoring() {
 
     try {
       await axios.get('/api/security/activity-monitoring/status')
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        // 用户已被强制登出
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } }
+      if (err.response?.status === 401) {
         window.location.href = '/login?reason=timeout'
       }
     }
   }
 
-  // 获取配置信息
+  /**
+   * 获取配置信息
+   */
   const loadConfig = async () => {
     try {
       const response = await axios.get('/api/security/activity-monitoring/config')

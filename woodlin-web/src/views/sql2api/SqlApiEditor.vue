@@ -204,13 +204,23 @@ WHERE status = #{status}
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { SaveOutline, PlayOutline, AddOutline, TrashOutline } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
 
 const message = useMessage()
 
-// API配置
+interface ParamConfig {
+  name: string
+  type: string
+  required: boolean
+  defaultValue: string
+  description: string
+}
+
+/**
+ * API配置
+ */
 const apiConfig = ref({
   apiName: '',
   apiPath: '',
@@ -218,7 +228,7 @@ const apiConfig = ref({
   datasourceName: 'master',
   sqlType: 'SELECT',
   sqlContent: '',
-  params: [] as any[],
+  params: [] as ParamConfig[],
   resultType: 'list',
   cacheEnabled: false,
   cacheExpire: 300,
