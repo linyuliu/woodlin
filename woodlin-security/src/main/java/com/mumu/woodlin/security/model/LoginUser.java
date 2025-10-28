@@ -1,13 +1,13 @@
 package com.mumu.woodlin.security.model;
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
 /**
  * 登录用户信息

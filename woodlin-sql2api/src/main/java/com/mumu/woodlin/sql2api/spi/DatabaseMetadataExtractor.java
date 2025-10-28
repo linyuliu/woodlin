@@ -1,14 +1,14 @@
 package com.mumu.woodlin.sql2api.spi;
 
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.SchemaMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import javax.sql.DataSource;
+
+import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
+import com.mumu.woodlin.sql2api.model.SchemaMetadata;
+import com.mumu.woodlin.sql2api.model.TableMetadata;
 
 /**
  * 数据库元数据提取器接口 (SPI)

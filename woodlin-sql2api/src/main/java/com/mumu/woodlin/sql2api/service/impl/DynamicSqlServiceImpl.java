@@ -1,11 +1,14 @@
 package com.mumu.woodlin.sql2api.service.impl;
 
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
+
 import cn.hutool.json.JSONUtil;
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
-import com.mumu.woodlin.sql2api.dsl.SqlDslParser;
-import com.mumu.woodlin.sql2api.dsl.SqlParam;
-import com.mumu.woodlin.sql2api.entity.SqlApiConfig;
-import com.mumu.woodlin.sql2api.service.DynamicSqlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,12 +16,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.mumu.woodlin.sql2api.dsl.SqlDslParser;
+import com.mumu.woodlin.sql2api.dsl.SqlParam;
+import com.mumu.woodlin.sql2api.entity.SqlApiConfig;
+import com.mumu.woodlin.sql2api.service.DynamicSqlService;
 
 /**
  * 动态SQL执行服务实现

@@ -1,12 +1,12 @@
 package com.mumu.woodlin.common.response;
 
+import java.io.Serial;
+import java.util.List;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
-import io.swagger.v3.oas.annotations.media.Schema;
-
-import java.io.Serial;
-import java.util.List;
 
 /**
  * 分页响应结果封装

@@ -1,14 +1,15 @@
 package com.mumu.woodlin.security.service;
 
-import com.mumu.woodlin.security.config.PasswordPolicyProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import cn.hutool.core.util.StrUtil;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.regex.Pattern;
+
+import cn.hutool.core.util.StrUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import com.mumu.woodlin.security.config.PasswordPolicyProperties;
 
 /**
  * 密码策略服务
