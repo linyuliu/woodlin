@@ -39,7 +39,6 @@ public class PasswordPolicyService {
             this.valid = valid;
             this.message = message;
         }
-        
         public PasswordValidationResult(boolean valid, String message, boolean requireChange, boolean expiringSoon, long daysUntilExpiration) {
             this.valid = valid;
             this.message = message;
@@ -48,7 +47,9 @@ public class PasswordPolicyService {
             this.daysUntilExpiration = daysUntilExpiration;
         }
         
-        // Getters
+        /**
+         * 获取器方法
+         */
         public boolean isValid() { return valid; }
         public String getMessage() { return message; }
         public boolean isRequireChange() { return requireChange; }
@@ -71,7 +72,9 @@ public class PasswordPolicyService {
             return new PasswordValidationResult(false, "密码不能为空");
         }
         
-        // 长度检查
+        /**
+         * 长度检查
+         */
         if (password.length() < passwordPolicyProperties.getMinLength()) {
             return new PasswordValidationResult(false, 
                 String.format("密码长度不能少于%d位", passwordPolicyProperties.getMinLength()));
@@ -82,7 +85,9 @@ public class PasswordPolicyService {
                 String.format("密码长度不能超过%d位", passwordPolicyProperties.getMaxLength()));
         }
         
-        // 强密码策略检查
+        /**
+         * 强密码策略检查
+         */
         if (passwordPolicyProperties.getStrongPasswordRequired()) {
             if (passwordPolicyProperties.getRequireDigits() && !Pattern.matches(".*\\d.*", password)) {
                 return new PasswordValidationResult(false, "密码必须包含数字");
@@ -133,14 +138,18 @@ public class PasswordPolicyService {
         long daysUntilExpiration = 0;
         String message = "登录成功";
         
-        // 检查首次登录
+        /**
+         * 检查首次登录
+         */
         if (passwordPolicyProperties.getRequireChangeOnFirstLogin() && 
             Boolean.TRUE.equals(user.getIsFirstLogin())) {
             requireChange = true;
             message = "首次登录需要修改密码";
         }
         
-        // 检查密码过期
+        /**
+         * 检查密码过期
+         */
         if (isPasswordExpired(user)) {
             requireChange = true;
             message = "密码已过期，需要修改密码";
@@ -150,7 +159,9 @@ public class PasswordPolicyService {
             message = String.format("密码将在%d天后过期", daysUntilExpiration);
         }
         
-        // 检查账号锁定
+        /**
+         * 检查账号锁定
+         */
         if (isAccountLocked(user)) {
             return new PasswordValidationResult(false, "账号已被锁定，请稍后再试");
         }
@@ -171,17 +182,25 @@ public class PasswordPolicyService {
         
         int expireDays = getPasswordExpireDays(user);
         if (expireDays <= 0) {
-            return false; // 永不过期
+            /**
+             * 永不过期
+             */
+            return false;
         }
         
         LocalDateTime pwdChangeTime = user.getPwdChangeTime();
         if (pwdChangeTime == null) {
-            // 如果没有密码修改时间，使用创建时间
+            /**
+             * 无密码修改时间,使用创建时间
+             */
             pwdChangeTime = user.getCreateTime();
         }
         
         if (pwdChangeTime == null) {
-            return false; // 无法确定时间
+            /**
+             * 无法确定时间
+             */
+            return false;
         }
         
         LocalDateTime expiryTime = pwdChangeTime.plusDays(expireDays);
@@ -201,7 +220,10 @@ public class PasswordPolicyService {
         
         int expireDays = getPasswordExpireDays(user);
         if (expireDays <= 0) {
-            return false; // 永不过期
+            /**
+             * 永不过期
+             */
+            return false;
         }
         
         long daysUntilExpiration = getDaysUntilPasswordExpiration(user);
@@ -217,7 +239,10 @@ public class PasswordPolicyService {
     public long getDaysUntilPasswordExpiration(UserPasswordInfo user) {
         int expireDays = getPasswordExpireDays(user);
         if (expireDays <= 0) {
-            return Long.MAX_VALUE; // 永不过期
+            /**
+             * 永不过期
+             */
+            return Long.MAX_VALUE;
         }
         
         LocalDateTime pwdChangeTime = user.getPwdChangeTime();
