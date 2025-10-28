@@ -6,8 +6,7 @@
  * @since 2025-01-01
  */
 
-import axios from 'axios'
-import type { AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
 /**
  * 创建axios实例
@@ -30,14 +29,12 @@ const request = axios.create({
  */
 request.interceptors.request.use(
   (config) => {
-    // 从本地存储获取认证token并添加到请求头
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // 添加请求时间戳，用于日志记录
-    console.log(`🚀 API请求: ${config.method?.toUpperCase()} ${config.url}`)
+    console.warn(`🚀 API请求: ${config.method?.toUpperCase()} ${config.url}`)
     
     return config
   },
@@ -55,7 +52,7 @@ request.interceptors.response.use(
   (response: AxiosResponse) => {
     const { data } = response
     
-    console.log(`✅ API响应: ${response.config.url}`, data)
+    console.warn(`✅ API响应: ${response.config.url}`, data)
     
     // 根据后端的响应格式进行统一处理
     // 假设后端返回格式为 { code: number, message: string, data: any }

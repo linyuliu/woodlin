@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NCard, NButton, NDataTable, NSpace, NInput, NForm, NFormItem } from 'naive-ui'
-import type { DataTableColumns } from 'naive-ui'
+import { 
+  NCard, NButton, NDataTable, NSpace, NInput, NForm, NFormItem,
+  type DataTableColumns
+} from 'naive-ui'
 
 interface User {
   id: number
@@ -57,12 +59,18 @@ const columns: DataTableColumns<User> = [
   }
 ]
 
+/**
+ * 搜索用户
+ */
 const handleSearch = () => {
-  console.log('搜索用户:', searchForm.value)
+  console.warn('搜索用户:', searchForm.value)
 }
 
+/**
+ * 添加用户
+ */
 const handleAdd = () => {
-  console.log('添加用户')
+  console.warn('添加用户')
 }
 </script>
 

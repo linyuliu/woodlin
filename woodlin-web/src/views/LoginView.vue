@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NCard, NForm, NFormItem, NInput, NButton, NSpace, useMessage } from 'naive-ui'
+import { NCard, NForm, NFormItem, NInput, NButton, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import PasswordChangeDialog from '@/components/PasswordChangeDialog.vue'
@@ -55,9 +55,10 @@ const handleLogin = async () => {
       router.push('/')
     }
     
-  } catch (error: any) {
-    if (error.response?.data?.message) {
-      message.error(error.response.data.message)
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    if (err.response?.data?.message) {
+      message.error(err.response.data.message)
     } else {
       message.error('登录失败，请检查用户名和密码')
     }

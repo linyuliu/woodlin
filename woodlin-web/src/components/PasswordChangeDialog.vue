@@ -12,9 +12,9 @@
     @negative-click="handleCancel"
   >
     <div class="password-change-form">
-      <div v-if="message" class="message" :class="messageType">
+      <div v-if="messageText" class="message" :class="messageType">
         <NIcon :component="InformationCircle" />
-        {{ message }}
+        {{ messageText }}
       </div>
       
       <NForm ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="auto">
@@ -68,8 +68,8 @@ import axios from 'axios'
 
 interface Props {
   show: boolean
-  required?: boolean // 是否强制修改密码
-  message?: string
+  required?: boolean
+  messageText?: string
   messageType?: 'info' | 'warning' | 'error'
   daysUntilExpiration?: number
 }
@@ -82,7 +82,9 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   required: false,
-  messageType: 'info'
+  messageType: 'info',
+  messageText: '',
+  daysUntilExpiration: 0
 })
 
 const emit = defineEmits<Emits>()
@@ -112,6 +114,46 @@ const passwordPolicy = reactive({
   requireSpecialChars: false
 })
 
+/**
+ * 检查密码基本要求
+ */
+const checkBasicPasswordRequirements = (value: string): Error | null => {
+  if (!value) {
+    return new Error('请输入新密码')
+  }
+  if (value.length < passwordPolicy.minLength) {
+    return new Error(`密码长度不能少于${passwordPolicy.minLength}位`)
+  }
+  if (value.length > passwordPolicy.maxLength) {
+    return new Error(`密码长度不能超过${passwordPolicy.maxLength}位`)
+  }
+  return null
+}
+
+/**
+ * 检查强密码要求
+ */
+const checkStrongPasswordRequirements = (value: string): Error | null => {
+  if (!passwordPolicy.strongPasswordRequired) {
+    return null
+  }
+  
+  if (passwordPolicy.requireDigits && !/\d/.test(value)) {
+    return new Error('密码必须包含数字')
+  }
+  if (passwordPolicy.requireLowercase && !/[a-z]/.test(value)) {
+    return new Error('密码必须包含小写字母')
+  }
+  if (passwordPolicy.requireUppercase && !/[A-Z]/.test(value)) {
+    return new Error('密码必须包含大写字母')
+  }
+  if (passwordPolicy.requireSpecialChars && !/[!@#$%^&*()_+\-=\[\]{};':"|,.<>?]/.test(value)) {
+    return new Error('密码必须包含特殊字符')
+  }
+  
+  return null
+}
+
 const rules = {
   oldPassword: {
     required: true,
@@ -122,28 +164,15 @@ const rules = {
     required: true,
     message: '请输入新密码',
     trigger: ['input', 'blur'],
-    validator: (rule: any, value: string) => {
-      if (!value) {return new Error('请输入新密码')}
-      if (value.length < passwordPolicy.minLength) {
-        return new Error(`密码长度不能少于${passwordPolicy.minLength}位`)
-      }
-      if (value.length > passwordPolicy.maxLength) {
-        return new Error(`密码长度不能超过${passwordPolicy.maxLength}位`)
+    validator: (_rule: unknown, value: string) => {
+      const basicError = checkBasicPasswordRequirements(value)
+      if (basicError) {
+        return basicError
       }
       
-      if (passwordPolicy.strongPasswordRequired) {
-        if (passwordPolicy.requireDigits && !/\d/.test(value)) {
-          return new Error('密码必须包含数字')
-        }
-        if (passwordPolicy.requireLowercase && !/[a-z]/.test(value)) {
-          return new Error('密码必须包含小写字母')
-        }
-        if (passwordPolicy.requireUppercase && !/[A-Z]/.test(value)) {
-          return new Error('密码必须包含大写字母')
-        }
-        if (passwordPolicy.requireSpecialChars && !/[!@#$%^&*()_+\-=\[\]{};':"|,.<>?]/.test(value)) {
-          return new Error('密码必须包含特殊字符')
-        }
+      const strongError = checkStrongPasswordRequirements(value)
+      if (strongError) {
+        return strongError
       }
       
       return true
@@ -153,7 +182,7 @@ const rules = {
     required: true,
     message: '请确认新密码',
     trigger: ['input', 'blur'],
-    validator: (rule: any, value: string) => {
+    validator: (_rule: unknown, value: string) => {
       if (value !== form.newPassword) {
         return new Error('两次输入的密码不一致')
       }
@@ -162,19 +191,23 @@ const rules = {
   }
 }
 
-// 重置表单
+/**
+ * 重置表单
+ */
 const resetForm = () => {
   form.oldPassword = ''
   form.newPassword = ''
   form.confirmPassword = ''
 }
 
-// 确认修改密码
+/**
+ * 确认修改密码
+ */
 const handleConfirm = async () => {
   try {
     await formRef.value?.validate()
     
-    const response = await axios.post('/api/auth/change-password', {
+    await axios.post('/api/auth/change-password', {
       oldPassword: form.oldPassword,
       newPassword: form.newPassword,
       confirmPassword: form.confirmPassword

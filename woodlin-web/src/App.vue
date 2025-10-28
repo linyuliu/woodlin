@@ -8,15 +8,14 @@
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { NConfigProvider, darkTheme } from 'naive-ui'
+import { NConfigProvider } from 'naive-ui'
 import { ref } from 'vue'
 
 /**
  * 主题配置
- * null表示浅色主题，darkTheme表示深色主题
- * 可以根据用户偏好或系统设置进行切换
+ * null表示浅色主题
  */
-const theme = ref(null) // null for light theme, darkTheme for dark theme
+const theme = ref(null)
 </script>
 
 <template>

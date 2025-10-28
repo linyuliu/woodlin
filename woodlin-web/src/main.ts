@@ -46,16 +46,13 @@ app.mount('#app')
 
 /**
  * 显示应用启动信息
- * 在控制台输出Woodlin系统的ASCII艺术logo和版本信息
  */
 const showStartupInfo = () => {
-  // 应用版本信息
   const version = '1.0.0'
   const buildTime = new Date().toISOString().slice(0, 19).replace('T', ' ')
-  const nodeVersion = 'Unknown' // 在实际构建中会被替换为真实版本
+  const nodeVersion = 'Unknown'
   
-  // ASCII艺术logo
-  console.log(`
+  console.warn(`
 %c██╗    ██╗ ██████╗  ██████╗ ██████╗ ██╗     ██╗███╗   ██╗
 ██║    ██║██╔═══██╗██╔═══██╗██╔══██╗██║     ██║████╗  ██║
 ██║ █╗ ██║██║   ██║██║   ██║██║  ██║██║     ██║██╔██╗ ██║
@@ -72,5 +69,4 @@ const showStartupInfo = () => {
   `, 'color: #2d8cf0; font-weight: bold;')
 }
 
-// 显示启动信息
 showStartupInfo()
