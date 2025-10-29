@@ -36,6 +36,10 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
+      - name: Install dependencies
+        run: mvn clean install -DskipTests --batch-mode
+        timeout-minutes: 10
+
       - name: Run Checkstyle
         run: mvn checkstyle:check --batch-mode
         continue-on-error: true
@@ -78,8 +82,9 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Build project
-        run: mvn clean compile --batch-mode
+      - name: Install dependencies
+        run: mvn clean install -DskipTests --batch-mode
+        timeout-minutes: 10
 
       - name: Run SpotBugs
         run: mvn spotbugs:check --batch-mode
@@ -124,8 +129,9 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Build project
-        run: mvn clean compile --batch-mode
+      - name: Install dependencies
+        run: mvn clean install -DskipTests --batch-mode
+        timeout-minutes: 10
 
       - name: Validate JavaDoc
         run: mvn javadoc:javadoc --batch-mode
@@ -169,6 +175,10 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+
+      - name: Install dependencies
+        run: mvn clean install -DskipTests --batch-mode
+        timeout-minutes: 10
 
       - name: Run Tests with Coverage
         run: mvn test jacoco:report --batch-mode
