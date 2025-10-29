@@ -1,0 +1,221 @@
+name: Code Quality Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  checkstyle:
+    name: Checkstyle Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run Checkstyle
+        run: mvn checkstyle:check --batch-mode
+        continue-on-error: true
+
+      - name: Generate Checkstyle Report
+        run: mvn checkstyle:checkstyle --batch-mode
+
+      - name: Upload Checkstyle Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkstyle-results
+          path: |
+            **/target/checkstyle-*.xml
+            **/target/site/checkstyle.html
+          retention-days: 30
+
+  spotbugs:
+    name: SpotBugs Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build project
+        run: mvn clean compile --batch-mode
+
+      - name: Run SpotBugs
+        run: mvn spotbugs:check --batch-mode
+        continue-on-error: true
+
+      - name: Generate SpotBugs Report
+        run: mvn spotbugs:spotbugs --batch-mode
+        continue-on-error: true
+
+      - name: Upload SpotBugs Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spotbugs-results
+          path: |
+            **/target/spotbugsXml.xml
+            **/target/spotbugs.html
+          retention-days: 30
+
+  javadoc:
+    name: JavaDoc Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build project
+        run: mvn clean compile --batch-mode
+
+      - name: Validate JavaDoc
+        run: mvn javadoc:javadoc --batch-mode
+        continue-on-error: true
+
+      - name: Generate JavaDoc JAR
+        run: mvn javadoc:jar --batch-mode
+        continue-on-error: true
+
+      - name: Upload JavaDoc
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: javadoc
+          path: |
+            **/target/apidocs/
+            **/target/*-javadoc.jar
+          retention-days: 30
+
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run Tests with Coverage
+        run: mvn test jacoco:report --batch-mode
+        continue-on-error: true
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            **/target/site/jacoco/
+            **/target/jacoco.exec
+          retention-days: 30
+
+  frontend-quality:
+    name: Frontend Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: woodlin-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./woodlin-web
+        run: npm ci
+
+      - name: Run ESLint with Report
+        working-directory: ./woodlin-web
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Check Code Formatting
+        working-directory: ./woodlin-web
+        run: npx prettier --check src/
+        continue-on-error: true
+
+      - name: Type Check
+        working-directory: ./woodlin-web
+        run: npm run type-check
+        continue-on-error: true
+
+  quality-summary:
+    name: Quality Check Summary
+    needs: [checkstyle, spotbugs, javadoc, code-coverage, frontend-quality]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check Quality Status
+        run: |
+          echo "Checkstyle: ${{ needs.checkstyle.result }}"
+          echo "SpotBugs: ${{ needs.spotbugs.result }}"
+          echo "JavaDoc: ${{ needs.javadoc.result }}"
+          echo "Code Coverage: ${{ needs.code-coverage.result }}"
+          echo "Frontend Quality: ${{ needs.frontend-quality.result }}"
+          
+          echo "Quality checks completed. Review artifacts for details."
