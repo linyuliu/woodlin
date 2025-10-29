@@ -145,7 +145,24 @@ npm run dev
    - 左大括号不换行
    - if/for/while 等语句必须使用大括号，即使只有一行代码
 
-4. **Swagger 文档注解**
+4. **代码质量检查**
+   
+   在提交代码前，请运行代码质量检查：
+   
+   ```bash
+   # 快速检查（推荐）
+   ./scripts/quality-check.sh
+   
+   # 或手动运行各项检查
+   mvn checkstyle:checkstyle    # Checkstyle 检查
+   mvn spotbugs:check           # SpotBugs 静态分析
+   mvn javadoc:javadoc          # JavaDoc 验证
+   mvn test jacoco:report       # 测试和覆盖率
+   ```
+   
+   详细信息请参考 [代码质量检查指南](docs/CODE_QUALITY.md)。
+
+5. **Swagger 文档注解**
    ```java
    @Tag(name = "模块名称", description = "模块描述")
    @RestController

@@ -59,6 +59,8 @@
         <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
         <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
         <spotbugs-maven-plugin.version>4.8.6.4</spotbugs-maven-plugin.version>
+        <maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
+        <checkstyle.version>10.21.1</checkstyle.version>
     </properties>
 
     <!-- 依赖管理 -->
@@ -199,13 +201,23 @@
                         <docencoding>${project.build.sourceEncoding}</docencoding>
                         <failOnError>false</failOnError>
                         <failOnWarnings>false</failOnWarnings>
-                        <quiet>true</quiet>
+                        <quiet>false</quiet>
+                        <show>public</show>
+                        <doclint>all,-missing</doclint>
+                        <additionalOptions>-Xdoclint:all -Xdoclint:-missing</additionalOptions>
                     </configuration>
                     <executions>
                         <execution>
                             <id>attach-javadocs</id>
                             <goals>
                                 <goal>jar</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>validate-javadocs</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>javadoc</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -302,6 +314,38 @@
                         <threshold>Medium</threshold>
                         <failOnError>false</failOnError>
                     </configuration>
+                </plugin>
+
+                <!-- Checkstyle代码规范检查插件 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${maven-checkstyle-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>${checkstyle.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <configLocation>checkstyle.xml</configLocation>
+                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        <encoding>UTF-8</encoding>
+                        <consoleOutput>true</consoleOutput>
+                        <failsOnError>false</failsOnError>
+                        <failOnViolation>false</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>validate</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
