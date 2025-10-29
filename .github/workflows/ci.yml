@@ -7,10 +7,16 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-backend:
     name: Build and Test Backend
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -65,6 +71,9 @@ jobs:
     name: Build and Test Frontend
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -106,6 +115,8 @@ jobs:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     if: always()
+    
+    permissions: {}
     
     steps:
       - name: Check Build Status

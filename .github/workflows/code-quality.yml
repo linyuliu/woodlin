@@ -7,10 +7,16 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   checkstyle:
     name: Checkstyle Analysis
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -50,6 +56,9 @@ jobs:
   spotbugs:
     name: SpotBugs Analysis
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -94,6 +103,9 @@ jobs:
     name: JavaDoc Validation
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -137,6 +149,9 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -173,6 +188,9 @@ jobs:
     name: Frontend Code Quality
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -208,6 +226,8 @@ jobs:
     needs: [checkstyle, spotbugs, javadoc, code-coverage, frontend-quality]
     runs-on: ubuntu-latest
     if: always()
+    
+    permissions: {}
     
     steps:
       - name: Check Quality Status
