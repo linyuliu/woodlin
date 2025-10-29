@@ -8,6 +8,9 @@
 [![Sa-Token](https://img.shields.io/badge/Sa--Token-1.39.0-blue.svg)](https://sa-token.cc/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+[![CI Build](https://img.shields.io/github/actions/workflow/status/linyuliu/woodlin/ci.yml?branch=main&label=CI%20Build)](https://github.com/linyuliu/woodlin/actions/workflows/ci.yml)
+[![Code Quality](https://img.shields.io/github/actions/workflow/status/linyuliu/woodlin/code-quality.yml?branch=main&label=Code%20Quality)](https://github.com/linyuliu/woodlin/actions/workflows/code-quality.yml)
+
 ## 🌟 项目介绍
 
 Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理系统框架，专注于提供高质量的代码实现和完善的功能模块。系统采用模块化架构设计，支持多租户数据隔离，提供完整的用户权限管理、文件管理、任务调度等企业级功能。
@@ -562,6 +565,53 @@ npm run docs:build
 - **开发指南**：代码规范、环境搭建、调试技巧、测试指南
 - **部署指南**：本地部署、Docker 部署、K8s 部署、生产环境配置
 - **API 文档**：所有 API 接口的详细说明
+
+## 🔍 代码质量与 CI/CD
+
+Woodlin 项目配置了完善的代码质量检查工具和 GitHub Actions 工作流，确保代码质量和持续集成。
+
+### 代码质量工具
+
+- **Checkstyle**: Java 代码规范检查，特别是 JavaDoc 注释的完整性
+- **SpotBugs**: 静态代码分析，检测潜在缺陷
+- **JaCoCo**: 代码覆盖率测试
+- **Maven Javadoc**: JavaDoc 验证和生成
+- **ESLint**: 前端代码质量检查（TypeScript/Vue）
+
+### 本地运行质量检查
+
+```bash
+# 快速运行所有质量检查
+./scripts/quality-check.sh
+
+# 或手动运行各项检查
+mvn checkstyle:checkstyle    # Checkstyle 检查
+mvn spotbugs:check           # SpotBugs 静态分析
+mvn javadoc:javadoc          # JavaDoc 验证
+mvn test jacoco:report       # 测试和覆盖率
+```
+
+### GitHub Actions 工作流
+
+项目包含三个 GitHub Actions 工作流：
+
+1. **CI Build and Test** (`.github/workflows/ci.yml`)
+   - 自动构建后端和前端
+   - 运行单元测试
+   - 生成构建产物
+
+2. **Code Quality Checks** (`.github/workflows/code-quality.yml`)
+   - 运行 Checkstyle、SpotBugs、JavaDoc 检查
+   - 生成代码覆盖率报告
+   - 前端 ESLint 和类型检查
+
+3. **Pull Request Checks** (`.github/workflows/pr-checks.yml`)
+   - PR 快速验证
+   - 自动评论检查结果
+
+### 详细文档
+
+完整的代码质量检查指南请查看：[代码质量检查指南](docs/CODE_QUALITY.md)
 
 ## 📄 开源协议
 
