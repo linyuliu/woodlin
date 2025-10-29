@@ -209,7 +209,7 @@ docker compose logs -f woodlin-app
 ```
 
 **特性**:
-- ✅ 基于 Eclipse Temurin JDK 25 (LTS OpenJDK 发行版)
+- ✅ 基于 Eclipse Temurin JDK 21 (LTS OpenJDK 发行版)
 - ✅ 支持中文字体，防止乱码 (文泉驿正黑、微米黑)
 - ✅ 内置诊断工具 (curl, wget, netcat, telnet, ping, jq 等)
 - ✅ 完整的系统优化 (ulimit, 资源限制, 健康检查)
