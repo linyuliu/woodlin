@@ -110,7 +110,7 @@ npx prettier --check src/
 - 手动触发 (workflow_dispatch)
 
 **功能**:
-- 构建后端 (Java 25 + Maven)
+- 构建后端 (Java 21 + Maven)
 - 运行单元测试
 - 构建前端 (Node.js + npm)
 - 运行前端类型检查和 ESLint
