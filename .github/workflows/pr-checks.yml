@@ -37,8 +37,8 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Quick Build Check
-        run: mvn clean compile --batch-mode
+      - name: Install dependencies and build
+        run: mvn clean install -DskipTests --batch-mode
         timeout-minutes: 10
 
       - name: Run Checkstyle on Changed Files
