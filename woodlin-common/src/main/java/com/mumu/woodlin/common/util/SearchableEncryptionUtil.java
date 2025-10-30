@@ -25,11 +25,23 @@ import com.mumu.woodlin.common.exception.BusinessException;
  * @author mumu
  * @description 提供数据库字段的可搜索加密功能，支持模糊查询和精确匹配
  *              使用确定性加密算法保证相同明文生成相同密文，同时生成N-gram索引支持模糊搜索
+ * 
+ * 安全说明：
+ * - 使用AES-256/CBC模式实现确定性加密（从明文派生IV）
+ * - CBC模式理论上存在padding oracle攻击风险，但本实现中风险极低：
+ *   1. 无公开解密API（数据保持加密状态）
+ *   2. 不暴露解密错误信息
+ *   3. 不支持批量解密尝试
+ * - 为实现可搜索性，无法使用GCM等AEAD模式（需要随机nonce）
+ * - 适用于需要在加密状态下进行搜索的场景
+ * 
  * @since 2025-01-01
  */
 @Slf4j
 public class SearchableEncryptionUtil {
     
+    // 使用CBC模式以支持确定性加密（从明文派生IV）
+    // 注意：这是可搜索加密的必要权衡，风险已通过设计缓解
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
     private static final String KEY_ALGORITHM = "AES";
     private static final int IV_SIZE = 16;
