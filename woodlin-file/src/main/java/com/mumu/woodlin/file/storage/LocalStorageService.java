@@ -37,7 +37,14 @@ public class LocalStorageService implements StorageService {
                 basePath = "./uploads/";
             }
             
-            Path fullPath = Paths.get(basePath, objectKey);
+            // 验证并规范化路径，防止路径遍历攻击
+            Path basePathObj = Paths.get(basePath).toAbsolutePath().normalize();
+            Path fullPath = basePathObj.resolve(objectKey).normalize();
+            
+            // 确保解析后的路径仍在基础路径内，防止路径遍历
+            if (!fullPath.startsWith(basePathObj)) {
+                throw new SecurityException("非法的文件路径: " + objectKey);
+            }
             
             // 创建目录
             Files.createDirectories(fullPath.getParent());
@@ -70,7 +77,14 @@ public class LocalStorageService implements StorageService {
                 basePath = "./uploads/";
             }
             
-            Path fullPath = Paths.get(basePath, objectKey);
+            // 验证并规范化路径，防止路径遍历攻击
+            Path basePathObj = Paths.get(basePath).toAbsolutePath().normalize();
+            Path fullPath = basePathObj.resolve(objectKey).normalize();
+            
+            // 确保解析后的路径仍在基础路径内，防止路径遍历
+            if (!fullPath.startsWith(basePathObj)) {
+                throw new SecurityException("非法的文件路径: " + objectKey);
+            }
             
             if (!Files.exists(fullPath)) {
                 throw new RuntimeException("文件不存在: " + objectKey);
@@ -92,7 +106,14 @@ public class LocalStorageService implements StorageService {
                 basePath = "./uploads/";
             }
             
-            Path fullPath = Paths.get(basePath, objectKey);
+            // 验证并规范化路径，防止路径遍历攻击
+            Path basePathObj = Paths.get(basePath).toAbsolutePath().normalize();
+            Path fullPath = basePathObj.resolve(objectKey).normalize();
+            
+            // 确保解析后的路径仍在基础路径内，防止路径遍历
+            if (!fullPath.startsWith(basePathObj)) {
+                throw new SecurityException("非法的文件路径: " + objectKey);
+            }
             
             if (Files.exists(fullPath)) {
                 Files.delete(fullPath);
@@ -113,7 +134,15 @@ public class LocalStorageService implements StorageService {
                 basePath = "./uploads/";
             }
             
-            Path fullPath = Paths.get(basePath, objectKey);
+            // 验证并规范化路径，防止路径遍历攻击
+            Path basePathObj = Paths.get(basePath).toAbsolutePath().normalize();
+            Path fullPath = basePathObj.resolve(objectKey).normalize();
+            
+            // 确保解析后的路径仍在基础路径内，防止路径遍历
+            if (!fullPath.startsWith(basePathObj)) {
+                return false;
+            }
+            
             return Files.exists(fullPath);
             
         } catch (Exception e) {
