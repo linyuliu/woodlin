@@ -72,6 +72,12 @@
         <!-- 对象存储 -->
         <minio.version>8.5.14</minio.version>
         <aws-java-sdk-s3.version>1.12.780</aws-java-sdk-s3.version>
+        <aliyun-oss.version>3.19.3</aliyun-oss.version>
+        <cos_api.version>5.6.240</cos_api.version>
+        <obs.version>3.24.6</obs.version>
+        
+        <!-- 文件类型检测 -->
+        <tika.version>3.1.0</tika.version>
 
         <!-- 邮件发送 -->
         <mail.version>2.1.3</mail.version>
@@ -289,6 +295,39 @@
                 <groupId>com.amazonaws</groupId>
                 <artifactId>aws-java-sdk-s3</artifactId>
                 <version>${aws-java-sdk-s3.version}</version>
+            </dependency>
+            
+            <!-- Aliyun OSS -->
+            <dependency>
+                <groupId>com.aliyun.oss</groupId>
+                <artifactId>aliyun-sdk-oss</artifactId>
+                <version>${aliyun-oss.version}</version>
+            </dependency>
+            
+            <!-- Tencent COS -->
+            <dependency>
+                <groupId>com.qcloud</groupId>
+                <artifactId>cos_api</artifactId>
+                <version>${cos_api.version}</version>
+            </dependency>
+            
+            <!-- Huawei OBS -->
+            <dependency>
+                <groupId>com.huaweicloud</groupId>
+                <artifactId>esdk-obs-java-bundle</artifactId>
+                <version>${obs.version}</version>
+            </dependency>
+            
+            <!-- Apache Tika for file type detection -->
+            <dependency>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-core</artifactId>
+                <version>${tika.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-parsers-standard-package</artifactId>
+                <version>${tika.version}</version>
             </dependency>
 
             <!-- 验证码 -->
