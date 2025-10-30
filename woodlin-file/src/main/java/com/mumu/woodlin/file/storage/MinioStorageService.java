@@ -166,12 +166,13 @@ public class MinioStorageService implements StorageService {
             );
             
             // 返回上传凭证
-            return JSONUtil.toJsonStr(new Object() {
-                public final String uploadUrl = uploadUrl;
-                public final String bucket = config.getBucketName();
-                public final String objectKey = objectKey;
-                public final int expiresIn = expirationTime;
-            });
+            com.mumu.woodlin.file.dto.UploadCredentialDTO credentialDTO = new com.mumu.woodlin.file.dto.UploadCredentialDTO(
+                uploadUrl,
+                config.getBucketName(),
+                objectKey,
+                expirationTime
+            );
+            return JSONUtil.toJsonStr(credentialDTO);
             
         } catch (Exception e) {
             log.error("MinIO生成上传凭证失败: objectKey={}", objectKey, e);

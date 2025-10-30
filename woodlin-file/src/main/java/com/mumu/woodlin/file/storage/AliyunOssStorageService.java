@@ -178,12 +178,13 @@ public class AliyunOssStorageService implements StorageService {
             );
             
             // 返回上传凭证
-            return JSONUtil.toJsonStr(new Object() {
-                public final String uploadUrl = uploadUrl.toString();
-                public final String bucket = config.getBucketName();
-                public final String objectKey = objectKey;
-                public final int expiresIn = expirationTime;
-            });
+            com.mumu.woodlin.file.dto.UploadCredentialDTO credentialDTO = new com.mumu.woodlin.file.dto.UploadCredentialDTO(
+                uploadUrl.toString(),
+                config.getBucketName(),
+                objectKey,
+                expirationTime
+            );
+            return JSONUtil.toJsonStr(credentialDTO);
             
         } catch (Exception e) {
             log.error("阿里云OSS生成上传凭证失败: objectKey={}", objectKey, e);
