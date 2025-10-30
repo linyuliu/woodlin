@@ -245,6 +245,11 @@ GET /file/manage/search?keyword=example&current=1&size=20
 
 ### application.yml 配置示例
 
+**⚠️ 安全警告**: 不要在配置文件中直接存储明文密钥！生产环境应使用以下方式保护敏感信息：
+- 使用环境变量：`${OSS_ACCESS_KEY}`
+- 使用加密配置：Spring Cloud Config 或 Jasypt
+- 使用密钥管理服务：如 AWS Secrets Manager、Azure Key Vault
+
 ```yaml
 woodlin:
   file:
@@ -256,45 +261,45 @@ woodlin:
     
     # MinIO配置
     minio:
-      enabled: false
-      endpoint: http://localhost:9000
-      access-key: minioadmin
-      secret-key: minioadmin
-      bucket-name: woodlin
-      domain: http://localhost:9000
+      enabled: ${MINIO_ENABLED:false}
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket-name: ${MINIO_BUCKET_NAME:woodlin}
+      domain: ${MINIO_DOMAIN:http://localhost:9000}
     
     # AWS S3配置
     s3:
-      enabled: false
-      endpoint: https://s3.amazonaws.com
-      access-key: your-access-key
-      secret-key: your-secret-key
-      region: us-east-1
-      bucket-name: your-bucket
+      enabled: ${S3_ENABLED:false}
+      endpoint: ${S3_ENDPOINT:https://s3.amazonaws.com}
+      access-key: ${S3_ACCESS_KEY}
+      secret-key: ${S3_SECRET_KEY}
+      region: ${S3_REGION:us-east-1}
+      bucket-name: ${S3_BUCKET_NAME}
     
     # 阿里云OSS配置
     oss:
-      enabled: false
-      endpoint: https://oss-cn-hangzhou.aliyuncs.com
-      access-key: your-access-key
-      secret-key: your-secret-key
-      bucket-name: your-bucket
+      enabled: ${OSS_ENABLED:false}
+      endpoint: ${OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}
+      access-key: ${OSS_ACCESS_KEY}
+      secret-key: ${OSS_SECRET_KEY}
+      bucket-name: ${OSS_BUCKET_NAME}
     
     # 腾讯云COS配置
     cos:
-      enabled: false
-      access-key: your-access-key
-      secret-key: your-secret-key
-      region: ap-guangzhou
-      bucket-name: your-bucket
+      enabled: ${COS_ENABLED:false}
+      access-key: ${COS_ACCESS_KEY}
+      secret-key: ${COS_SECRET_KEY}
+      region: ${COS_REGION:ap-guangzhou}
+      bucket-name: ${COS_BUCKET_NAME}
     
     # 华为云OBS配置
     obs:
-      enabled: false
-      endpoint: https://obs.cn-north-4.myhuaweicloud.com
-      access-key: your-access-key
-      secret-key: your-secret-key
-      bucket-name: your-bucket
+      enabled: ${OBS_ENABLED:false}
+      endpoint: ${OBS_ENDPOINT:https://obs.cn-north-4.myhuaweicloud.com}
+      access-key: ${OBS_ACCESS_KEY}
+      secret-key: ${OBS_SECRET_KEY}
+      bucket-name: ${OBS_BUCKET_NAME}
 ```
 
 ## 使用示例
