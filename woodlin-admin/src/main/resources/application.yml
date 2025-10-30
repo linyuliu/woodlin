@@ -387,3 +387,25 @@ woodlin:
       expire-seconds: ${CACHE_CONFIG_EXPIRE:7200}
       # 缓存刷新间隔（秒）
       refresh-interval-seconds: ${CACHE_CONFIG_REFRESH:3600}
+  # 可搜索加密配置
+  searchable-encryption:
+    # 是否启用可搜索加密功能
+    enabled: ${SEARCHABLE_ENCRYPTION_ENABLED:false}
+    # 加密密钥（Base64编码，256位）
+    # 生成方法：SearchableEncryptionUtil.generateKey(256)
+    # 或使用命令：openssl rand -base64 32
+    encryption-key: ${SEARCHABLE_ENCRYPTION_KEY:}
+    # N-gram的大小，用于模糊搜索（默认2）
+    ngram-size: ${SEARCHABLE_ENCRYPTION_NGRAM_SIZE:2}
+    # 是否自动加密标注字段
+    auto-encrypt: ${SEARCHABLE_ENCRYPTION_AUTO_ENCRYPT:true}
+    # 是否自动生成搜索索引
+    auto-generate-index: ${SEARCHABLE_ENCRYPTION_AUTO_INDEX:true}
+    # 搜索索引字段的后缀
+    index-field-suffix: ${SEARCHABLE_ENCRYPTION_INDEX_SUFFIX:_search_index}
+    # 是否启用缓存
+    enable-cache: ${SEARCHABLE_ENCRYPTION_CACHE_ENABLED:true}
+    # 缓存过期时间（秒）
+    cache-expire-seconds: ${SEARCHABLE_ENCRYPTION_CACHE_EXPIRE:3600}
+    # 最大缓存条目数
+    max-cache-size: ${SEARCHABLE_ENCRYPTION_MAX_CACHE:10000}
