@@ -70,9 +70,20 @@ public class SearchableEncryptionUtil {
     /**
      * 解密
      * 
+     * 注意：此方法需要原始明文参数，因为本工具使用确定性加密（从明文派生IV）。
+     * 这是有意的设计选择，因为可搜索加密的主要目的是：
+     * 1. 在数据库中安全存储敏感数据
+     * 2. 支持加密数据的搜索和匹配
+     * 3. 数据在应用层保持加密状态
+     * 
+     * 如果需要完全解密数据用于显示，建议：
+     * - 使用单独的加密方案（如标准AES/CBC with random IV）
+     * - 或在插入时保存明文哈希，用于验证解密
+     * - 或使用混合加密方案
+     * 
      * @param ciphertext 密文（Base64编码）
      * @param key 解密密钥（Base64编码）
-     * @param originalPlaintext 原始明文（用于生成IV）
+     * @param originalPlaintext 原始明文（用于生成确定性IV）
      * @return 明文
      */
     public static String decrypt(String ciphertext, String key, String originalPlaintext) {
