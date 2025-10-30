@@ -10,6 +10,8 @@ import lombok.Data;
  * 
  * @author mumu
  * @description 文件管理相关的配置属性，从application.yml读取
+ *              注意：敏感信息（如accessKey、secretKey）应使用环境变量或加密配置，
+ *              不要直接在配置文件中存储明文密钥
  * @since 2025-01-30
  */
 @Data
@@ -48,7 +50,7 @@ public class FileProperties {
     private ObsProperties obs = new ObsProperties();
     
     /**
-     * 本地存储配置
+     * 本地存储配置类
      */
     @Data
     public static class LocalStorageProperties {
