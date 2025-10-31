@@ -5,19 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        Woodlin 多租户模块
+        Woodlin 文件管理模块
         作者: mumu
-        描述: 多租户数据隔离和管理功能模块
+        描述: 文件上传、下载、预览等功能模块
     -->
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-tenant</artifactId>
-    <name>Woodlin Tenant Module</name>
-    <description>Woodlin 多租户管理模块</description>
+    <artifactId>woodlin-system-file</artifactId>
+    <name>Woodlin System File Module</name>
+    <description>Woodlin 系统文件管理模块</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
@@ -52,10 +52,44 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- Dynamic DataSource -->
+        <!-- MinIO -->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+        </dependency>
+
+        <!-- AWS S3 SDK -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+        </dependency>
+        
+        <!-- Aliyun OSS -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+        </dependency>
+        
+        <!-- Tencent COS -->
+        <dependency>
+            <groupId>com.qcloud</groupId>
+            <artifactId>cos_api</artifactId>
+        </dependency>
+        
+        <!-- Huawei OBS -->
+        <dependency>
+            <groupId>com.huaweicloud</groupId>
+            <artifactId>esdk-obs-java-bundle</artifactId>
+        </dependency>
+        
+        <!-- Apache Tika for file type detection -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
         </dependency>
 
         <!-- Validation -->

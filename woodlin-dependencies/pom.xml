@@ -120,39 +120,40 @@
                 <artifactId>woodlin-common</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
+            <!-- Woodlin System Modules -->
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-security</artifactId>
+                <artifactId>woodlin-system-security</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-system</artifactId>
+                <artifactId>woodlin-system-core</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-tenant</artifactId>
+                <artifactId>woodlin-system-tenant</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-file</artifactId>
+                <artifactId>woodlin-system-file</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-task</artifactId>
+                <artifactId>woodlin-system-task</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-generator</artifactId>
+                <artifactId>woodlin-system-generator</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
-                <artifactId>woodlin-sql2api</artifactId>
+                <artifactId>woodlin-system-sql2api</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
 

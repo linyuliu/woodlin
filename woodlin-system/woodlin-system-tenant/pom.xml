@@ -5,19 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        Woodlin 任务调度模块
+        Woodlin 多租户模块
         作者: mumu
-        描述: 定时任务调度和管理功能模块
+        描述: 多租户数据隔离和管理功能模块
     -->
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-task</artifactId>
-    <name>Woodlin Task Module</name>
-    <description>Woodlin 任务调度模块</description>
+    <artifactId>woodlin-system-tenant</artifactId>
+    <name>Woodlin System Tenant Module</name>
+    <description>Woodlin 系统多租户管理模块</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
@@ -52,16 +52,10 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- SnailJob 分布式任务调度 -->
+        <!-- Dynamic DataSource -->
         <dependency>
-            <groupId>com.aizuda</groupId>
-            <artifactId>snail-job-client-starter</artifactId>
-        </dependency>
-
-        <!-- Quartz （保留用于兼容） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-quartz</artifactId>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
         </dependency>
 
         <!-- Validation -->

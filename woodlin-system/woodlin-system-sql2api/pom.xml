@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-sql2api</artifactId>
-    <name>Woodlin SQL2API Module</name>
-    <description>SQL to API dynamic generation module with multi-database support and API orchestration</description>
+    <artifactId>woodlin-system-sql2api</artifactId>
+    <name>Woodlin System SQL2API Module</name>
+    <description>Woodlin 系统SQL2API动态接口生成模块 - 支持多数据库和API编排</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
@@ -36,10 +36,10 @@
             <version>${woodlin.version}</version>
         </dependency>
 
-        <!-- Woodlin Security Module -->
+        <!-- Woodlin System Security Module -->
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-security</artifactId>
+            <artifactId>woodlin-system-security</artifactId>
             <version>${woodlin.version}</version>
         </dependency>
 
