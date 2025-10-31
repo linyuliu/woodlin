@@ -11,7 +11,8 @@ docker/
 │   ├── Dockerfile.distroless # Distroless 极简镜像
 │   └── docker-compose.yml   # 应用服务编排配置
 ├── mysql/                    # MySQL 8.4 LTS 数据库
-│   ├── Dockerfile           # MySQL 镜像
+│   ├── Dockerfile           # MySQL 标准镜像
+│   ├── Dockerfile.distroless # MySQL Distroless 精简镜像
 │   └── docker-compose.yml   # MySQL 服务编排配置
 ├── redis/                    # Redis 7.x 缓存
 │   ├── Dockerfile           # Redis 镜像
@@ -59,11 +60,20 @@ docker/
 
 #### MySQL (mysql/)
 
-- 基于 MySQL 8.4 LTS (最新长期支持版本)
-- 中文字符集配置 (utf8mb4)
-- 性能优化参数
-- 慢查询日志
-- 支持主从复制
+- **标准镜像** (Dockerfile):
+  - 基于 MySQL 8.4 LTS (最新长期支持版本)
+  - 中文字符集配置 (utf8mb4)
+  - 性能优化参数
+  - 慢查询日志
+  - 支持主从复制
+  - 包含常用诊断工具
+
+- **Distroless 镜像** (Dockerfile.distroless):
+  - 基于 Debian Slim 精简构建
+  - 移除所有非必需工具和 shell
+  - 最小化攻击面
+  - 仅包含 MySQL 运行时依赖
+  - 适合安全要求高的生产环境
 
 #### Redis (redis/)
 
