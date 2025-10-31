@@ -138,4 +138,12 @@ public interface ISysRoleService extends IService<SysRole> {
      * @return 顶级角色列表
      */
     List<SysRole> selectTopLevelRoles(String tenantId);
+    
+    /**
+     * 构建角色树（RBAC1）
+     * 
+     * @param tenantId 租户ID
+     * @return 角色树列表
+     */
+    List<com.mumu.woodlin.system.dto.RoleTreeDTO> buildRoleTree(String tenantId);
 }
