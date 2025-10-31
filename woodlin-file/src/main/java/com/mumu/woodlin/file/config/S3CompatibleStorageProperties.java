@@ -63,4 +63,12 @@ public class S3CompatibleStorageProperties {
      * 某些兼容S3的服务可能不完全支持分片上传
      */
     private boolean disableChunkedEncoding = false;
+    
+    /**
+     * 是否使用原生SDK
+     * true: 使用平台原生SDK（支持高级功能）
+     * false: 使用S3兼容模式（代码简洁，基础功能）
+     * 默认false，使用S3兼容模式
+     */
+    private boolean useNativeSdk = false;
 }
