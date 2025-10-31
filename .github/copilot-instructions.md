@@ -150,19 +150,22 @@ For complete validation, test these user scenarios:
 ### Key Directories
 ```
 woodlin/
-├── woodlin-dependencies/     # BOM dependency management
-├── woodlin-common/          # Core utilities and configurations  
-├── woodlin-security/        # Authentication and authorization
-├── woodlin-system/          # System management (users, roles, depts)
-├── woodlin-tenant/          # Multi-tenant functionality
-├── woodlin-file/            # File management
-├── woodlin-task/            # Task scheduling  
-├── woodlin-generator/       # Code generation tools
-├── woodlin-admin/           # Main Spring Boot application
-├── woodlin-web/            # Vue 3 + TypeScript frontend
-├── scripts/                # Build and deployment scripts
-├── sql/                    # Database scripts
-└── .github/                # GitHub configurations
+├── woodlin-dependencies/           # BOM dependency management
+├── woodlin-common/                # Core utilities and configurations  
+├── woodlin-system/                # System modules aggregator (unified structure)
+│   ├── woodlin-system-security/      # Authentication and authorization
+│   ├── woodlin-system-core/          # System management (users, roles, depts)
+│   ├── woodlin-system-tenant/        # Multi-tenant functionality
+│   ├── woodlin-system-file/          # File management
+│   ├── woodlin-system-task/          # Task scheduling  
+│   ├── woodlin-system-generator/     # Code generation tools
+│   └── woodlin-system-sql2api/       # SQL to API conversion
+├── woodlin-dsl/                   # DSL module
+├── woodlin-admin/                 # Main Spring Boot application
+├── woodlin-web/                  # Vue 3 + TypeScript frontend
+├── scripts/                      # Build and deployment scripts
+├── sql/                          # Database scripts
+└── .github/                      # GitHub configurations
 ```
 
 ### Important Files to Check After Changes
@@ -174,7 +177,7 @@ woodlin/
 ### Frequently Modified Files
 - **Configuration**: `woodlin-admin/src/main/resources/application.yml`
 - **Common constants**: `woodlin-common/src/main/java/com/mumu/woodlin/common/constant/`
-- **Security policies**: `woodlin-security/src/main/java/com/mumu/woodlin/security/service/`
+- **Security policies**: `woodlin-system/woodlin-system-security/src/main/java/com/mumu/woodlin/security/service/`
 - **Frontend routes**: `woodlin-web/src/router/index.ts`
 - **Frontend API calls**: `woodlin-web/src/utils/request.ts`
 
