@@ -25,29 +25,29 @@ public class FileProperties {
     private LocalStorageProperties local = new LocalStorageProperties();
     
     /**
-     * MinIO存储配置
+     * MinIO存储配置 (S3兼容)
      */
-    private MinioProperties minio = new MinioProperties();
+    private S3CompatibleStorageProperties minio = new S3CompatibleStorageProperties();
     
     /**
      * AWS S3存储配置
      */
-    private S3Properties s3 = new S3Properties();
+    private S3CompatibleStorageProperties s3 = new S3CompatibleStorageProperties();
     
     /**
-     * 阿里云OSS存储配置
+     * 阿里云OSS存储配置 (S3兼容)
      */
-    private OssProperties oss = new OssProperties();
+    private S3CompatibleStorageProperties oss = new S3CompatibleStorageProperties();
     
     /**
-     * 腾讯云COS存储配置
+     * 腾讯云COS存储配置 (S3兼容)
      */
-    private CosProperties cos = new CosProperties();
+    private S3CompatibleStorageProperties cos = new S3CompatibleStorageProperties();
     
     /**
-     * 华为云OBS存储配置
+     * 华为云OBS存储配置 (S3兼容)
      */
-    private ObsProperties obs = new ObsProperties();
+    private S3CompatibleStorageProperties obs = new S3CompatibleStorageProperties();
     
     /**
      * 本地存储配置类
@@ -70,188 +70,4 @@ public class FileProperties {
         private String domain;
     }
     
-    /**
-     * MinIO存储配置
-     */
-    @Data
-    public static class MinioProperties {
-        /**
-         * 是否启用
-         */
-        private boolean enabled = false;
-        
-        /**
-         * 端点地址
-         */
-        private String endpoint;
-        
-        /**
-         * 访问密钥
-         */
-        private String accessKey;
-        
-        /**
-         * 密钥
-         */
-        private String secretKey;
-        
-        /**
-         * 存储桶名称
-         */
-        private String bucketName;
-        
-        /**
-         * 访问域名
-         */
-        private String domain;
-    }
-    
-    /**
-     * AWS S3存储配置
-     */
-    @Data
-    public static class S3Properties {
-        /**
-         * 是否启用
-         */
-        private boolean enabled = false;
-        
-        /**
-         * 端点地址（可选）
-         */
-        private String endpoint;
-        
-        /**
-         * 访问密钥
-         */
-        private String accessKey;
-        
-        /**
-         * 密钥
-         */
-        private String secretKey;
-        
-        /**
-         * 区域
-         */
-        private String region;
-        
-        /**
-         * 存储桶名称
-         */
-        private String bucketName;
-        
-        /**
-         * 访问域名
-         */
-        private String domain;
-    }
-    
-    /**
-     * 阿里云OSS存储配置
-     */
-    @Data
-    public static class OssProperties {
-        /**
-         * 是否启用
-         */
-        private boolean enabled = false;
-        
-        /**
-         * 端点地址
-         */
-        private String endpoint;
-        
-        /**
-         * 访问密钥
-         */
-        private String accessKey;
-        
-        /**
-         * 密钥
-         */
-        private String secretKey;
-        
-        /**
-         * 存储桶名称
-         */
-        private String bucketName;
-        
-        /**
-         * 访问域名
-         */
-        private String domain;
-    }
-    
-    /**
-     * 腾讯云COS存储配置
-     */
-    @Data
-    public static class CosProperties {
-        /**
-         * 是否启用
-         */
-        private boolean enabled = false;
-        
-        /**
-         * 访问密钥
-         */
-        private String accessKey;
-        
-        /**
-         * 密钥
-         */
-        private String secretKey;
-        
-        /**
-         * 区域
-         */
-        private String region;
-        
-        /**
-         * 存储桶名称
-         */
-        private String bucketName;
-        
-        /**
-         * 访问域名
-         */
-        private String domain;
-    }
-    
-    /**
-     * 华为云OBS存储配置
-     */
-    @Data
-    public static class ObsProperties {
-        /**
-         * 是否启用
-         */
-        private boolean enabled = false;
-        
-        /**
-         * 端点地址
-         */
-        private String endpoint;
-        
-        /**
-         * 访问密钥
-         */
-        private String accessKey;
-        
-        /**
-         * 密钥
-         */
-        private String secretKey;
-        
-        /**
-         * 存储桶名称
-         */
-        private String bucketName;
-        
-        /**
-         * 访问域名
-         */
-        private String domain;
-    }
 }
