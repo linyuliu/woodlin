@@ -1,0 +1,303 @@
+# ====================================================================================
+# Woodlin 完整系统 - Docker Compose 配置
+#
+# 此配置文件包含完整的 Woodlin 系统运行环境:
+# - Woodlin 后端应用
+# - MySQL 8.0 数据库
+# - Redis 7.x 缓存
+# - MinIO 对象存储
+# - PostgreSQL 16 数据库 (可选)
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建所有镜像: docker compose -f docker-compose.full.yml build
+# 3. 启动所有服务: docker compose -f docker-compose.full.yml up -d
+# 4. 查看日志: docker compose -f docker-compose.full.yml logs -f
+# 5. 停止服务: docker compose -f docker-compose.full.yml down
+#
+# 注意: 
+# - 确保端口不冲突
+# - 确保有足够的系统资源
+# - 生产环境请修改所有默认密码
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # MySQL 8.0 数据库服务
+  # ====================================================================================
+  mysql:
+    build:
+      context: ..
+      dockerfile: docker/mysql/Dockerfile
+    container_name: woodlin-mysql
+    hostname: mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Passw0rd}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-woodlin}
+      MYSQL_USER: ${MYSQL_USER:-woodlin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Passw0rd}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - woodlin-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Passw0rd}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: ${MYSQL_MAX_CPU:-2.0}
+          memory: ${MYSQL_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${MYSQL_MIN_CPU:-0.5}
+          memory: ${MYSQL_MIN_MEMORY:-512M}
+
+  # ====================================================================================
+  # Redis 7.x 缓存服务
+  # ====================================================================================
+  redis:
+    build:
+      context: ..
+      dockerfile: docker/redis/Dockerfile
+    container_name: woodlin-redis
+    hostname: redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    environment:
+      TZ: Asia/Shanghai
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - woodlin-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDIS_MAX_CPU:-1.0}
+          memory: ${REDIS_MAX_MEMORY:-1G}
+        reservations:
+          cpus: ${REDIS_MIN_CPU:-0.25}
+          memory: ${REDIS_MIN_MEMORY:-256M}
+
+  # ====================================================================================
+  # MinIO 对象存储服务
+  # ====================================================================================
+  minio:
+    build:
+      context: ..
+      dockerfile: docker/minio/Dockerfile
+    container_name: woodlin-minio
+    hostname: minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_REGION: ${MINIO_REGION:-cn-north-1}
+      MINIO_BROWSER: ${MINIO_BROWSER:-on}
+      TZ: Asia/Shanghai
+    volumes:
+      - minio_data:/data
+    networks:
+      - woodlin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: ${MINIO_MAX_CPU:-1.0}
+          memory: ${MINIO_MAX_MEMORY:-1G}
+        reservations:
+          cpus: ${MINIO_MIN_CPU:-0.25}
+          memory: ${MINIO_MIN_MEMORY:-256M}
+
+  # ====================================================================================
+  # Woodlin 后端应用服务
+  # ====================================================================================
+  woodlin-app:
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
+      # 可选: 使用 distroless 镜像
+      # dockerfile: docker/app/Dockerfile.distroless
+    container_name: woodlin-app
+    hostname: woodlin-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      # 数据库配置
+      DATABASE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-woodlin}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DATABASE_USERNAME: ${MYSQL_USER:-woodlin}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-Passw0rd}
+      DATABASE_DRIVER: com.mysql.cj.jdbc.Driver
+      
+      # Redis 配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT:-10s}
+      REDISSON_ADDRESS: redis://redis:6379
+      REDISSON_PASSWORD: ${REDIS_PASSWORD:-}
+      
+      # MinIO 配置
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-woodlin}
+      
+      # 服务器配置
+      SERVER_PORT: 8080
+      SERVER_CONTEXT_PATH: /api
+      
+      # Spring 配置
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      
+      # 时区和编码
+      TZ: Asia/Shanghai
+      LANG: zh_CN.UTF-8
+    volumes:
+      - app_logs:/app/logs
+      - app_temp:/app/temp
+    networks:
+      - woodlin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: ${APP_MAX_CPU:-2.0}
+          memory: ${APP_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${APP_MIN_CPU:-1.0}
+          memory: ${APP_MIN_MEMORY:-1G}
+
+  # ====================================================================================
+  # PostgreSQL 16 数据库服务 (可选)
+  # 
+  # 启用方法: 
+  # docker compose -f docker-compose.full.yml --profile postgresql up -d
+  # ====================================================================================
+  postgresql:
+    build:
+      context: ..
+      dockerfile: docker/postgresql/Dockerfile
+    container_name: woodlin-postgresql
+    hostname: postgresql
+    restart: unless-stopped
+    profiles:
+      - postgresql
+    ports:
+      - "${POSTGRESQL_PORT:-5432}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Passw0rd}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-woodlin}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Shanghai
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - woodlin-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: ${POSTGRESQL_MAX_CPU:-2.0}
+          memory: ${POSTGRESQL_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${POSTGRESQL_MIN_CPU:-0.5}
+          memory: ${POSTGRESQL_MIN_MEMORY:-512M}
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_temp:
+    driver: local
+  postgresql_data:
+    driver: local
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
