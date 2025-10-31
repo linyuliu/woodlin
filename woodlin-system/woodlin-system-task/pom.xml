@@ -5,19 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        Woodlin 代码生成模块
+        Woodlin 任务调度模块
         作者: mumu
-        描述: 代码自动生成工具，提升开发效率
+        描述: 定时任务调度和管理功能模块
     -->
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-generator</artifactId>
-    <name>Woodlin Generator Module</name>
-    <description>Woodlin 代码生成模块</description>
+    <artifactId>woodlin-system-task</artifactId>
+    <name>Woodlin System Task Module</name>
+    <description>Woodlin 系统任务调度模块</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
@@ -52,10 +52,16 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- Velocity 模板引擎 -->
+        <!-- SnailJob 分布式任务调度 -->
         <dependency>
-            <groupId>org.apache.velocity</groupId>
-            <artifactId>velocity-engine-core</artifactId>
+            <groupId>com.aizuda</groupId>
+            <artifactId>snail-job-client-starter</artifactId>
+        </dependency>
+
+        <!-- Quartz （保留用于兼容） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
         </dependency>
 
         <!-- Validation -->
