@@ -36,7 +36,7 @@
 mysql -u root -p woodlin
 
 # 执行迁移脚本
-source sql/rbac1_upgrade.sql
+source sql/mysql/rbac1_upgrade.sql
 ```
 
 迁移脚本会：
