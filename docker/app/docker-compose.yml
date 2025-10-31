@@ -1,0 +1,195 @@
+# ====================================================================================
+# Woodlin 应用服务 - Docker Compose 配置
+#
+# 此配置文件仅包含 Woodlin 应用服务，不包含数据库和缓存
+# 适用于以下场景:
+# - 数据库和 Redis 已部署在其他服务器
+# - 使用云服务 (如 AWS RDS, ElastiCache)
+# - 独立部署应用服务
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建镜像: docker compose build
+# 3. 启动服务: docker compose up -d
+# 4. 查看日志: docker compose logs -f
+# 5. 停止服务: docker compose down
+#
+# 多架构构建:
+# docker buildx build --platform linux/amd64,linux/arm64 \
+#   -t woodlin-app:latest -f ../app/Dockerfile ../..
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # Woodlin 后端应用服务
+  # ====================================================================================
+  woodlin-app:
+    # 使用本地 Dockerfile 构建
+    build:
+      context: ../..
+      dockerfile: docker/app/Dockerfile
+      # 可选: 使用 distroless 镜像
+      # dockerfile: docker/app/Dockerfile.distroless
+      args:
+        - MAVEN_OPTS=-Dmaven.repo.local=/root/.m2/repository
+      # 构建多架构镜像 (需要 Docker Buildx)
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+      #   - linux/arm/v7
+
+    # 或者使用预构建的镜像
+    # image: woodlin-app:latest
+
+    container_name: woodlin-app
+    hostname: woodlin-app
+
+    # 重启策略
+    restart: unless-stopped
+
+    # ====================================================================================
+    # 端口映射
+    # ====================================================================================
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+      # JMX 监控端口 (可选)
+      # - "9010:9010"
+
+    # ====================================================================================
+    # 环境变量配置
+    # ====================================================================================
+    environment:
+      # 数据库配置 (连接到外部数据库)
+      DATABASE_URL: ${DATABASE_URL:-jdbc:mysql://mysql:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-root}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-Passw0rd}
+      DATABASE_DRIVER: com.mysql.cj.jdbc.Driver
+
+      # Redis 配置 (连接到外部 Redis)
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT:-10s}
+      REDISSON_ADDRESS: ${REDISSON_ADDRESS:-redis://redis:6379}
+      REDISSON_PASSWORD: ${REDISSON_PASSWORD:-}
+
+      # MinIO 配置 (可选，如果使用文件存储)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-woodlin}
+
+      # 服务器配置
+      SERVER_PORT: 8080
+      SERVER_CONTEXT_PATH: /api
+
+      # Spring 配置
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+
+      # 时区和编码
+      TZ: Asia/Shanghai
+      LANG: zh_CN.UTF-8
+
+      # JVM 配置 (可选，覆盖 Dockerfile 中的默认配置)
+      # JAVA_TOOL_OPTIONS: >-
+      #   -XX:MaxRAMPercentage=80.0
+      #   -XX:+UseG1GC
+      #   -Xlog:gc*:file=/app/logs/gc.log
+
+    # ====================================================================================
+    # 数据卷挂载
+    # ====================================================================================
+    volumes:
+      # 应用日志 (持久化)
+      - woodlin_logs:/app/logs
+      # 临时文件 (可选)
+      - woodlin_temp:/app/temp
+      # 外部配置文件 (可选)
+      # 将宿主机的配置文件挂载到容器，覆盖镜像中的默认配置
+      # - ./config/application.yml:/app/config/application.yml:ro
+      # - ./config/logback-spring.xml:/app/config/logback-spring.xml:ro
+
+    # ====================================================================================
+    # 网络配置
+    # ====================================================================================
+    networks:
+      - woodlin-network
+
+    # ====================================================================================
+    # 健康检查配置
+    # ====================================================================================
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+    # ====================================================================================
+    # 系统资源限制
+    # ====================================================================================
+    ulimits:
+      # 文件描述符限制
+      nofile:
+        soft: 65536
+        hard: 65536
+      # 进程/线程数限制
+      nproc:
+        soft: 65536
+        hard: 65536
+
+    # ====================================================================================
+    # 安全选项
+    # ====================================================================================
+    security_opt:
+      # 禁止进程获取新权限
+      - no-new-privileges:true
+
+    # ====================================================================================
+    # 资源限制
+    # ====================================================================================
+    deploy:
+      resources:
+        limits:
+          cpus: ${APP_MAX_CPU:-2.0}
+          memory: ${APP_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${APP_MIN_CPU:-1.0}
+          memory: ${APP_MIN_MEMORY:-1G}
+
+    # ====================================================================================
+    # 日志配置
+    # ====================================================================================
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  woodlin_logs:
+    driver: local
+    # 可选: 挂载到宿主机指定目录
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/woodlin/logs
+
+  woodlin_temp:
+    driver: local
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
+    # 可选: 连接到外部网络
+    # external: true

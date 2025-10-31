@@ -1,0 +1,155 @@
+# ====================================================================================
+# Woodlin 多租户管理系统 - Distroless 多架构镜像
+# 
+# 特性:
+# - 基于 Google Distroless Java 25 (极简安全镜像)
+# - 支持多架构: linux/amd64, linux/arm64
+# - 最小化攻击面，只包含运行时必需的依赖
+# - 不包含 shell、包管理器等工具
+# - 极小的镜像体积 (< 200MB)
+# - 适合生产环境部署
+# 
+# 注意:
+# - 无法进入容器 shell 进行调试 (使用 debug 标签可以获得 busybox)
+# - 健康检查需要使用外部工具或依赖 orchestrator
+# 
+# 构建命令 (多架构):
+# docker buildx build --platform linux/amd64,linux/arm64 \
+#   -t woodlin-app:distroless \
+#   -f docker/app/Dockerfile.distroless .
+# ====================================================================================
+
+# ====================================================================================
+# 阶段 1: 依赖缓存层
+# ====================================================================================
+FROM bellsoft/liberica-openjdk-debian:25-cds AS deps
+
+WORKDIR /build
+
+# 只复制 pom.xml 文件
+COPY pom.xml .
+COPY woodlin-dependencies/pom.xml ./woodlin-dependencies/
+COPY woodlin-common/pom.xml ./woodlin-common/
+COPY woodlin-security/pom.xml ./woodlin-security/
+COPY woodlin-system/pom.xml ./woodlin-system/
+COPY woodlin-tenant/pom.xml ./woodlin-tenant/
+COPY woodlin-file/pom.xml ./woodlin-file/
+COPY woodlin-task/pom.xml ./woodlin-task/
+COPY woodlin-generator/pom.xml ./woodlin-generator/
+COPY woodlin-dsl/pom.xml ./woodlin-dsl/
+COPY woodlin-sql2api/pom.xml ./woodlin-sql2api/
+COPY woodlin-admin/pom.xml ./woodlin-admin/
+
+# 安装 Maven 并下载依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends maven && \
+    rm -rf /var/lib/apt/lists/* && \
+    mvn dependency:go-offline -B -q || true
+
+# ====================================================================================
+# 阶段 2: 构建阶段
+# ====================================================================================
+FROM bellsoft/liberica-openjdk-debian:25-cds AS builder
+
+WORKDIR /build
+
+# 从依赖缓存层复制 Maven 本地仓库
+COPY --from=deps /root/.m2 /root/.m2
+
+# 安装 Maven
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends maven && \
+    rm -rf /var/lib/apt/lists/*
+
+# 复制源代码
+COPY . .
+
+# 编译项目
+RUN mvn clean package -DskipTests -q -T 1C
+
+# ====================================================================================
+# 阶段 3: 运行时镜像 (Distroless)
+# 
+# Google Distroless 镜像特点:
+# - 只包含应用和运行时依赖
+# - 不包含 shell、包管理器、网络工具等
+# - 更小的攻击面和镜像体积
+# - 符合 SLSA 供应链安全标准
+# 
+# 可用的标签:
+# - gcr.io/distroless/java25-debian12: 最新稳定版
+# - gcr.io/distroless/java25-debian12:debug: 包含 busybox (用于调试)
+# - gcr.io/distroless/java25-debian12:nonroot: 使用非 root 用户
+# ====================================================================================
+FROM gcr.io/distroless/java25-debian12:nonroot
+
+# 设置标签信息
+LABEL maintainer="Woodlin Team" \
+      description="Woodlin Multi-tenant Management System (Distroless)" \
+      version="1.0.0" \
+      org.opencontainers.image.title="Woodlin Application (Distroless)" \
+      org.opencontainers.image.description="Minimal Spring Boot 3 + Java 25 image" \
+      org.opencontainers.image.vendor="Woodlin" \
+      org.opencontainers.image.url="https://github.com/linyuliu/woodlin"
+
+# 设置环境变量
+ENV LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    TZ=Asia/Shanghai \
+    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+# Distroless 镜像使用 nonroot 用户 (UID 65532)
+# 工作目录
+WORKDIR /app
+
+# 复制编译好的 jar 包
+COPY --from=builder --chown=nonroot:nonroot /build/woodlin-admin/target/woodlin-admin-*.jar /app/app.jar
+
+# ====================================================================================
+# 说明: Distroless 镜像不支持 HEALTHCHECK 指令
+# 需要在 Kubernetes 或 docker-compose 中使用外部健康检查
+# 
+# Kubernetes 示例:
+# livenessProbe:
+#   httpGet:
+#     path: /api/actuator/health
+#     port: 8080
+#   initialDelaySeconds: 90
+#   periodSeconds: 30
+# 
+# Docker Compose 示例:
+# 使用 curl 容器进行健康检查，或使用宿主机 curl
+# ====================================================================================
+
+# 暴露端口
+EXPOSE 8080
+
+# ====================================================================================
+# Distroless 使用 ENTRYPOINT 而不是 CMD
+# 
+# JVM 参数通过环境变量 JAVA_TOOL_OPTIONS 传递
+# 这样可以在运行时覆盖，而不需要重新构建镜像
+# 
+# 运行示例:
+# docker run -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:MaxRAMPercentage=80.0" woodlin-app:distroless
+# ====================================================================================
+ENTRYPOINT ["java", \
+    "-server", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:InitialRAMPercentage=50.0", \
+    "-XX:+UseG1GC", \
+    "-XX:MaxGCPauseMillis=200", \
+    "-XX:+UseStringDeduplication", \
+    "-XX:+ParallelRefProcEnabled", \
+    "-XX:+DisableExplicitGC", \
+    "-XX:+HeapDumpOnOutOfMemoryError", \
+    "-XX:HeapDumpPath=/tmp/", \
+    "-XX:+ExitOnOutOfMemoryError", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-Dfile.encoding=UTF-8", \
+    "-Duser.timezone=Asia/Shanghai", \
+    "-Djava.awt.headless=true", \
+    "-jar", \
+    "app.jar"]

@@ -1,0 +1,214 @@
+# ====================================================================================
+# MySQL 8.0 - Docker Compose 配置
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建镜像: docker compose build
+# 3. 启动服务: docker compose up -d
+# 4. 查看日志: docker compose logs -f
+# 5. 连接数据库: mysql -h 127.0.0.1 -P 3306 -u root -p
+# 6. 停止服务: docker compose down
+#
+# 数据备份:
+# docker compose exec mysql mysqldump -u root -p woodlin > backup.sql
+#
+# 数据恢复:
+# docker compose exec -T mysql mysql -u root -p woodlin < backup.sql
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # MySQL 8.0 数据库服务
+  # ====================================================================================
+  mysql:
+    # 使用本地 Dockerfile 构建
+    build:
+      context: ../..
+      dockerfile: docker/mysql/Dockerfile
+      # 构建多架构镜像
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+
+    # 或者使用预构建的镜像
+    # image: woodlin-mysql:8.0
+
+    container_name: woodlin-mysql
+    hostname: mysql
+
+    # 重启策略
+    restart: unless-stopped
+
+    # ====================================================================================
+    # 端口映射
+    # ====================================================================================
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+
+    # ====================================================================================
+    # 环境变量配置
+    # ====================================================================================
+    environment:
+      # root 用户密码 (必需，生产环境必须修改)
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Passw0rd}
+      
+      # 自动创建数据库
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-woodlin}
+      
+      # 自动创建普通用户
+      MYSQL_USER: ${MYSQL_USER:-woodlin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Passw0rd}
+      
+      # 时区设置
+      TZ: Asia/Shanghai
+
+      # 可选: 生成随机 root 密码 (使用 docker logs 查看)
+      # MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      
+      # 可选: root 首次登录后必须修改密码
+      # MYSQL_ONETIME_PASSWORD: "yes"
+
+    # ====================================================================================
+    # 命令行参数 (覆盖配置文件)
+    # 
+    # 注意: 这里的参数会覆盖 Dockerfile 中的配置文件设置
+    # 建议使用配置文件而不是命令行参数，便于维护
+    # ====================================================================================
+    # command:
+    #   - --default-authentication-plugin=mysql_native_password
+    #   - --character-set-server=utf8mb4
+    #   - --collation-server=utf8mb4_unicode_ci
+
+    # ====================================================================================
+    # 数据卷挂载
+    # ====================================================================================
+    volumes:
+      # MySQL 数据持久化
+      - mysql_data:/var/lib/mysql
+      
+      # 初始化 SQL 脚本 (容器首次启动时自动执行)
+      # 将宿主机的 SQL 脚本挂载到容器的 /docker-entrypoint-initdb.d/
+      - ../../sql:/docker-entrypoint-initdb.d:ro
+      
+      # 自定义配置文件 (可选)
+      # 如果需要覆盖 Dockerfile 中的配置，可以挂载自定义配置文件
+      # - ./conf.d:/etc/mysql/conf.d:ro
+      
+      # 日志文件 (可选)
+      - mysql_logs:/var/log/mysql
+      
+      # 备份目录 (可选)
+      # - ./backup:/backup
+
+    # ====================================================================================
+    # 网络配置
+    # ====================================================================================
+    networks:
+      - woodlin-network
+
+    # ====================================================================================
+    # 健康检查配置
+    # ====================================================================================
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Passw0rd}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+    # ====================================================================================
+    # 系统资源限制
+    # ====================================================================================
+    ulimits:
+      # 文件描述符限制
+      # MySQL 需要大量文件描述符来处理连接和表文件
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    # ====================================================================================
+    # 安全选项
+    # ====================================================================================
+    security_opt:
+      - no-new-privileges:true
+
+    # ====================================================================================
+    # 资源限制
+    # 
+    # 根据实际负载调整
+    # - 开发环境: 512M - 1G
+    # - 测试环境: 1G - 2G
+    # - 生产环境: 2G - 8G+
+    # ====================================================================================
+    deploy:
+      resources:
+        limits:
+          cpus: ${MYSQL_MAX_CPU:-2.0}
+          memory: ${MYSQL_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${MYSQL_MIN_CPU:-0.5}
+          memory: ${MYSQL_MIN_MEMORY:-512M}
+
+    # ====================================================================================
+    # 日志配置
+    # ====================================================================================
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  mysql_data:
+    driver: local
+    # 可选: 挂载到宿主机指定目录
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/mysql/data
+
+  mysql_logs:
+    driver: local
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/mysql/logs
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
+    # 可选: 连接到外部网络
+    # external: true
+
+# ====================================================================================
+# 扩展配置示例
+# ====================================================================================
+
+# 主从复制配置示例:
+# services:
+#   mysql-master:
+#     # ... (使用上面的配置)
+#     environment:
+#       MYSQL_REPLICATION_MODE: master
+#       MYSQL_REPLICATION_USER: repl_user
+#       MYSQL_REPLICATION_PASSWORD: repl_password
+#
+#   mysql-slave:
+#     # ... (使用上面的配置)
+#     environment:
+#       MYSQL_REPLICATION_MODE: slave
+#       MYSQL_MASTER_HOST: mysql-master
+#       MYSQL_MASTER_PORT: 3306
+#       MYSQL_REPLICATION_USER: repl_user
+#       MYSQL_REPLICATION_PASSWORD: repl_password
+#     depends_on:
+#       - mysql-master
