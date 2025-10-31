@@ -31,14 +31,15 @@ WORKDIR /build
 COPY pom.xml .
 COPY woodlin-dependencies/pom.xml ./woodlin-dependencies/
 COPY woodlin-common/pom.xml ./woodlin-common/
-COPY woodlin-security/pom.xml ./woodlin-security/
 COPY woodlin-system/pom.xml ./woodlin-system/
-COPY woodlin-tenant/pom.xml ./woodlin-tenant/
-COPY woodlin-file/pom.xml ./woodlin-file/
-COPY woodlin-task/pom.xml ./woodlin-task/
-COPY woodlin-generator/pom.xml ./woodlin-generator/
+COPY woodlin-system/woodlin-system-security/pom.xml ./woodlin-system/woodlin-system-security/
+COPY woodlin-system/woodlin-system-core/pom.xml ./woodlin-system/woodlin-system-core/
+COPY woodlin-system/woodlin-system-tenant/pom.xml ./woodlin-system/woodlin-system-tenant/
+COPY woodlin-system/woodlin-system-file/pom.xml ./woodlin-system/woodlin-system-file/
+COPY woodlin-system/woodlin-system-task/pom.xml ./woodlin-system/woodlin-system-task/
+COPY woodlin-system/woodlin-system-generator/pom.xml ./woodlin-system/woodlin-system-generator/
+COPY woodlin-system/woodlin-system-sql2api/pom.xml ./woodlin-system/woodlin-system-sql2api/
 COPY woodlin-dsl/pom.xml ./woodlin-dsl/
-COPY woodlin-sql2api/pom.xml ./woodlin-sql2api/
 COPY woodlin-admin/pom.xml ./woodlin-admin/
 
 # 安装 Maven
