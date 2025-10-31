@@ -62,7 +62,7 @@ woodlin-sql2api/
 执行 SQL 脚本创建必要的表：
 
 ```bash
-mysql -u root -p woodlin < sql/sql2api_schema.sql
+mysql -u root -p woodlin < sql/mysql/sql2api_schema.sql
 ```
 
 ### 2. 配置数据源

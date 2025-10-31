@@ -168,7 +168,7 @@ woodlin/
 ### Important Files to Check After Changes
 - **Backend API changes**: Always verify `woodlin-admin/src/main/resources/application.yml`
 - **Frontend changes**: Check `woodlin-web/package.json` for dependency updates
-- **Database changes**: Update `sql/woodlin_schema.sql` and `sql/woodlin_data.sql`
+- **Database changes**: Update database-specific SQL files in `sql/mysql/`, `sql/postgresql/`, or `sql/oracle/` directories
 - **Build configuration**: Verify root `pom.xml` and module-specific `pom.xml` files
 
 ### Frequently Modified Files

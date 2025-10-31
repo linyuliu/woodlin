@@ -141,10 +141,10 @@ exit
 
 ```bash
 # 导入数据库结构
-mysql -u root -p woodlin < sql/woodlin_schema.sql
+mysql -u root -p woodlin < sql/mysql/woodlin_schema.sql
 
 # 导入初始数据
-mysql -u root -p woodlin < sql/woodlin_data.sql
+mysql -u root -p woodlin < sql/mysql/woodlin_data.sql
 ```
 
 #### 4. 配置数据库和 Redis 连接

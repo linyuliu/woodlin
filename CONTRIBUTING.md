@@ -88,8 +88,8 @@
 mvn clean install -DskipTests
 
 # 2. 初始化数据库
-mysql -u root -p < sql/woodlin_schema.sql
-mysql -u root -p < sql/woodlin_data.sql
+mysql -u root -p < sql/mysql/woodlin_schema.sql
+mysql -u root -p < sql/mysql/woodlin_data.sql
 
 # 3. 配置环境变量（复制 .env.example 为 .env）
 cp .env.example .env
