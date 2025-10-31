@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mumu.woodlin.system.mapper.SysRoleMapper">
+
+    <resultMap id="BaseResultMap" type="com.mumu.woodlin.system.entity.SysRole">
+        <id column="role_id" property="roleId" />
+        <result column="parent_role_id" property="parentRoleId" />
+        <result column="role_level" property="roleLevel" />
+        <result column="role_path" property="rolePath" />
+        <result column="role_name" property="roleName" />
+        <result column="role_code" property="roleCode" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="data_scope" property="dataScope" />
+        <result column="is_inheritable" property="isInheritable" />
+        <result column="status" property="status" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 根据用户ID查询角色列表 -->
+    <select id="selectRolesByUserId" resultMap="BaseResultMap">
+        SELECT DISTINCT r.*
+        FROM sys_role r
+        INNER JOIN sys_user_role ur ON r.role_id = ur.role_id
+        WHERE ur.user_id = #{userId}
+          AND r.deleted = '0'
+          AND r.status = '1'
+        ORDER BY r.sort_order ASC
+    </select>
+
+    <!-- 分页查询角色列表 -->
+    <select id="selectRolePage" resultMap="BaseResultMap">
+        SELECT r.*
+        FROM sys_role r
+        WHERE r.deleted = '0'
+        <if test="role.roleName != null and role.roleName != ''">
+            AND r.role_name LIKE CONCAT('%', #{role.roleName}, '%')
+        </if>
+        <if test="role.roleCode != null and role.roleCode != ''">
+            AND r.role_code LIKE CONCAT('%', #{role.roleCode}, '%')
+        </if>
+        <if test="role.status != null and role.status != ''">
+            AND r.status = #{role.status}
+        </if>
+        <if test="role.tenantId != null and role.tenantId != ''">
+            AND r.tenant_id = #{role.tenantId}
+        </if>
+        <if test="role.parentRoleId != null">
+            AND r.parent_role_id = #{role.parentRoleId}
+        </if>
+        ORDER BY r.sort_order ASC, r.create_time DESC
+    </select>
+
+    <!-- 根据角色编码查询角色 -->
+    <select id="selectByRoleCode" resultMap="BaseResultMap">
+        SELECT r.*
+        FROM sys_role r
+        WHERE r.role_code = #{roleCode}
+          AND r.deleted = '0'
+        LIMIT 1
+    </select>
+
+    <!-- 根据角色名称查询角色 -->
+    <select id="selectByRoleName" resultMap="BaseResultMap">
+        SELECT r.*
+        FROM sys_role r
+        WHERE r.role_name = #{roleName}
+          AND r.deleted = '0'
+        LIMIT 1
+    </select>
+
+    <!-- 查询角色的所有子角色（包括子孙角色，使用RBAC1） -->
+    <select id="selectDescendantRoles" resultMap="BaseResultMap">
+        SELECT DISTINCT r.*
+        FROM sys_role r
+        INNER JOIN sys_role_hierarchy rh ON r.role_id = rh.descendant_role_id
+        WHERE rh.ancestor_role_id = #{roleId}
+          AND rh.distance > 0
+          AND r.deleted = '0'
+        ORDER BY rh.distance ASC, r.sort_order ASC
+    </select>
+
+    <!-- 查询角色的直接子角色 -->
+    <select id="selectDirectChildRoles" resultMap="BaseResultMap">
+        SELECT r.*
+        FROM sys_role r
+        WHERE r.parent_role_id = #{roleId}
+          AND r.deleted = '0'
+        ORDER BY r.sort_order ASC
+    </select>
+
+    <!-- 查询角色的所有祖先角色（使用RBAC1） -->
+    <select id="selectAncestorRoles" resultMap="BaseResultMap">
+        SELECT DISTINCT r.*
+        FROM sys_role r
+        INNER JOIN sys_role_hierarchy rh ON r.role_id = rh.ancestor_role_id
+        WHERE rh.descendant_role_id = #{roleId}
+          AND rh.distance > 0
+          AND r.deleted = '0'
+        ORDER BY rh.distance DESC, r.sort_order ASC
+    </select>
+
+    <!-- 查询顶级角色列表（没有父角色的角色） -->
+    <select id="selectTopLevelRoles" resultMap="BaseResultMap">
+        SELECT r.*
+        FROM sys_role r
+        WHERE (r.parent_role_id IS NULL OR r.parent_role_id = 0)
+          AND r.deleted = '0'
+        <if test="tenantId != null and tenantId != ''">
+            AND r.tenant_id = #{tenantId}
+        </if>
+        ORDER BY r.sort_order ASC
+    </select>
+
+</mapper>
