@@ -16,8 +16,24 @@ sql/
 │   ├── password_policy_update.sql # Password policy update
 │   ├── rbac1_upgrade.sql       # RBAC upgrade script
 │   └── searchable_encryption_example.sql # Encryption example
-├── postgresql/                  # PostgreSQL database scripts (coming soon)
-└── oracle/                      # Oracle database scripts (coming soon)
+├── postgresql/                  # PostgreSQL database scripts
+│   ├── woodlin_schema.sql      # Main database schema (PostgreSQL)
+│   ├── woodlin_data.sql        # Initial data (PostgreSQL)
+│   ├── sql2api_schema.sql      # SQL2API feature tables
+│   ├── oss_management_schema.sql # OSS management tables
+│   ├── system_config_data.sql  # System configuration data
+│   ├── password_policy_update.sql # Password policy update
+│   ├── rbac1_upgrade.sql       # RBAC upgrade script
+│   └── searchable_encryption_example.sql # Encryption example
+└── oracle/                      # Oracle database scripts
+    ├── woodlin_schema.sql      # Main database schema (Oracle)
+    ├── woodlin_data.sql        # Initial data (Oracle)
+    ├── sql2api_schema.sql      # SQL2API feature tables
+    ├── oss_management_schema.sql # OSS management tables
+    ├── system_config_data.sql  # System configuration data
+    ├── password_policy_update.sql # Password policy update
+    ├── rbac1_upgrade.sql       # RBAC upgrade script
+    └── searchable_encryption_example.sql # Encryption example
 ```
 
 ## Usage
@@ -57,19 +73,98 @@ sql/
    mysql -u root -p woodlin < mysql/searchable_encryption_example.sql
    ```
 
-### PostgreSQL (Coming Soon)
+### PostgreSQL
 
-PostgreSQL-specific scripts will be added to the `postgresql/` directory. These will include:
-- Data type conversions (e.g., `TINYINT` → `SMALLINT`, `DATETIME` → `TIMESTAMP`)
-- Sequence definitions for auto-increment fields
-- PostgreSQL-specific syntax adjustments
+1. **Create and Initialize Database**
+   ```bash
+   # Create database (as superuser)
+   createdb woodlin -E UTF8
+   
+   # Connect and create tables
+   psql -U postgres -d woodlin -f postgresql/woodlin_schema.sql
+   
+   # Load initial data
+   psql -U postgres -d woodlin -f postgresql/woodlin_data.sql
+   ```
 
-### Oracle (Coming Soon)
+2. **Optional Features** (Execute as needed)
+   ```bash
+   # SQL2API feature
+   psql -U postgres -d woodlin -f postgresql/sql2api_schema.sql
+   
+   # OSS management feature
+   psql -U postgres -d woodlin -f postgresql/oss_management_schema.sql
+   
+   # System configuration
+   psql -U postgres -d woodlin -f postgresql/system_config_data.sql
+   
+   # Password policy
+   psql -U postgres -d woodlin -f postgresql/password_policy_update.sql
+   
+   # RBAC upgrade
+   psql -U postgres -d woodlin -f postgresql/rbac1_upgrade.sql
+   ```
 
-Oracle-specific scripts will be added to the `oracle/` directory. These will include:
-- Data type conversions (e.g., `DATETIME` → `TIMESTAMP`, `TEXT` → `CLOB`)
-- Sequence and trigger definitions for auto-increment fields
-- Oracle-specific syntax adjustments
+3. **Key Conversions Applied**:
+   - `TINYINT` → `SMALLINT`
+   - `INT(n)` → `INTEGER`
+   - `BIGINT(n)` → `BIGINT`
+   - `DATETIME` → `TIMESTAMP`
+   - `AUTO_INCREMENT` → Triggers for auto-update
+   - Removed backticks and ENGINE clauses
+   - Added COMMENT ON statements
+   - Created triggers for `update_time` auto-update
+
+### Oracle
+
+1. **Create and Initialize Database**
+   ```bash
+   # Connect as SYSTEM user
+   sqlplus system/password@//localhost:1521/XE
+   
+   # Create user and grant privileges
+   CREATE USER woodlin IDENTIFIED BY password;
+   GRANT CONNECT, RESOURCE, DBA TO woodlin;
+   
+   # Execute schema script
+   @oracle/woodlin_schema.sql
+   
+   # Load initial data
+   @oracle/woodlin_data.sql
+   ```
+
+2. **Optional Features** (Execute as needed)
+   ```bash
+   # Connect to Oracle
+   sqlplus woodlin/password@//localhost:1521/XE
+   
+   # SQL2API feature
+   @oracle/sql2api_schema.sql
+   
+   # OSS management feature
+   @oracle/oss_management_schema.sql
+   
+   # System configuration
+   @oracle/system_config_data.sql
+   
+   # Password policy
+   @oracle/password_policy_update.sql
+   
+   # RBAC upgrade
+   @oracle/rbac1_upgrade.sql
+   ```
+
+3. **Key Conversions Applied**:
+   - `TINYINT` → `NUMBER(3)`
+   - `INT(n)` → `NUMBER(10)`
+   - `BIGINT(n)` → `NUMBER(19)`
+   - `VARCHAR` → `VARCHAR2`
+   - `DATETIME` → `TIMESTAMP`
+   - `TEXT` → `CLOB`
+   - `NOW()` → `SYSDATE`
+   - `CURRENT_TIMESTAMP` → `SYSTIMESTAMP`
+   - Removed backticks and ENGINE clauses
+   - Note: AUTO_INCREMENT requires sequences and triggers (to be implemented)
 
 ## Database Support
 
@@ -77,9 +172,9 @@ The Woodlin system is designed to support multiple database types through the Dy
 
 | Database | Status | Directory | Notes |
 |----------|--------|-----------|-------|
-| MySQL | ✅ Supported | `mysql/` | Primary database, fully tested |
-| PostgreSQL | 🚧 Coming Soon | `postgresql/` | Planned support |
-| Oracle | 🚧 Coming Soon | `oracle/` | Planned support |
+| MySQL | ✅ Supported | `mysql/` | Primary database, fully tested, 8 files |
+| PostgreSQL | ✅ Supported | `postgresql/` | Converted from MySQL, 8 files |
+| Oracle | ✅ Supported | `oracle/` | Converted from MySQL, 8 files |
 | SQL Server | 🚧 Future | - | Future consideration |
 
 ## Configuration
@@ -161,5 +256,10 @@ When adding SQL scripts for new features or database types:
 
 ## Version History
 
+- **1.1.0** (2025-10-31): Added PostgreSQL and Oracle SQL conversions (8 files each)
+  - Converted all MySQL scripts to PostgreSQL syntax
+  - Converted all MySQL scripts to Oracle syntax
+  - Added comprehensive comments to all scripts
+  - Documented database-specific syntax differences
 - **1.0.0** (2025-10-31): Initial organization of SQL scripts by database type
 - **1.0.0** (2025-01-01): Original MySQL scripts
