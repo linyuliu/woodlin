@@ -304,6 +304,22 @@ build_minio() {
                 "$SCRIPT_DIR/minio/Dockerfile" \
                 "woodlin-minio" \
                 "$PROJECT_ROOT"
+    
+    # 构建 distroless 镜像
+    if [ "$MULTI_ARCH" = true ]; then
+        # Distroless 仅支持 amd64 和 arm64
+        local original_platforms="$PLATFORMS"
+        PLATFORMS="linux/amd64,linux/arm64"
+    fi
+    
+    build_image "minio-distroless" \
+                "$SCRIPT_DIR/minio/Dockerfile.distroless" \
+                "woodlin-minio" \
+                "$PROJECT_ROOT"
+    
+    if [ "$MULTI_ARCH" = true ]; then
+        PLATFORMS="$original_platforms"
+    fi
 }
 
 # ====================================================================================

@@ -7,17 +7,18 @@
 ```
 docker/
 ├── app/                      # Woodlin 应用服务
-│   ├── Dockerfile           # 标准 BellSoft JDK 25 镜像
+│   ├── Dockerfile           # 标准 BellSoft JDK 21 LTS + CDS 镜像
 │   ├── Dockerfile.distroless # Distroless 极简镜像
 │   └── docker-compose.yml   # 应用服务编排配置
-├── mysql/                    # MySQL 8.0 数据库
+├── mysql/                    # MySQL 8.4 LTS 数据库
 │   ├── Dockerfile           # MySQL 镜像
 │   └── docker-compose.yml   # MySQL 服务编排配置
 ├── redis/                    # Redis 7.x 缓存
 │   ├── Dockerfile           # Redis 镜像
 │   └── docker-compose.yml   # Redis 服务编排配置
 ├── minio/                    # MinIO 对象存储
-│   ├── Dockerfile           # MinIO 镜像
+│   ├── Dockerfile           # MinIO 标准镜像
+│   ├── Dockerfile.distroless # MinIO Distroless 极简镜像
 │   └── docker-compose.yml   # MinIO 服务编排配置
 ├── postgresql/               # PostgreSQL 16 数据库 (可选)
 │   ├── Dockerfile           # PostgreSQL 镜像
@@ -44,20 +45,21 @@ docker/
 #### Woodlin 应用 (app/)
 
 - **标准镜像** (Dockerfile):
-  - 基于 BellSoft Liberica JDK 25 Alpine
+  - 基于 BellSoft Liberica JDK 21 LTS Alpine
+  - 包含 CDS (Class Data Sharing) 优化，加速启动
   - 包含完整的诊断工具集
   - 支持 JMX 监控
   - 适合开发和测试环境
 
 - **Distroless 镜像** (Dockerfile.distroless):
-  - 基于 Google Distroless Java 25
+  - 基于 Google Distroless Java 21 LTS
   - 极简镜像体积 (< 200MB)
   - 最小攻击面
   - 适合生产环境部署
 
 #### MySQL (mysql/)
 
-- 基于 MySQL 8.0 LTS
+- 基于 MySQL 8.4 LTS (最新长期支持版本)
 - 中文字符集配置 (utf8mb4)
 - 性能优化参数
 - 慢查询日志
@@ -76,6 +78,10 @@ docker/
 - S3 兼容 API
 - Web 管理控制台
 - 支持分布式部署
+- **Distroless 镜像** (Dockerfile.distroless):
+  - 极简安全镜像
+  - 仅包含必需的二进制文件
+  - 适合生产环境
 
 #### PostgreSQL (postgresql/)
 
