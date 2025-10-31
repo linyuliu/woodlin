@@ -52,18 +52,27 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 
 ```text
 woodlin
-├── woodlin-dependencies     # 依赖管理模块（BOM 统一版本管理）
-├── woodlin-common          # 通用模块（工具类、常量、配置）
-├── woodlin-security        # 安全认证模块（Sa-Token 集成）
-├── woodlin-system          # 系统核心模块（用户、角色、权限）
-├── woodlin-tenant          # 多租户模块（租户隔离）
-├── woodlin-file            # 文件管理模块（文件上传、下载）
-├── woodlin-task            # 任务调度模块（Quartz 定时任务）
-├── woodlin-generator       # 代码生成模块（智能代码生成）
-├── woodlin-sql2api         # SQL2API 动态接口模块（SQL 转 API）
-├── woodlin-admin           # 管理后台应用（主应用入口）
-└── sql                     # 数据库脚本（DDL 和初始化数据）
+├── woodlin-dependencies           # 依赖管理模块（BOM 统一版本管理）
+├── woodlin-common                # 通用模块（工具类、常量、配置）
+├── woodlin-system                # 系统功能模块聚合器（支持单体/微服务一体化）
+│   ├── woodlin-system-security      # 安全认证模块（Sa-Token 集成）
+│   ├── woodlin-system-core          # 系统核心模块（用户、角色、权限）
+│   ├── woodlin-system-tenant        # 多租户模块（租户隔离）
+│   ├── woodlin-system-file          # 文件管理模块（文件上传、下载）
+│   ├── woodlin-system-task          # 任务调度模块（Quartz 定时任务）
+│   ├── woodlin-system-generator     # 代码生成模块（智能代码生成）
+│   └── woodlin-system-sql2api       # SQL2API 动态接口模块（SQL 转 API）
+├── woodlin-dsl                   # DSL 模块
+├── woodlin-admin                 # 管理后台应用（主应用入口）
+└── sql                           # 数据库脚本（DDL 和初始化数据）
 ```
+
+**重构优势**:
+- 🎯 **统一架构**: 所有系统功能模块统一管理，便于理解和维护
+- 🚀 **单体部署**: 可直接将整个 woodlin-system 作为单体应用使用
+- 🔧 **微服务支持**: 每个子模块可独立提取为微服务
+- 📦 **模块清晰**: 明确的模块边界和依赖关系
+- 🔄 **灵活切换**: 轻松在单体和微服务架构之间切换
 
 ## 🚀 快速开始
 
