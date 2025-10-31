@@ -1,0 +1,251 @@
+# ====================================================================================
+# MinIO Object Storage - Docker Compose 配置
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建镜像: docker compose build
+# 3. 启动服务: docker compose up -d
+# 4. 访问控制台: http://localhost:9001 (默认账号: minioadmin/minioadmin)
+# 5. 停止服务: docker compose down
+#
+# MinIO Client (mc) 使用:
+# mc alias set myminio http://localhost:9000 minioadmin minioadmin
+# mc mb myminio/woodlin
+# mc cp file.txt myminio/woodlin/
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # MinIO Object Storage 服务
+  # ====================================================================================
+  minio:
+    # 使用本地 Dockerfile 构建
+    build:
+      context: ../..
+      dockerfile: docker/minio/Dockerfile
+      # 构建多架构镜像
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+      #   - linux/arm/v7
+
+    # 或者使用预构建的镜像
+    # image: woodlin-minio:latest
+
+    container_name: woodlin-minio
+    hostname: minio
+
+    # 重启策略
+    restart: unless-stopped
+
+    # ====================================================================================
+    # 端口映射
+    # ====================================================================================
+    ports:
+      # MinIO API 端口 (S3 兼容 API)
+      - "${MINIO_API_PORT:-9000}:9000"
+      # MinIO Console 端口 (Web 管理控制台)
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+
+    # ====================================================================================
+    # 环境变量配置
+    # ====================================================================================
+    environment:
+      # 管理员账号 (必需，生产环境必须修改)
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+      # 区域配置
+      MINIO_REGION: ${MINIO_REGION:-cn-north-1}
+
+      # Web 控制台配置
+      MINIO_BROWSER: ${MINIO_BROWSER:-on}
+
+      # 外部访问 URL (可选，用于生成预签名 URL)
+      # MINIO_SERVER_URL: http://minio.example.com:9000
+      # MINIO_BROWSER_REDIRECT_URL: http://console.minio.example.com
+
+      # 时区设置
+      TZ: Asia/Shanghai
+
+      # 性能优化 (可选)
+      # MINIO_API_REQUESTS_MAX: 10000
+      # MINIO_API_REQUESTS_DEADLINE: 10s
+
+      # CORS 配置 (可选)
+      # MINIO_API_CORS_ALLOW_ORIGIN: "*"
+
+    # ====================================================================================
+    # 启动命令 (可选，覆盖 Dockerfile 中的 CMD)
+    # ====================================================================================
+    # command: 
+    #   - server
+    #   - /data
+    #   - --console-address
+    #   - ":9001"
+
+    # ====================================================================================
+    # 数据卷挂载
+    # ====================================================================================
+    volumes:
+      # MinIO 数据持久化
+      - minio_data:/data
+      
+      # MinIO 配置目录 (可选)
+      # - minio_config:/root/.minio
+
+    # ====================================================================================
+    # 网络配置
+    # ====================================================================================
+    networks:
+      - woodlin-network
+
+    # ====================================================================================
+    # 健康检查配置
+    # ====================================================================================
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    # ====================================================================================
+    # 系统资源限制
+    # ====================================================================================
+    ulimits:
+      # 文件描述符限制
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    # ====================================================================================
+    # 安全选项
+    # ====================================================================================
+    security_opt:
+      - no-new-privileges:true
+
+    # ====================================================================================
+    # 资源限制
+    # 
+    # 根据实际负载调整
+    # - 开发环境: 256M - 512M
+    # - 测试环境: 512M - 1G
+    # - 生产环境: 1G - 8G+
+    # ====================================================================================
+    deploy:
+      resources:
+        limits:
+          cpus: ${MINIO_MAX_CPU:-1.0}
+          memory: ${MINIO_MAX_MEMORY:-1G}
+        reservations:
+          cpus: ${MINIO_MIN_CPU:-0.25}
+          memory: ${MINIO_MIN_MEMORY:-256M}
+
+    # ====================================================================================
+    # 日志配置
+    # ====================================================================================
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  minio_data:
+    driver: local
+    # 可选: 挂载到宿主机指定目录
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/minio/data
+
+  # minio_config:
+  #   driver: local
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
+    # 可选: 连接到外部网络
+    # external: true
+
+# ====================================================================================
+# 扩展配置示例
+# ====================================================================================
+
+# MinIO 分布式模式配置 (至少 4 个节点):
+# services:
+#   minio1:
+#     # ... (使用上面的配置)
+#     command:
+#       - server
+#       - http://minio{1...4}/data
+#       - --console-address
+#       - ":9001"
+#
+#   minio2:
+#     # ... (使用上面的配置)
+#     command:
+#       - server
+#       - http://minio{1...4}/data
+#       - --console-address
+#       - ":9001"
+#
+#   minio3:
+#     # ... (使用上面的配置)
+#     command:
+#       - server
+#       - http://minio{1...4}/data
+#       - --console-address
+#       - ":9001"
+#
+#   minio4:
+#     # ... (使用上面的配置)
+#     command:
+#       - server
+#       - http://minio{1...4}/data
+#       - --console-address
+#       - ":9001"
+
+# MinIO 使用 Nginx 作为反向代理:
+# services:
+#   nginx:
+#     image: nginx:alpine
+#     ports:
+#       - "80:80"
+#     volumes:
+#       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#     depends_on:
+#       - minio
+#     networks:
+#       - woodlin-network
+
+# MinIO 集成 Prometheus 监控:
+# services:
+#   prometheus:
+#     image: prom/prometheus:latest
+#     ports:
+#       - "9090:9090"
+#     volumes:
+#       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#     command:
+#       - '--config.file=/etc/prometheus/prometheus.yml'
+#     networks:
+#       - woodlin-network
+#
+# # prometheus.yml 配置示例:
+# # scrape_configs:
+# #   - job_name: minio-job
+# #     metrics_path: /minio/v2/metrics/cluster
+# #     scheme: http
+# #     static_configs:
+# #       - targets: ['minio:9000']

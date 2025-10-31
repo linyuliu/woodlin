@@ -1,0 +1,249 @@
+# ====================================================================================
+# Redis 7.x - Docker Compose 配置
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建镜像: docker compose build
+# 3. 启动服务: docker compose up -d
+# 4. 查看日志: docker compose logs -f
+# 5. 连接 Redis: redis-cli -h 127.0.0.1 -p 6379 -a password
+# 6. 停止服务: docker compose down
+#
+# 数据备份:
+# docker compose exec redis redis-cli --rdb /data/backup.rdb
+# docker compose cp redis:/data/backup.rdb ./backup.rdb
+#
+# 数据恢复:
+# docker compose cp ./backup.rdb redis:/data/dump.rdb
+# docker compose restart redis
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # Redis 7.x 缓存服务
+  # ====================================================================================
+  redis:
+    # 使用本地 Dockerfile 构建
+    build:
+      context: ../..
+      dockerfile: docker/redis/Dockerfile
+      # 构建多架构镜像
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+      #   - linux/arm/v7
+
+    # 或者使用预构建的镜像
+    # image: woodlin-redis:7
+
+    container_name: woodlin-redis
+    hostname: redis
+
+    # 重启策略
+    restart: unless-stopped
+
+    # ====================================================================================
+    # 端口映射
+    # ====================================================================================
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+    # ====================================================================================
+    # 环境变量配置
+    # ====================================================================================
+    environment:
+      # 时区设置
+      TZ: Asia/Shanghai
+      
+      # Redis 密码 (用于健康检查)
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+    # ====================================================================================
+    # 启动命令 (覆盖 Dockerfile 中的 CMD)
+    # 
+    # 参数说明:
+    # --requirepass: 设置密码
+    # --appendonly: 启用 AOF 持久化
+    # --maxmemory: 最大内存限制
+    # --maxmemory-policy: 内存淘汰策略
+    # --save: RDB 持久化策略
+    # 
+    # 可以根据需要添加更多参数，或使用配置文件
+    # ====================================================================================
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD:-}
+      # 可选: 覆盖配置文件中的参数
+      # - --maxmemory
+      # - 1gb
+      # - --maxmemory-policy
+      # - allkeys-lru
+
+    # ====================================================================================
+    # 数据卷挂载
+    # ====================================================================================
+    volumes:
+      # Redis 数据持久化 (AOF 和 RDB 文件)
+      - redis_data:/data
+      
+      # 自定义配置文件 (可选)
+      # 如果需要完全自定义配置，可以挂载自己的配置文件
+      # - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      
+      # 日志文件 (可选)
+      # 如果在配置文件中设置了 logfile，可以挂载日志目录
+      # - redis_logs:/var/log/redis
+
+    # ====================================================================================
+    # 网络配置
+    # ====================================================================================
+    networks:
+      - woodlin-network
+
+    # ====================================================================================
+    # 健康检查配置
+    # ====================================================================================
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    # ====================================================================================
+    # 系统资源限制
+    # ====================================================================================
+    ulimits:
+      # 文件描述符限制
+      # Redis 需要较多文件描述符处理大量连接
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    # ====================================================================================
+    # 安全选项
+    # ====================================================================================
+    security_opt:
+      - no-new-privileges:true
+
+    # ====================================================================================
+    # 资源限制
+    # 
+    # 根据实际负载调整
+    # - 开发环境: 256M - 512M
+    # - 测试环境: 512M - 1G
+    # - 生产环境: 1G - 8G+
+    # 
+    # 注意: 内存限制应该大于 Redis maxmemory 配置
+    # ====================================================================================
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDIS_MAX_CPU:-1.0}
+          memory: ${REDIS_MAX_MEMORY:-1G}
+        reservations:
+          cpus: ${REDIS_MIN_CPU:-0.25}
+          memory: ${REDIS_MIN_MEMORY:-256M}
+
+    # ====================================================================================
+    # 日志配置
+    # ====================================================================================
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # ====================================================================================
+    # 系统内核参数优化 (可选)
+    # 
+    # 注意: 这些参数需要 Docker 运行在特权模式或宿主机已配置
+    # 
+    # 宿主机配置 (推荐):
+    # echo 'net.core.somaxconn = 511' >> /etc/sysctl.conf
+    # echo 'vm.overcommit_memory = 1' >> /etc/sysctl.conf
+    # sysctl -p
+    # 
+    # echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    # ====================================================================================
+    # sysctls:
+    #   - net.core.somaxconn=511
+    #   - vm.overcommit_memory=1
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  redis_data:
+    driver: local
+    # 可选: 挂载到宿主机指定目录
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/redis/data
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
+    # 可选: 连接到外部网络
+    # external: true
+
+# ====================================================================================
+# 扩展配置示例
+# ====================================================================================
+
+# Redis 主从复制配置示例:
+# services:
+#   redis-master:
+#     # ... (使用上面的配置)
+#
+#   redis-slave-1:
+#     # ... (使用上面的配置)
+#     command:
+#       - redis-server
+#       - /usr/local/etc/redis/redis.conf
+#       - --requirepass
+#       - ${REDIS_PASSWORD:-}
+#       - --replicaof
+#       - redis-master
+#       - "6379"
+#       - --masterauth
+#       - ${REDIS_PASSWORD:-}
+#     depends_on:
+#       - redis-master
+
+# Redis Sentinel 配置示例:
+# services:
+#   redis-sentinel:
+#     image: redis:7-alpine
+#     command:
+#       - redis-sentinel
+#       - /etc/redis/sentinel.conf
+#     volumes:
+#       - ./sentinel.conf:/etc/redis/sentinel.conf
+#     depends_on:
+#       - redis-master
+#       - redis-slave-1
+
+# Redis Cluster 配置示例:
+# services:
+#   redis-cluster:
+#     image: redis:7-alpine
+#     command:
+#       - redis-server
+#       - --cluster-enabled
+#       - "yes"
+#       - --cluster-config-file
+#       - nodes.conf
+#       - --cluster-node-timeout
+#       - "5000"
+#     deploy:
+#       replicas: 6
