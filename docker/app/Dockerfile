@@ -164,10 +164,12 @@ RUN apk add --no-cache \
     # 中文字体支持
     fontconfig \
     ttf-dejavu && \
-    # 下载并安装文泉驿字体 (Alpine 仓库可能没有，需要手动安装)
+    # 下载并安装文泉驿字体
+    # 注意: 如果网络不可达，可以将字体文件添加到项目并使用 COPY 命令
     mkdir -p /usr/share/fonts/wqy && \
     cd /usr/share/fonts/wqy && \
-    wget -q https://github.com/anthonyfok/fonts-wqy-zenhei/raw/master/wqy-zenhei.ttc && \
+    (wget -q --timeout=30 https://github.com/anthonyfok/fonts-wqy-zenhei/raw/master/wqy-zenhei.ttc || \
+     echo "Warning: Could not download font, continuing without it") && \
     # 配置时区
     ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo 'Asia/Shanghai' > /etc/timezone && \

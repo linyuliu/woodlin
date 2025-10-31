@@ -5,7 +5,8 @@
 # 1. 复制 .env.example 为 .env 并修改配置
 # 2. 构建镜像: docker compose build
 # 3. 启动服务: docker compose up -d
-# 4. 访问控制台: http://localhost:9001 (默认账号: minioadmin/minioadmin)
+# 4. 访问控制台: http://localhost:9001 
+#    ⚠️  默认账号: minioadmin/minioadmin (生产环境必须修改！)
 # 5. 停止服务: docker compose down
 #
 # MinIO Client (mc) 使用:
