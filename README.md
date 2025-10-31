@@ -84,10 +84,18 @@ woodlin
 
 2. **创建数据库**
    ```bash
-   # 创建数据库
+   # MySQL 数据库
    mysql -u root -p
-   source sql/woodlin_schema.sql
-   source sql/woodlin_data.sql
+   source sql/mysql/woodlin_schema.sql
+   source sql/mysql/woodlin_data.sql
+   
+   # PostgreSQL 数据库 (即将支持)
+   # psql -U postgres -d woodlin -f sql/postgresql/woodlin_schema.sql
+   # psql -U postgres -d woodlin -f sql/postgresql/woodlin_data.sql
+   
+   # Oracle 数据库 (即将支持)
+   # sqlplus system/password@//localhost:1521/woodlin @sql/oracle/woodlin_schema.sql
+   # sqlplus system/password@//localhost:1521/woodlin @sql/oracle/woodlin_data.sql
    ```
 
 3. **修改配置**
