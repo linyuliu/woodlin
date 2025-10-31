@@ -19,8 +19,14 @@ import com.mumu.woodlin.security.model.LoginUser;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.PasswordPolicyService;
 import com.mumu.woodlin.security.util.SecurityUtil;
+import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysUser;
+import com.mumu.woodlin.system.service.ISysPermissionService;
+import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.service.ISysUserService;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 认证服务实现
@@ -36,6 +42,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     
     private final ISysUserService userService;
     private final PasswordPolicyService passwordPolicyService;
+    private final ISysRoleService roleService;
+    private final ISysPermissionService permissionService;
     
     /**
      * 用户登录
@@ -214,12 +222,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
     
     /**
-     * 构建登录用户信息
+     * 构建登录用户信息（支持RBAC1）
      * 
      * @param user 用户实体
      * @return 登录用户信息
      */
     private LoginUser buildLoginUser(SysUser user) {
+        // 查询用户的所有角色（包括继承的角色，支持RBAC1）
+        List<SysRole> roles = roleService.selectAllRolesByUserId(user.getUserId());
+        
+        // 提取角色ID和角色编码
+        List<Long> roleIds = roles.stream()
+            .map(SysRole::getRoleId)
+            .collect(Collectors.toList());
+        
+        List<String> roleCodes = roles.stream()
+            .map(SysRole::getRoleCode)
+            .collect(Collectors.toList());
+        
+        // 查询用户的所有权限（包括角色继承的权限，支持RBAC1）
+        List<String> permissions = permissionService.selectPermissionCodesByUserId(user.getUserId());
+        
         return new LoginUser()
             .setUserId(user.getUserId())
             .setUsername(user.getUsername())
@@ -232,6 +255,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .setStatus(user.getStatus())
             .setTenantId(user.getTenantId())
             .setDeptId(user.getDeptId())
+            .setRoleIds(roleIds)
+            .setRoleCodes(roleCodes)
+            .setPermissions(permissions)
             .setLoginTime(LocalDateTime.now())
             .setLoginIp(getClientIp());
     }

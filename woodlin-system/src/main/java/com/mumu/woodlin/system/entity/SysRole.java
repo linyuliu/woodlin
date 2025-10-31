@@ -38,6 +38,27 @@ public class SysRole extends BaseEntity {
     private Long roleId;
     
     /**
+     * 父角色ID（用于角色继承，RBAC1支持）
+     */
+    @TableField("parent_role_id")
+    @Schema(description = "父角色ID")
+    private Long parentRoleId;
+    
+    /**
+     * 角色层级（0为顶级角色）
+     */
+    @TableField("role_level")
+    @Schema(description = "角色层级")
+    private Integer roleLevel;
+    
+    /**
+     * 角色路径（用于快速查找祖先角色，格式：/1/2/3/）
+     */
+    @TableField("role_path")
+    @Schema(description = "角色路径")
+    private String rolePath;
+    
+    /**
      * 角色名称
      */
     @TableField("role_name")
@@ -64,6 +85,13 @@ public class SysRole extends BaseEntity {
     @TableField("data_scope")
     @Schema(description = "数据范围")
     private String dataScope;
+    
+    /**
+     * 是否可继承（1-是，0-否）
+     */
+    @TableField("is_inheritable")
+    @Schema(description = "是否可继承")
+    private String isInheritable;
     
     /**
      * 角色状态（1-启用，0-禁用）
