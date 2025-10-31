@@ -282,10 +282,10 @@ CREATE TABLE `sys_config` (
 
 ## 初始化数据
 
-系统配置的初始数据存储在 `sql/system_config_data.sql` 文件中。在首次部署或升级时，需要执行该 SQL 脚本来插入默认配置：
+系统配置的初始数据存储在 `sql/mysql/system_config_data.sql` 文件中。在首次部署或升级时，需要执行该 SQL 脚本来插入默认配置：
 
 ```bash
-mysql -u root -p woodlin < sql/system_config_data.sql
+mysql -u root -p woodlin < sql/mysql/system_config_data.sql
 ```
 
 ## 注意事项
@@ -308,7 +308,7 @@ A: 可以参考 `docs/API_ENCRYPTION.md` 文档中的密钥生成方法，或使
 
 ### Q: 配置丢失了怎么办？
 
-A: 可以从数据库备份中恢复，或重新执行 `sql/system_config_data.sql` 脚本恢复默认配置。
+A: 可以从数据库备份中恢复，或重新执行 `sql/mysql/system_config_data.sql` 脚本恢复默认配置。
 
 ### Q: 能否针对不同租户设置不同的配置？
 

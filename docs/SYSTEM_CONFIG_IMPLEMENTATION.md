@@ -18,7 +18,7 @@
    - 更新路由配置，添加"系统设置"菜单项
 
 3. **数据库**
-   - 创建 `sql/system_config_data.sql` - 包含所有默认配置数据
+   - 创建 `sql/mysql/system_config_data.sql` - 包含所有默认配置数据
    - 涵盖三大配置分类：
      - API 加密配置（16项）
      - 密码策略配置（13项）
@@ -236,7 +236,7 @@ configService.batchUpdateConfig(updateDto);
 5. `woodlin-system/src/main/java/com/mumu/woodlin/system/dto/ConfigUpdateDto.java`
 6. `woodlin-web/src/api/config.ts`
 7. `woodlin-web/src/views/system/SystemSettingsView.vue`
-8. `sql/system_config_data.sql`
+8. `sql/mysql/system_config_data.sql`
 9. `docs/SYSTEM_CONFIG.md`
 
 ### 修改文件
