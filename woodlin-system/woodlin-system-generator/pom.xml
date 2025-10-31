@@ -5,19 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        Woodlin 文件管理模块
+        Woodlin 代码生成模块
         作者: mumu
-        描述: 文件上传、下载、预览等功能模块
+        描述: 代码自动生成工具，提升开发效率
     -->
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-file</artifactId>
-    <name>Woodlin File Module</name>
-    <description>Woodlin 文件管理模块</description>
+    <artifactId>woodlin-system-generator</artifactId>
+    <name>Woodlin System Generator Module</name>
+    <description>Woodlin 系统代码生成模块</description>
 
     <!-- 依赖管理 -->
     <dependencyManagement>
@@ -52,44 +52,10 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- MinIO -->
+        <!-- Velocity 模板引擎 -->
         <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-        </dependency>
-
-        <!-- AWS S3 SDK -->
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
-        </dependency>
-        
-        <!-- Aliyun OSS -->
-        <dependency>
-            <groupId>com.aliyun.oss</groupId>
-            <artifactId>aliyun-sdk-oss</artifactId>
-        </dependency>
-        
-        <!-- Tencent COS -->
-        <dependency>
-            <groupId>com.qcloud</groupId>
-            <artifactId>cos_api</artifactId>
-        </dependency>
-        
-        <!-- Huawei OBS -->
-        <dependency>
-            <groupId>com.huaweicloud</groupId>
-            <artifactId>esdk-obs-java-bundle</artifactId>
-        </dependency>
-        
-        <!-- Apache Tika for file type detection -->
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-parsers-standard-package</artifactId>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity-engine-core</artifactId>
         </dependency>
 
         <!-- Validation -->

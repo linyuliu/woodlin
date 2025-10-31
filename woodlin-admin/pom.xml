@@ -40,29 +40,30 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-common</artifactId>
         </dependency>
+        <!-- Woodlin System Modules -->
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-security</artifactId>
+            <artifactId>woodlin-system-security</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-system</artifactId>
+            <artifactId>woodlin-system-core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-tenant</artifactId>
+            <artifactId>woodlin-system-tenant</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-file</artifactId>
+            <artifactId>woodlin-system-file</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-task</artifactId>
+            <artifactId>woodlin-system-task</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mumu</groupId>
-            <artifactId>woodlin-generator</artifactId>
+            <artifactId>woodlin-system-generator</artifactId>
         </dependency>
 
         <!-- Spring Boot Starter -->
