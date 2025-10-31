@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.mumu.woodlin.common.response.PageResult;
 import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.system.dto.RoleTreeDTO;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.service.ISysRoleService;
 
@@ -236,9 +237,9 @@ public class SysRoleController {
         summary = "获取角色树",
         description = "获取角色的树形结构，用于前端展示角色层次关系（RBAC1功能）"
     )
-    public R<List<com.mumu.woodlin.system.dto.RoleTreeDTO>> getRoleTree(
+    public R<List<RoleTreeDTO>> getRoleTree(
             @Parameter(description = "租户ID", example = "tenant001") @RequestParam(required = false) String tenantId) {
-        List<com.mumu.woodlin.system.dto.RoleTreeDTO> tree = roleService.buildRoleTree(tenantId);
+        List<RoleTreeDTO> tree = roleService.buildRoleTree(tenantId);
         return R.ok(tree);
     }
 }
