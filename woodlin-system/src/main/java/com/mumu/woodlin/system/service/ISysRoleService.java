@@ -5,6 +5,7 @@ import java.util.List;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import com.mumu.woodlin.system.dto.RoleTreeDTO;
 import com.mumu.woodlin.system.entity.SysRole;
 
 /**
@@ -145,5 +146,5 @@ public interface ISysRoleService extends IService<SysRole> {
      * @param tenantId 租户ID
      * @return 角色树列表
      */
-    List<com.mumu.woodlin.system.dto.RoleTreeDTO> buildRoleTree(String tenantId);
+    List<RoleTreeDTO> buildRoleTree(String tenantId);
 }
