@@ -336,4 +336,61 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 这里简化处理，实际应该调用存储过程或实现复杂的权限聚合逻辑
         inheritedPermissionMapper.refreshInheritedPermissions(roleId);
     }
+    
+    @Override
+    public List<com.mumu.woodlin.system.dto.RoleTreeDTO> buildRoleTree(String tenantId) {
+        // 查询所有角色
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(StrUtil.isNotBlank(tenantId), SysRole::getTenantId, tenantId);
+        wrapper.eq(SysRole::getDeleted, "0");
+        wrapper.orderByAsc(SysRole::getSortOrder, SysRole::getCreateTime);
+        List<SysRole> allRoles = list(wrapper);
+        
+        // 构建树形结构
+        return buildTreeRecursive(allRoles, null);
+    }
+    
+    /**
+     * 递归构建角色树
+     */
+    private List<com.mumu.woodlin.system.dto.RoleTreeDTO> buildTreeRecursive(List<SysRole> allRoles, Long parentId) {
+        List<com.mumu.woodlin.system.dto.RoleTreeDTO> treeList = new ArrayList<>();
+        
+        for (SysRole role : allRoles) {
+            // 判断是否为当前父节点的子节点
+            boolean isChild = (parentId == null && (role.getParentRoleId() == null || role.getParentRoleId() == 0))
+                || (parentId != null && parentId.equals(role.getParentRoleId()));
+            
+            if (isChild) {
+                com.mumu.woodlin.system.dto.RoleTreeDTO node = convertToTreeDTO(role);
+                
+                // 递归查找子节点
+                List<com.mumu.woodlin.system.dto.RoleTreeDTO> children = buildTreeRecursive(allRoles, role.getRoleId());
+                node.setChildren(children);
+                node.setHasChildren(!children.isEmpty());
+                
+                treeList.add(node);
+            }
+        }
+        
+        return treeList;
+    }
+    
+    /**
+     * 转换角色实体为树节点DTO
+     */
+    private com.mumu.woodlin.system.dto.RoleTreeDTO convertToTreeDTO(SysRole role) {
+        return new com.mumu.woodlin.system.dto.RoleTreeDTO()
+            .setRoleId(role.getRoleId())
+            .setParentRoleId(role.getParentRoleId())
+            .setRoleName(role.getRoleName())
+            .setRoleCode(role.getRoleCode())
+            .setRoleLevel(role.getRoleLevel())
+            .setRolePath(role.getRolePath())
+            .setIsInheritable(role.getIsInheritable())
+            .setStatus(role.getStatus())
+            .setSortOrder(role.getSortOrder())
+            .setHasChildren(false)
+            .setChildren(new ArrayList<>());
+    }
 }
