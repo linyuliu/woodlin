@@ -72,16 +72,19 @@ services:
     # 
     # 可以根据需要添加更多参数，或使用配置文件
     # ====================================================================================
-    command:
-      - redis-server
-      - /usr/local/etc/redis/redis.conf
-      - --requirepass
-      - ${REDIS_PASSWORD:-}
-      # 可选: 覆盖配置文件中的参数
-      # - --maxmemory
-      # - 1gb
-      # - --maxmemory-policy
-      # - allkeys-lru
+    # 注意: 如果 REDIS_PASSWORD 为空，请移除 --requirepass 参数
+    # 或者确保设置了密码
+    command: >
+      sh -c '
+      if [ -n "${REDIS_PASSWORD}" ]; then
+        exec redis-server /usr/local/etc/redis/redis.conf --requirepass "${REDIS_PASSWORD}"
+      else
+        exec redis-server /usr/local/etc/redis/redis.conf
+      fi
+      '
+    # 可选: 覆盖配置文件中的参数
+    # - --maxmemory 1gb
+    # - --maxmemory-policy allkeys-lru
 
     # ====================================================================================
     # 数据卷挂载
@@ -108,7 +111,14 @@ services:
     # 健康检查配置
     # ====================================================================================
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      test: >
+        sh -c '
+        if [ -n "${REDIS_PASSWORD}" ]; then
+          redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping
+        else
+          redis-cli ping
+        fi
+        '
       interval: 30s
       timeout: 5s
       retries: 5
