@@ -213,7 +213,7 @@ RUN mkdir -p /data && \
 # 使用 redis-cli ping 检查 Redis 是否可用
 # ====================================================================================
 HEALTHCHECK --interval=30s --timeout=5s --retries=5 --start-period=20s \
-    CMD redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping || exit 1
+    CMD sh -c 'if [ -n "$REDIS_PASSWORD" ]; then redis-cli --no-auth-warning -a "$REDIS_PASSWORD" ping; else redis-cli ping; fi' || exit 1
 
 # 暴露端口
 EXPOSE 6379
