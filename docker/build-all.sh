@@ -259,7 +259,7 @@ build_app() {
 # ====================================================================================
 build_mysql() {
     info "========================================"
-    info "构建 MySQL 8.0 数据库"
+    info "构建 MySQL 8.4 LTS 数据库"
     info "========================================"
     
     # MySQL 仅支持 amd64 和 arm64
@@ -268,8 +268,15 @@ build_mysql() {
         PLATFORMS="linux/amd64,linux/arm64"
     fi
     
+    # 构建标准镜像
     build_image "mysql" \
                 "$SCRIPT_DIR/mysql/Dockerfile" \
+                "woodlin-mysql" \
+                "$PROJECT_ROOT"
+    
+    # 构建 distroless 镜像
+    build_image "mysql-distroless" \
+                "$SCRIPT_DIR/mysql/Dockerfile.distroless" \
                 "woodlin-mysql" \
                 "$PROJECT_ROOT"
     

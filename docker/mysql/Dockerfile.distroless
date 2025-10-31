@@ -1,0 +1,231 @@
+# ====================================================================================
+# MySQL 8.4 LTS - Distroless 多架构镜像
+# 
+# 特性:
+# - 基于精简的 MySQL 镜像构建
+# - 支持多架构: linux/amd64, linux/arm64
+# - 最小化攻击面，移除非必需工具
+# - 优化性能参数和安全配置
+# - 适合生产环境部署
+# 
+# 构建命令 (多架构):
+# docker buildx build --platform linux/amd64,linux/arm64 \
+#   -t woodlin-mysql:distroless \
+#   -f docker/mysql/Dockerfile.distroless .
+# 
+# 注意:
+# - 不包含 shell 和调试工具，无法进入容器调试
+# - 健康检查需要使用外部工具或依赖 orchestrator
+# - 适合安全要求高的生产环境
+# ====================================================================================
+
+# ====================================================================================
+# 阶段 1: 基础镜像准备
+# 使用官方 MySQL 镜像作为基础
+# ====================================================================================
+FROM mysql:8.4 AS mysql-base
+
+# ====================================================================================
+# 阶段 2: 精简运行时镜像
+# 基于 Debian Slim 构建最小化镜像
+# ====================================================================================
+FROM debian:bookworm-slim
+
+# 设置标签信息
+LABEL maintainer="Woodlin Team" \
+      description="MySQL 8.4 LTS (Distroless) for Woodlin" \
+      version="8.4" \
+      org.opencontainers.image.title="MySQL 8.4 LTS (Distroless Edition)" \
+      org.opencontainers.image.vendor="Woodlin"
+
+# 设置环境变量
+ENV MYSQL_ROOT_PASSWORD="" \
+    MYSQL_DATABASE="" \
+    MYSQL_USER="" \
+    MYSQL_PASSWORD="" \
+    TZ=Asia/Shanghai \
+    LANG=zh_CN.UTF-8 \
+    LC_ALL=zh_CN.UTF-8
+
+# ====================================================================================
+# 安装 MySQL 运行时最小依赖
+# 
+# 只安装运行 MySQL 必需的包:
+# - libaio1: 异步 IO 库 (MySQL 必需)
+# - libncurses6: 终端库
+# - libnuma1: NUMA 支持
+# - libmecab2: 全文搜索支持
+# - libssl3: SSL/TLS 支持
+# - tzdata: 时区数据
+# - locales: 本地化支持
+# - ca-certificates: SSL 证书
+# 
+# 不安装:
+# - shell (bash/sh)
+# - 文本编辑器
+# - 网络工具
+# - 调试工具
+# ====================================================================================
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        # MySQL 核心依赖
+        libaio1 \
+        libncurses6 \
+        libnuma1 \
+        libmecab2 \
+        libssl3 \
+        # 系统基础
+        tzdata \
+        locales \
+        ca-certificates && \
+    # 配置中文本地化
+    echo "zh_CN.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen zh_CN.UTF-8 && \
+    update-locale LANG=zh_CN.UTF-8 && \
+    # 配置时区
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo 'Asia/Shanghai' > /etc/timezone && \
+    # 清理缓存
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# 从基础镜像复制 MySQL 二进制文件和配置
+COPY --from=mysql-base /usr/sbin/mysqld /usr/sbin/mysqld
+COPY --from=mysql-base /usr/bin/mysql* /usr/bin/
+COPY --from=mysql-base /etc/mysql /etc/mysql
+COPY --from=mysql-base /usr/share/mysql /usr/share/mysql
+COPY --from=mysql-base /docker-entrypoint.sh /usr/local/bin/
+COPY --from=mysql-base /docker-entrypoint-initdb.d /docker-entrypoint-initdb.d
+
+# 创建 MySQL 用户和目录
+RUN groupadd --system --gid 999 mysql && \
+    useradd --system --uid 999 --gid mysql --home-dir /var/lib/mysql --shell /bin/false mysql && \
+    mkdir -p /var/lib/mysql /var/run/mysqld /var/lib/mysql-files && \
+    chown -R mysql:mysql /var/lib/mysql /var/run/mysqld /var/lib/mysql-files && \
+    chmod 750 /var/lib/mysql /var/lib/mysql-files && \
+    chmod 777 /var/run/mysqld
+
+# ====================================================================================
+# MySQL 性能优化配置
+# 
+# 创建 /etc/mysql/conf.d/distroless.cnf
+# 针对 distroless 环境的优化配置
+# ====================================================================================
+RUN echo '[mysqld]\n\
+# 字符集配置\n\
+character-set-server=utf8mb4\n\
+collation-server=utf8mb4_unicode_ci\n\
+init-connect="SET NAMES utf8mb4"\n\
+\n\
+# 时区配置\n\
+default-time-zone="+08:00"\n\
+\n\
+# 大小写敏感配置\n\
+lower_case_table_names=1\n\
+\n\
+# SQL 模式配置\n\
+sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION\n\
+\n\
+# 连接配置\n\
+max_connections=200\n\
+max_connect_errors=1000\n\
+max_allowed_packet=64M\n\
+\n\
+# InnoDB 配置\n\
+innodb_buffer_pool_size=256M\n\
+innodb_buffer_pool_instances=2\n\
+innodb_log_file_size=128M\n\
+innodb_log_buffer_size=16M\n\
+innodb_flush_log_at_trx_commit=2\n\
+innodb_flush_method=O_DIRECT\n\
+innodb_io_capacity=500\n\
+innodb_read_io_threads=4\n\
+innodb_write_io_threads=4\n\
+innodb_file_per_table=1\n\
+\n\
+# 缓存配置\n\
+table_open_cache=1000\n\
+table_definition_cache=1000\n\
+thread_cache_size=50\n\
+\n\
+# 临时表配置\n\
+tmp_table_size=32M\n\
+max_heap_table_size=32M\n\
+\n\
+# 日志配置\n\
+slow_query_log=1\n\
+slow_query_log_file=/var/lib/mysql/slow.log\n\
+long_query_time=2\n\
+\n\
+# 二进制日志\n\
+server-id=1\n\
+log_bin=/var/lib/mysql/mysql-bin\n\
+binlog_format=ROW\n\
+binlog_expire_logs_seconds=604800\n\
+max_binlog_size=100M\n\
+\n\
+# 安全配置\n\
+skip-name-resolve=1\n\
+local_infile=0\n\
+secure_file_priv=/var/lib/mysql-files\n\
+symbolic-links=0\n\
+' > /etc/mysql/conf.d/distroless.cnf
+
+# 设置工作目录
+WORKDIR /var/lib/mysql
+
+# ====================================================================================
+# 说明: Distroless 镜像不支持 HEALTHCHECK 指令
+# 需要在 Kubernetes 或 docker-compose 中使用外部健康检查
+# 
+# Kubernetes 示例:
+# livenessProbe:
+#   exec:
+#     command:
+#       - mysqladmin
+#       - ping
+#       - -h
+#       - localhost
+#   initialDelaySeconds: 60
+#   periodSeconds: 30
+# 
+# Docker Compose 示例:
+# 使用外部健康检查容器或宿主机 mysqladmin
+# ====================================================================================
+
+# 暴露端口
+EXPOSE 3306
+
+# 切换到 mysql 用户
+USER mysql
+
+# 使用 entrypoint 脚本
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# 默认命令
+CMD ["mysqld"]
+
+# ====================================================================================
+# 环境变量说明
+# 
+# 必需的环境变量:
+# - MYSQL_ROOT_PASSWORD: root 用户密码 (必需)
+# 
+# 可选的环境变量:
+# - MYSQL_DATABASE: 自动创建的数据库名称
+# - MYSQL_USER: 自动创建的普通用户
+# - MYSQL_PASSWORD: 普通用户密码
+# - MYSQL_RANDOM_ROOT_PASSWORD: 生成随机 root 密码
+# - MYSQL_ONETIME_PASSWORD: root 首次登录后必须修改密码
+# 
+# 运行示例:
+# docker run -e MYSQL_ROOT_PASSWORD=MySecretPassword \
+#            -e MYSQL_DATABASE=woodlin \
+#            -e MYSQL_USER=woodlin \
+#            -e MYSQL_PASSWORD=woodlin123 \
+#            woodlin-mysql:distroless
+# 
+# 注意事项:
+# - 由于没有 shell，无法使用 docker exec 进入容器调试
+# - 需要使用外部工具进行数据库管理和监控
+# - 适合安全要求高的生产环境
+# ====================================================================================
