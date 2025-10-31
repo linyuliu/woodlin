@@ -148,7 +148,10 @@ check_buildx() {
         # 检查是否存在 multiarch builder
         if ! docker buildx ls | grep -q multiarch; then
             info "创建 multiarch builder..."
-            docker buildx create --name multiarch --use --driver docker-container --driver-opt network=host 2>&1 | grep -v "^$" || true
+            if ! docker buildx create --name multiarch --use --driver docker-container --driver-opt network=host; then
+                error "创建 multiarch builder 失败"
+                exit 1
+            fi
             docker buildx inspect --bootstrap multiarch
         else
             info "使用现有的 multiarch builder"
@@ -189,8 +192,11 @@ build_image() {
         if [ "$PUSH" = true ]; then
             push_arg="--push"
         else
-            push_arg="--load"
-            warning "多架构构建使用 --load 只会加载当前平台的镜像"
+            # --load 不支持多架构构建，必须使用 --push
+            # 如果不推送，则只构建单个平台的镜像
+            error "多架构构建必须使用 --push 参数推送到 registry"
+            error "或者不使用 --multi-arch 标志进行单架构构建"
+            exit 1
         fi
         
         docker buildx build \
