@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mumu.woodlin.system.mapper.SysPermissionMapper">
+
+    <resultMap id="BaseResultMap" type="com.mumu.woodlin.system.entity.SysPermission">
+        <id column="permission_id" property="permissionId" />
+        <result column="parent_id" property="parentId" />
+        <result column="permission_name" property="permissionName" />
+        <result column="permission_code" property="permissionCode" />
+        <result column="permission_type" property="permissionType" />
+        <result column="path" property="path" />
+        <result column="component" property="component" />
+        <result column="icon" property="icon" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="status" property="status" />
+        <result column="is_frame" property="isFrame" />
+        <result column="is_cache" property="isCache" />
+        <result column="visible" property="visible" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 根据角色ID查询权限列表 -->
+    <select id="selectPermissionsByRoleId" resultMap="BaseResultMap">
+        SELECT DISTINCT p.*
+        FROM sys_permission p
+        INNER JOIN sys_role_permission rp ON p.permission_id = rp.permission_id
+        WHERE rp.role_id = #{roleId}
+          AND p.deleted = '0'
+          AND p.status = '1'
+        ORDER BY p.sort_order ASC
+    </select>
+
+    <!-- 根据角色ID列表查询权限列表 -->
+    <select id="selectPermissionsByRoleIds" resultMap="BaseResultMap">
+        SELECT DISTINCT p.*
+        FROM sys_permission p
+        INNER JOIN sys_role_permission rp ON p.permission_id = rp.permission_id
+        WHERE rp.role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+            #{roleId}
+        </foreach>
+          AND p.deleted = '0'
+          AND p.status = '1'
+        ORDER BY p.sort_order ASC
+    </select>
+
+    <!-- 根据用户ID查询权限列表（包括角色继承的权限，使用RBAC1） -->
+    <select id="selectPermissionsByUserId" resultMap="BaseResultMap">
+        SELECT DISTINCT p.*
+        FROM sys_permission p
+        INNER JOIN sys_role_inherited_permission rip ON p.permission_id = rip.permission_id
+        INNER JOIN sys_user_role ur ON rip.role_id = ur.role_id
+        WHERE ur.user_id = #{userId}
+          AND p.deleted = '0'
+          AND p.status = '1'
+        ORDER BY p.sort_order ASC
+    </select>
+
+</mapper>

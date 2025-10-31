@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mumu.woodlin.system.mapper.SysRoleHierarchyMapper">
+
+    <resultMap id="BaseResultMap" type="com.mumu.woodlin.system.entity.SysRoleHierarchy">
+        <result column="ancestor_role_id" property="ancestorRoleId" />
+        <result column="descendant_role_id" property="descendantRoleId" />
+        <result column="distance" property="distance" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 查询角色的所有祖先角色ID -->
+    <select id="selectAncestorRoleIds" resultType="java.lang.Long">
+        SELECT DISTINCT ancestor_role_id
+        FROM sys_role_hierarchy
+        WHERE descendant_role_id = #{roleId}
+        ORDER BY distance ASC
+    </select>
+
+    <!-- 查询角色的所有后代角色ID -->
+    <select id="selectDescendantRoleIds" resultType="java.lang.Long">
+        SELECT DISTINCT descendant_role_id
+        FROM sys_role_hierarchy
+        WHERE ancestor_role_id = #{roleId}
+        ORDER BY distance ASC
+    </select>
+
+    <!-- 查询角色的直接子角色ID -->
+    <select id="selectDirectChildRoleIds" resultType="java.lang.Long">
+        SELECT DISTINCT descendant_role_id
+        FROM sys_role_hierarchy
+        WHERE ancestor_role_id = #{roleId}
+          AND distance = 1
+        ORDER BY descendant_role_id ASC
+    </select>
+
+    <!-- 删除角色的所有层次关系 -->
+    <delete id="deleteByRoleId">
+        DELETE FROM sys_role_hierarchy
+        WHERE descendant_role_id = #{roleId}
+           OR ancestor_role_id = #{roleId}
+    </delete>
+
+    <!-- 批量插入角色层次关系 -->
+    <insert id="batchInsert">
+        INSERT INTO sys_role_hierarchy (ancestor_role_id, descendant_role_id, distance, tenant_id, create_time)
+        VALUES
+        <foreach collection="hierarchies" item="item" separator=",">
+            (#{item.ancestorRoleId}, #{item.descendantRoleId}, #{item.distance}, #{item.tenantId}, NOW())
+        </foreach>
+    </insert>
+
+    <!-- 检查是否存在循环依赖 -->
+    <select id="checkCircularDependency" resultType="java.lang.Boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
+        FROM sys_role_hierarchy
+        WHERE ancestor_role_id = #{roleId}
+          AND descendant_role_id = #{parentRoleId}
+    </select>
+
+</mapper>
