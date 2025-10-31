@@ -2,7 +2,7 @@
 # Woodlin 多租户管理系统 - Distroless 多架构镜像
 # 
 # 特性:
-# - 基于 Google Distroless Java 25 (极简安全镜像)
+# - 基于 Google Distroless Java 21 (极简安全镜像)
 # - 支持多架构: linux/amd64, linux/arm64
 # - 最小化攻击面，只包含运行时必需的依赖
 # - 不包含 shell、包管理器等工具
@@ -22,7 +22,7 @@
 # ====================================================================================
 # 阶段 1: 依赖缓存层
 # ====================================================================================
-FROM bellsoft/liberica-openjdk-debian:25-cds AS deps
+FROM bellsoft/liberica-openjdk-debian:21-cds AS deps
 
 WORKDIR /build
 
@@ -49,7 +49,7 @@ RUN apt-get update && \
 # ====================================================================================
 # 阶段 2: 构建阶段
 # ====================================================================================
-FROM bellsoft/liberica-openjdk-debian:25-cds AS builder
+FROM bellsoft/liberica-openjdk-debian:21-cds AS builder
 
 WORKDIR /build
 
@@ -77,18 +77,18 @@ RUN mvn clean package -DskipTests -q -T 1C
 # - 符合 SLSA 供应链安全标准
 # 
 # 可用的标签:
-# - gcr.io/distroless/java25-debian12: 最新稳定版
-# - gcr.io/distroless/java25-debian12:debug: 包含 busybox (用于调试)
-# - gcr.io/distroless/java25-debian12:nonroot: 使用非 root 用户
+# - gcr.io/distroless/java21-debian12: 最新稳定版
+# - gcr.io/distroless/java21-debian12:debug: 包含 busybox (用于调试)
+# - gcr.io/distroless/java21-debian12:nonroot: 使用非 root 用户
 # ====================================================================================
-FROM gcr.io/distroless/java25-debian12:nonroot
+FROM gcr.io/distroless/java21-debian12:nonroot
 
 # 设置标签信息
 LABEL maintainer="Woodlin Team" \
       description="Woodlin Multi-tenant Management System (Distroless)" \
       version="1.0.0" \
       org.opencontainers.image.title="Woodlin Application (Distroless)" \
-      org.opencontainers.image.description="Minimal Spring Boot 3 + Java 25 image" \
+      org.opencontainers.image.description="Minimal Spring Boot 3 + Java 21 LTS image" \
       org.opencontainers.image.vendor="Woodlin" \
       org.opencontainers.image.url="https://github.com/linyuliu/woodlin"
 

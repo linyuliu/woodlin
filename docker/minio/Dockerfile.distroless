@@ -1,0 +1,92 @@
+# ====================================================================================
+# MinIO RELEASE.2025 - Distroless 多架构镜像
+# 
+# 特性:
+# - 基于 Distroless 极简镜像
+# - 支持多架构: linux/amd64, linux/arm64
+# - 最小化攻击面，只包含运行时必需的依赖
+# - 不包含 shell、包管理器等工具
+# - 极小的镜像体积
+# - S3 兼容的对象存储服务
+# - 适合生产环境部署
+# 
+# 构建命令 (多架构):
+# docker buildx build --platform linux/amd64,linux/arm64 \
+#   -t woodlin-minio:distroless \
+#   -f docker/minio/Dockerfile.distroless .
+# 
+# 注意:
+# - 无法进入容器 shell 进行调试
+# - 健康检查需要使用外部工具或依赖 orchestrator
+# ====================================================================================
+
+# ====================================================================================
+# 阶段 1: 获取 MinIO 二进制文件
+# ====================================================================================
+FROM minio/minio:latest AS minio-binary
+
+# ====================================================================================
+# 阶段 2: 运行时镜像 (Distroless)
+# 
+# 使用 Distroless static 镜像 (仅包含静态编译的二进制文件)
+# MinIO 是 Go 编译的静态二进制，不需要 libc
+# ====================================================================================
+FROM gcr.io/distroless/static-debian12:nonroot
+
+# 设置标签信息
+LABEL maintainer="Woodlin Team" \
+      description="MinIO Object Storage (Distroless)" \
+      version="2025" \
+      org.opencontainers.image.title="MinIO (Distroless Edition)" \
+      org.opencontainers.image.description="Minimal S3-compatible object storage" \
+      org.opencontainers.image.vendor="Woodlin"
+
+# 设置环境变量
+ENV MINIO_ROOT_USER="" \
+    MINIO_ROOT_PASSWORD="" \
+    MINIO_REGION="cn-north-1" \
+    MINIO_BROWSER="on"
+
+# 创建数据目录 (distroless 使用 nonroot 用户，UID 65532)
+WORKDIR /data
+
+# 复制 MinIO 二进制文件
+COPY --from=minio-binary /usr/bin/minio /usr/bin/minio
+COPY --from=minio-binary /usr/bin/docker-entrypoint.sh /usr/bin/docker-entrypoint.sh
+
+# ====================================================================================
+# 说明: Distroless 镜像不支持 HEALTHCHECK 指令
+# 需要在 Kubernetes 或 docker-compose 中使用外部健康检查
+# 
+# Kubernetes 示例:
+# livenessProbe:
+#   httpGet:
+#     path: /minio/health/live
+#     port: 9000
+#   initialDelaySeconds: 30
+#   periodSeconds: 30
+# 
+# Docker Compose 示例:
+# 需要使用外部 HTTP 检查工具
+# ====================================================================================
+
+# 暴露端口
+EXPOSE 9000 9001
+
+# 使用 distroless 的入口点
+# 注意: distroless 不支持 ENTRYPOINT 脚本，直接运行二进制
+ENTRYPOINT ["/usr/bin/minio"]
+CMD ["server", "/data", "--console-address", ":9001"]
+
+# ====================================================================================
+# 环境变量说明
+# 
+# 必需的环境变量:
+# - MINIO_ROOT_USER: MinIO 管理员用户名
+# - MINIO_ROOT_PASSWORD: MinIO 管理员密码 (至少 8 个字符)
+# 
+# 运行示例:
+# docker run -e MINIO_ROOT_USER=admin \
+#            -e MINIO_ROOT_PASSWORD=MySecretPassword123 \
+#            woodlin-minio:distroless
+# ====================================================================================
