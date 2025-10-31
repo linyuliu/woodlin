@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mumu.woodlin.system.mapper.SysRoleInheritedPermissionMapper">
+
+    <resultMap id="BaseResultMap" type="com.mumu.woodlin.system.entity.SysRoleInheritedPermission">
+        <result column="role_id" property="roleId" />
+        <result column="permission_id" property="permissionId" />
+        <result column="is_inherited" property="isInherited" />
+        <result column="inherited_from" property="inheritedFrom" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 查询角色的所有权限ID（包括继承的） -->
+    <select id="selectPermissionIdsByRoleId" resultType="java.lang.Long">
+        SELECT DISTINCT permission_id
+        FROM sys_role_inherited_permission
+        WHERE role_id = #{roleId}
+        ORDER BY permission_id ASC
+    </select>
+
+    <!-- 查询角色的直接权限ID（不包括继承的） -->
+    <select id="selectDirectPermissionIdsByRoleId" resultType="java.lang.Long">
+        SELECT DISTINCT permission_id
+        FROM sys_role_inherited_permission
+        WHERE role_id = #{roleId}
+          AND is_inherited = '0'
+        ORDER BY permission_id ASC
+    </select>
+
+    <!-- 删除角色的所有权限缓存 -->
+    <delete id="deleteByRoleId">
+        DELETE FROM sys_role_inherited_permission
+        WHERE role_id = #{roleId}
+    </delete>
+
+    <!-- 批量插入角色权限缓存 -->
+    <insert id="batchInsert">
+        INSERT INTO sys_role_inherited_permission (role_id, permission_id, is_inherited, inherited_from, tenant_id, update_time)
+        VALUES
+        <foreach collection="permissions" item="item" separator=",">
+            (#{item.roleId}, #{item.permissionId}, #{item.isInherited}, #{item.inheritedFrom}, #{item.tenantId}, NOW())
+        </foreach>
+    </insert>
+
+    <!-- 刷新角色的继承权限缓存 -->
+    <insert id="refreshInheritedPermissions">
+        <!-- 删除现有缓存 -->
+        DELETE FROM sys_role_inherited_permission WHERE role_id = #{roleId};
+        
+        <!-- 插入直接权限 -->
+        INSERT INTO sys_role_inherited_permission (role_id, permission_id, is_inherited, inherited_from, tenant_id, update_time)
+        SELECT 
+            #{roleId} as role_id,
+            rp.permission_id,
+            '0' as is_inherited,
+            NULL as inherited_from,
+            r.tenant_id,
+            NOW() as update_time
+        FROM sys_role_permission rp
+        INNER JOIN sys_role r ON rp.role_id = r.role_id
+        WHERE rp.role_id = #{roleId}
+          AND r.deleted = '0';
+        
+        <!-- 插入继承权限 -->
+        INSERT INTO sys_role_inherited_permission (role_id, permission_id, is_inherited, inherited_from, tenant_id, update_time)
+        SELECT DISTINCT
+            #{roleId} as role_id,
+            rp.permission_id,
+            '1' as is_inherited,
+            rp.role_id as inherited_from,
+            r.tenant_id,
+            NOW() as update_time
+        FROM sys_role_hierarchy rh
+        INNER JOIN sys_role_permission rp ON rh.ancestor_role_id = rp.role_id
+        INNER JOIN sys_role r ON rh.ancestor_role_id = r.role_id
+        WHERE rh.descendant_role_id = #{roleId}
+          AND rh.distance > 0
+          AND r.is_inheritable = '1'
+          AND r.deleted = '0'
+          AND NOT EXISTS (
+              SELECT 1 FROM sys_role_inherited_permission 
+              WHERE role_id = #{roleId} AND permission_id = rp.permission_id
+          );
+    </insert>
+
+</mapper>
