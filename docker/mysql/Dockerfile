@@ -1,8 +1,8 @@
 # ====================================================================================
-# MySQL 8.0 LTS - 多架构 Docker 镜像
+# MySQL 8.4 LTS - 多架构 Docker 镜像
 # 
 # 特性:
-# - 基于 MySQL 8.0 官方镜像 (Oracle 维护的 LTS 版本)
+# - 基于 MySQL 8.4 LTS 官方镜像 (Oracle 维护的最新长期支持版本)
 # - 支持多架构: linux/amd64, linux/arm64
 # - 预装常用工具和中文字符集
 # - 优化性能参数和安全配置
@@ -10,17 +10,17 @@
 # 
 # 构建命令 (多架构):
 # docker buildx build --platform linux/amd64,linux/arm64 \
-#   -t woodlin-mysql:8.0 \
+#   -t woodlin-mysql:8.4 \
 #   -f docker/mysql/Dockerfile .
 # ====================================================================================
 
-FROM mysql:8.0
+FROM mysql:8.4
 
 # 设置标签信息
 LABEL maintainer="Woodlin Team" \
-      description="MySQL 8.0 for Woodlin with Chinese support" \
-      version="8.0" \
-      org.opencontainers.image.title="MySQL 8.0 (Woodlin Edition)" \
+      description="MySQL 8.4 LTS for Woodlin with Chinese support" \
+      version="8.4" \
+      org.opencontainers.image.title="MySQL 8.4 LTS (Woodlin Edition)" \
       org.opencontainers.image.vendor="Woodlin"
 
 # ====================================================================================

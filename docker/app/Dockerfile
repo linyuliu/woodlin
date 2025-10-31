@@ -2,12 +2,13 @@
 # Woodlin 多租户管理系统 - 多架构 Docker 镜像
 # 
 # 特性:
-# - 基于 BellSoft Liberica JDK 25 LTS (最新长期支持版本)
+# - 基于 BellSoft Liberica JDK 21 LTS (长期支持版本，带 CDS 优化)
 # - 支持多架构: linux/amd64, linux/arm64, linux/arm/v7
 # - 包含常用诊断工具和中文字体
 # - 优化内核参数 (打开文件数等)
 # - 多阶段构建优化镜像大小和层缓存
 # - 安全加固，非 root 用户运行
+# - CDS (Class Data Sharing) 优化启动速度
 # 
 # 构建命令 (多架构):
 # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
@@ -22,7 +23,7 @@
 # 阶段 1: 依赖缓存层
 # 目的: 将依赖下载单独作为一层，利用 Docker 缓存加速构建
 # ====================================================================================
-FROM bellsoft/liberica-openjdk-debian:25-cds AS deps
+FROM bellsoft/liberica-openjdk-debian:21-cds AS deps
 
 WORKDIR /build
 
@@ -50,9 +51,9 @@ RUN mvn dependency:go-offline -B -q || true
 
 # ====================================================================================
 # 阶段 2: 构建阶段
-# 使用 BellSoft Liberica JDK 25 完整版进行编译
+# 使用 BellSoft Liberica JDK 21 完整版进行编译
 # ====================================================================================
-FROM bellsoft/liberica-openjdk-debian:25-cds AS builder
+FROM bellsoft/liberica-openjdk-debian:21-cds AS builder
 
 WORKDIR /build
 
@@ -74,16 +75,16 @@ RUN mvn clean package -DskipTests -q -T 1C
 
 # ====================================================================================
 # 阶段 3: 运行时镜像
-# 使用 BellSoft Liberica JRE 25 Alpine 精简版作为运行时基础镜像
+# 使用 BellSoft Liberica JRE 21 Alpine 精简版作为运行时基础镜像 (带 CDS 优化)
 # ====================================================================================
-FROM bellsoft/liberica-openjre-alpine:25-cds
+FROM bellsoft/liberica-openjre-alpine:21-cds
 
 # 设置标签信息
 LABEL maintainer="Woodlin Team" \
       description="Woodlin Multi-tenant Management System" \
       version="1.0.0" \
       org.opencontainers.image.title="Woodlin Application" \
-      org.opencontainers.image.description="Spring Boot 3 + Java 25 multi-tenant system" \
+      org.opencontainers.image.description="Spring Boot 3 + Java 21 LTS multi-tenant system with CDS optimization" \
       org.opencontainers.image.vendor="Woodlin" \
       org.opencontainers.image.url="https://github.com/linyuliu/woodlin"
 
