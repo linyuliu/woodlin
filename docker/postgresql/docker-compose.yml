@@ -1,0 +1,240 @@
+# ====================================================================================
+# PostgreSQL 16 - Docker Compose 配置
+#
+# 使用方法:
+# 1. 复制 .env.example 为 .env 并修改配置
+# 2. 构建镜像: docker compose build
+# 3. 启动服务: docker compose up -d
+# 4. 查看日志: docker compose logs -f
+# 5. 连接数据库: psql -h 127.0.0.1 -p 5432 -U postgres
+# 6. 停止服务: docker compose down
+#
+# 数据备份:
+# docker compose exec postgresql pg_dump -U postgres woodlin > backup.sql
+#
+# 数据恢复:
+# docker compose exec -T postgresql psql -U postgres woodlin < backup.sql
+# ====================================================================================
+
+version: '3.8'
+
+services:
+  # ====================================================================================
+  # PostgreSQL 16 数据库服务
+  # ====================================================================================
+  postgresql:
+    # 使用本地 Dockerfile 构建
+    build:
+      context: ../..
+      dockerfile: docker/postgresql/Dockerfile
+      # 构建多架构镜像
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+
+    # 或者使用预构建的镜像
+    # image: woodlin-postgresql:16
+
+    container_name: woodlin-postgresql
+    hostname: postgresql
+
+    # 重启策略
+    restart: unless-stopped
+
+    # ====================================================================================
+    # 端口映射
+    # ====================================================================================
+    ports:
+      - "${POSTGRESQL_PORT:-5432}:5432"
+
+    # ====================================================================================
+    # 环境变量配置
+    # ====================================================================================
+    environment:
+      # postgres 用户密码 (必需，生产环境必须修改)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Passw0rd}
+      
+      # 超级用户名称 (可选，默认: postgres)
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      
+      # 自动创建数据库 (可选)
+      POSTGRES_DB: ${POSTGRES_DB:-woodlin}
+      
+      # initdb 参数 (可选)
+      # POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=zh_CN.UTF-8"
+      
+      # 数据目录 (可选，默认: /var/lib/postgresql/data)
+      PGDATA: /var/lib/postgresql/data/pgdata
+      
+      # 时区设置
+      TZ: Asia/Shanghai
+
+    # ====================================================================================
+    # 启动命令 (可选，覆盖默认命令)
+    # 
+    # PostgreSQL 配置参数可以通过命令行传递
+    # 但建议使用配置文件
+    # ====================================================================================
+    # command:
+    #   - postgres
+    #   - -c
+    #   - max_connections=200
+    #   - -c
+    #   - shared_buffers=256MB
+
+    # ====================================================================================
+    # 数据卷挂载
+    # ====================================================================================
+    volumes:
+      # PostgreSQL 数据持久化
+      - postgresql_data:/var/lib/postgresql/data
+      
+      # 初始化 SQL 脚本 (容器首次启动时自动执行)
+      # 将宿主机的 SQL 脚本挂载到容器的 /docker-entrypoint-initdb.d/
+      # - ../../sql:/docker-entrypoint-initdb.d:ro
+      
+      # 自定义配置文件 (可选)
+      # 如果需要覆盖 Dockerfile 中的配置，可以挂载自定义配置文件
+      # - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      # - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      
+      # 日志文件 (可选)
+      # - postgresql_logs:/var/log/postgresql
+      
+      # 备份目录 (可选)
+      # - ./backup:/backup
+
+    # ====================================================================================
+    # 网络配置
+    # ====================================================================================
+    networks:
+      - woodlin-network
+
+    # ====================================================================================
+    # 健康检查配置
+    # ====================================================================================
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+    # ====================================================================================
+    # 系统资源限制
+    # ====================================================================================
+    ulimits:
+      # 文件描述符限制
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    # ====================================================================================
+    # 安全选项
+    # ====================================================================================
+    security_opt:
+      - no-new-privileges:true
+
+    # ====================================================================================
+    # 资源限制
+    # 
+    # 根据实际负载调整
+    # - 开发环境: 512M - 1G
+    # - 测试环境: 1G - 2G
+    # - 生产环境: 2G - 8G+
+    # ====================================================================================
+    deploy:
+      resources:
+        limits:
+          cpus: ${POSTGRESQL_MAX_CPU:-2.0}
+          memory: ${POSTGRESQL_MAX_MEMORY:-2G}
+        reservations:
+          cpus: ${POSTGRESQL_MIN_CPU:-0.5}
+          memory: ${POSTGRESQL_MIN_MEMORY:-512M}
+
+    # ====================================================================================
+    # 日志配置
+    # ====================================================================================
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ====================================================================================
+# 数据卷定义
+# ====================================================================================
+volumes:
+  postgresql_data:
+    driver: local
+    # 可选: 挂载到宿主机指定目录
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/postgresql/data
+
+  # postgresql_logs:
+  #   driver: local
+
+# ====================================================================================
+# 网络定义
+# ====================================================================================
+networks:
+  woodlin-network:
+    driver: bridge
+    name: woodlin-network
+    # 可选: 连接到外部网络
+    # external: true
+
+# ====================================================================================
+# 扩展配置示例
+# ====================================================================================
+
+# PostgreSQL 主从复制配置示例:
+# services:
+#   postgresql-master:
+#     # ... (使用上面的配置)
+#     environment:
+#       POSTGRES_REPLICATION_MODE: master
+#       POSTGRES_REPLICATION_USER: repl_user
+#       POSTGRES_REPLICATION_PASSWORD: repl_password
+#     command:
+#       - postgres
+#       - -c
+#       - wal_level=replica
+#       - -c
+#       - max_wal_senders=3
+#       - -c
+#       - max_replication_slots=3
+#
+#   postgresql-slave:
+#     # ... (使用上面的配置)
+#     environment:
+#       POSTGRES_REPLICATION_MODE: slave
+#       POSTGRES_MASTER_HOST: postgresql-master
+#       POSTGRES_MASTER_PORT: 5432
+#       POSTGRES_REPLICATION_USER: repl_user
+#       POSTGRES_REPLICATION_PASSWORD: repl_password
+#     depends_on:
+#       - postgresql-master
+
+# PostgreSQL 使用 pgAdmin 作为管理工具:
+# services:
+#   pgadmin:
+#     image: dpage/pgadmin4:latest
+#     container_name: woodlin-pgadmin
+#     ports:
+#       - "5050:80"
+#     environment:
+#       PGADMIN_DEFAULT_EMAIL: admin@woodlin.com
+#       PGADMIN_DEFAULT_PASSWORD: admin
+#     volumes:
+#       - pgadmin_data:/var/lib/pgadmin
+#     networks:
+#       - woodlin-network
+#     depends_on:
+#       - postgresql
+#
+# volumes:
+#   pgadmin_data:
+#     driver: local

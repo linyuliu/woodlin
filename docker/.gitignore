@@ -1,0 +1,53 @@
+# ====================================================================================
+# Docker 目录 .gitignore
+# ====================================================================================
+
+# 环境变量文件 (包含敏感信息)
+.env
+*.env
+!.env.example
+
+# 备份文件
+backup/
+*.sql
+*.dump
+*.rdb
+*.aof
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# SSL 证书和密钥
+*.key
+*.crt
+*.pem
+*.cert
+*.ca-bundle
+
+# 配置文件 (可能包含敏感信息)
+config/*.conf
+!config/*.example.conf
+
+# 数据目录
+data/
+pgdata/
+
+# Docker 相关
+.dockerignore
+
+# IDE 和编辑器文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS 文件
+.DS_Store
+Thumbs.db
