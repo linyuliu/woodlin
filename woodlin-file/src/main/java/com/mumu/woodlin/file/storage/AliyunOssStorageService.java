@@ -1,18 +1,21 @@
 package com.mumu.woodlin.file.storage;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.file.enums.StorageType;
 
 /**
- * 阿里云OSS存储服务实现
+ * 阿里云OSS存储服务实现（S3兼容模式）
  * 
  * @author mumu
- * @description 阿里云对象存储服务(OSS)实现，兼容S3协议，使用统一的S3客户端
- *              阿里云OSS提供原生SDK和S3兼容接口，这里使用S3兼容模式以保持代码统一
+ * @description 阿里云对象存储服务(OSS)实现，使用S3协议，代码简洁统一
+ *              通过配置 woodlin.file.oss.use-native-sdk=false 或不配置时启用（默认）
+ *              适用场景：基础文件存储操作，代码简单易维护
  * @since 2025-01-30
  */
 @Service
+@ConditionalOnProperty(name = "woodlin.file.oss.use-native-sdk", havingValue = "false", matchIfMissing = true)
 public class AliyunOssStorageService extends AbstractS3CompatibleStorageService {
     
     @Override
