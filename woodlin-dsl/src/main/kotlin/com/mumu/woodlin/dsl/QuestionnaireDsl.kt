@@ -146,9 +146,33 @@ class ValidationRule {
     var name: String = ""
     var message: String = ""
     var condition: ((Map<String, Any>) -> Boolean)? = null
+    var expression: String? = null
     
     fun when_(block: (Map<String, Any>) -> Boolean) {
         condition = block
+    }
+    
+    /**
+     * 使用表达式定义验证条件
+     * 
+     * 示例:
+     * ```
+     * expr("age >= 18 && age <= 100")
+     * ```
+     */
+    fun expr(expression: String) {
+        this.expression = expression
+        this.condition = { answers ->
+            try {
+                val result = ExprEngine.exec(expression, answers)
+                when (result) {
+                    is Boolean -> result
+                    else -> false
+                }
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 }
 
