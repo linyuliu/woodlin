@@ -112,7 +112,7 @@ class QuestionnaireDslTest {
                     validate {
                         name = "年龄范围"
                         message = "年龄必须在18-100之间"
-                        when_ { answers ->
+                        whenCondition { answers ->
                             val age = answers["age"] as? Int ?: 0
                             age in 18..100
                         }

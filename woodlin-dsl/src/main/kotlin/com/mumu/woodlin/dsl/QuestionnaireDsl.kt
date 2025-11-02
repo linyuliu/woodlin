@@ -22,15 +22,19 @@ class Questionnaire(val id: String, val title: String) {
     val rules = mutableListOf<ValidationRule>()
     
     fun section(title: String, block: Section.() -> Unit) {
-        val section = Section(title)
-        section.block()
-        sections.add(section)
+        sections += Section(title).apply(block)
     }
     
     fun validation(block: ValidationRule.() -> Unit) {
-        val rule = ValidationRule()
-        rule.block()
-        rules.add(rule)
+        rules += ValidationRule().apply(block)
+    }
+    
+    operator fun Section.unaryPlus() {
+        this@Questionnaire.sections += this
+    }
+    
+    operator fun ValidationRule.unaryPlus() {
+        this@Questionnaire.rules += this
     }
 }
 
@@ -44,10 +48,11 @@ class Section(val title: String) {
     val questions = mutableListOf<Question>()
     
     fun question(block: Question.() -> Unit) {
-        val question = Question()
-        question.block()
-        question.order = questions.size + 1
-        questions.add(question)
+        questions += Question().apply(block).also { it.order = questions.size + 1 }
+    }
+    
+    operator fun Question.unaryPlus() {
+        this@Section.questions += this.also { it.order = this@Section.questions.size + 1 }
     }
 }
 
@@ -66,15 +71,19 @@ class Question {
     val validations = mutableListOf<ValidationRule>()
     
     fun option(text: String, value: String = text, block: (Option.() -> Unit)? = null) {
-        val option = Option(text, value)
-        block?.invoke(option)
-        options.add(option)
+        options += Option(text, value).apply { block?.invoke(this) }
     }
     
     fun validate(block: ValidationRule.() -> Unit) {
-        val rule = ValidationRule()
-        rule.block()
-        validations.add(rule)
+        validations += ValidationRule().apply(block)
+    }
+    
+    operator fun Option.unaryPlus() {
+        this@Question.options += this
+    }
+    
+    operator fun ValidationRule.unaryPlus() {
+        this@Question.validations += this
     }
 }
 
@@ -148,7 +157,7 @@ class ValidationRule {
     var condition: ((Map<String, Any>) -> Boolean)? = null
     var expression: String? = null
     
-    fun when_(block: (Map<String, Any>) -> Boolean) {
+    infix fun whenCondition(block: (Map<String, Any>) -> Boolean) {
         condition = block
     }
     
@@ -160,18 +169,12 @@ class ValidationRule {
      * expr("age >= 18 && age <= 100")
      * ```
      */
-    fun expr(expression: String) {
+    infix fun expr(expression: String) {
         this.expression = expression
         this.condition = { answers ->
-            try {
-                val result = ExprEngine.exec(expression, answers)
-                when (result) {
-                    is Boolean -> result
-                    else -> false
-                }
-            } catch (e: Exception) {
-                false
-            }
+            runCatching {
+                ExprEngine.exec(expression, answers) as? Boolean ?: false
+            }.getOrDefault(false)
         }
     }
 }
@@ -179,8 +182,5 @@ class ValidationRule {
 /**
  * 问卷DSL入口函数
  */
-fun questionnaire(id: String, title: String, block: Questionnaire.() -> Unit): Questionnaire {
-    val questionnaire = Questionnaire(id, title)
-    questionnaire.block()
-    return questionnaire
-}
+fun questionnaire(id: String, title: String, block: Questionnaire.() -> Unit): Questionnaire =
+    Questionnaire(id, title).apply(block)
