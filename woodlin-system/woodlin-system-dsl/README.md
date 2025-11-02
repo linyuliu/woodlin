@@ -19,7 +19,7 @@ Woodlin DSL 是一个使用 Kotlin 编写的问卷功能 DSL(领域特定语言)
 ```xml
 <dependency>
     <groupId>com.mumu</groupId>
-    <artifactId>woodlin-dsl</artifactId>
+    <artifactId>woodlin-system-dsl</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
