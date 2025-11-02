@@ -32,7 +32,6 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
     
     private final Optional<SearchableEncryptionService> encryptionService;
     
-    @Autowired
     public SensitiveDataServiceImpl(@Autowired(required = false) SearchableEncryptionService encryptionService) {
         this.encryptionService = Optional.ofNullable(encryptionService);
     }
