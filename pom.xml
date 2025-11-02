@@ -21,7 +21,6 @@
         <module>woodlin-dependencies</module>
         <module>woodlin-common</module>
         <module>woodlin-system</module>
-        <module>woodlin-dsl</module>
         <module>woodlin-admin</module>
     </modules>
 
