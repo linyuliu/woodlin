@@ -16,78 +16,89 @@ class QuestionnaireSerializer {
     /**
      * 序列化问卷为JSON
      */
-    fun toJson(questionnaire: Questionnaire): String {
-        val dto = QuestionnaireDto(
-            id = questionnaire.id,
-            title = questionnaire.title,
-            description = questionnaire.description,
-            version = questionnaire.version,
-            author = questionnaire.author,
-            sections = questionnaire.sections.map { section ->
-                SectionDto(
-                    title = section.title,
-                    description = section.description,
-                    order = section.order,
-                    questions = section.questions.map { question ->
-                        QuestionDto(
-                            id = question.id,
-                            type = question.type.name,
-                            title = question.title,
-                            description = question.description,
-                            required = question.required,
-                            order = question.order,
-                            options = question.options.map { option ->
-                                OptionDto(
-                                    text = option.text,
-                                    value = option.value,
-                                    order = option.order,
-                                    exclusive = option.exclusive
-                                )
-                            }
-                        )
-                    }
-                )
-            }
-        )
-        
-        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dto)
-    }
+    fun toJson(questionnaire: Questionnaire): String =
+        questionnaire.toDto()
+            .let { objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(it) }
+    
+    private fun Questionnaire.toDto() = QuestionnaireDto(
+        id = id,
+        title = title,
+        description = description,
+        version = version,
+        author = author,
+        sections = sections.map { it.toDto() }
+    )
+    
+    private fun Section.toDto() = SectionDto(
+        title = title,
+        description = description,
+        order = order,
+        questions = questions.map { it.toDto() }
+    )
+    
+    private fun Question.toDto() = QuestionDto(
+        id = id,
+        type = type.name,
+        title = title,
+        description = description,
+        required = required,
+        order = order,
+        options = options.map { it.toDto() }
+    )
+    
+    private fun Option.toDto() = OptionDto(
+        text = text,
+        value = value,
+        order = order,
+        exclusive = exclusive
+    )
     
     /**
      * 从JSON反序列化问卷
      */
     fun fromJson(json: String): Questionnaire {
         val dto = objectMapper.readValue(json, QuestionnaireDto::class.java)
-        
-        return questionnaire(dto.id, dto.title) {
+        return dtoToQuestionnaire(dto)
+    }
+    
+    private fun dtoToQuestionnaire(dto: QuestionnaireDto): Questionnaire = 
+        questionnaire(dto.id, dto.title) {
             description = dto.description
             version = dto.version
             author = dto.author
-            
             dto.sections.forEach { sectionDto ->
-                section(sectionDto.title) {
-                    description = sectionDto.description
-                    order = sectionDto.order
-                    
-                    sectionDto.questions.forEach { questionDto ->
-                        question {
-                            id = questionDto.id
-                            type = QuestionType.valueOf(questionDto.type)
-                            title = questionDto.title
-                            description = questionDto.description
-                            required = questionDto.required
-                            order = questionDto.order
-                            
-                            questionDto.options.forEach { optionDto ->
-                                option(optionDto.text, optionDto.value) {
-                                    order = optionDto.order
-                                    exclusive = optionDto.exclusive
-                                }
-                            }
-                        }
-                    }
-                }
+                addSection(this, sectionDto)
             }
+        }
+    
+    private fun addSection(q: Questionnaire, dto: SectionDto) {
+        q.section(dto.title) {
+            description = dto.description
+            order = dto.order
+            dto.questions.forEach { questionDto ->
+                addQuestion(this, questionDto)
+            }
+        }
+    }
+    
+    private fun addQuestion(s: Section, dto: QuestionDto) {
+        s.question {
+            id = dto.id
+            type = QuestionType.valueOf(dto.type)
+            title = dto.title
+            description = dto.description
+            required = dto.required
+            order = dto.order
+            dto.options.forEach { optionDto ->
+                addOption(this, optionDto)
+            }
+        }
+    }
+    
+    private fun addOption(q: Question, dto: OptionDto) {
+        q.option(dto.text, dto.value) {
+            order = dto.order
+            exclusive = dto.exclusive
         }
     }
     

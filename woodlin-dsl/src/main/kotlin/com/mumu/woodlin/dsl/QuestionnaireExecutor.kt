@@ -50,73 +50,59 @@ class QuestionnaireExecutor(private val questionnaire: Questionnaire) {
      * 验证答案
      */
     fun validate(answers: Map<String, Any>): ValidationResult {
-        val errors = mutableListOf<ValidationError>()
+        val questionErrors = questionnaire.sections
+            .flatMap { section -> section.questions }
+            .flatMap { question -> validateQuestion(question, answers) }
         
-        questionnaire.sections.forEach { section ->
-            section.questions.forEach { question ->
-                if (question.required && !answers.containsKey(question.id)) {
-                    errors.add(
-                        ValidationError(
-                            question.id,
-                            "${question.title} 是必填项"
-                        )
-                    )
-                }
-                
-                question.validations.forEach { rule ->
-                    val condition = rule.condition
-                    if (condition != null && !condition(answers)) {
-                        errors.add(
-                            ValidationError(
-                                question.id,
-                                rule.message
-                            )
-                        )
-                    }
-                }
-            }
-        }
+        val globalErrors = questionnaire.rules
+            .mapNotNull { rule -> validateRule(rule, answers, "global") }
         
-        questionnaire.rules.forEach { rule ->
-            val condition = rule.condition
-            if (condition != null && !condition(answers)) {
-                errors.add(
-                    ValidationError(
-                        "global",
-                        rule.message
-                    )
-                )
-            }
-        }
+        val allErrors = questionErrors + globalErrors
         
         return ValidationResult(
-            valid = errors.isEmpty(),
-            errors = errors
+            valid = allErrors.isEmpty(),
+            errors = allErrors
         )
+    }
+    
+    private fun validateQuestion(question: Question, answers: Map<String, Any>): List<ValidationError> {
+        val requiredError = if (question.required && !answers.containsKey(question.id)) {
+            listOf(ValidationError(question.id, "${question.title} 是必填项"))
+        } else {
+            emptyList()
+        }
+        
+        val ruleErrors = question.validations
+            .mapNotNull { rule -> validateRule(rule, answers, question.id) }
+        
+        return requiredError + ruleErrors
+    }
+    
+    private fun validateRule(rule: ValidationRule, answers: Map<String, Any>, questionId: String): ValidationError? {
+        return rule.condition?.let { condition ->
+            if (!condition(answers)) {
+                ValidationError(questionId, rule.message)
+            } else {
+                null
+            }
+        }
     }
     
     /**
      * 执行问卷
      */
-    fun execute(answersMap: Map<String, Any>): ExecutionResult {
-        val validationResult = validate(answersMap)
-        
-        val answers = answersMap.map { (questionId, value) ->
-            Answer(questionId, value)
-        }
-        
-        return ExecutionResult(
+    fun execute(answersMap: Map<String, Any>): ExecutionResult =
+        ExecutionResult(
             questionnaireId = questionnaire.id,
-            answers = answers,
-            validationResult = validationResult
+            answers = answersMap.map { (questionId, value) -> Answer(questionId, value) },
+            validationResult = validate(answersMap)
         )
-    }
     
     /**
      * 获取问卷元数据
      */
-    fun getMetadata(): QuestionnaireMetadata {
-        return QuestionnaireMetadata(
+    fun getMetadata(): QuestionnaireMetadata =
+        QuestionnaireMetadata(
             id = questionnaire.id,
             title = questionnaire.title,
             description = questionnaire.description,
@@ -127,7 +113,6 @@ class QuestionnaireExecutor(private val questionnaire: Questionnaire) {
                 .flatMap { it.questions }
                 .count { it.required }
         )
-    }
     
     /**
      * 问卷元数据
