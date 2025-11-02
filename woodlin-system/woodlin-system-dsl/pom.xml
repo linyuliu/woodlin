@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>com.mumu</groupId>
-        <artifactId>woodlin</artifactId>
+        <artifactId>woodlin-system</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>woodlin-dsl</artifactId>
+    <artifactId>woodlin-system-dsl</artifactId>
     <packaging>jar</packaging>
-    <name>Woodlin DSL Module</name>
+    <name>Woodlin System DSL Module</name>
     <description>问卷功能DSL模块,使用Kotlin实现</description>
 
     <properties>
