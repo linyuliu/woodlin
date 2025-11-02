@@ -97,49 +97,45 @@ private class Tokenizer(private val input: String) {
         val start = pos
         var hasDot = false
         
-        while (pos < input.length) {
-            val ch = input[pos]
-            if (ch.isDigit()) {
-                pos++
-            } else if (ch == '.' && !hasDot) {
-                hasDot = true
-                pos++
-            } else {
-                break
-            }
+        while (pos < input.length && input[pos].let { it.isDigit() || (it == '.' && !hasDot.also { _ -> hasDot = it == '.' }) }) {
+            pos++
         }
         
-        tokens.add(Token(TokenType.NUM, input.substring(start, pos), start))
+        tokens += Token(TokenType.NUM, input.substring(start, pos), start)
     }
     
     private fun tokenizeString(quote: Char) {
         val start = pos
         pos++ // skip opening quote
-        val sb = StringBuilder()
         
-        while (pos < input.length) {
-            val ch = input[pos]
-            if (ch == '\\' && pos + 1 < input.length) {
-                sb.append(input[pos + 1])
-                pos += 2
-            } else if (ch == quote) {
-                pos++
-                break
-            } else {
-                sb.append(ch)
-                pos++
+        val content = buildString {
+            while (pos < input.length) {
+                when (val ch = input[pos]) {
+                    '\\' -> if (pos + 1 < input.length) {
+                        append(input[++pos])
+                        pos++
+                    }
+                    quote -> {
+                        pos++
+                        return@buildString
+                    }
+                    else -> {
+                        append(ch)
+                        pos++
+                    }
+                }
             }
         }
         
-        tokens.add(Token(TokenType.STR, sb.toString(), start))
+        tokens += Token(TokenType.STR, content, start)
     }
     
     private fun tokenizeIdentifier() {
         val start = pos
-        while (pos < input.length && (input[pos].isLetterOrDigit() || input[pos] == '_')) {
+        while (pos < input.length && input[pos].let { it.isLetterOrDigit() || it == '_' }) {
             pos++
         }
-        tokens.add(Token(TokenType.IDENT, input.substring(start, pos), start))
+        tokens += Token(TokenType.IDENT, input.substring(start, pos), start)
     }
     
     private fun tokenizeOperatorOrPunc(): Boolean {
@@ -147,35 +143,25 @@ private class Tokenizer(private val input: String) {
         val start = pos
         
         // 三字符操作符
-        if (pos + 2 < input.length) {
-            val three = input.substring(pos, pos + 3)
-            if (three == "===" || three == "!==") {
-                tokens.add(Token(TokenType.OP, three, start))
-                pos += 3
-                return true
-            }
-        }
+        input.substring(pos, minOf(pos + 3, input.length))
+            .takeIf { it in setOf("===", "!==") }
+            ?.also { tokens += Token(TokenType.OP, it, start); pos += 3; return true }
         
         // 两字符操作符
-        if (pos + 1 < input.length) {
-            val two = input.substring(pos, pos + 2)
-            if (two in listOf("&&", "||", "==", "!=", ">=", "<=", "=>")) {
-                tokens.add(Token(TokenType.OP, two, start))
-                pos += 2
-                return true
-            }
-        }
+        input.substring(pos, minOf(pos + 2, input.length))
+            .takeIf { it in setOf("&&", "||", "==", "!=", ">=", "<=", "=>") }
+            ?.also { tokens += Token(TokenType.OP, it, start); pos += 2; return true }
         
         // 单字符操作符
         if (ch in "+-*/%<>?:=!") {
-            tokens.add(Token(TokenType.OP, ch.toString(), start))
+            tokens += Token(TokenType.OP, ch.toString(), start)
             pos++
             return true
         }
         
         // 标点
         if (ch in "(),[].") {
-            tokens.add(Token(TokenType.PUNC, ch.toString(), start))
+            tokens += Token(TokenType.PUNC, ch.toString(), start)
             pos++
             return true
         }

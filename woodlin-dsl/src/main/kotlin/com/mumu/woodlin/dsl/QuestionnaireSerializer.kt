@@ -56,51 +56,37 @@ class QuestionnaireSerializer {
     /**
      * 从JSON反序列化问卷
      */
-    fun fromJson(json: String): Questionnaire {
-        val dto = objectMapper.readValue(json, QuestionnaireDto::class.java)
-        return dtoToQuestionnaire(dto)
-    }
+    fun fromJson(json: String): Questionnaire =
+        objectMapper.readValue(json, QuestionnaireDto::class.java).toQuestionnaire()
     
-    private fun dtoToQuestionnaire(dto: QuestionnaireDto): Questionnaire = 
-        questionnaire(dto.id, dto.title) {
-            description = dto.description
-            version = dto.version
-            author = dto.author
-            dto.sections.forEach { sectionDto ->
-                addSection(this, sectionDto)
+    private fun QuestionnaireDto.toQuestionnaire(): Questionnaire = 
+        questionnaire(id, title) {
+            description = this@toQuestionnaire.description
+            version = this@toQuestionnaire.version
+            author = this@toQuestionnaire.author
+            this@toQuestionnaire.sections.forEach { sectionDto ->
+                section(sectionDto.title) {
+                    description = sectionDto.description
+                    order = sectionDto.order
+                    sectionDto.questions.forEach { questionDto ->
+                        question {
+                            id = questionDto.id
+                            type = QuestionType.valueOf(questionDto.type)
+                            title = questionDto.title
+                            description = questionDto.description
+                            required = questionDto.required
+                            order = questionDto.order
+                            questionDto.options.forEach { optionDto ->
+                                option(optionDto.text, optionDto.value) {
+                                    order = optionDto.order
+                                    exclusive = optionDto.exclusive
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-    
-    private fun addSection(q: Questionnaire, dto: SectionDto) {
-        q.section(dto.title) {
-            description = dto.description
-            order = dto.order
-            dto.questions.forEach { questionDto ->
-                addQuestion(this, questionDto)
-            }
-        }
-    }
-    
-    private fun addQuestion(s: Section, dto: QuestionDto) {
-        s.question {
-            id = dto.id
-            type = QuestionType.valueOf(dto.type)
-            title = dto.title
-            description = dto.description
-            required = dto.required
-            order = dto.order
-            dto.options.forEach { optionDto ->
-                addOption(this, optionDto)
-            }
-        }
-    }
-    
-    private fun addOption(q: Question, dto: OptionDto) {
-        q.option(dto.text, dto.value) {
-            order = dto.order
-            exclusive = dto.exclusive
-        }
-    }
     
     /**
      * DTO类定义
