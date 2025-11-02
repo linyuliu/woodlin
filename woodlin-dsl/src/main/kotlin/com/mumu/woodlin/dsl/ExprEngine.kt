@@ -398,79 +398,34 @@ class ExprEvaluator {
         },
         
         // 数组函数
-        "count" to { args ->
-            when (val arr = args[0]) {
-                is Collection<*> -> arr.size
-                is Array<*> -> arr.size
-                else -> 0
-            }
-        },
-        "sum" to { args ->
-            when (val arr = args[0]) {
-                is Collection<*> -> arr.sumOf { (it as? Number)?.toDouble() ?: 0.0 }
-                is Array<*> -> arr.sumOf { (it as? Number)?.toDouble() ?: 0.0 }
-                else -> 0.0
-            }
-        },
+        "count" to { args -> toList(args[0]).size },
+        "sum" to { args -> toList(args[0]).sumOf { (it as? Number)?.toDouble() ?: 0.0 } },
         "avg" to { args ->
-            when (val arr = args[0]) {
-                is Collection<*> -> {
-                    if (arr.isEmpty()) 0.0
-                    else arr.sumOf { (it as? Number)?.toDouble() ?: 0.0 } / arr.size
-                }
-                is Array<*> -> {
-                    if (arr.isEmpty()) 0.0
-                    else arr.sumOf { (it as? Number)?.toDouble() ?: 0.0 } / arr.size
-                }
-                else -> 0.0
+            toList(args[0]).let { list ->
+                if (list.isEmpty()) 0.0 else list.sumOf { (it as? Number)?.toDouble() ?: 0.0 } / list.size
             }
         },
         
         // 高阶函数
         "countIf" to { args ->
-            val arr = when (val a = args[0]) {
-                is Collection<*> -> a.toList()
-                is Array<*> -> a.toList()
-                else -> emptyList()
-            }
             val predicate = args[1] as (Any?) -> Boolean
-            arr.count { predicate(it) }
+            toList(args[0]).count(predicate)
         },
         "filter" to { args ->
-            val arr = when (val a = args[0]) {
-                is Collection<*> -> a.toList()
-                is Array<*> -> a.toList()
-                else -> emptyList()
-            }
             val predicate = args[1] as (Any?) -> Boolean
-            arr.filter { predicate(it) }
+            toList(args[0]).filter(predicate)
         },
         "map" to { args ->
-            val arr = when (val a = args[0]) {
-                is Collection<*> -> a.toList()
-                is Array<*> -> a.toList()
-                else -> emptyList()
-            }
             val fn = args[1] as (Any?) -> Any?
-            arr.map { fn(it) }
+            toList(args[0]).map(fn)
         },
         "some" to { args ->
-            val arr = when (val a = args[0]) {
-                is Collection<*> -> a.toList()
-                is Array<*> -> a.toList()
-                else -> emptyList()
-            }
             val predicate = args[1] as (Any?) -> Boolean
-            arr.any { predicate(it) }
+            toList(args[0]).any(predicate)
         },
         "every" to { args ->
-            val arr = when (val a = args[0]) {
-                is Collection<*> -> a.toList()
-                is Array<*> -> a.toList()
-                else -> emptyList()
-            }
             val predicate = args[1] as (Any?) -> Boolean
-            arr.all { predicate(it) }
+            toList(args[0]).all(predicate)
         }
     )
     
@@ -517,31 +472,17 @@ class ExprEvaluator {
         val right = evaluate(expr.right, context)
         
         return when (expr.op) {
-            "+" -> (left as Number).toDouble() + (right as Number).toDouble()
-            "-" -> (left as Number).toDouble() - (right as Number).toDouble()
-            "*" -> (left as Number).toDouble() * (right as Number).toDouble()
-            "/" -> (left as Number).toDouble() / (right as Number).toDouble()
-            "%" -> (left as Number).toDouble() % (right as Number).toDouble()
+            "+" -> applyNumericOp(left, right, Double::plus)
+            "-" -> applyNumericOp(left, right, Double::minus)
+            "*" -> applyNumericOp(left, right, Double::times)
+            "/" -> applyNumericOp(left, right, Double::div)
+            "%" -> applyNumericOp(left, right, Double::rem)
             "<" -> compare(left, right) < 0
             ">" -> compare(left, right) > 0
             "<=" -> compare(left, right) <= 0
             ">=" -> compare(left, right) >= 0
-            "==" -> {
-                // 特殊处理数字比较
-                if (left is Number && right is Number) {
-                    left.toDouble() == right.toDouble()
-                } else {
-                    left == right
-                }
-            }
-            "!=" -> {
-                // 特殊处理数字比较
-                if (left is Number && right is Number) {
-                    left.toDouble() != right.toDouble()
-                } else {
-                    left != right
-                }
-            }
+            "==" -> equalsWithNumericCoercion(left, right)
+            "!=" -> !equalsWithNumericCoercion(left, right)
             "===" -> left === right
             "!==" -> left !== right
             "&&" -> toBoolean(left) && toBoolean(right)
@@ -549,6 +490,15 @@ class ExprEvaluator {
             else -> throw IllegalArgumentException("未知的二元运算符: ${expr.op}")
         }
     }
+    
+    private fun applyNumericOp(left: Any?, right: Any?, op: (Double, Double) -> Double): Double =
+        op((left as Number).toDouble(), (right as Number).toDouble())
+    
+    private fun equalsWithNumericCoercion(left: Any?, right: Any?): Boolean =
+        when {
+            left is Number && right is Number -> left.toDouble() == right.toDouble()
+            else -> left == right
+        }
     
     private fun evaluateCall(expr: Expr.CallExpr, context: Map<String, Any?>): Any? {
         val fn = builtinFunctions[expr.name] ?: context[expr.name]
@@ -578,56 +528,43 @@ class ExprEvaluator {
     
     private fun resolveRef(path: String, context: Map<String, Any?>): Any? {
         // 解析路径，支持 obj.prop 和 obj[index]
-        var current: Any? = null
-        var i = 0
-        
-        // 首先获取根标识符
         val firstDot = path.indexOfAny(charArrayOf('.', '['))
         val rootName = if (firstDot > 0) path.substring(0, firstDot) else path
-        current = context[rootName]
+        val root = context[rootName]
         
-        if (firstDot == -1) return current
-        
-        i = firstDot
-        
-        // 处理剩余的路径
-        while (i < path.length) {
-            when (path[i]) {
-                '.' -> {
-                    // 属性访问
-                    i++ // skip '.'
-                    val nextDot = path.indexOfAny(charArrayOf('.', '['), i)
-                    val prop = if (nextDot > 0) path.substring(i, nextDot) else path.substring(i)
-                    current = when (current) {
-                        is Map<*, *> -> (current as Map<String, Any?>)[prop]
-                        else -> null
-                    }
-                    i = if (nextDot > 0) nextDot else path.length
-                }
-                '[' -> {
-                    // 数组索引
-                    i++ // skip '['
-                    val closeBracket = path.indexOf(']', i)
-                    if (closeBracket == -1) return null
-                    
-                    val indexStr = path.substring(i, closeBracket)
-                    // 移除可能的小数点（如 "0.0" -> "0"）
-                    val index = indexStr.toDoubleOrNull()?.toInt() ?: indexStr.toIntOrNull()
-                    
-                    current = when (current) {
-                        is List<*> -> if (index != null && index >= 0 && index < current.size) current[index] else null
-                        is Array<*> -> if (index != null && index >= 0 && index < current.size) current[index] else null
-                        else -> null
-                    }
-                    i = closeBracket + 1
-                }
-                else -> i++
-            }
-            
-            if (current == null) break
+        return if (firstDot == -1) {
+            root
+        } else {
+            resolvePath(path.substring(firstDot), root)
         }
+    }
+    
+    private tailrec fun resolvePath(path: String, current: Any?, index: Int = 0): Any? {
+        if (index >= path.length || current == null) return current
         
-        return current
+        return when (path[index]) {
+            '.' -> {
+                val nextDelim = path.indexOfAny(charArrayOf('.', '['), index + 1)
+                val prop = if (nextDelim > 0) path.substring(index + 1, nextDelim) else path.substring(index + 1)
+                val next = (current as? Map<*, *>)?.get(prop)
+                resolvePath(path, next, if (nextDelim > 0) nextDelim else path.length)
+            }
+            '[' -> {
+                val closeBracket = path.indexOf(']', index + 1)
+                if (closeBracket == -1) return null
+                
+                val indexValue = path.substring(index + 1, closeBracket)
+                    .toDoubleOrNull()?.toInt()
+                
+                val next = when (current) {
+                    is List<*> -> indexValue?.let { current.getOrNull(it) }
+                    is Array<*> -> indexValue?.let { if (it in current.indices) current[it] else null }
+                    else -> null
+                }
+                resolvePath(path, next, closeBracket + 1)
+            }
+            else -> resolvePath(path, current, index + 1)
+        }
     }
     
     private fun toBoolean(value: Any?): Boolean = when (value) {
@@ -640,14 +577,16 @@ class ExprEvaluator {
         else -> true
     }
     
-    private fun compare(left: Any?, right: Any?): Int {
-        if (left is Number && right is Number) {
-            return left.toDouble().compareTo(right.toDouble())
-        }
-        if (left is String && right is String) {
-            return left.compareTo(right)
-        }
-        return 0
+    private fun compare(left: Any?, right: Any?): Int = when {
+        left is Number && right is Number -> left.toDouble().compareTo(right.toDouble())
+        left is String && right is String -> left.compareTo(right)
+        else -> 0
+    }
+    
+    private fun toList(value: Any?): List<Any?> = when (value) {
+        is Collection<*> -> value.toList()
+        is Array<*> -> value.toList()
+        else -> emptyList()
     }
 }
 

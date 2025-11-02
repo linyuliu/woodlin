@@ -1,14 +1,15 @@
 package com.mumu.woodlin.system.service.impl;
 
 import java.util.List;
+import java.util.Optional;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +27,15 @@ import com.mumu.woodlin.system.service.ISensitiveDataService;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, SensitiveData> 
         implements ISensitiveDataService {
     
-    private final SearchableEncryptionService encryptionService;
+    private final Optional<SearchableEncryptionService> encryptionService;
+    
+    @Autowired
+    public SensitiveDataServiceImpl(@Autowired(required = false) SearchableEncryptionService encryptionService) {
+        this.encryptionService = Optional.ofNullable(encryptionService);
+    }
     
     /**
      * 根据姓名模糊查询
@@ -48,8 +53,13 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
             return this.page(page);
         }
         
+        if (encryptionService.isEmpty()) {
+            log.warn("SearchableEncryptionService not available, skipping encrypted search");
+            return page;
+        }
+        
         // 生成搜索令牌
-        List<String> searchTokens = encryptionService.generateSearchTokens(keyword);
+        List<String> searchTokens = encryptionService.get().generateSearchTokens(keyword);
         
         if (searchTokens.isEmpty()) {
             return page;
@@ -84,8 +94,13 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
             return this.page(page);
         }
         
+        if (encryptionService.isEmpty()) {
+            log.warn("SearchableEncryptionService not available, skipping encrypted search");
+            return page;
+        }
+        
         // 生成搜索令牌
-        List<String> searchTokens = encryptionService.generateSearchTokens(keyword);
+        List<String> searchTokens = encryptionService.get().generateSearchTokens(keyword);
         
         if (searchTokens.isEmpty()) {
             return page;
@@ -115,8 +130,13 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
             return null;
         }
         
+        if (encryptionService.isEmpty()) {
+            log.warn("SearchableEncryptionService not available, skipping encrypted search");
+            return null;
+        }
+        
         // 加密身份证号进行精确匹配
-        String encryptedIdCard = encryptionService.encrypt(idCard);
+        String encryptedIdCard = encryptionService.get().encrypt(idCard);
         
         return this.getOne(new LambdaQueryWrapper<SensitiveData>()
                 .eq(SensitiveData::getIdCard, encryptedIdCard)
@@ -137,9 +157,9 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
         }
         
         // 加密所有数据
-        for (SensitiveData data : dataList) {
-            encryptionService.encryptEntity(data);
-        }
+        encryptionService.ifPresent(service -> 
+            dataList.forEach(service::encryptEntity)
+        );
         
         // 批量插入
         boolean success = this.saveBatch(dataList);
@@ -156,7 +176,7 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
     @Override
     public boolean save(SensitiveData entity) {
         // 自动加密
-        encryptionService.encryptEntity(entity);
+        encryptionService.ifPresent(service -> service.encryptEntity(entity));
         return super.save(entity);
     }
     
@@ -169,7 +189,7 @@ public class SensitiveDataServiceImpl extends ServiceImpl<SensitiveDataMapper, S
     @Override
     public boolean updateById(SensitiveData entity) {
         // 自动加密
-        encryptionService.encryptEntity(entity);
+        encryptionService.ifPresent(service -> service.encryptEntity(entity));
         return super.updateById(entity);
     }
 }
