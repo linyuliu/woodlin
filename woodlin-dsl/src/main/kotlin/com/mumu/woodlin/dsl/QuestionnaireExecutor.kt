@@ -49,44 +49,27 @@ class QuestionnaireExecutor(private val questionnaire: Questionnaire) {
     /**
      * 验证答案
      */
-    fun validate(answers: Map<String, Any>): ValidationResult {
-        val questionErrors = questionnaire.sections
-            .flatMap { section -> section.questions }
-            .flatMap { question -> validateQuestion(question, answers) }
-        
-        val globalErrors = questionnaire.rules
-            .mapNotNull { rule -> validateRule(rule, answers, "global") }
-        
-        val allErrors = questionErrors + globalErrors
-        
-        return ValidationResult(
-            valid = allErrors.isEmpty(),
-            errors = allErrors
-        )
-    }
+    fun validate(answers: Map<String, Any>): ValidationResult =
+        (questionnaire.sections
+            .asSequence()
+            .flatMap { it.questions }
+            .flatMap { validateQuestion(it, answers).asSequence() } +
+        questionnaire.rules
+            .asSequence()
+            .mapNotNull { validateRule(it, answers, "global") })
+            .toList()
+            .let { ValidationResult(valid = it.isEmpty(), errors = it) }
     
-    private fun validateQuestion(question: Question, answers: Map<String, Any>): List<ValidationError> {
-        val requiredError = if (question.required && !answers.containsKey(question.id)) {
-            listOf(ValidationError(question.id, "${question.title} 是必填项"))
-        } else {
-            emptyList()
-        }
-        
-        val ruleErrors = question.validations
-            .mapNotNull { rule -> validateRule(rule, answers, question.id) }
-        
-        return requiredError + ruleErrors
-    }
-    
-    private fun validateRule(rule: ValidationRule, answers: Map<String, Any>, questionId: String): ValidationError? {
-        return rule.condition?.let { condition ->
-            if (!condition(answers)) {
-                ValidationError(questionId, rule.message)
-            } else {
-                null
+    private fun validateQuestion(question: Question, answers: Map<String, Any>): List<ValidationError> =
+        buildList {
+            if (question.required && question.id !in answers) {
+                add(ValidationError(question.id, "${question.title} 是必填项"))
             }
+            addAll(question.validations.mapNotNull { validateRule(it, answers, question.id) })
         }
-    }
+    
+    private fun validateRule(rule: ValidationRule, answers: Map<String, Any>, questionId: String): ValidationError? =
+        rule.condition?.takeUnless { it(answers) }?.let { ValidationError(questionId, rule.message) }
     
     /**
      * 执行问卷
