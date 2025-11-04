@@ -41,6 +41,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
     
+    /**
+     * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
+    
     @Override
     public IPage<SysRole> selectRolePage(SysRole role, Integer pageNum, Integer pageSize) {
         Page<SysRole> page = new Page<>(pageNum, pageSize);
@@ -118,6 +124,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             for (SysRole descendant : descendants) {
                 refreshRoleHierarchy(descendant.getRoleId());
             }
+            
+            // 清除角色相关的缓存
+            evictRoleCache(role.getRoleId());
         }
         
         return result;
@@ -146,6 +155,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             for (Long roleId : roleIds) {
                 hierarchyMapper.deleteByRoleId(roleId);
                 inheritedPermissionMapper.deleteByRoleId(roleId);
+                
+                // 清除角色相关的缓存
+                evictRoleCache(roleId);
             }
         }
         
@@ -393,5 +405,19 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .setSortOrder(role.getSortOrder())
             .setHasChildren(false)
             .setChildren(new ArrayList<>());
+    }
+    
+    /**
+     * 清除角色相关的缓存
+     * 
+     * @param roleId 角色ID
+     */
+    private void evictRoleCache(Long roleId) {
+        if (permissionCacheService != null) {
+            permissionCacheService.evictRoleCache(roleId);
+            // 清除所有用户权限缓存，因为角色变更会影响所有拥有该角色的用户
+            permissionCacheService.evictAllUserPermissions();
+            log.info("已清除角色缓存并刷新用户权限缓存: roleId={}", roleId);
+        }
     }
 }
