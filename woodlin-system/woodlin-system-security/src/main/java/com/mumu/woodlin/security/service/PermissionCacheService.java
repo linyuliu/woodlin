@@ -203,9 +203,8 @@ public class PermissionCacheService {
      */
     public void evictAllUserPermissions() {
         try {
-            // 使用scan清理所有用户权限缓存
-            redisTemplate.keys(USER_PERMISSION_PREFIX + "*")
-                .forEach(key -> redisTemplate.delete(key));
+            // 使用scan清理所有用户权限缓存（避免KEYS命令阻塞Redis）
+            scanAndDelete(USER_PERMISSION_PREFIX + "*");
             log.info("清除所有用户权限缓存");
         } catch (Exception e) {
             log.error("清除所有用户权限缓存失败", e);
@@ -217,9 +216,8 @@ public class PermissionCacheService {
      */
     public void evictAllRolePermissions() {
         try {
-            // 使用scan清理所有角色权限缓存
-            redisTemplate.keys(ROLE_PERMISSION_PREFIX + "*")
-                .forEach(key -> redisTemplate.delete(key));
+            // 使用scan清理所有角色权限缓存（避免KEYS命令阻塞Redis）
+            scanAndDelete(ROLE_PERMISSION_PREFIX + "*");
             log.info("清除所有角色权限缓存");
         } catch (Exception e) {
             log.error("清除所有角色权限缓存失败", e);
@@ -234,5 +232,36 @@ public class PermissionCacheService {
     private boolean isEnabled() {
         return cacheProperties.getPermission() != null 
             && Boolean.TRUE.equals(cacheProperties.getPermission().getEnabled());
+    }
+    
+    /**
+     * 使用SCAN命令批量删除键（避免KEYS命令阻塞Redis）
+     * 
+     * @param pattern 键模式
+     */
+    private void scanAndDelete(String pattern) {
+        redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+            org.springframework.data.redis.core.Cursor<byte[]> cursor = connection.scan(
+                org.springframework.data.redis.core.ScanOptions.scanOptions()
+                    .match(pattern)
+                    .count(100)
+                    .build()
+            );
+            
+            try {
+                while (cursor.hasNext()) {
+                    connection.del(cursor.next());
+                }
+            } finally {
+                // 关闭游标
+                try {
+                    cursor.close();
+                } catch (Exception e) {
+                    log.error("关闭Redis SCAN游标失败", e);
+                }
+            }
+            
+            return null;
+        });
     }
 }
