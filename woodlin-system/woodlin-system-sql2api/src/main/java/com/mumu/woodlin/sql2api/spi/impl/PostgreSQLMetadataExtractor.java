@@ -77,25 +77,23 @@ public class PostgreSQLMetadataExtractor implements DatabaseMetadataExtractor {
     public List<SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException {
         List<SchemaMetadata> schemas = new ArrayList<>();
         
-        String sql = "SELECT schema_name, " +
-                     "pg_catalog.obj_description((schema_name || '.pg_namespace')::regnamespace, 'pg_namespace') as comment " +
-                     "FROM information_schema.schemata " +
-                     "WHERE catalog_name = ? " +
-                     "AND schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
-                     "ORDER BY schema_name";
+        String sql = "SELECT n.nspname as schema_name, " +
+                     "pg_catalog.obj_description(n.oid, 'pg_namespace') as comment " +
+                     "FROM pg_catalog.pg_namespace n " +
+                     "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
+                     "AND n.nspname NOT LIKE 'pg_temp_%' " +
+                     "AND n.nspname NOT LIKE 'pg_toast_temp_%' " +
+                     "ORDER BY n.nspname";
         
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, databaseName);
-            
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    SchemaMetadata schema = SchemaMetadata.builder()
-                            .schemaName(rs.getString("schema_name"))
-                            .databaseName(databaseName)
-                            .comment(rs.getString("comment"))
-                            .build();
-                    schemas.add(schema);
-                }
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                SchemaMetadata schema = SchemaMetadata.builder()
+                        .schemaName(rs.getString("schema_name"))
+                        .databaseName(databaseName)
+                        .comment(rs.getString("comment"))
+                        .build();
+                schemas.add(schema);
             }
         }
         
