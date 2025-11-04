@@ -31,6 +31,11 @@ public class CacheProperties {
      */
     private ConfigCache config = new ConfigCache();
 
+    /**
+     * 权限缓存配置
+     */
+    private PermissionCache permission = new PermissionCache();
+
     @Data
     public static class DictionaryCache {
         /**
@@ -65,5 +70,23 @@ public class CacheProperties {
          * 缓存刷新间隔（秒）
          */
         private Long refreshIntervalSeconds = 3600L;
+    }
+
+    @Data
+    public static class PermissionCache {
+        /**
+         * 是否启用权限缓存
+         */
+        private Boolean enabled = true;
+
+        /**
+         * 用户权限缓存过期时间（秒）
+         */
+        private Long expireSeconds = 1800L;
+
+        /**
+         * 角色权限缓存过期时间（秒）
+         */
+        private Long roleExpireSeconds = 3600L;
     }
 }
