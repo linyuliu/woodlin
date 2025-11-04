@@ -46,6 +46,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final ISysPermissionService permissionService;
     
     /**
+     * 权限缓存服务（可选依赖）
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
+    
+    /**
      * 用户登录
      * 
      * @param loginRequest 登录请求
@@ -127,6 +133,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Long userId = SecurityUtil.getUserId();
         if (userId != null) {
             StpUtil.logout(userId);
+            // 清除用户缓存
+            if (permissionCacheService != null) {
+                permissionCacheService.evictUserCache(userId);
+            }
             log.info("用户 {} 登出成功", userId);
         }
     }
