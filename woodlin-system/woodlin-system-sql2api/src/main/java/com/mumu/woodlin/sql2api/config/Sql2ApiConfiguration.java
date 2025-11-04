@@ -14,6 +14,10 @@ import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.sql2api.spi.impl.MySQLMetadataExtractor;
 import com.mumu.woodlin.sql2api.spi.impl.PostgreSQLMetadataExtractor;
 import com.mumu.woodlin.sql2api.spi.impl.OracleMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.TiDBMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.DM8MetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.KingbaseESMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.VastbaseMetadataExtractor;
 
 /**
  * SQL2API模块配置类
@@ -40,7 +44,16 @@ public class Sql2ApiConfiguration {
         extractors.add(new MySQLMetadataExtractor());
         extractors.add(new PostgreSQLMetadataExtractor());
         extractors.add(new OracleMetadataExtractor());
-        log.info("已注册内置数据库元数据提取器: MySQL, PostgreSQL, Oracle");
+        
+        // MySQL兼容数据库
+        extractors.add(new TiDBMetadataExtractor());
+        extractors.add(new DM8MetadataExtractor());
+        
+        // PostgreSQL兼容数据库
+        extractors.add(new KingbaseESMetadataExtractor());
+        extractors.add(new VastbaseMetadataExtractor());
+        
+        log.info("已注册内置数据库元数据提取器: MySQL, PostgreSQL, Oracle, TiDB, DM8, KingbaseES, Vastbase");
         
         // 2. 通过SPI机制加载外部提取器
         ServiceLoader<DatabaseMetadataExtractor> serviceLoader = ServiceLoader.load(DatabaseMetadataExtractor.class);
