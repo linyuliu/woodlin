@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 
 import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.sql2api.spi.impl.MySQLMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.PostgreSQLMetadataExtractor;
+import com.mumu.woodlin.sql2api.spi.impl.OracleMetadataExtractor;
 
 /**
  * SQL2API模块配置类
@@ -36,6 +38,9 @@ public class Sql2ApiConfiguration {
         
         // 1. 手动注册内置提取器
         extractors.add(new MySQLMetadataExtractor());
+        extractors.add(new PostgreSQLMetadataExtractor());
+        extractors.add(new OracleMetadataExtractor());
+        log.info("已注册内置数据库元数据提取器: MySQL, PostgreSQL, Oracle");
         
         // 2. 通过SPI机制加载外部提取器
         ServiceLoader<DatabaseMetadataExtractor> serviceLoader = ServiceLoader.load(DatabaseMetadataExtractor.class);
