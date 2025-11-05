@@ -2,70 +2,101 @@ package com.mumu.woodlin.file.service.impl;
 
 import java.awt.image.BufferedImage;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import java.io.ByteArrayInputStream;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import java.io.InputStream;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import java.util.Arrays;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import java.util.List;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 import javax.imageio.ImageIO;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 import org.springframework.stereotype.Service;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import org.springframework.transaction.annotation.Transactional;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import org.springframework.web.multipart.MultipartFile;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.dto.UploadTokenRequest;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.entity.SysFile;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.entity.SysUploadPolicy;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.entity.SysUploadToken;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.mapper.SysFileMapper;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.mapper.SysStorageConfigMapper;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.mapper.SysUploadPolicyMapper;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.service.FileTypeDetectionService;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.service.ISysFileService;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.service.ISysUploadTokenService;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.storage.StorageService;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.storage.StorageServiceFactory;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.vo.UploadTokenVO;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 import cn.hutool.core.io.IoUtil;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import cn.hutool.core.util.IdUtil;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import jakarta.servlet.http.HttpServletRequest;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import lombok.RequiredArgsConstructor;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import lombok.extern.slf4j.Slf4j;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 /**
  * 文件服务实现
@@ -95,7 +126,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             
             // 2. 查询上传策略
             SysUploadPolicy policy = uploadPolicyMapper.selectById(uploadToken.getPolicyId());
-            if (policy == null || !"1".equals(policy.getStatus())) {
+            if (policy == null || !CommonConstant.STATUS_ENABLE.equals(policy.getStatus())) {
                 throw new BusinessException("上传策略不存在或已禁用");
             }
             
@@ -107,7 +138,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             
             // 5. 检测文件类型（如果策略要求）
             String detectedMimeType = null;
-            if ("1".equals(policy.getDetectFileType())) {
+            if (CommonConstant.STATUS_ENABLE.equals(policy.getDetectFileType())) {
                 detectedMimeType = fileTypeDetectionService.detectMimeType(fileBytes, file.getOriginalFilename());
                 
                 // 验证MIME类型
@@ -134,7 +165,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             
             // 8. 查询存储配置
             SysStorageConfig storageConfig = storageConfigMapper.selectById(policy.getStorageConfigId());
-            if (storageConfig == null || !"1".equals(storageConfig.getStatus())) {
+            if (storageConfig == null || !CommonConstant.STATUS_ENABLE.equals(storageConfig.getStatus())) {
                 throw new BusinessException("存储配置不存在或已禁用");
             }
             
@@ -157,7 +188,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             String isImage = "0";
             
             if (detectedMimeType != null && detectedMimeType.startsWith("image/")) {
-                isImage = "1";
+                isImage = CommonConstant.STATUS_ENABLE;
                 try {
                     BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(fileBytes));
                     if (bufferedImage != null) {
@@ -278,7 +309,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         }
         
         // 2. 如果是公开文件，直接返回URL
-        if ("1".equals(sysFile.getIsPublic())) {
+        if (CommonConstant.STATUS_ENABLE.equals(sysFile.getIsPublic())) {
             return sysFile.getFileUrl();
         }
         
@@ -316,7 +347,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         }
         
         // 2. 检查文件大小
-        if ("1".equals(policy.getCheckFileSize())) {
+        if (CommonConstant.STATUS_ENABLE.equals(policy.getCheckFileSize())) {
             Long maxSize = uploadToken.getMaxFileSize() != null 
                 ? uploadToken.getMaxFileSize() 
                 : policy.getMaxFileSize();

@@ -13,6 +13,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.file.dto.UploadCredentialDTO;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 
@@ -95,7 +96,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             }
             
             // 如果是公开访问，返回对象URL
-            if ("1".equals(config.getIsPublic())) {
+            if (CommonConstant.STATUS_ENABLE.equals(config.getIsPublic())) {
                 return s3Client.getUrl(config.getBucketName(), objectKey).toString();
             }
             
