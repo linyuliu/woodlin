@@ -18,6 +18,7 @@ import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.file.mapper.SysStorageConfigMapper;
 import com.mumu.woodlin.file.storage.StorageService;
 import com.mumu.woodlin.file.vo.UploadTokenVO;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.crypto.SecureUtil;
@@ -51,13 +52,15 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
         );
         
         if (policy == null) {
-            throw new RuntimeException("上传策略不存在或已禁用: " + request.getPolicyCode());
+            log.warn("上传策略不存在或已禁用: policyCode={}", request.getPolicyCode());
+            throw new BusinessException("上传策略不存在或已禁用: " + request.getPolicyCode());
         }
         
         // 2. 查询存储配置
         SysStorageConfig storageConfig = storageConfigMapper.selectById(policy.getStorageConfigId());
         if (storageConfig == null || !"1".equals(storageConfig.getStatus())) {
-            throw new RuntimeException("存储配置不存在或已禁用");
+            log.warn("存储配置不存在或已禁用: storageConfigId={}", policy.getStorageConfigId());
+            throw new BusinessException("存储配置不存在或已禁用");
         }
         
         // 3. 生成对象键（文件路径）
@@ -111,24 +114,27 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
         );
         
         if (uploadToken == null) {
-            throw new RuntimeException("上传令牌不存在");
+            log.warn("上传令牌不存在: token={}", token);
+            throw new BusinessException("上传令牌不存在");
         }
         
         // 2. 验证签名
         if (!signature.equals(uploadToken.getSignature())) {
             log.warn("上传令牌签名验证失败: token={}, expectedSignature={}, actualSignature={}", 
                 token, uploadToken.getSignature(), signature);
-            throw new RuntimeException("上传令牌签名验证失败");
+            throw new BusinessException("上传令牌签名验证失败");
         }
         
         // 3. 检查是否过期
         if (LocalDateTime.now().isAfter(uploadToken.getExpireTime())) {
-            throw new RuntimeException("上传令牌已过期");
+            log.warn("上传令牌已过期: token={}, expireTime={}", token, uploadToken.getExpireTime());
+            throw new BusinessException("上传令牌已过期");
         }
         
         // 4. 检查是否已使用
         if ("1".equals(uploadToken.getIsUsed())) {
-            throw new RuntimeException("上传令牌已使用");
+            log.warn("上传令牌已使用: token={}", token);
+            throw new BusinessException("上传令牌已使用");
         }
         
         return uploadToken;

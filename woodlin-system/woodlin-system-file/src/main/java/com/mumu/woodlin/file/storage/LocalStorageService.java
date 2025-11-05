@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.file.enums.StorageType;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.core.io.IoUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,8 @@ public class LocalStorageService implements StorageService {
             
             // 确保解析后的路径仍在基础路径内，防止路径遍历
             if (!fullPath.startsWith(basePathObj)) {
-                throw new SecurityException("非法的文件路径: " + objectKey);
+                log.error("检测到非法的文件路径访问尝试: objectKey={}, basePath={}", objectKey, basePath);
+                throw new BusinessException("非法的文件路径: " + objectKey);
             }
             
             // 创建目录
@@ -54,7 +56,7 @@ public class LocalStorageService implements StorageService {
                 IoUtil.copy(inputStream, outputStream);
             }
             
-            log.info("本地存储上传成功: {}", fullPath);
+            log.info("本地存储上传成功: path={}, size={}bytes", fullPath, fileSize);
             
             // 返回访问URL
             String domain = config.getDomain();
@@ -63,9 +65,11 @@ public class LocalStorageService implements StorageService {
             }
             return basePath + objectKey;
             
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("本地存储上传失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("本地存储上传失败: " + e.getMessage(), e);
+            throw new BusinessException("本地存储上传失败: " + e.getMessage(), e);
         }
     }
     
@@ -83,18 +87,23 @@ public class LocalStorageService implements StorageService {
             
             // 确保解析后的路径仍在基础路径内，防止路径遍历
             if (!fullPath.startsWith(basePathObj)) {
-                throw new SecurityException("非法的文件路径: " + objectKey);
+                log.error("检测到非法的文件路径访问尝试: objectKey={}, basePath={}", objectKey, basePath);
+                throw new BusinessException("非法的文件路径: " + objectKey);
             }
             
             if (!Files.exists(fullPath)) {
-                throw new RuntimeException("文件不存在: " + objectKey);
+                log.warn("下载文件失败，文件不存在: objectKey={}", objectKey);
+                throw new BusinessException("文件不存在: " + objectKey);
             }
             
+            log.info("本地存储下载成功: objectKey={}", objectKey);
             return new FileInputStream(fullPath.toFile());
             
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("本地存储下载失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("本地存储下载失败: " + e.getMessage(), e);
+            throw new BusinessException("本地存储下载失败: " + e.getMessage(), e);
         }
     }
     
@@ -112,17 +121,22 @@ public class LocalStorageService implements StorageService {
             
             // 确保解析后的路径仍在基础路径内，防止路径遍历
             if (!fullPath.startsWith(basePathObj)) {
-                throw new SecurityException("非法的文件路径: " + objectKey);
+                log.error("检测到非法的文件路径访问尝试: objectKey={}, basePath={}", objectKey, basePath);
+                throw new BusinessException("非法的文件路径: " + objectKey);
             }
             
             if (Files.exists(fullPath)) {
                 Files.delete(fullPath);
-                log.info("本地存储删除成功: {}", fullPath);
+                log.info("本地存储删除成功: path={}", fullPath);
+            } else {
+                log.warn("删除文件失败，文件不存在: objectKey={}", objectKey);
             }
             
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("本地存储删除失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("本地存储删除失败: " + e.getMessage(), e);
+            throw new BusinessException("本地存储删除失败: " + e.getMessage(), e);
         }
     }
     

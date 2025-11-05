@@ -1,25 +1,43 @@
 package com.mumu.woodlin.sql2api.service.impl;
 
 import java.sql.Connection;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.ArrayList;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.HashMap;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Map;
+import com.mumu.woodlin.common.exception.BusinessException;
 import javax.sql.DataSource;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.json.JSONUtil;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.cache.annotation.Cacheable;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.mumu.woodlin.sql2api.dsl.SqlDslParser;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.dsl.SqlParam;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.entity.SqlApiConfig;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.service.DynamicSqlService;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 动态SQL执行服务实现
@@ -130,7 +148,7 @@ public class DynamicSqlServiceImpl implements DynamicSqlService {
         if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {
             DataSource targetDs = dynamicDataSource.getDataSource(datasourceName);
             if (targetDs == null) {
-                throw new RuntimeException("数据源不存在: " + datasourceName);
+                throw new BusinessException("数据源不存在: " + datasourceName);
             }
             return targetDs;
         }
