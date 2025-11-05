@@ -11,7 +11,11 @@ import java.time.format.DateTimeFormatter;
 import cn.hutool.core.date.DatePattern;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -29,6 +33,9 @@ import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import com.mumu.woodlin.common.enums.DictEnum;
+import com.mumu.woodlin.common.exception.BusinessException;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 全局 Jackson 配置
@@ -40,6 +47,7 @@ import com.mumu.woodlin.common.enums.DictEnum;
  * @author mumu
  * @date 2025-10-25 21:00
  */
+@Slf4j
 @Configuration
 public class JacksonConfig {
 
@@ -120,11 +128,13 @@ public class JacksonConfig {
                         module.addDeserializer(enumClass, new DictEnumDeserializer(enumClass));
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("注册 DictEnum 枚举序列化器失败: " + beanDef.getBeanClassName(), e);
+                    log.error("注册 DictEnum 枚举序列化器失败: {}", beanDef.getBeanClassName(), e);
+                    throw new BusinessException("注册 DictEnum 枚举序列化器失败: " + beanDef.getBeanClassName(), e);
                 }
             });
         } catch (Exception e) {
-            throw new RuntimeException("扫描 DictEnum 枚举类失败", e);
+            log.error("扫描 DictEnum 枚举类失败", e);
+            throw new BusinessException("扫描 DictEnum 枚举类失败", e);
         }
     }
 

@@ -12,6 +12,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.dto.UploadCredentialDTO;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 
@@ -107,7 +108,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             
         } catch (Exception e) {
             log.error("{}存储上传失败: objectKey={}", getStorageType(), objectKey, e);
-            throw new RuntimeException(getStorageType() + "存储上传失败: " + e.getMessage(), e);
+            throw new BusinessException(getStorageType() + "存储上传失败: " + e.getMessage(), e);
         }
     }
     
@@ -119,7 +120,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             
         } catch (Exception e) {
             log.error("{}存储下载失败: objectKey={}", getStorageType(), objectKey, e);
-            throw new RuntimeException(getStorageType() + "存储下载失败: " + e.getMessage(), e);
+            throw new BusinessException(getStorageType() + "存储下载失败: " + e.getMessage(), e);
         }
     }
     
@@ -134,7 +135,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             
         } catch (Exception e) {
             log.error("{}存储删除失败: objectKey={}", getStorageType(), objectKey, e);
-            throw new RuntimeException(getStorageType() + "存储删除失败: " + e.getMessage(), e);
+            throw new BusinessException(getStorageType() + "存储删除失败: " + e.getMessage(), e);
         }
     }
     
@@ -169,7 +170,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             
         } catch (Exception e) {
             log.error("{}生成预签名URL失败: objectKey={}", getStorageType(), objectKey, e);
-            throw new RuntimeException(getStorageType() + "生成预签名URL失败: " + e.getMessage(), e);
+            throw new BusinessException(getStorageType() + "生成预签名URL失败: " + e.getMessage(), e);
         }
     }
     
@@ -201,7 +202,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             
         } catch (Exception e) {
             log.error("{}生成上传凭证失败: objectKey={}", getStorageType(), objectKey, e);
-            throw new RuntimeException(getStorageType() + "生成上传凭证失败: " + e.getMessage(), e);
+            throw new BusinessException(getStorageType() + "生成上传凭证失败: " + e.getMessage(), e);
         }
     }
 }

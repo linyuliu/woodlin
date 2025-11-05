@@ -1,26 +1,45 @@
 package com.mumu.woodlin.sql2api.service.impl;
 
 import java.sql.Connection;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.sql.SQLException;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.ArrayList;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Collections;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Comparator;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.stream.Collectors;
+import com.mumu.woodlin.common.exception.BusinessException;
 import javax.sql.DataSource;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.cache.annotation.CacheEvict;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.cache.annotation.Cacheable;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 数据库元数据服务实现
@@ -48,14 +67,14 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             if (extractor == null) {
                 log.error("未找到适配的元数据提取器，数据源: {}", datasourceName);
-                throw new RuntimeException("不支持的数据库类型");
+                throw new BusinessException("不支持的数据库类型");
             }
             
             return extractor.extractDatabaseMetadata(targetDataSource);
             
         } catch (SQLException e) {
             log.error("获取数据库元数据失败，数据源: {}", datasourceName, e);
-            throw new RuntimeException("获取数据库元数据失败: " + e.getMessage(), e);
+            throw new BusinessException("获取数据库元数据失败: " + e.getMessage(), e);
         }
     }
     
@@ -69,7 +88,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             DatabaseMetadataExtractor extractor = findExtractor(targetDataSource);
             
             if (extractor == null) {
-                throw new RuntimeException("不支持的数据库类型");
+                throw new BusinessException("不支持的数据库类型");
             }
             
             try (Connection connection = targetDataSource.getConnection()) {
@@ -79,7 +98,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
         } catch (SQLException e) {
             log.error("获取表列表失败，数据源: {}", datasourceName, e);
-            throw new RuntimeException("获取表列表失败: " + e.getMessage(), e);
+            throw new BusinessException("获取表列表失败: " + e.getMessage(), e);
         }
     }
     
@@ -93,7 +112,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             DatabaseMetadataExtractor extractor = findExtractor(targetDataSource);
             
             if (extractor == null) {
-                throw new RuntimeException("不支持的数据库类型");
+                throw new BusinessException("不支持的数据库类型");
             }
             
             try (Connection connection = targetDataSource.getConnection()) {
@@ -103,7 +122,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
         } catch (SQLException e) {
             log.error("获取列信息失败，数据源: {}, 表: {}", datasourceName, tableName, e);
-            throw new RuntimeException("获取列信息失败: " + e.getMessage(), e);
+            throw new BusinessException("获取列信息失败: " + e.getMessage(), e);
         }
     }
     
@@ -128,7 +147,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
         if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {
             DataSource targetDs = dynamicDataSource.getDataSource(datasourceName);
             if (targetDs == null) {
-                throw new RuntimeException("数据源不存在: " + datasourceName);
+                throw new BusinessException("数据源不存在: " + datasourceName);
             }
             return targetDs;
         }

@@ -1,40 +1,71 @@
 package com.mumu.woodlin.file.service.impl;
 
 import java.awt.image.BufferedImage;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.io.ByteArrayInputStream;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.io.InputStream;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Arrays;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import javax.imageio.ImageIO;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import org.springframework.stereotype.Service;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.transaction.annotation.Transactional;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.web.multipart.MultipartFile;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.dto.UploadTokenRequest;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.entity.SysFile;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.entity.SysUploadPolicy;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.entity.SysUploadToken;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.mapper.SysFileMapper;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.mapper.SysStorageConfigMapper;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.mapper.SysUploadPolicyMapper;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.service.FileTypeDetectionService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.service.ISysFileService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.service.ISysUploadTokenService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.storage.StorageService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.storage.StorageServiceFactory;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.file.vo.UploadTokenVO;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.core.io.IoUtil;
+import com.mumu.woodlin.common.exception.BusinessException;
 import cn.hutool.core.util.IdUtil;
+import com.mumu.woodlin.common.exception.BusinessException;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.mumu.woodlin.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 文件服务实现
@@ -65,7 +96,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             // 2. 查询上传策略
             SysUploadPolicy policy = uploadPolicyMapper.selectById(uploadToken.getPolicyId());
             if (policy == null || !"1".equals(policy.getStatus())) {
-                throw new RuntimeException("上传策略不存在或已禁用");
+                throw new BusinessException("上传策略不存在或已禁用");
             }
             
             // 3. 验证文件
@@ -83,7 +114,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 if (policy.getAllowedMimeTypes() != null && !policy.getAllowedMimeTypes().isEmpty()) {
                     List<String> allowedMimes = Arrays.asList(policy.getAllowedMimeTypes().split(","));
                     if (!isAllowedMimeType(detectedMimeType, allowedMimes)) {
-                        throw new RuntimeException("不允许的文件类型: " + detectedMimeType);
+                        throw new BusinessException("不允许的文件类型: " + detectedMimeType);
                     }
                 }
             }
@@ -104,7 +135,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             // 8. 查询存储配置
             SysStorageConfig storageConfig = storageConfigMapper.selectById(policy.getStorageConfigId());
             if (storageConfig == null || !"1".equals(storageConfig.getStatus())) {
-                throw new RuntimeException("存储配置不存在或已禁用");
+                throw new BusinessException("存储配置不存在或已禁用");
             }
             
             // 9. 生成对象键
@@ -175,7 +206,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
             
         } catch (Exception e) {
             log.error("文件上传失败: {}", e.getMessage(), e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
+            throw new BusinessException("文件上传失败: " + e.getMessage(), e);
         }
     }
     
@@ -199,13 +230,13 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         // 1. 查询文件信息
         SysFile sysFile = getById(fileId);
         if (sysFile == null) {
-            throw new RuntimeException("文件不存在");
+            throw new BusinessException("文件不存在");
         }
         
         // 2. 查询存储配置
         SysStorageConfig storageConfig = storageConfigMapper.selectById(sysFile.getStorageConfigId());
         if (storageConfig == null) {
-            throw new RuntimeException("存储配置不存在");
+            throw new BusinessException("存储配置不存在");
         }
         
         // 3. 从存储服务下载
@@ -219,7 +250,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         // 1. 查询文件信息
         SysFile sysFile = getById(fileId);
         if (sysFile == null) {
-            throw new RuntimeException("文件不存在");
+            throw new BusinessException("文件不存在");
         }
         
         // 2. 查询存储配置
@@ -243,7 +274,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         // 1. 查询文件信息
         SysFile sysFile = getById(fileId);
         if (sysFile == null) {
-            throw new RuntimeException("文件不存在");
+            throw new BusinessException("文件不存在");
         }
         
         // 2. 如果是公开文件，直接返回URL
@@ -254,7 +285,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         // 3. 查询存储配置
         SysStorageConfig storageConfig = storageConfigMapper.selectById(sysFile.getStorageConfigId());
         if (storageConfig == null) {
-            throw new RuntimeException("存储配置不存在");
+            throw new BusinessException("存储配置不存在");
         }
         
         // 4. 生成预签名URL
@@ -281,7 +312,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     private void validateFile(MultipartFile file, SysUploadPolicy policy, SysUploadToken uploadToken) {
         // 1. 检查文件是否为空
         if (file == null || file.isEmpty()) {
-            throw new RuntimeException("文件不能为空");
+            throw new BusinessException("文件不能为空");
         }
         
         // 2. 检查文件大小
@@ -291,7 +322,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 : policy.getMaxFileSize();
             
             if (file.getSize() > maxSize) {
-                throw new RuntimeException("文件大小超过限制: " + formatFileSize(maxSize));
+                throw new BusinessException("文件大小超过限制: " + formatFileSize(maxSize));
             }
         }
         
@@ -303,12 +334,12 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         if (allowedExtensions != null && !allowedExtensions.isEmpty()) {
             String fileExtension = getFileExtension(file.getOriginalFilename());
             if (fileExtension == null || fileExtension.isEmpty()) {
-                throw new RuntimeException("文件没有扩展名");
+                throw new BusinessException("文件没有扩展名");
             }
             
             List<String> allowedExts = Arrays.asList(allowedExtensions.toLowerCase().split(","));
             if (!allowedExts.contains(fileExtension.toLowerCase())) {
-                throw new RuntimeException("不允许的文件扩展名: " + fileExtension);
+                throw new BusinessException("不允许的文件扩展名: " + fileExtension);
             }
         }
     }

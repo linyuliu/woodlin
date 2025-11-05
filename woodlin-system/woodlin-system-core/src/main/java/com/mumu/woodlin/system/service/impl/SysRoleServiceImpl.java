@@ -1,6 +1,14 @@
 package com.mumu.woodlin.system.service.impl;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import cn.hutool.core.collection.CollUtil;
@@ -14,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
 import com.mumu.woodlin.system.entity.SysPermission;
 import com.mumu.woodlin.system.entity.SysRole;
@@ -84,7 +93,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 检查循环依赖
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             if (checkCircularDependency(role.getRoleId(), role.getParentRoleId())) {
-                throw new RuntimeException("设置父角色会造成循环依赖");
+                throw new BusinessException("设置父角色会造成循环依赖");
             }
         }
         
@@ -105,7 +114,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 检查循环依赖
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             if (checkCircularDependency(role.getRoleId(), role.getParentRoleId())) {
-                throw new RuntimeException("设置父角色会造成循环依赖");
+                throw new BusinessException("设置父角色会造成循环依赖");
             }
         }
         
@@ -143,7 +152,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         for (Long roleId : roleIds) {
             List<SysRole> children = selectDirectChildRoles(roleId);
             if (CollUtil.isNotEmpty(children)) {
-                throw new RuntimeException("存在子角色，无法删除");
+                throw new BusinessException("存在子角色，无法删除");
             }
         }
         

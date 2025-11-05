@@ -18,6 +18,7 @@ import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.GeneratePresignedUrlRequest;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.region.Region;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -69,7 +70,8 @@ public class TencentCosNativeStorageService implements StorageService {
             // 上传文件
             cosClient.putObject(config.getBucketName(), objectKey, inputStream, metadata);
             
-            log.info("腾讯云COS(原生SDK)上传成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
+            log.info("腾讯云COS上传成功: bucket={}, objectKey={}, size={}bytes", 
+                config.getBucketName(), objectKey, fileSize);
             
             // 返回访问URL
             String domain = config.getDomain();
@@ -85,8 +87,8 @@ public class TencentCosNativeStorageService implements StorageService {
             return config.getEndpoint() + "/" + objectKey;
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)上传失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("腾讯云COS上传失败: " + e.getMessage(), e);
+            log.error("腾讯云COS上传失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("腾讯云COS上传失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) {
                 cosClient.shutdown();
@@ -100,11 +102,12 @@ public class TencentCosNativeStorageService implements StorageService {
         try {
             cosClient = createClient(config);
             
+            log.info("腾讯云COS下载文件: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             return cosClient.getObject(config.getBucketName(), objectKey).getObjectContent();
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)下载失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("腾讯云COS下载失败: " + e.getMessage(), e);
+            log.error("腾讯云COS下载失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("腾讯云COS下载失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) {
                 cosClient.shutdown();
@@ -120,11 +123,11 @@ public class TencentCosNativeStorageService implements StorageService {
             
             cosClient.deleteObject(config.getBucketName(), objectKey);
             
-            log.info("腾讯云COS(原生SDK)删除成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
+            log.info("腾讯云COS删除成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)删除失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("腾讯云COS删除失败: " + e.getMessage(), e);
+            log.error("腾讯云COS删除失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("腾讯云COS删除失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) {
                 cosClient.shutdown();
@@ -141,7 +144,7 @@ public class TencentCosNativeStorageService implements StorageService {
             return cosClient.doesObjectExist(config.getBucketName(), objectKey);
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)检查文件存在失败: objectKey={}", objectKey, e);
+            log.warn("腾讯云COS检查文件存在失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
             return false;
         } finally {
             if (cosClient != null) {
@@ -169,11 +172,12 @@ public class TencentCosNativeStorageService implements StorageService {
             
             URL url = cosClient.generatePresignedUrl(request);
             
+            log.info("腾讯云COS生成预签名URL成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             return url.toString();
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)生成预签名URL失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("腾讯云COS生成预签名URL失败: " + e.getMessage(), e);
+            log.error("腾讯云COS生成预签名URL失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("腾讯云COS生成预签名URL失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) {
                 cosClient.shutdown();
@@ -207,11 +211,13 @@ public class TencentCosNativeStorageService implements StorageService {
                 objectKey,
                 expirationTime
             );
+            
+            log.info("腾讯云COS生成上传凭证成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             return JSONUtil.toJsonStr(credentialDTO);
             
         } catch (Exception e) {
-            log.error("腾讯云COS(原生SDK)生成上传凭证失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("腾讯云COS生成上传凭证失败: " + e.getMessage(), e);
+            log.error("腾讯云COS生成上传凭证失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("腾讯云COS生成上传凭证失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) {
                 cosClient.shutdown();
