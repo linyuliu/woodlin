@@ -5,6 +5,7 @@ import java.net.URL;
 import java.util.Date;
 
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
@@ -187,7 +188,7 @@ public abstract class AbstractS3CompatibleStorageService implements StorageServi
             GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
                 config.getBucketName(), 
                 objectKey,
-                com.amazonaws.HttpMethod.PUT
+                HttpMethod.PUT
             ).withExpiration(expiration);
             
             URL uploadUrl = s3Client.generatePresignedUrl(request);
