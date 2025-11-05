@@ -13,6 +13,7 @@ import com.aliyun.oss.model.ObjectMetadata;
 import com.mumu.woodlin.file.dto.UploadCredentialDTO;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.file.enums.StorageType;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -76,8 +77,8 @@ public class AliyunOssNativeStorageService implements StorageService {
             return config.getEndpoint() + "/" + objectKey;
             
         } catch (Exception e) {
-            log.error("阿里云OSS(原生SDK)上传失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("阿里云OSS上传失败: " + e.getMessage(), e);
+            log.error("阿里云OSS上传失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("阿里云OSS上传失败: " + e.getMessage(), e);
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();
@@ -95,7 +96,7 @@ public class AliyunOssNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("阿里云OSS(原生SDK)下载失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("阿里云OSS下载失败: " + e.getMessage(), e);
+            throw new BusinessException("阿里云OSS下载失败: " + e.getMessage(), e);
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();
@@ -111,11 +112,11 @@ public class AliyunOssNativeStorageService implements StorageService {
             
             ossClient.deleteObject(config.getBucketName(), objectKey);
             
-            log.info("阿里云OSS(原生SDK)删除成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
+            log.info("阿里云OSS删除成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             
         } catch (Exception e) {
-            log.error("阿里云OSS(原生SDK)删除失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("阿里云OSS删除失败: " + e.getMessage(), e);
+            log.error("阿里云OSS删除失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("阿里云OSS删除失败: " + e.getMessage(), e);
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();
@@ -157,7 +158,7 @@ public class AliyunOssNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("阿里云OSS(原生SDK)生成预签名URL失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("阿里云OSS生成预签名URL失败: " + e.getMessage(), e);
+            throw new BusinessException("阿里云OSS生成预签名URL失败: " + e.getMessage(), e);
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();
@@ -189,11 +190,12 @@ public class AliyunOssNativeStorageService implements StorageService {
                 objectKey,
                 expirationTime
             );
+            log.info("阿里云OSS生成上传凭证成功: bucket={}, objectKey={}", config.getBucketName(), objectKey);
             return JSONUtil.toJsonStr(credentialDTO);
             
         } catch (Exception e) {
-            log.error("阿里云OSS(原生SDK)生成上传凭证失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("阿里云OSS生成上传凭证失败: " + e.getMessage(), e);
+            log.error("阿里云OSS生成上传凭证失败: bucket={}, objectKey={}", config.getBucketName(), objectKey, e);
+            throw new BusinessException("阿里云OSS生成上传凭证失败: " + e.getMessage(), e);
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();

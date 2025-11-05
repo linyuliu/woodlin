@@ -15,6 +15,7 @@ import com.obs.services.model.PutObjectRequest;
 import com.obs.services.model.TemporarySignatureRequest;
 
 import cn.hutool.json.JSONUtil;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -80,7 +81,7 @@ public class HuaweiObsNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("华为云OBS(原生SDK)上传失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("华为云OBS上传失败: " + e.getMessage(), e);
+            throw new BusinessException("华为云OBS上传失败: " + e.getMessage(), e);
         } finally {
             if (obsClient != null) {
                 try {
@@ -102,7 +103,7 @@ public class HuaweiObsNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("华为云OBS(原生SDK)下载失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("华为云OBS下载失败: " + e.getMessage(), e);
+            throw new BusinessException("华为云OBS下载失败: " + e.getMessage(), e);
         } finally {
             if (obsClient != null) {
                 try {
@@ -126,7 +127,7 @@ public class HuaweiObsNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("华为云OBS(原生SDK)删除失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("华为云OBS删除失败: " + e.getMessage(), e);
+            throw new BusinessException("华为云OBS删除失败: " + e.getMessage(), e);
         } finally {
             if (obsClient != null) {
                 try {
@@ -178,7 +179,7 @@ public class HuaweiObsNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("华为云OBS(原生SDK)生成预签名URL失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("华为云OBS生成预签名URL失败: " + e.getMessage(), e);
+            throw new BusinessException("华为云OBS生成预签名URL失败: " + e.getMessage(), e);
         } finally {
             if (obsClient != null) {
                 try {
@@ -217,7 +218,7 @@ public class HuaweiObsNativeStorageService implements StorageService {
             
         } catch (Exception e) {
             log.error("华为云OBS(原生SDK)生成上传凭证失败: objectKey={}", objectKey, e);
-            throw new RuntimeException("华为云OBS生成上传凭证失败: " + e.getMessage(), e);
+            throw new BusinessException("华为云OBS生成上传凭证失败: " + e.getMessage(), e);
         } finally {
             if (obsClient != null) {
                 try {

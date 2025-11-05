@@ -1,14 +1,20 @@
 package com.mumu.woodlin.file.transcoding;
 
 import java.io.InputStream;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Arrays;
+import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import org.springframework.stereotype.Service;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.mumu.woodlin.file.enums.TranscodingType;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 文档转PDF转码服务
@@ -60,7 +66,7 @@ public class DocumentToPdfTranscodingService extends AbstractTranscodingService 
             
         } catch (Exception e) {
             log.error("文档转换失败: format={}", sourceFormat, e);
-            throw new RuntimeException("文档转换失败: " + e.getMessage(), e);
+            throw new BusinessException("文档转换失败: " + e.getMessage(), e);
         }
     }
     
