@@ -18,6 +18,7 @@ import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.GeneratePresignedUrlRequest;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.region.Region;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.json.JSONUtil;
@@ -80,7 +81,7 @@ public class TencentCosNativeStorageService implements StorageService {
             }
             
             // 如果是公开访问，返回公开URL
-            if ("1".equals(config.getIsPublic())) {
+            if (CommonConstant.STATUS_ENABLE.equals(config.getIsPublic())) {
                 return "https://" + config.getBucketName() + ".cos." + config.getRegion() + ".myqcloud.com/" + objectKey;
             }
             

@@ -18,6 +18,7 @@ import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.file.mapper.SysStorageConfigMapper;
 import com.mumu.woodlin.file.storage.StorageService;
 import com.mumu.woodlin.file.vo.UploadTokenVO;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.exception.BusinessException;
 
 import cn.hutool.core.util.IdUtil;
@@ -48,7 +49,7 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
         SysUploadPolicy policy = uploadPolicyMapper.selectOne(
             new LambdaQueryWrapper<SysUploadPolicy>()
                 .eq(SysUploadPolicy::getPolicyCode, request.getPolicyCode())
-                .eq(SysUploadPolicy::getStatus, "1")
+                .eq(SysUploadPolicy::getStatus, CommonConstant.STATUS_ENABLE)
         );
         
         if (policy == null) {
@@ -58,7 +59,7 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
         
         // 2. 查询存储配置
         SysStorageConfig storageConfig = storageConfigMapper.selectById(policy.getStorageConfigId());
-        if (storageConfig == null || !"1".equals(storageConfig.getStatus())) {
+        if (storageConfig == null || !CommonConstant.STATUS_ENABLE.equals(storageConfig.getStatus())) {
             log.warn("存储配置不存在或已禁用: storageConfigId={}", policy.getStorageConfigId());
             throw new BusinessException("存储配置不存在或已禁用");
         }
@@ -81,7 +82,7 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
             .setMaxFileSize(policy.getMaxFileSize())
             .setAllowedExtensions(policy.getAllowedExtensions())
             .setExpireTime(expireTime)
-            .setIsUsed("0");
+            .setIsUsed(CommonConstant.STATUS_DISABLE);
         
         uploadTokenMapper.insert(uploadToken);
         
@@ -132,7 +133,7 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
         }
         
         // 4. 检查是否已使用
-        if ("1".equals(uploadToken.getIsUsed())) {
+        if (CommonConstant.STATUS_ENABLE.equals(uploadToken.getIsUsed())) {
             log.warn("上传令牌已使用: token={}", token);
             throw new BusinessException("上传令牌已使用");
         }
@@ -144,7 +145,7 @@ public class SysUploadTokenServiceImpl implements ISysUploadTokenService {
     public void markTokenAsUsed(Long tokenId, Long fileId) {
         uploadTokenMapper.update(null,
             new LambdaUpdateWrapper<SysUploadToken>()
-                .set(SysUploadToken::getIsUsed, "1")
+                .set(SysUploadToken::getIsUsed, CommonConstant.STATUS_ENABLE)
                 .set(SysUploadToken::getUsedTime, LocalDateTime.now())
                 .set(SysUploadToken::getFileId, fileId)
                 .eq(SysUploadToken::getTokenId, tokenId)
