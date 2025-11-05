@@ -7,6 +7,7 @@ import java.util.Date;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import com.aliyun.oss.HttpMethod;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
@@ -181,7 +182,7 @@ public class AliyunOssNativeStorageService implements StorageService {
                 config.getBucketName(), 
                 objectKey, 
                 expiration,
-                com.aliyun.oss.HttpMethod.PUT
+                HttpMethod.PUT
             );
             
             // 返回上传凭证
