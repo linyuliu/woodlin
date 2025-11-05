@@ -14,6 +14,7 @@ import com.mumu.woodlin.file.dto.UploadCredentialDTO;
 import com.mumu.woodlin.file.entity.SysStorageConfig;
 import com.mumu.woodlin.file.enums.StorageType;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -70,7 +71,7 @@ public class AliyunOssNativeStorageService implements StorageService {
             }
             
             // 如果是公开访问，返回公开URL
-            if ("1".equals(config.getIsPublic())) {
+            if (CommonConstant.STATUS_ENABLE.equals(config.getIsPublic())) {
                 return "https://" + config.getBucketName() + "." + config.getEndpoint() + "/" + objectKey;
             }
             
