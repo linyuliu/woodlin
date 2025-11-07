@@ -1,8 +1,8 @@
 package com.mumu.woodlin.common.config;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * API 加密配置属性
  * 
  * @author mumu
- * @description API接口请求和响应数据加密配置，支持多种加密算法和灵活的接口匹配规则
+ * @description API接口请求和响应数据加密配置，支持多种加密算法和灵活的接口匹配规则，使用Guava优化集合初始化
  * @since 2025-01-01
  */
 @Data
@@ -91,14 +91,16 @@ public class ApiEncryptionProperties {
      * /api/user/** : 匹配 /api/user 下的所有接口
      * /api/star/save : 匹配所有模块的 save 接口
      * /api/sensitive/** : 匹配所有敏感数据接口
+     * 使用Guava Lists初始化，提供更好的性能
      */
-    private List<String> includePatterns = new ArrayList<>();
+    private List<String> includePatterns = Lists.newArrayList();
     
     /**
      * 排除加密的接口路径模式列表
      * 优先级高于 includePatterns
+     * 使用Guava Lists初始化
      */
-    private List<String> excludePatterns = new ArrayList<>();
+    private List<String> excludePatterns = Lists.newArrayList();
     
     /**
      * 是否加密请求体

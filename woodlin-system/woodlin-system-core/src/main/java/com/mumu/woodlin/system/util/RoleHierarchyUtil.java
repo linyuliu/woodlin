@@ -1,16 +1,12 @@
 package com.mumu.woodlin.system.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.StrUtil;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -21,7 +17,7 @@ import com.mumu.woodlin.system.entity.SysRoleHierarchy;
  * 角色层次结构工具类
  * 
  * @author mumu
- * @description 提供角色继承层次相关的工具方法，支持RBAC1
+ * @description 提供角色继承层次相关的工具方法，支持RBAC1，使用Guava优化字符串和集合操作
  * @since 2025-10-31
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -38,6 +34,13 @@ public final class RoleHierarchyUtil {
     public static final String PATH_SEPARATOR = "/";
     
     /**
+     * Guava Splitter for path parsing (reusable and efficient)
+     */
+    private static final Splitter PATH_SPLITTER = Splitter.on(PATH_SEPARATOR)
+            .omitEmptyStrings()
+            .trimResults();
+    
+    /**
      * 构建角色路径
      * 
      * @param parentPath 父角色路径
@@ -45,7 +48,7 @@ public final class RoleHierarchyUtil {
      * @return 角色路径
      */
     public static String buildRolePath(String parentPath, Long roleId) {
-        if (StrUtil.isBlank(parentPath)) {
+        if (Strings.isNullOrEmpty(parentPath)) {
             return PATH_SEPARATOR + roleId + PATH_SEPARATOR;
         }
         // 移除尾部斜杠（如果有）
@@ -55,20 +58,19 @@ public final class RoleHierarchyUtil {
     }
     
     /**
-     * 从路径中提取角色ID列表
+     * 从路径中提取角色ID列表（使用Guava Splitter提升性能）
      * 
      * @param rolePath 角色路径
-     * @return 角色ID列表
+     * @return 不可变的角色ID列表
      */
-    public static List<Long> extractRoleIdsFromPath(String rolePath) {
-        if (StrUtil.isBlank(rolePath)) {
-            return Collections.emptyList();
+    public static ImmutableList<Long> extractRoleIdsFromPath(String rolePath) {
+        if (Strings.isNullOrEmpty(rolePath)) {
+            return ImmutableList.of();
         }
         
-        return Arrays.stream(rolePath.split(PATH_SEPARATOR))
-            .filter(StrUtil::isNotBlank)
-            .map(Long::parseLong)
-            .collect(Collectors.toList());
+        return PATH_SPLITTER.splitToStream(rolePath)
+                .map(Long::parseLong)
+                .collect(ImmutableList.toImmutableList());
     }
     
     /**
@@ -78,11 +80,11 @@ public final class RoleHierarchyUtil {
      * @return 角色层级（0为顶级）
      */
     public static int calculateRoleLevel(String rolePath) {
-        if (StrUtil.isBlank(rolePath)) {
+        if (Strings.isNullOrEmpty(rolePath)) {
             return 0;
         }
         
-        List<Long> roleIds = extractRoleIdsFromPath(rolePath);
+        ImmutableList<Long> roleIds = extractRoleIdsFromPath(rolePath);
         return Math.max(0, roleIds.size() - 1);
     }
     
@@ -95,7 +97,7 @@ public final class RoleHierarchyUtil {
      * @return 角色层次关系列表
      */
     public static List<SysRoleHierarchy> buildHierarchies(Long roleId, List<Long> ancestorRoleIds, String tenantId) {
-        List<SysRoleHierarchy> hierarchies = new ArrayList<>();
+        List<SysRoleHierarchy> hierarchies = Lists.newArrayListWithCapacity(ancestorRoleIds.size() + 1);
         
         // 添加自己到自己的关系（距离为0）
         hierarchies.add(new SysRoleHierarchy()
