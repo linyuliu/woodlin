@@ -1,24 +1,22 @@
 package com.mumu.woodlin.security.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Service;
-
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.security.config.DevTokenProperties;
 import com.mumu.woodlin.security.model.LoginUser;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 开发令牌服务
- * 
+ *
  * @author mumu
  * @description 为开发调试提供便捷的令牌生成和管理服务
  * @since 2025-01-07
@@ -26,14 +24,14 @@ import com.mumu.woodlin.security.model.LoginUser;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Conditional(DevTokenEnabledCondition.class)
+@ConditionalOnBean(DevTokenEnabledCondition.class)
 public class DevTokenService {
-    
+
     private final DevTokenProperties devTokenProperties;
-    
+
     /**
      * 生成开发令牌
-     * 
+     *
      * @param username 用户名（如果为空，使用配置的默认用户名）
      * @param userService 用户服务
      * @param roleService 角色服务
@@ -45,33 +43,33 @@ public class DevTokenService {
             Object userService,
             Object roleService,
             Object permissionService) {
-        
+
         if (!devTokenProperties.getEnabled()) {
             throw BusinessException.of(ResultCode.FORBIDDEN, "开发令牌功能未启用");
         }
-        
+
         // 使用默认用户名如果未提供
-        String actualUsername = StrUtil.isNotBlank(username) 
-            ? username 
+        String actualUsername = StrUtil.isNotBlank(username)
+            ? username
             : devTokenProperties.getUsername();
-        
+
         log.info("正在为用户 {} 生成开发令牌...", actualUsername);
-        
+
         // 获取用户信息并创建令牌
         // 这里需要动态调用传入的服务
         // 由于服务接口未暴露，使用反射或在实际实现中注入具体服务
-        
+
         // 返回令牌信息
         DevTokenInfo tokenInfo = new DevTokenInfo();
         tokenInfo.setUsername(actualUsername);
         tokenInfo.setGenerateTime(LocalDateTime.now());
-        
+
         return tokenInfo;
     }
-    
+
     /**
      * 为指定用户创建令牌会话
-     * 
+     *
      * @param userId 用户ID
      * @param loginUser 登录用户信息
      * @return 生成的令牌
@@ -79,46 +77,46 @@ public class DevTokenService {
     public String createTokenSession(Long userId, LoginUser loginUser) {
         // 登录并创建会话
         StpUtil.login(userId);
-        
+
         // 设置会话数据
         StpUtil.getSession().set("USER_KEY", loginUser);
-        
+
         // 获取令牌
         String token = StpUtil.getTokenValue();
-        
+
         log.debug("已为用户 {} 创建令牌会话: {}", loginUser.getUsername(), token);
-        
+
         return token;
     }
-    
+
     /**
      * 检查开发令牌功能是否启用
-     * 
+     *
      * @return 是否启用
      */
     public boolean isEnabled() {
         return devTokenProperties.getEnabled();
     }
-    
+
     /**
      * 打印令牌信息到控制台
-     * 
+     *
      * @param tokenInfo 令牌信息
      */
     public void printTokenInfo(DevTokenInfo tokenInfo) {
         if (!devTokenProperties.getPrintToConsole()) {
             return;
         }
-        
+
         String format = devTokenProperties.getDisplayFormat();
-        
+
         if ("banner".equalsIgnoreCase(format)) {
             printBannerFormat(tokenInfo);
         } else {
             printSimpleFormat(tokenInfo);
         }
     }
-    
+
     /**
      * 以横幅格式打印令牌信息
      */
@@ -141,11 +139,11 @@ public class DevTokenService {
         banner.append("║   1. 在请求头中添加: Authorization: " + tokenInfo.getToken() + "\n");
         banner.append("║   2. 或访问 /auth/dev-token 端点重新生成                                       ║\n");
         banner.append("╚═══════════════════════════════════════════════════════════════════════════════╝\n");
-        
+
         System.out.println(banner.toString());
         log.info("开发令牌已生成并打印到控制台");
     }
-    
+
     /**
      * 以简单格式打印令牌信息
      */
@@ -162,7 +160,7 @@ public class DevTokenService {
         log.info("使用方法: 在请求头中添加 Authorization: {}", tokenInfo.getToken());
         log.info("================================");
     }
-    
+
     /**
      * 截断令牌用于显示
      */
@@ -175,7 +173,7 @@ public class DevTokenService {
         }
         return token;
     }
-    
+
     /**
      * 格式化过期时间
      */
@@ -186,7 +184,7 @@ public class DevTokenService {
         long days = seconds / 86400;
         long hours = (seconds % 86400) / 3600;
         long minutes = (seconds % 3600) / 60;
-        
+
         if (days > 0) {
             return String.format("%d天%d小时", days, hours);
         } else if (hours > 0) {
@@ -195,7 +193,7 @@ public class DevTokenService {
             return String.format("%d分钟", minutes);
         }
     }
-    
+
     /**
      * 开发令牌信息
      */
@@ -205,32 +203,32 @@ public class DevTokenService {
          * 用户名
          */
         private String username;
-        
+
         /**
          * 令牌
          */
         private String token;
-        
+
         /**
          * 生成时间
          */
         private LocalDateTime generateTime;
-        
+
         /**
          * 过期时间（秒）
          */
         private Long expiresIn;
-        
+
         /**
          * 用户ID
          */
         private Long userId;
-        
+
         /**
          * 角色列表
          */
         private List<String> roles;
-        
+
         /**
          * 权限列表
          */

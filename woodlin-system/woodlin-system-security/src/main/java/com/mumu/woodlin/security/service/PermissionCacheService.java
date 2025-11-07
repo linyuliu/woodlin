@@ -1,19 +1,21 @@
 package com.mumu.woodlin.security.service;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
+import com.mumu.woodlin.common.config.CacheProperties;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.KeyScanOptions;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.mumu.woodlin.common.config.CacheProperties;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 权限缓存服务
- * 
+ *
  * @author mumu
  * @description 提供权限相关的缓存管理，支持用户权限和角色权限的缓存
  * @since 2025-01-04
@@ -21,39 +23,39 @@ import com.mumu.woodlin.common.config.CacheProperties;
 @Service
 @RequiredArgsConstructor
 public class PermissionCacheService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(PermissionCacheService.class);
-    
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final CacheProperties cacheProperties;
-    
+
     /**
      * 用户权限缓存key前缀
      */
     private static final String USER_PERMISSION_PREFIX = "auth:user:permissions:";
-    
+
     /**
      * 用户角色缓存key前缀
      */
     private static final String USER_ROLE_PREFIX = "auth:user:roles:";
-    
+
     /**
      * 角色权限缓存key前缀
      */
     private static final String ROLE_PERMISSION_PREFIX = "auth:role:permissions:";
-    
+
     /**
      * 获取用户权限缓存
-     * 
+     *
      * @param userId 用户ID
      * @return 权限列表，如果未缓存返回null
      */
     @SuppressWarnings("unchecked")
     public List<String> getUserPermissions(Long userId) {
-        if (!isEnabled()) {
+        if (isEnabled()) {
             return null;
         }
-        
+
         try {
             String key = USER_PERMISSION_PREFIX + userId;
             return (List<String>) redisTemplate.opsForValue().get(key);
@@ -62,18 +64,18 @@ public class PermissionCacheService {
             return null;
         }
     }
-    
+
     /**
      * 缓存用户权限
-     * 
+     *
      * @param userId 用户ID
      * @param permissions 权限列表
      */
     public void cacheUserPermissions(Long userId, List<String> permissions) {
-        if (!isEnabled() || permissions == null) {
+        if (isEnabled() || permissions == null) {
             return;
         }
-        
+
         try {
             String key = USER_PERMISSION_PREFIX + userId;
             long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
@@ -83,19 +85,19 @@ public class PermissionCacheService {
             log.error("缓存用户权限失败: userId={}", userId, e);
         }
     }
-    
+
     /**
      * 获取用户角色缓存
-     * 
+     *
      * @param userId 用户ID
      * @return 角色编码列表，如果未缓存返回null
      */
     @SuppressWarnings("unchecked")
     public List<String> getUserRoles(Long userId) {
-        if (!isEnabled()) {
+        if (isEnabled()) {
             return null;
         }
-        
+
         try {
             String key = USER_ROLE_PREFIX + userId;
             return (List<String>) redisTemplate.opsForValue().get(key);
@@ -104,18 +106,18 @@ public class PermissionCacheService {
             return null;
         }
     }
-    
+
     /**
      * 缓存用户角色
-     * 
+     *
      * @param userId 用户ID
      * @param roleCodes 角色编码列表
      */
     public void cacheUserRoles(Long userId, List<String> roleCodes) {
-        if (!isEnabled() || roleCodes == null) {
+        if (isEnabled() || roleCodes == null) {
             return;
         }
-        
+
         try {
             String key = USER_ROLE_PREFIX + userId;
             long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
@@ -125,19 +127,19 @@ public class PermissionCacheService {
             log.error("缓存用户角色失败: userId={}", userId, e);
         }
     }
-    
+
     /**
      * 获取角色权限缓存
-     * 
+     *
      * @param roleId 角色ID
      * @return 权限列表，如果未缓存返回null
      */
     @SuppressWarnings("unchecked")
     public List<String> getRolePermissions(Long roleId) {
-        if (!isEnabled()) {
+        if (isEnabled()) {
             return null;
         }
-        
+
         try {
             String key = ROLE_PERMISSION_PREFIX + roleId;
             return (List<String>) redisTemplate.opsForValue().get(key);
@@ -146,18 +148,18 @@ public class PermissionCacheService {
             return null;
         }
     }
-    
+
     /**
      * 缓存角色权限
-     * 
+     *
      * @param roleId 角色ID
      * @param permissions 权限列表
      */
     public void cacheRolePermissions(Long roleId, List<String> permissions) {
-        if (!isEnabled() || permissions == null) {
+        if (isEnabled() || permissions == null) {
             return;
         }
-        
+
         try {
             String key = ROLE_PERMISSION_PREFIX + roleId;
             long expireSeconds = cacheProperties.getPermission().getRoleExpireSeconds();
@@ -167,10 +169,10 @@ public class PermissionCacheService {
             log.error("缓存角色权限失败: roleId={}", roleId, e);
         }
     }
-    
+
     /**
      * 清除用户的权限和角色缓存
-     * 
+     *
      * @param userId 用户ID
      */
     public void evictUserCache(Long userId) {
@@ -184,10 +186,10 @@ public class PermissionCacheService {
             log.error("清除用户缓存失败: userId={}", userId, e);
         }
     }
-    
+
     /**
      * 清除角色的权限缓存
-     * 
+     *
      * @param roleId 角色ID
      */
     public void evictRoleCache(Long roleId) {
@@ -199,7 +201,7 @@ public class PermissionCacheService {
             log.error("清除角色缓存失败: roleId={}", roleId, e);
         }
     }
-    
+
     /**
      * 清除所有用户权限缓存（权限变更时使用）
      */
@@ -212,7 +214,7 @@ public class PermissionCacheService {
             log.error("清除所有用户权限缓存失败", e);
         }
     }
-    
+
     /**
      * 清除所有角色权限缓存（权限变更时使用）
      */
@@ -225,44 +227,33 @@ public class PermissionCacheService {
             log.error("清除所有角色权限缓存失败", e);
         }
     }
-    
+
     /**
      * 判断权限缓存是否启用
-     * 
+     *
      * @return 是否启用
      */
     private boolean isEnabled() {
-        return cacheProperties.getPermission() != null 
-            && Boolean.TRUE.equals(cacheProperties.getPermission().getEnabled());
+        return cacheProperties.getPermission() == null
+            || !Boolean.TRUE.equals(cacheProperties.getPermission().getEnabled());
     }
-    
+
     /**
      * 使用SCAN命令批量删除键（避免KEYS命令阻塞Redis）
-     * 
+     *
      * @param pattern 键模式
      */
     private void scanAndDelete(String pattern) {
-        redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
-            org.springframework.data.redis.core.Cursor<byte[]> cursor = connection.scan(
-                org.springframework.data.redis.core.ScanOptions.scanOptions()
-                    .match(pattern)
-                    .count(100)
-                    .build()
-            );
-            
-            try {
+        redisTemplate.execute((RedisCallback<Void>) connection -> {
+            try (Cursor<byte[]> cursor = connection.commands().scan(KeyScanOptions.scanOptions().match(pattern).count(1000).build())) {
                 while (cursor.hasNext()) {
-                    connection.del(cursor.next());
+                    connection.commands().del(cursor.next());
                 }
-            } finally {
-                // 关闭游标
-                try {
-                    cursor.close();
-                } catch (Exception e) {
-                    log.error("关闭Redis SCAN游标失败", e);
-                }
+            } catch (Exception e) {
+                log.error("关闭Redis SCAN游标失败", e);
             }
-            
+            // 关闭游标
+
             return null;
         });
     }
