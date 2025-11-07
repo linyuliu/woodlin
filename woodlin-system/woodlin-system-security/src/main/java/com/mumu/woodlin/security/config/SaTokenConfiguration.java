@@ -47,7 +47,8 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
         "/auth/logout",
         "/auth/captcha",
         "/auth/register",
-        "/auth/forgot-password"
+        "/auth/forgot-password",
+        "/auth/dev-token"
     };
 
     /**

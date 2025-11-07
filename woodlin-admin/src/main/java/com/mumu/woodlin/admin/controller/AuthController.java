@@ -21,6 +21,8 @@ import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.CaptchaService;
+import com.mumu.woodlin.security.config.DevTokenProperties;
+import com.mumu.woodlin.admin.service.DevTokenStartupListener;
 
 /**
  * 认证控制器
@@ -39,6 +41,12 @@ public class AuthController {
     
     private final AuthenticationService authenticationService;
     private final CaptchaService captchaService;
+    
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private DevTokenProperties devTokenProperties;
+    
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private DevTokenStartupListener devTokenStartupListener;
     
     /**
      * 用户登录
@@ -103,6 +111,41 @@ public class AuthController {
     public R<CaptchaService.CaptchaInfo> getCaptcha() {
         CaptchaService.CaptchaInfo captchaInfo = captchaService.generateCaptcha();
         return R.ok(captchaInfo);
+    }
+    
+    /**
+     * 生成开发调试令牌（仅开发环境）
+     */
+    @GetMapping("/dev-token")
+    @Operation(
+        summary = "生成开发调试令牌",
+        description = "为开发调试生成便捷令牌，仅在开发和测试环境可用。返回可直接使用的访问令牌。"
+    )
+    public R<Object> generateDevToken() {
+        // 检查是否启用开发令牌功能
+        if (devTokenProperties == null || !devTokenProperties.getEnabled()) {
+            return R.fail("开发令牌功能未启用。请在配置文件中设置 woodlin.security.dev-token.enabled=true");
+        }
+        
+        if (devTokenStartupListener == null) {
+            return R.fail("开发令牌服务不可用");
+        }
+        
+        try {
+            // 使用启动监听器的方法生成令牌（复用逻辑）
+            java.lang.reflect.Method method = DevTokenStartupListener.class
+                .getDeclaredMethod("generateDevToken", String.class);
+            method.setAccessible(true);
+            
+            Object tokenInfo = method.invoke(devTokenStartupListener, devTokenProperties.getUsername());
+            
+            log.info("通过 API 端点生成开发令牌成功");
+            return R.ok(tokenInfo, "开发令牌生成成功");
+            
+        } catch (Exception e) {
+            log.error("生成开发令牌失败: {}", e.getMessage(), e);
+            return R.fail("生成开发令牌失败: " + e.getMessage());
+        }
     }
     
 }

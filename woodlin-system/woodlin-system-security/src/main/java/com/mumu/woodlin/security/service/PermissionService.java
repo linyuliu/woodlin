@@ -1,6 +1,7 @@
 package com.mumu.woodlin.security.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.security.util.SecurityUtil;
@@ -12,9 +13,10 @@ import com.mumu.woodlin.security.util.SecurityUtil;
  * @description 权限验证服务，用于@PreAuthorize注解的权限检查
  * @since 2025-01-01
  */
-@Slf4j
 @Service("auth")
 public class PermissionService {
+    
+    private static final Logger log = LoggerFactory.getLogger(PermissionService.class);
     
     /**
      * 验证用户是否具备某权限
