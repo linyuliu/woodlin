@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
@@ -17,6 +18,7 @@ import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.model.LoginUser;
 import com.mumu.woodlin.security.service.AuthenticationService;
+import com.mumu.woodlin.security.service.CaptchaService;
 import com.mumu.woodlin.security.service.PasswordPolicyService;
 import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.entity.SysRole;
@@ -44,6 +46,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordPolicyService passwordPolicyService;
     private final ISysRoleService roleService;
     private final ISysPermissionService permissionService;
+    private final CaptchaService captchaService;
     
     /**
      * 权限缓存服务（可选依赖）
@@ -60,14 +63,29 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(LoginRequest loginRequest) {
+        // 验证验证码
+        if (StrUtil.isNotBlank(loginRequest.getUuid())) {
+            if (StrUtil.isBlank(loginRequest.getCaptcha())) {
+                log.warn("用户 {} 登录失败: 验证码不能为空", loginRequest.getUsername());
+                throw BusinessException.of(ResultCode.CAPTCHA_ERROR, "验证码不能为空");
+            }
+            
+            if (!captchaService.verifyCaptcha(loginRequest.getUuid(), loginRequest.getCaptcha())) {
+                log.warn("用户 {} 登录失败: 验证码错误", loginRequest.getUsername());
+                throw BusinessException.of(ResultCode.CAPTCHA_ERROR, "验证码错误或已过期");
+            }
+        }
+        
         // 查找用户
         SysUser user = userService.selectUserByUsername(loginRequest.getUsername());
         if (user == null) {
-            throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
+            log.warn("用户登录失败: 用户不存在, username={}", loginRequest.getUsername());
+            throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户名或密码错误");
         }
         
         // 检查用户状态
-        if (!"1".equals(user.getStatus())) {
+        if (!CommonConstant.STATUS_ENABLE.equals(user.getStatus())) {
+            log.warn("用户 {} 登录失败: 账号已被禁用", user.getUsername());
             throw BusinessException.of(ResultCode.USER_DISABLED, "账号已被禁用");
         }
         
