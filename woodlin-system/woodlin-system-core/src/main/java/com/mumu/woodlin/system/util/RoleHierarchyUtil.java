@@ -1,7 +1,13 @@
 package com.mumu.woodlin.system.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -10,6 +16,8 @@ import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysRoleHierarchy;
 
