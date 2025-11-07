@@ -1,10 +1,10 @@
 package com.mumu.woodlin.common.util;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.springframework.stereotype.Component;
 
 import com.mumu.woodlin.common.enums.DictEnum;
@@ -13,7 +13,7 @@ import com.mumu.woodlin.common.enums.DictEnum;
  * 字典工具类
  *
  * @author mumu
- * @description 提供字典枚举相关的工具方法
+ * @description 提供字典枚举相关的工具方法，使用Guava的不可变集合提升性能和线程安全性
  * @since 2025-01-01
  */
 @Component
@@ -21,28 +21,28 @@ public class DictUtil {
 
 
     /**
-     * 将字典枚举数组转换为label-value列表
+     * 将字典枚举数组转换为label-value列表（不可变）
      *
      * @param enumClass 枚举类
      * @param <T> 枚举类型
-     * @return label-value列表
+     * @return 不可变的label-value列表
      */
-    public static <T extends Enum<T> & DictEnum> List<DictEnum.DictItem> toDictList(Class<T> enumClass) {
+    public static <T extends Enum<T> & DictEnum> ImmutableList<DictEnum.DictItem> toDictList(Class<T> enumClass) {
         return Arrays.stream(enumClass.getEnumConstants())
                 .map(DictEnum::toDictItem)
-                .collect(Collectors.toList());
+                .collect(ImmutableList.toImmutableList());
     }
 
     /**
-     * 将字典枚举数组转换为Map结构（value -> label）
+     * 将字典枚举数组转换为Map结构（value -> label，不可变）
      *
      * @param enumClass 枚举类
      * @param <T> 枚举类型
-     * @return value到label的映射
+     * @return 不可变的value到label的映射
      */
-    public static <T extends Enum<T> & DictEnum> Map<Object, String> toDictMap(Class<T> enumClass) {
+    public static <T extends Enum<T> & DictEnum> ImmutableMap<Object, String> toDictMap(Class<T> enumClass) {
         return Arrays.stream(enumClass.getEnumConstants())
-                .collect(Collectors.toMap(DictEnum::getValue, DictEnum::getLabel));
+                .collect(ImmutableMap.toImmutableMap(DictEnum::getValue, DictEnum::getLabel));
     }
 
     /**

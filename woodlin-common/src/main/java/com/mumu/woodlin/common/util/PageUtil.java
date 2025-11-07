@@ -1,18 +1,17 @@
 package com.mumu.woodlin.common.util;
 
-import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.google.common.base.Preconditions;
+import com.google.common.math.IntMath;
 
 import com.mumu.woodlin.common.constant.PageConstant;
-import com.mumu.woodlin.common.enums.ResultCode;
-import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 分页工具类
  * 
  * @author mumu
- * @description 分页工具类，提供分页参数校验和Page对象创建
+ * @description 分页工具类，提供分页参数校验和Page对象创建，使用Guava优化参数验证
  * @since 2025-01-01
  */
 public class PageUtil {
@@ -26,48 +25,32 @@ public class PageUtil {
      * @return 分页对象
      */
     public static <T> Page<T> createPage(Integer pageNum, Integer pageSize) {
-        // 参数校验
-        validatePageParams(pageNum, pageSize);
+        // 使用默认值
+        int safePageNum = getSafePageNum(pageNum);
+        int safePageSize = getSafePageSize(pageSize);
         
-        // 设置默认值
-        if (ObjectUtil.isNull(pageNum) || pageNum <= 0) {
-            pageNum = PageConstant.DEFAULT_PAGE_NUM;
-        }
-        if (ObjectUtil.isNull(pageSize) || pageSize <= 0) {
-            pageSize = PageConstant.DEFAULT_PAGE_SIZE;
-        }
-        
-        return new Page<>(pageNum, pageSize);
+        return new Page<>(safePageNum, safePageSize);
     }
     
     /**
-     * 校验分页参数
+     * 校验分页参数（严格模式，使用Guava Preconditions）
      * 
      * @param pageNum 页码
      * @param pageSize 页面大小
+     * @throws IllegalArgumentException 如果参数不合法
      */
     public static void validatePageParams(Integer pageNum, Integer pageSize) {
-        // 页码校验
-        if (ObjectUtil.isNotNull(pageNum)) {
-            if (pageNum <= 0) {
-                throw BusinessException.of(ResultCode.BAD_REQUEST, "页码必须大于0");
-            }
-            if (pageNum > PageConstant.MAX_PAGE_NUM) {
-                throw BusinessException.of(ResultCode.BAD_REQUEST, 
-                    String.format("页码不能超过%d", PageConstant.MAX_PAGE_NUM));
-            }
+        if (pageNum != null) {
+            Preconditions.checkArgument(pageNum > 0, "页码必须大于0");
+            Preconditions.checkArgument(pageNum <= PageConstant.MAX_PAGE_NUM, 
+                "页码不能超过%s", PageConstant.MAX_PAGE_NUM);
         }
         
-        // 页面大小校验
-        if (ObjectUtil.isNotNull(pageSize)) {
-            if (pageSize < PageConstant.MIN_PAGE_SIZE) {
-                throw BusinessException.of(ResultCode.BAD_REQUEST, 
-                    String.format("每页大小不能小于%d", PageConstant.MIN_PAGE_SIZE));
-            }
-            if (pageSize > PageConstant.MAX_PAGE_SIZE) {
-                throw BusinessException.of(ResultCode.BAD_REQUEST, 
-                    String.format("每页大小不能超过%d", PageConstant.MAX_PAGE_SIZE));
-            }
+        if (pageSize != null) {
+            Preconditions.checkArgument(pageSize >= PageConstant.MIN_PAGE_SIZE, 
+                "每页大小不能小于%s", PageConstant.MIN_PAGE_SIZE);
+            Preconditions.checkArgument(pageSize <= PageConstant.MAX_PAGE_SIZE, 
+                "每页大小不能超过%s", PageConstant.MAX_PAGE_SIZE);
         }
     }
     
@@ -78,13 +61,13 @@ public class PageUtil {
      * @return 是否为空
      */
     public static boolean isEmpty(IPage<?> page) {
-        return ObjectUtil.isNull(page) || 
-               ObjectUtil.isNull(page.getRecords()) || 
+        return page == null || 
+               page.getRecords() == null || 
                page.getRecords().isEmpty();
     }
     
     /**
-     * 计算总页数
+     * 计算总页数（使用Guava的IntMath进行安全除法）
      * 
      * @param total 总记录数
      * @param pageSize 页面大小
@@ -94,7 +77,7 @@ public class PageUtil {
         if (total <= 0 || pageSize <= 0) {
             return 0L;
         }
-        return (total + pageSize - 1) / pageSize;
+        return IntMath.divide((int) total, (int) pageSize, java.math.RoundingMode.CEILING);
     }
     
     /**
@@ -104,7 +87,7 @@ public class PageUtil {
      * @return 安全的页码
      */
     public static int getSafePageNum(Integer pageNum) {
-        if (ObjectUtil.isNull(pageNum) || pageNum <= 0) {
+        if (pageNum == null || pageNum <= 0) {
             return PageConstant.DEFAULT_PAGE_NUM;
         }
         return Math.min(pageNum, PageConstant.MAX_PAGE_NUM);
@@ -117,7 +100,7 @@ public class PageUtil {
      * @return 安全的页面大小
      */
     public static int getSafePageSize(Integer pageSize) {
-        if (ObjectUtil.isNull(pageSize) || pageSize <= 0) {
+        if (pageSize == null || pageSize <= 0) {
             return PageConstant.DEFAULT_PAGE_SIZE;
         }
         return Math.min(Math.max(pageSize, PageConstant.MIN_PAGE_SIZE), PageConstant.MAX_PAGE_SIZE);

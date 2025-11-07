@@ -2,7 +2,7 @@ package com.mumu.woodlin.common.util;
 
 import java.util.regex.Pattern;
 
-import cn.hutool.core.util.StrUtil;
+import com.google.common.base.Strings;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -65,10 +65,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidEmail(String email) {
-        if (StrUtil.isBlank(email)) {
+        if (Strings.isNullOrEmpty(email)) {
             return false;
         }
-        return EMAIL_PATTERN.matcher(email).matches();
+        return EMAIL_PATTERN.matcher(email.trim()).matches();
     }
     
     /**
@@ -78,10 +78,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidMobile(String mobile) {
-        if (StrUtil.isBlank(mobile)) {
+        if (Strings.isNullOrEmpty(mobile)) {
             return false;
         }
-        return MOBILE_PATTERN.matcher(mobile).matches();
+        return MOBILE_PATTERN.matcher(mobile.trim()).matches();
     }
     
     /**
@@ -91,10 +91,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidIdCard(String idCard) {
-        if (StrUtil.isBlank(idCard)) {
+        if (Strings.isNullOrEmpty(idCard)) {
             return false;
         }
-        return ID_CARD_PATTERN.matcher(idCard).matches();
+        return ID_CARD_PATTERN.matcher(idCard.trim()).matches();
     }
     
     /**
@@ -104,10 +104,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidUsername(String username) {
-        if (StrUtil.isBlank(username)) {
+        if (Strings.isNullOrEmpty(username)) {
             return false;
         }
-        return USERNAME_PATTERN.matcher(username).matches();
+        return USERNAME_PATTERN.matcher(username.trim()).matches();
     }
     
     /**
@@ -117,7 +117,7 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidPassword(String password) {
-        if (StrUtil.isBlank(password)) {
+        if (Strings.isNullOrEmpty(password)) {
             return false;
         }
         return PASSWORD_PATTERN.matcher(password).matches();
@@ -130,10 +130,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidIp(String ip) {
-        if (StrUtil.isBlank(ip)) {
+        if (Strings.isNullOrEmpty(ip)) {
             return false;
         }
-        return IP_PATTERN.matcher(ip).matches();
+        return IP_PATTERN.matcher(ip.trim()).matches();
     }
     
     /**
@@ -153,10 +153,10 @@ public final class ValidateUtil {
      * @return 是否有效
      */
     public static boolean isValidUrl(String url) {
-        if (StrUtil.isBlank(url)) {
+        if (Strings.isNullOrEmpty(url)) {
             return false;
         }
-        return url.matches("^(https?|ftp)://[^\\s/$.?#].[^\\s]*$");
+        return url.trim().matches("^(https?|ftp)://[^\\s/$.?#].[^\\s]*$");
     }
     
 }
