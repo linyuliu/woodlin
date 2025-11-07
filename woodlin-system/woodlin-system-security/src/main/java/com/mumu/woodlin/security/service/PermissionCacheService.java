@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -17,10 +18,11 @@ import com.mumu.woodlin.common.config.CacheProperties;
  * @description 提供权限相关的缓存管理，支持用户权限和角色权限的缓存
  * @since 2025-01-04
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PermissionCacheService {
+    
+    private static final Logger log = LoggerFactory.getLogger(PermissionCacheService.class);
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final CacheProperties cacheProperties;
