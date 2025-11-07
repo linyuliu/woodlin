@@ -20,6 +20,7 @@ import com.mumu.woodlin.security.dto.ChangePasswordRequest;
 import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.service.AuthenticationService;
+import com.mumu.woodlin.security.service.CaptchaService;
 
 /**
  * 认证控制器
@@ -37,6 +38,7 @@ import com.mumu.woodlin.security.service.AuthenticationService;
 public class AuthController {
     
     private final AuthenticationService authenticationService;
+    private final CaptchaService captchaService;
     
     /**
      * 用户登录
@@ -88,6 +90,19 @@ public class AuthController {
     public R<Object> getUserInfo() {
         Object userInfo = authenticationService.getCurrentUserInfo();
         return R.ok(userInfo);
+    }
+    
+    /**
+     * 获取验证码
+     */
+    @GetMapping("/captcha")
+    @Operation(
+        summary = "获取验证码",
+        description = "生成图形验证码，返回验证码ID和Base64编码的图片"
+    )
+    public R<CaptchaService.CaptchaInfo> getCaptcha() {
+        CaptchaService.CaptchaInfo captchaInfo = captchaService.generateCaptcha();
+        return R.ok(captchaInfo);
     }
     
 }
