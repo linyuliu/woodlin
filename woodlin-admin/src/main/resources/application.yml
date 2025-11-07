@@ -278,6 +278,20 @@ page:
 # Woodlin 安全配置
 woodlin:
   security:
+    # 开发令牌配置（仅用于开发调试）
+    dev-token:
+      # 是否启用开发令牌功能（生产环境请设置为false）
+      enabled: ${DEV_TOKEN_ENABLED:true}
+      # 开发令牌的默认用户名
+      username: ${DEV_TOKEN_USERNAME:admin}
+      # 是否在应用启动时自动生成令牌
+      auto-generate-on-startup: ${DEV_TOKEN_AUTO_GENERATE:true}
+      # 开发令牌的有效期（秒）-1表示永不过期，0表示使用系统默认配置
+      timeout: ${DEV_TOKEN_TIMEOUT:0}
+      # 是否在控制台输出令牌信息
+      print-to-console: ${DEV_TOKEN_PRINT:true}
+      # 令牌提示信息的显示格式（banner或simple）
+      display-format: ${DEV_TOKEN_DISPLAY_FORMAT:banner}
     # 用户活动监控配置
     activity-monitoring:
       # 是否启用用户活动监控
