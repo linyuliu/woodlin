@@ -45,6 +45,8 @@ public enum ResultCode {
     PASSWORD_POLICY_VIOLATION(1011, "密码不符合策略要求"),
     OLD_PASSWORD_ERROR(1012, "旧密码错误"),
     PASSWORD_MISMATCH(1013, "密码和确认密码不一致"),
+    CAPTCHA_ERROR(1014, "验证码错误"),
+    CAPTCHA_EXPIRED(1015, "验证码已过期"),
     
     // 权限错误 2xxx
     PERMISSION_DENIED(2001, "权限不足"),
