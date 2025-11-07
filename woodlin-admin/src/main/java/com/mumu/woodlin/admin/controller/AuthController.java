@@ -140,7 +140,7 @@ public class AuthController {
             Object tokenInfo = method.invoke(devTokenStartupListener, devTokenProperties.getUsername());
             
             log.info("通过 API 端点生成开发令牌成功");
-            return R.ok(tokenInfo, "开发令牌生成成功");
+            return R.ok("开发令牌生成成功", tokenInfo);
             
         } catch (Exception e) {
             log.error("生成开发令牌失败: {}", e.getMessage(), e);
