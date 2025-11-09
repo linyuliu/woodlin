@@ -12,7 +12,7 @@
 
     <!-- 查询角色的所有祖先角色ID -->
     <select id="selectAncestorRoleIds" resultType="java.lang.Long">
-        SELECT DISTINCT ancestor_role_id, distance
+        SELECT ancestor_role_id
         FROM sys_role_hierarchy
         WHERE descendant_role_id = #{roleId}
         ORDER BY distance ASC
@@ -20,7 +20,7 @@
 
     <!-- 查询角色的所有后代角色ID -->
     <select id="selectDescendantRoleIds" resultType="java.lang.Long">
-        SELECT DISTINCT descendant_role_id, distance
+        SELECT descendant_role_id
         FROM sys_role_hierarchy
         WHERE ancestor_role_id = #{roleId}
         ORDER BY distance ASC
