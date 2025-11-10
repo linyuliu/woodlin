@@ -1,5 +1,9 @@
 package com.mumu.woodlin.admin.service;
 
+import cn.dev33.satoken.context.SaTokenContext;
+import cn.dev33.satoken.context.model.SaRequest;
+import cn.dev33.satoken.context.model.SaResponse;
+import cn.dev33.satoken.context.model.SaStorage;
 import cn.dev33.satoken.temp.SaTempUtil;
 import com.mumu.woodlin.security.config.DevTokenProperties;
 import com.mumu.woodlin.security.model.LoginUser;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -54,6 +59,7 @@ public class DevTokenStartupListener {
 
         try {
             // 生成开发令牌
+            // 注意：SaTempUtil.createToken() 不依赖Web上下文，可以安全地在启动监听器中调用
             DevTokenService.DevTokenInfo tokenInfo = generateDevToken(devTokenProperties.getUsername());
 
             // 打印令牌信息
@@ -76,7 +82,7 @@ public class DevTokenStartupListener {
 
         // 查询用户
         SysUser user = userService.selectUserByUsername(username);
-        if (user == null) {
+        if (Objects.isNull(user)) {
             throw new RuntimeException("用户不存在: " + username);
         }
 
@@ -140,7 +146,7 @@ public class DevTokenStartupListener {
             .setRoleCodes(roleCodes)
             .setPermissions(permissions)
             .setLoginTime(LocalDateTime.now())
-            .setLoginIp("127.0.0.1");
+            .setLoginIp("127.0.0.1");  // 启动时默认使用本地地址
     }
 
     /**
@@ -172,7 +178,7 @@ public class DevTokenStartupListener {
         banner.append(String.format("║ 用户名 (Username)    : %-54s ║\n", tokenInfo.getUsername()));
         banner.append(String.format("║ 令牌 (Token)         : %-54s ║\n", tokenInfo.getToken()));
         banner.append(String.format("║ 生成时间 (Time)       : %-54s ║\n", tokenInfo.getGenerateTime()));
-        if (tokenInfo.getExpiresIn() != null && tokenInfo.getExpiresIn() > 0) {
+        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
             banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", formatExpireTime(tokenInfo.getExpiresIn())));
         } else {
             banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", "永不过期 (Never)"));
@@ -201,7 +207,7 @@ public class DevTokenStartupListener {
         log.info("用户名: {}", tokenInfo.getUsername());
         log.info("令牌: {}", tokenInfo.getToken());
         log.info("生成时间: {}", tokenInfo.getGenerateTime());
-        if (tokenInfo.getExpiresIn() != null && tokenInfo.getExpiresIn() > 0) {
+        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
             log.info("过期时间: {}", formatExpireTime(tokenInfo.getExpiresIn()));
         } else {
             log.info("过期时间: 永不过期");
