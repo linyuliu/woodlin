@@ -1,17 +1,16 @@
 package com.mumu.woodlin.security.service;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
 import cn.dev33.satoken.stp.StpUtil;
+import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 用户活动监控服务
@@ -23,7 +22,7 @@ import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "woodlin.security.activity-monitoring.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "woodlin.security.activity-monitoring.enabled", havingValue = "true")
 public class UserActivityMonitoringService {
 
     private final ActivityMonitoringProperties activityProperties;
@@ -54,11 +53,11 @@ public class UserActivityMonitoringService {
         try {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String currentTime = LocalDateTime.now().toString();
-            
+
             // 记录最后活动时间，设置过期时间为超时时间的2倍（防止过早清理）
-            redisTemplate.opsForValue().set(activityKey, currentTime, 
+            redisTemplate.opsForValue().set(activityKey, currentTime,
                 activityProperties.getTimeoutSeconds() * 2, TimeUnit.SECONDS);
-            
+
             log.debug("记录用户活动: userId={}, activityType={}, time={}", userId, activityType, currentTime);
         } catch (Exception e) {
             log.error("记录用户活动失败: userId={}, activityType={}", userId, activityType, e);
@@ -72,22 +71,22 @@ public class UserActivityMonitoringService {
      * @return 是否超时
      */
     public boolean isUserTimeout(String userId) {
-        if (!activityProperties.getEnabled() || activityProperties.getTimeoutSeconds() <= 0) {
+        if (activityProperties.getEnabled() || activityProperties.getTimeoutSeconds() <= 0) {
             return false;
         }
 
         try {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
-            
+
             if (Objects.isNull(lastActivityTimeStr)) {
-                return true; // 没有活动记录，认为超时
+                return true;
             }
-            
+
             LocalDateTime lastActivityTime = LocalDateTime.parse(lastActivityTimeStr);
             LocalDateTime now = LocalDateTime.now();
             long inactiveSeconds = java.time.Duration.between(lastActivityTime, now).getSeconds();
-            
+
             return inactiveSeconds > activityProperties.getTimeoutSeconds();
         } catch (Exception e) {
             log.error("检查用户超时状态失败: userId={}", userId, e);
@@ -110,28 +109,28 @@ public class UserActivityMonitoringService {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String warningKey = USER_WARNING_KEY_PREFIX + userId;
             String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
-            
+
             if (Objects.isNull(lastActivityTimeStr)) {
                 return false;
             }
-            
+
             LocalDateTime lastActivityTime = LocalDateTime.parse(lastActivityTimeStr);
             LocalDateTime now = LocalDateTime.now();
             long inactiveSeconds = java.time.Duration.between(lastActivityTime, now).getSeconds();
-            
+
             long warningThreshold = activityProperties.getTimeoutSeconds() - activityProperties.getWarningBeforeTimeoutSeconds();
-            
+
             // 如果超过警告阈值且未发过警告
             if (inactiveSeconds > warningThreshold) {
                 String warningTime = (String) redisTemplate.opsForValue().get(warningKey);
                 if (Objects.isNull(warningTime)) {
                     // 记录警告时间，避免重复警告
-                    redisTemplate.opsForValue().set(warningKey, now.toString(), 
+                    redisTemplate.opsForValue().set(warningKey, now.toString(),
                         activityProperties.getWarningBeforeTimeoutSeconds(), TimeUnit.SECONDS);
                     return true;
                 }
             }
-            
+
             return false;
         } catch (Exception e) {
             log.error("检查用户警告状态失败: userId={}", userId, e);
@@ -147,13 +146,13 @@ public class UserActivityMonitoringService {
     public void forceLogout(String userId) {
         try {
             StpUtil.logout(userId);
-            
+
             // 清理活动记录
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String warningKey = USER_WARNING_KEY_PREFIX + userId;
             redisTemplate.delete(activityKey);
             redisTemplate.delete(warningKey);
-            
+
             log.info("用户因长时间无活动被强制登出: userId={}", userId);
         } catch (Exception e) {
             log.error("强制用户登出失败: userId={}", userId, e);
