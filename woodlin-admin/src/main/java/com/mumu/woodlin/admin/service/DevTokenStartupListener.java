@@ -1,28 +1,18 @@
 package com.mumu.woodlin.admin.service;
 
-import cn.dev33.satoken.context.SaTokenContext;
-import cn.dev33.satoken.context.model.SaRequest;
-import cn.dev33.satoken.context.model.SaResponse;
-import cn.dev33.satoken.context.model.SaStorage;
-import cn.dev33.satoken.temp.SaTempUtil;
 import com.mumu.woodlin.security.config.DevTokenProperties;
-import com.mumu.woodlin.security.model.LoginUser;
-import com.mumu.woodlin.security.service.DevTokenService;
-import com.mumu.woodlin.system.entity.SysRole;
-import com.mumu.woodlin.system.entity.SysUser;
-import com.mumu.woodlin.system.service.ISysPermissionService;
-import com.mumu.woodlin.system.service.ISysRoleService;
-import com.mumu.woodlin.system.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * 开发令牌启动监听器
@@ -37,12 +27,17 @@ import java.util.stream.Collectors;
 public class DevTokenStartupListener {
 
     private final DevTokenProperties devTokenProperties;
-    private final ISysUserService userService;
-    private final ISysRoleService roleService;
-    private final ISysPermissionService permissionService;
+    private final RestTemplate restTemplate;
+    
+    @Value("${server.port:8080}")
+    private int serverPort;
+    
+    @Value("${server.servlet.context-path:/api}")
+    private String contextPath;
 
     /**
      * 应用启动完成后生成开发令牌
+     * 通过发起HTTP请求到 /auth/dev-token 端点来生成令牌，确保在完整的Web上下文中运行
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
@@ -57,102 +52,71 @@ public class DevTokenStartupListener {
             return;
         }
 
-        try {
-            // 生成开发令牌
-            // 注意：SaTempUtil.createToken() 不依赖Web上下文，可以安全地在启动监听器中调用
-            DevTokenService.DevTokenInfo tokenInfo = generateDevToken(devTokenProperties.getUsername());
-
-            // 打印令牌信息
-            printTokenInfo(tokenInfo);
-
-        } catch (Exception e) {
-            log.error("生成开发令牌失败: {}", e.getMessage(), e);
-            log.warn("开发令牌生成失败，但应用继续启动。请检查用户 {} 是否存在。", devTokenProperties.getUsername());
-        }
+        // 延迟一小段时间，确保应用完全启动
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000); // 等待2秒，确保应用完全启动
+                
+                // 构建请求URL
+                String url = buildDevTokenUrl();
+                log.info("正在通过HTTP请求生成开发令牌: {}", url);
+                
+                // 发起HTTP GET请求到 /auth/dev-token 端点
+                ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    Map.class
+                );
+                
+                if (response.getStatusCode().is2xxSuccessful() && Objects.nonNull(response.getBody())) {
+                    Map<String, Object> body = response.getBody();
+                    Object data = body.get("data");
+                    
+                    if (Objects.nonNull(data) && data instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> tokenInfo = (Map<String, Object>) data;
+                        printTokenInfo(tokenInfo);
+                    } else {
+                        log.info("开发令牌生成成功，响应: {}", body);
+                    }
+                } else {
+                    log.warn("开发令牌生成请求返回非成功状态: {}", response.getStatusCode());
+                }
+                
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("开发令牌生成线程被中断");
+            } catch (Exception e) {
+                log.error("通过HTTP请求生成开发令牌失败: {}", e.getMessage(), e);
+                log.warn("开发令牌生成失败，但应用继续运行。请手动访问 /auth/dev-token 端点生成。");
+            }
+        }).start();
     }
 
     /**
-     * 生成开发令牌
+     * 构建开发令牌请求URL
      *
-     * @param username 用户名
-     * @return 令牌信息
+     * @return 完整的URL
      */
-    private DevTokenService.DevTokenInfo generateDevToken(String username) {
-        log.info("正在为用户 {} 生成开发令牌...", username);
-
-        // 查询用户
-        SysUser user = userService.selectUserByUsername(username);
-        if (Objects.isNull(user)) {
-            throw new RuntimeException("用户不存在: " + username);
+    private String buildDevTokenUrl() {
+        // 确保contextPath以/开头
+        String path = contextPath;
+        if (!path.startsWith("/")) {
+            path = "/" + path;
         }
-
-        // 构建登录用户信息
-        LoginUser loginUser = buildLoginUser(user);
-
-        String token = SaTempUtil.createToken("10014", 200);
-
-        // 获取令牌
-        Long timeout = SaTempUtil.getTimeout(token);
-
-        // 构建令牌信息
-        DevTokenService.DevTokenInfo tokenInfo = new DevTokenService.DevTokenInfo();
-        tokenInfo.setUsername(user.getUsername());
-        tokenInfo.setUserId(user.getUserId());
-        tokenInfo.setToken(token);
-        tokenInfo.setGenerateTime(LocalDateTime.now());
-        tokenInfo.setExpiresIn(timeout);
-        tokenInfo.setRoles(loginUser.getRoleCodes());
-        tokenInfo.setPermissions(loginUser.getPermissions());
-        log.info("开发令牌生成成功: userId={}, token={}", user.getUserId(), token);
-
-        return tokenInfo;
-    }
-
-    /**
-     * 构建登录用户信息
-     *
-     * @param user 用户实体
-     * @return 登录用户信息
-     */
-    private LoginUser buildLoginUser(SysUser user) {
-        // 查询用户的所有角色
-        List<SysRole> roles = roleService.selectAllRolesByUserId(user.getUserId());
-
-        // 提取角色ID和角色编码
-        List<Long> roleIds = roles.stream()
-            .map(SysRole::getRoleId)
-            .collect(Collectors.toList());
-
-        List<String> roleCodes = roles.stream()
-            .map(SysRole::getRoleCode)
-            .collect(Collectors.toList());
-
-        // 查询用户的所有权限
-        List<String> permissions = permissionService.selectPermissionCodesByUserId(user.getUserId());
-
-        return new LoginUser()
-            .setUserId(user.getUserId())
-            .setUsername(user.getUsername())
-            .setNickname(user.getNickname())
-            .setRealName(user.getRealName())
-            .setEmail(user.getEmail())
-            .setMobile(user.getMobile())
-            .setAvatar(user.getAvatar())
-            .setGender(user.getGender())
-            .setStatus(user.getStatus())
-            .setTenantId(user.getTenantId())
-            .setDeptId(user.getDeptId())
-            .setRoleIds(roleIds)
-            .setRoleCodes(roleCodes)
-            .setPermissions(permissions)
-            .setLoginTime(LocalDateTime.now())
-            .setLoginIp("127.0.0.1");  // 启动时默认使用本地地址
+        // 确保contextPath不以/结尾
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        
+        return String.format("http://localhost:%d%s/auth/dev-token", serverPort, path);
     }
 
     /**
      * 打印令牌信息
      */
-    private void printTokenInfo(DevTokenService.DevTokenInfo tokenInfo) {
+    private void printTokenInfo(Map<String, Object> tokenInfo) {
         if (!devTokenProperties.getPrintToConsole()) {
             return;
         }
@@ -169,26 +133,38 @@ public class DevTokenStartupListener {
     /**
      * 以横幅格式打印令牌信息
      */
-    private void printBannerFormat(DevTokenService.DevTokenInfo tokenInfo) {
+    private void printBannerFormat(Map<String, Object> tokenInfo) {
         StringBuilder banner = new StringBuilder();
+        String username = String.valueOf(tokenInfo.get("username"));
+        String token = String.valueOf(tokenInfo.get("token"));
+        String generateTime = String.valueOf(tokenInfo.get("generateTime"));
+        Object expiresInObj = tokenInfo.get("expiresIn");
+        
         banner.append("\n");
         banner.append("╔═══════════════════════════════════════════════════════════════════════════════╗\n");
         banner.append("║                          开发调试令牌 (Development Token)                      ║\n");
         banner.append("╠═══════════════════════════════════════════════════════════════════════════════╣\n");
-        banner.append(String.format("║ 用户名 (Username)    : %-54s ║\n", tokenInfo.getUsername()));
-        banner.append(String.format("║ 令牌 (Token)         : %-54s ║\n", tokenInfo.getToken()));
-        banner.append(String.format("║ 生成时间 (Time)       : %-54s ║\n", tokenInfo.getGenerateTime()));
-        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
-            banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", formatExpireTime(tokenInfo.getExpiresIn())));
+        banner.append(String.format("║ 用户名 (Username)    : %-54s ║\n", username));
+        banner.append(String.format("║ 令牌 (Token)         : %-54s ║\n", token));
+        banner.append(String.format("║ 生成时间 (Time)       : %-54s ║\n", generateTime));
+        
+        if (Objects.nonNull(expiresInObj)) {
+            Long expiresIn = expiresInObj instanceof Number ? ((Number) expiresInObj).longValue() : 0L;
+            if (expiresIn > 0) {
+                banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", formatExpireTime(expiresIn)));
+            } else {
+                banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", "永不过期 (Never)"));
+            }
         } else {
             banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", "永不过期 (Never)"));
         }
+        
         banner.append("╠═══════════════════════════════════════════════════════════════════════════════╣\n");
         banner.append("║ 使用方法 (Usage):                                                              ║\n");
-        banner.append("║   1. 在请求头中添加: Authorization: " + tokenInfo.getToken());
+        banner.append("║   1. 在请求头中添加: Authorization: " + token);
         // 填充空格以对齐
-        int padding = 79 - 42 - tokenInfo.getToken().length();
-        for (int i = 0; i < padding; i++) {
+        int padding = 79 - 42 - token.length();
+        for (int i = 0; i < padding && i < 20; i++) {
             banner.append(" ");
         }
         banner.append("║\n");
@@ -202,17 +178,29 @@ public class DevTokenStartupListener {
     /**
      * 以简单格式打印令牌信息
      */
-    private void printSimpleFormat(DevTokenService.DevTokenInfo tokenInfo) {
+    private void printSimpleFormat(Map<String, Object> tokenInfo) {
+        String username = String.valueOf(tokenInfo.get("username"));
+        String token = String.valueOf(tokenInfo.get("token"));
+        String generateTime = String.valueOf(tokenInfo.get("generateTime"));
+        Object expiresInObj = tokenInfo.get("expiresIn");
+        
         log.info("========== 开发调试令牌 ==========");
-        log.info("用户名: {}", tokenInfo.getUsername());
-        log.info("令牌: {}", tokenInfo.getToken());
-        log.info("生成时间: {}", tokenInfo.getGenerateTime());
-        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
-            log.info("过期时间: {}", formatExpireTime(tokenInfo.getExpiresIn()));
+        log.info("用户名: {}", username);
+        log.info("令牌: {}", token);
+        log.info("生成时间: {}", generateTime);
+        
+        if (Objects.nonNull(expiresInObj)) {
+            Long expiresIn = expiresInObj instanceof Number ? ((Number) expiresInObj).longValue() : 0L;
+            if (expiresIn > 0) {
+                log.info("过期时间: {}", formatExpireTime(expiresIn));
+            } else {
+                log.info("过期时间: 永不过期");
+            }
         } else {
             log.info("过期时间: 永不过期");
         }
-        log.info("使用方法: 在请求头中添加 Authorization: {}", tokenInfo.getToken());
+        
+        log.info("使用方法: 在请求头中添加 Authorization: {}", token);
         log.info("================================");
     }
 
