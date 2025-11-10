@@ -423,3 +423,19 @@ woodlin:
     cache-expire-seconds: ${SEARCHABLE_ENCRYPTION_CACHE_EXPIRE:3600}
     # 最大缓存条目数
     max-cache-size: ${SEARCHABLE_ENCRYPTION_MAX_CACHE:10000}
+  # 响应配置
+  response:
+    # 响应字段过滤模式
+    # - NONE: 不过滤，包含所有字段（默认）
+    # - MINIMAL: 最小模式，仅包含 code 和 data
+    # - CUSTOM: 自定义模式，根据下面的 include* 配置决定
+    filter-mode: ${RESPONSE_FILTER_MODE:NONE}
+    # 以下配置仅在 filter-mode=CUSTOM 时生效
+    # 是否包含时间戳字段
+    include-timestamp: ${RESPONSE_INCLUDE_TIMESTAMP:true}
+    # 是否包含请求ID字段
+    include-request-id: ${RESPONSE_INCLUDE_REQUEST_ID:false}
+    # 是否包含消息字段
+    include-message: ${RESPONSE_INCLUDE_MESSAGE:true}
+    # 是否包含状态码字段
+    include-code: ${RESPONSE_INCLUDE_CODE:true}
