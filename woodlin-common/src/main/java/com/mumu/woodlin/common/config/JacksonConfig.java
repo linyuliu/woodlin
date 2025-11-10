@@ -34,7 +34,12 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import com.mumu.woodlin.common.enums.DictEnum;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.common.response.RSerializer;
+import com.mumu.woodlin.common.response.Result;
+import com.mumu.woodlin.common.response.ResultSerializer;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -49,7 +54,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class JacksonConfig {
+
+    private final ResponseProperties responseProperties;
 
     @Bean
     @Primary
@@ -98,6 +106,29 @@ public class JacksonConfig {
         // 注册模块
         objectMapper.registerModule(module);
         objectMapper.registerModule(new JavaTimeModule());
+
+        // 注册响应结果自定义序列化器（支持动态字段过滤）
+        // 使用 setSerializerProvider 的方式来注册自定义序列化器
+        objectMapper.setSerializerFactory(
+            objectMapper.getSerializerFactory()
+                .withAdditionalSerializers(new com.fasterxml.jackson.databind.ser.Serializers.Base() {
+                    @Override
+                    @SuppressWarnings({"unchecked", "rawtypes"})
+                    public com.fasterxml.jackson.databind.JsonSerializer<?> findSerializer(
+                            com.fasterxml.jackson.databind.SerializationConfig config,
+                            com.fasterxml.jackson.databind.JavaType type,
+                            com.fasterxml.jackson.databind.BeanDescription beanDesc) {
+                        Class<?> rawClass = type.getRawClass();
+                        if (Result.class.isAssignableFrom(rawClass)) {
+                            return new ResultSerializer(responseProperties);
+                        }
+                        if (R.class.isAssignableFrom(rawClass)) {
+                            return new RSerializer(responseProperties);
+                        }
+                        return null;
+                    }
+                })
+        );
 
         return objectMapper;
     }
