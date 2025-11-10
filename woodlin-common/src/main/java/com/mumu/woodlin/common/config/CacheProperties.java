@@ -36,6 +36,11 @@ public class CacheProperties {
      */
     private PermissionCache permission = new PermissionCache();
 
+    /**
+     * 延迟双删配置
+     */
+    private DelayedDoubleDelete delayedDoubleDelete = new DelayedDoubleDelete();
+
     @Data
     public static class DictionaryCache {
         /**
@@ -88,5 +93,18 @@ public class CacheProperties {
          * 角色权限缓存过期时间（秒）
          */
         private Long roleExpireSeconds = 3600L;
+    }
+
+    @Data
+    public static class DelayedDoubleDelete {
+        /**
+         * 是否启用延迟双删
+         */
+        private Boolean enabled = true;
+
+        /**
+         * 延迟时间（毫秒）
+         */
+        private Long delayMillis = 500L;
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 开发令牌服务
@@ -129,7 +130,7 @@ public class DevTokenService {
         banner.append(String.format("║ 用户名 (Username)    : %-54s ║\n", tokenInfo.getUsername()));
         banner.append(String.format("║ 令牌 (Token)         : %-54s ║\n", truncateToken(tokenInfo.getToken())));
         banner.append(String.format("║ 生成时间 (Time)       : %-54s ║\n", tokenInfo.getGenerateTime()));
-        if (tokenInfo.getExpiresIn() != null && tokenInfo.getExpiresIn() > 0) {
+        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
             banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", formatExpireTime(tokenInfo.getExpiresIn())));
         } else {
             banner.append(String.format("║ 过期时间 (Expires)    : %-54s ║\n", "永不过期 (Never)"));
@@ -152,7 +153,7 @@ public class DevTokenService {
         log.info("用户名: {}", tokenInfo.getUsername());
         log.info("令牌: {}", tokenInfo.getToken());
         log.info("生成时间: {}", tokenInfo.getGenerateTime());
-        if (tokenInfo.getExpiresIn() != null && tokenInfo.getExpiresIn() > 0) {
+        if (Objects.nonNull(tokenInfo.getExpiresIn()) && tokenInfo.getExpiresIn() > 0) {
             log.info("过期时间: {}", formatExpireTime(tokenInfo.getExpiresIn()));
         } else {
             log.info("过期时间: 永不过期");
@@ -165,7 +166,7 @@ public class DevTokenService {
      * 截断令牌用于显示
      */
     private String truncateToken(String token) {
-        if (token == null) {
+        if (Objects.isNull(token)) {
             return "N/A";
         }
         if (token.length() > 50) {

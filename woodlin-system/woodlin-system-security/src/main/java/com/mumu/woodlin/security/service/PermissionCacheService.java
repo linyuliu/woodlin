@@ -11,6 +11,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -72,7 +74,7 @@ public class PermissionCacheService {
      * @param permissions 权限列表
      */
     public void cacheUserPermissions(Long userId, List<String> permissions) {
-        if (isEnabled() || permissions == null) {
+        if (isEnabled() || Objects.isNull(permissions)) {
             return;
         }
 
@@ -114,7 +116,7 @@ public class PermissionCacheService {
      * @param roleCodes 角色编码列表
      */
     public void cacheUserRoles(Long userId, List<String> roleCodes) {
-        if (isEnabled() || roleCodes == null) {
+        if (isEnabled() || Objects.isNull(roleCodes)) {
             return;
         }
 
@@ -156,7 +158,7 @@ public class PermissionCacheService {
      * @param permissions 权限列表
      */
     public void cacheRolePermissions(Long roleId, List<String> permissions) {
-        if (isEnabled() || permissions == null) {
+        if (isEnabled() || Objects.isNull(permissions)) {
             return;
         }
 
@@ -179,8 +181,17 @@ public class PermissionCacheService {
         try {
             String permKey = USER_PERMISSION_PREFIX + userId;
             String roleKey = USER_ROLE_PREFIX + userId;
-            redisTemplate.delete(permKey);
-            redisTemplate.delete(roleKey);
+            
+            if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
+                // 延迟双删策略
+                deleteWithDelayedDoubleDelete(permKey);
+                deleteWithDelayedDoubleDelete(roleKey);
+            } else {
+                // 直接删除
+                redisTemplate.delete(permKey);
+                redisTemplate.delete(roleKey);
+            }
+            
             log.info("清除用户缓存: userId={}", userId);
         } catch (Exception e) {
             log.error("清除用户缓存失败: userId={}", userId, e);
@@ -195,7 +206,15 @@ public class PermissionCacheService {
     public void evictRoleCache(Long roleId) {
         try {
             String key = ROLE_PERMISSION_PREFIX + roleId;
-            redisTemplate.delete(key);
+            
+            if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
+                // 延迟双删策略
+                deleteWithDelayedDoubleDelete(key);
+            } else {
+                // 直接删除
+                redisTemplate.delete(key);
+            }
+            
             log.info("清除角色缓存: roleId={}", roleId);
         } catch (Exception e) {
             log.error("清除角色缓存失败: roleId={}", roleId, e);
@@ -234,7 +253,7 @@ public class PermissionCacheService {
      * @return 是否启用
      */
     private boolean isEnabled() {
-        return cacheProperties.getPermission() == null
+        return Objects.isNull(cacheProperties.getPermission())
             || !Boolean.TRUE.equals(cacheProperties.getPermission().getEnabled());
     }
 
@@ -256,5 +275,34 @@ public class PermissionCacheService {
 
             return null;
         });
+    }
+
+    /**
+     * 延迟双删策略
+     * 先删除一次，延迟后再删除一次，防止缓存与数据库不一致
+     *
+     * @param cacheKey 缓存键
+     */
+    private void deleteWithDelayedDoubleDelete(String cacheKey) {
+        // 第一次删除
+        Boolean firstDelete = redisTemplate.delete(cacheKey);
+        log.debug("第一次删除缓存: {}, 结果: {}", cacheKey, firstDelete);
+        
+        // 异步延迟第二次删除
+        long delayMillis = cacheProperties.getDelayedDoubleDelete().getDelayMillis();
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(delayMillis);
+                Boolean secondDelete = redisTemplate.delete(cacheKey);
+                log.debug("第二次删除缓存: {}, 结果: {}", cacheKey, secondDelete);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("延迟双删被中断: {}", cacheKey, e);
+            } catch (Exception e) {
+                log.error("延迟双删失败: {}", cacheKey, e);
+            }
+        });
+        
+        log.info("已触发延迟双删: {}, 延迟: {}ms", cacheKey, delayMillis);
     }
 }

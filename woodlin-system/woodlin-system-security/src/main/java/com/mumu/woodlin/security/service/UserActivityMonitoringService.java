@@ -1,6 +1,7 @@
 package com.mumu.woodlin.security.service;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import cn.dev33.satoken.stp.StpUtil;
@@ -79,7 +80,7 @@ public class UserActivityMonitoringService {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
             
-            if (lastActivityTimeStr == null) {
+            if (Objects.isNull(lastActivityTimeStr)) {
                 return true; // 没有活动记录，认为超时
             }
             
@@ -110,7 +111,7 @@ public class UserActivityMonitoringService {
             String warningKey = USER_WARNING_KEY_PREFIX + userId;
             String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
             
-            if (lastActivityTimeStr == null) {
+            if (Objects.isNull(lastActivityTimeStr)) {
                 return false;
             }
             
@@ -123,7 +124,7 @@ public class UserActivityMonitoringService {
             // 如果超过警告阈值且未发过警告
             if (inactiveSeconds > warningThreshold) {
                 String warningTime = (String) redisTemplate.opsForValue().get(warningKey);
-                if (warningTime == null) {
+                if (Objects.isNull(warningTime)) {
                     // 记录警告时间，避免重复警告
                     redisTemplate.opsForValue().set(warningKey, now.toString(), 
                         activityProperties.getWarningBeforeTimeoutSeconds(), TimeUnit.SECONDS);
