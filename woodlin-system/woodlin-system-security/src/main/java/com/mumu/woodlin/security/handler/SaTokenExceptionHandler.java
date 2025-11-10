@@ -6,11 +6,13 @@ import cn.dev33.satoken.exception.DisableServiceException;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.mumu.woodlin.common.response.Result;
+import com.mumu.woodlin.security.config.DevTokenProperties;
 
 import static com.mumu.woodlin.common.constant.CommonConstant.FORBIDDEN_CODE;
 import static com.mumu.woodlin.common.constant.CommonConstant.UNAUTHORIZED_CODE;
@@ -24,7 +26,10 @@ import static com.mumu.woodlin.common.constant.CommonConstant.UNAUTHORIZED_CODE;
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class SaTokenExceptionHandler {
+    
+    private final DevTokenProperties devTokenProperties;
     
     /**
      * 拦截：未登录异常
@@ -37,7 +42,7 @@ public class SaTokenExceptionHandler {
     public Result<Void> handlerNotLoginException(NotLoginException e, HttpServletRequest request) {
         // 判断场景值，定制化异常信息
         String message = switch (e.getType()) {
-            case NotLoginException.NOT_TOKEN -> "未提供登录凭证";
+            case NotLoginException.NOT_TOKEN -> buildNotTokenMessage();
             case NotLoginException.INVALID_TOKEN -> "登录凭证无效";
             case NotLoginException.TOKEN_TIMEOUT -> "登录凭证已过期";
             case NotLoginException.BE_REPLACED -> "您的账号已在其他地方登录";
@@ -89,6 +94,29 @@ public class SaTokenExceptionHandler {
         String message = "当前账号已被封禁";
         log.warn("账号被封禁: 服务类型 [{}] - 请求路径: {}", e.getService(), request.getRequestURI());
         return Result.fail(FORBIDDEN_CODE, message);
+    }
+    
+    /**
+     * 构建未提供登录凭证时的详细提示消息
+     * 
+     * @return 提示消息
+     */
+    private String buildNotTokenMessage() {
+        StringBuilder message = new StringBuilder("未提供登录凭证。");
+        
+        // 如果开发令牌功能已启用，提供额外的帮助信息
+        if (devTokenProperties.getEnabled()) {
+            message.append("请在请求头中添加 Authorization 字段。");
+            if (devTokenProperties.getAutoGenerateOnStartup()) {
+                message.append("开发环境下，令牌已在启动时自动生成并输出到控制台。");
+            } else {
+                message.append("您也可以访问 /auth/dev-token 端点获取开发令牌。");
+            }
+        } else {
+            message.append("请先登录获取访问令牌，然后在请求头中添加 Authorization 字段。");
+        }
+        
+        return message.toString();
     }
     
 }
