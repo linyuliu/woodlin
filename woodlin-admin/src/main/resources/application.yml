@@ -425,12 +425,12 @@ woodlin:
     max-cache-size: ${SEARCHABLE_ENCRYPTION_MAX_CACHE:10000}
   # 响应配置
   response:
-    # 响应字段过滤模式
+    # 响应字段过滤模式（全局默认配置）
     # - NONE: 不过滤，包含所有字段（默认）
     # - MINIMAL: 最小模式，仅包含 code 和 data
     # - CUSTOM: 自定义模式，根据下面的 include* 配置决定
     filter-mode: ${RESPONSE_FILTER_MODE:NONE}
-    # 以下配置仅在 filter-mode=CUSTOM 时生效
+    # 以下配置仅在 filter-mode=CUSTOM 时生效（全局默认配置）
     # 是否包含时间戳字段
     include-timestamp: ${RESPONSE_INCLUDE_TIMESTAMP:true}
     # 是否包含请求ID字段
@@ -439,3 +439,10 @@ woodlin:
     include-message: ${RESPONSE_INCLUDE_MESSAGE:true}
     # 是否包含状态码字段
     include-code: ${RESPONSE_INCLUDE_CODE:true}
+    # 是否启用请求级别的动态控制
+    # 启用后，可以通过请求头动态控制每个请求的响应字段
+    enable-request-control: ${RESPONSE_ENABLE_REQUEST_CONTROL:true}
+    # 请求头名称，用于控制响应字段
+    # 示例: X-Response-Fields: code,data,message
+    # 示例: X-Response-Fields: -timestamp,-requestId (排除字段)
+    request-header-name: ${RESPONSE_REQUEST_HEADER_NAME:X-Response-Fields}
