@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
  * 
  * @author mumu
  * @description 控制全局响应结果中包含哪些字段，实现动态化配置
+ * 支持全局配置和请求级别的动态控制
  * @since 2025-01-10
  */
 @Data
@@ -17,32 +18,43 @@ import org.springframework.stereotype.Component;
 public class ResponseProperties {
     
     /**
-     * 是否包含时间戳字段
+     * 是否包含时间戳字段（全局默认值）
      */
     private Boolean includeTimestamp = true;
     
     /**
-     * 是否包含请求ID字段
+     * 是否包含请求ID字段（全局默认值）
      */
     private Boolean includeRequestId = false;
     
     /**
-     * 是否包含消息字段
+     * 是否包含消息字段（全局默认值）
      */
     private Boolean includeMessage = true;
     
     /**
-     * 是否包含状态码字段
+     * 是否包含状态码字段（全局默认值）
      */
     private Boolean includeCode = true;
     
     /**
-     * 响应字段过滤模式
+     * 响应字段过滤模式（全局默认值）
      * - NONE: 不过滤，包含所有字段（默认）
      * - MINIMAL: 最小模式，仅包含 code 和 data
      * - CUSTOM: 自定义模式，根据 include* 配置决定
      */
     private FilterMode filterMode = FilterMode.NONE;
+    
+    /**
+     * 是否启用请求级别的动态控制
+     * 启用后，可以通过请求头 X-Response-Fields 控制响应字段
+     */
+    private Boolean enableRequestControl = true;
+    
+    /**
+     * 请求头名称，用于控制响应字段
+     */
+    private String requestHeaderName = "X-Response-Fields";
     
     /**
      * 响应字段过滤模式枚举
