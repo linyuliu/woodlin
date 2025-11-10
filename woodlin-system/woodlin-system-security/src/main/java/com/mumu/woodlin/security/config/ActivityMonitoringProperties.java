@@ -19,7 +19,7 @@ public class ActivityMonitoringProperties {
     /**
      * 是否启用用户活动监控
      */
-    private Boolean enabled = true;
+    private Boolean enabled = false;
 
     /**
      * 用户无活动超时时间（秒），超时后自动登出，-1表示不限制
@@ -34,7 +34,7 @@ public class ActivityMonitoringProperties {
     /**
      * 是否监控API请求活动
      */
-    private Boolean monitorApiRequests = true;
+    private Boolean monitorApiRequests = false;
 
     /**
      * 是否监控前端用户交互（键盘、鼠标）
@@ -44,5 +44,5 @@ public class ActivityMonitoringProperties {
     /**
      * 活动监控警告提前时间（秒）
      */
-    private Long warningBeforeTimeoutSeconds = 300L;
+    private Long warningBeforeTimeoutSeconds = 60 * 60 * 2L;
 }

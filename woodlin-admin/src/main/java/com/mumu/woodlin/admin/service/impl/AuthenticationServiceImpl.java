@@ -1,15 +1,8 @@
 package com.mumu.woodlin.admin.service.impl;
 
-import java.time.LocalDateTime;
-
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
@@ -26,13 +19,18 @@ import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.service.ISysPermissionService;
 import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.service.ISysUserService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * 认证服务实现
- * 
+ *
  * @author mumu
  * @description 提供用户认证、登录、登出、密码管理等服务实现
  * @since 2025-01-01
@@ -41,22 +39,22 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
-    
+
     private final ISysUserService userService;
     private final PasswordPolicyService passwordPolicyService;
     private final ISysRoleService roleService;
     private final ISysPermissionService permissionService;
     private final CaptchaService captchaService;
-    
+
     /**
      * 权限缓存服务（可选依赖）
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
-    
+
     /**
      * 用户登录
-     * 
+     *
      * @param loginRequest 登录请求
      * @return 登录响应
      */
@@ -69,66 +67,66 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 log.warn("用户 {} 登录失败: 验证码不能为空", loginRequest.getUsername());
                 throw BusinessException.of(ResultCode.CAPTCHA_ERROR, "验证码不能为空");
             }
-            
+
             if (!captchaService.verifyCaptcha(loginRequest.getUuid(), loginRequest.getCaptcha())) {
                 log.warn("用户 {} 登录失败: 验证码错误", loginRequest.getUsername());
                 throw BusinessException.of(ResultCode.CAPTCHA_ERROR, "验证码错误或已过期");
             }
         }
-        
+
         // 查找用户
         SysUser user = userService.selectUserByUsername(loginRequest.getUsername());
         if (user == null) {
             log.warn("用户登录失败: 用户不存在, username={}", loginRequest.getUsername());
             throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户名或密码错误");
         }
-        
+
         // 检查用户状态
         if (!CommonConstant.STATUS_ENABLE.equals(user.getStatus())) {
             log.warn("用户 {} 登录失败: 账号已被禁用", user.getUsername());
             throw BusinessException.of(ResultCode.USER_DISABLED, "账号已被禁用");
         }
-        
+
         // 创建用户密码信息适配器
         UserPasswordInfoAdapter userAdapter = new UserPasswordInfoAdapter(user);
-        
+
         // 检查账号锁定
         if (passwordPolicyService.isAccountLocked(userAdapter)) {
             throw BusinessException.of(ResultCode.ACCOUNT_LOCKED, "账号已被锁定，请稍后再试");
         }
-        
+
         // 验证密码
         if (!BCrypt.checkpw(loginRequest.getPassword(), user.getPassword())) {
             // 处理密码错误
             handlePasswordError(user);
             throw BusinessException.of(ResultCode.PASSWORD_ERROR, "用户名或密码错误");
         }
-        
+
         // 验证密码策略
-        PasswordPolicyService.PasswordValidationResult validationResult = 
+        PasswordPolicyService.PasswordValidationResult validationResult =
             passwordPolicyService.validateUserLogin(userAdapter);
-            
+
         if (!validationResult.isValid()) {
             throw BusinessException.of(ResultCode.PASSWORD_POLICY_VIOLATION, validationResult.getMessage());
         }
-        
+
         // 清除密码错误次数
         if (user.getPwdErrorCount() != null && user.getPwdErrorCount() > 0) {
             user.setPwdErrorCount(0);
             user.setLockTime(null);
             userService.updateById(user);
         }
-        
+
         // 更新登录信息
         updateLoginInfo(user);
-        
+
         // 创建登录用户信息
         LoginUser loginUser = buildLoginUser(user);
-        
+
         // 使用Sa-Token登录
         StpUtil.login(user.getUserId());
         StpUtil.getSession().set(SecurityUtil.USER_KEY, loginUser);
-        
+
         // 构建响应
         LoginResponse response = new LoginResponse()
             .setToken(StpUtil.getTokenValue())
@@ -138,11 +136,25 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .setPasswordExpiringSoon(validationResult.isExpiringSoon())
             .setDaysUntilPasswordExpiration(validationResult.getDaysUntilExpiration())
             .setMessage(validationResult.getMessage());
-            
+
         log.info("用户 {} 登录成功", user.getUsername());
         return response;
     }
-    
+
+
+    @Override
+    public LoginResponse devLogin(String username) {
+        SysUser user = userService.selectUserByUsername(username);
+        // 使用Sa-Token登录
+        StpUtil.login(user.getUserId(), false);
+        StpUtil.getSession().set(SecurityUtil.USER_KEY, user);
+        String string = StpUtil.getTokenValue();
+        // 构建响应
+        return new LoginResponse()
+            .setToken(string)
+            .setExpiresIn(StpUtil.getTokenTimeout());
+    }
+
     /**
      * 用户登出
      */
@@ -158,10 +170,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             log.info("用户 {} 登出成功", userId);
         }
     }
-    
+
     /**
      * 修改密码
-     * 
+     *
      * @param request 修改密码请求
      */
     @Override
@@ -171,54 +183,52 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (userId == null) {
             throw BusinessException.of(ResultCode.UNAUTHORIZED, "用户未登录");
         }
-        
+
         // 验证新密码和确认密码是否一致
         if (!StrUtil.equals(request.getNewPassword(), request.getConfirmPassword())) {
             throw BusinessException.of(ResultCode.PASSWORD_MISMATCH, "新密码和确认密码不一致");
         }
-        
+
         // 查询用户信息
         SysUser user = userService.getById(userId);
         if (user == null) {
             throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
-        
+
         // 验证旧密码
         if (!BCrypt.checkpw(request.getOldPassword(), user.getPassword())) {
             throw BusinessException.of(ResultCode.OLD_PASSWORD_ERROR, "旧密码错误");
         }
-        
+
         // 验证新密码策略
-        PasswordPolicyService.PasswordValidationResult validationResult = 
+        PasswordPolicyService.PasswordValidationResult validationResult =
             passwordPolicyService.validatePassword(request.getNewPassword());
-            
+
         if (!validationResult.isValid()) {
             throw BusinessException.of(ResultCode.PASSWORD_POLICY_VIOLATION, validationResult.getMessage());
         }
-        
+
         // 更新密码
         user.setPassword(BCrypt.hashpw(request.getNewPassword(), BCrypt.gensalt()));
         user.setPwdChangeTime(LocalDateTime.now());
-        user.setIsFirstLogin(false); // 修改密码后不再是首次登录
-        
+        user.setIsFirstLogin(false);
         userService.updateById(user);
-        
         log.info("用户 {} 修改密码成功", user.getUsername());
     }
-    
+
     /**
      * 获取当前用户信息
-     * 
+     *
      * @return 用户信息
      */
     @Override
     public Object getCurrentUserInfo() {
         return SecurityUtil.getLoginUser();
     }
-    
+
     /**
      * 处理密码错误
-     * 
+     *
      * @param user 用户信息
      */
     private void handlePasswordError(SysUser user) {
@@ -236,10 +246,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             userService.updateById(user);
         }
     }
-    
+
     /**
      * 更新用户登录信息
-     * 
+     *
      * @param user 用户信息
      */
     private void updateLoginInfo(SysUser user) {
@@ -248,29 +258,29 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setLoginCount(user.getLoginCount() == null ? 1 : user.getLoginCount() + 1);
         userService.updateById(user);
     }
-    
+
     /**
      * 构建登录用户信息（支持RBAC1）
-     * 
+     *
      * @param user 用户实体
      * @return 登录用户信息
      */
     private LoginUser buildLoginUser(SysUser user) {
         // 查询用户的所有角色（包括继承的角色，支持RBAC1）
         List<SysRole> roles = roleService.selectAllRolesByUserId(user.getUserId());
-        
+
         // 提取角色ID和角色编码
         List<Long> roleIds = roles.stream()
             .map(SysRole::getRoleId)
             .collect(Collectors.toList());
-        
+
         List<String> roleCodes = roles.stream()
             .map(SysRole::getRoleCode)
             .collect(Collectors.toList());
-        
+
         // 查询用户的所有权限（包括角色继承的权限，支持RBAC1）
         List<String> permissions = permissionService.selectPermissionCodesByUserId(user.getUserId());
-        
+
         return new LoginUser()
             .setUserId(user.getUserId())
             .setUsername(user.getUsername())
@@ -289,10 +299,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .setLoginTime(LocalDateTime.now())
             .setLoginIp(getClientIp());
     }
-    
+
     /**
      * 获取客户端IP地址
-     * 
+     *
      * @return IP地址
      */
     private String getClientIp() {
@@ -300,46 +310,41 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // 暂时返回本地IP
         return "127.0.0.1";
     }
-    
+
     /**
      * 用户密码信息适配器
      */
-    private static class UserPasswordInfoAdapter implements PasswordPolicyService.UserPasswordInfo {
-        private final SysUser user;
-        
-        public UserPasswordInfoAdapter(SysUser user) {
-            this.user = user;
-        }
-        
+    private record UserPasswordInfoAdapter(SysUser user) implements PasswordPolicyService.UserPasswordInfo {
+
         @Override
         public Boolean getIsFirstLogin() {
             return user.getIsFirstLogin();
         }
-        
+
         @Override
         public LocalDateTime getPwdChangeTime() {
             return user.getPwdChangeTime();
         }
-        
+
         @Override
         public LocalDateTime getCreateTime() {
             return user.getCreateTime();
         }
-        
+
         @Override
         public Integer getPwdExpireDays() {
             return user.getPwdExpireDays();
         }
-        
+
         @Override
         public LocalDateTime getLockTime() {
             return user.getLockTime();
         }
-        
+
         @Override
         public Integer getPwdErrorCount() {
             return user.getPwdErrorCount();
         }
     }
-    
+
 }
