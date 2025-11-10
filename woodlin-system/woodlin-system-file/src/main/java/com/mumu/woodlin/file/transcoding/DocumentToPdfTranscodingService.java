@@ -3,18 +3,14 @@ package com.mumu.woodlin.file.transcoding;
 import java.io.InputStream;
 import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Arrays;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
-import com.mumu.woodlin.common.exception.BusinessException;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
-import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.mumu.woodlin.file.enums.TranscodingType;
-import com.mumu.woodlin.common.exception.BusinessException;
 
 import lombok.extern.slf4j.Slf4j;
-import com.mumu.woodlin.common.exception.BusinessException;
 
 /**
  * 文档转PDF转码服务
@@ -77,7 +73,7 @@ public class DocumentToPdfTranscodingService extends AbstractTranscodingService 
     
     @Override
     public boolean supports(String sourceFormat) {
-        if (sourceFormat == null || sourceFormat.isEmpty()) {
+        if (Objects.isNull(sourceFormat) || sourceFormat.isEmpty()) {
             return false;
         }
         return SUPPORTED_FORMATS.contains(sourceFormat.toLowerCase());
