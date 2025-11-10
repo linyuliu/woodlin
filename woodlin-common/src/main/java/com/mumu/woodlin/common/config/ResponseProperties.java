@@ -93,6 +93,7 @@ public class ResponseProperties {
      */
     public boolean shouldIncludeCode() {
         return filterMode == FilterMode.NONE || 
+               filterMode == FilterMode.MINIMAL ||
                (filterMode == FilterMode.CUSTOM && includeCode);
     }
 }
