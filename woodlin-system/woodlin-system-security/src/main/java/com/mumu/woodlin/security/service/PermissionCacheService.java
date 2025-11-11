@@ -2,12 +2,11 @@ package com.mumu.woodlin.security.service;
 
 import com.mumu.woodlin.common.config.CacheProperties;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RBucket;
+import org.redisson.api.RKeys;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.KeyScanOptions;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,7 +27,7 @@ public class PermissionCacheService {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionCacheService.class);
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedissonClient redissonClient;
     private final CacheProperties cacheProperties;
 
     /**
@@ -60,7 +59,8 @@ public class PermissionCacheService {
 
         try {
             String key = USER_PERMISSION_PREFIX + userId;
-            return (List<String>) redisTemplate.opsForValue().get(key);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            return bucket.get();
         } catch (Exception e) {
             log.error("获取用户权限缓存失败: userId={}", userId, e);
             return null;
@@ -81,7 +81,8 @@ public class PermissionCacheService {
         try {
             String key = USER_PERMISSION_PREFIX + userId;
             long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            redisTemplate.opsForValue().set(key, permissions, expireSeconds, TimeUnit.SECONDS);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            bucket.set(permissions, expireSeconds, TimeUnit.SECONDS);
             log.debug("缓存用户权限成功: userId={}, count={}", userId, permissions.size());
         } catch (Exception e) {
             log.error("缓存用户权限失败: userId={}", userId, e);
@@ -102,7 +103,8 @@ public class PermissionCacheService {
 
         try {
             String key = USER_ROLE_PREFIX + userId;
-            return (List<String>) redisTemplate.opsForValue().get(key);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            return bucket.get();
         } catch (Exception e) {
             log.error("获取用户角色缓存失败: userId={}", userId, e);
             return null;
@@ -123,7 +125,8 @@ public class PermissionCacheService {
         try {
             String key = USER_ROLE_PREFIX + userId;
             long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            redisTemplate.opsForValue().set(key, roleCodes, expireSeconds, TimeUnit.SECONDS);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            bucket.set(roleCodes, expireSeconds, TimeUnit.SECONDS);
             log.debug("缓存用户角色成功: userId={}, count={}", userId, roleCodes.size());
         } catch (Exception e) {
             log.error("缓存用户角色失败: userId={}", userId, e);
@@ -144,7 +147,8 @@ public class PermissionCacheService {
 
         try {
             String key = ROLE_PERMISSION_PREFIX + roleId;
-            return (List<String>) redisTemplate.opsForValue().get(key);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            return bucket.get();
         } catch (Exception e) {
             log.error("获取角色权限缓存失败: roleId={}", roleId, e);
             return null;
@@ -165,7 +169,8 @@ public class PermissionCacheService {
         try {
             String key = ROLE_PERMISSION_PREFIX + roleId;
             long expireSeconds = cacheProperties.getPermission().getRoleExpireSeconds();
-            redisTemplate.opsForValue().set(key, permissions, expireSeconds, TimeUnit.SECONDS);
+            RBucket<List<String>> bucket = redissonClient.getBucket(key);
+            bucket.set(permissions, expireSeconds, TimeUnit.SECONDS);
             log.debug("缓存角色权限成功: roleId={}, count={}", roleId, permissions.size());
         } catch (Exception e) {
             log.error("缓存角色权限失败: roleId={}", roleId, e);
@@ -188,8 +193,10 @@ public class PermissionCacheService {
                 deleteWithDelayedDoubleDelete(roleKey);
             } else {
                 // 直接删除
-                redisTemplate.delete(permKey);
-                redisTemplate.delete(roleKey);
+                RBucket<Object> permBucket = redissonClient.getBucket(permKey);
+                RBucket<Object> roleBucket = redissonClient.getBucket(roleKey);
+                permBucket.delete();
+                roleBucket.delete();
             }
             
             log.info("清除用户缓存: userId={}", userId);
@@ -212,7 +219,8 @@ public class PermissionCacheService {
                 deleteWithDelayedDoubleDelete(key);
             } else {
                 // 直接删除
-                redisTemplate.delete(key);
+                RBucket<Object> bucket = redissonClient.getBucket(key);
+                bucket.delete();
             }
             
             log.info("清除角色缓存: roleId={}", roleId);
@@ -226,9 +234,10 @@ public class PermissionCacheService {
      */
     public void evictAllUserPermissions() {
         try {
-            // 使用scan清理所有用户权限缓存（避免KEYS命令阻塞Redis）
-            scanAndDelete(USER_PERMISSION_PREFIX + "*");
-            log.info("清除所有用户权限缓存");
+            // 使用Redisson的deleteByPattern清理所有用户权限缓存
+            RKeys keys = redissonClient.getKeys();
+            long deleteCount = keys.deleteByPattern(USER_PERMISSION_PREFIX + "*");
+            log.info("清除所有用户权限缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有用户权限缓存失败", e);
         }
@@ -239,9 +248,10 @@ public class PermissionCacheService {
      */
     public void evictAllRolePermissions() {
         try {
-            // 使用scan清理所有角色权限缓存（避免KEYS命令阻塞Redis）
-            scanAndDelete(ROLE_PERMISSION_PREFIX + "*");
-            log.info("清除所有角色权限缓存");
+            // 使用Redisson的deleteByPattern清理所有角色权限缓存
+            RKeys keys = redissonClient.getKeys();
+            long deleteCount = keys.deleteByPattern(ROLE_PERMISSION_PREFIX + "*");
+            log.info("清除所有角色权限缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有角色权限缓存失败", e);
         }
@@ -258,26 +268,6 @@ public class PermissionCacheService {
     }
 
     /**
-     * 使用SCAN命令批量删除键（避免KEYS命令阻塞Redis）
-     *
-     * @param pattern 键模式
-     */
-    private void scanAndDelete(String pattern) {
-        redisTemplate.execute((RedisCallback<Void>) connection -> {
-            try (Cursor<byte[]> cursor = connection.commands().scan(KeyScanOptions.scanOptions().match(pattern).count(1000).build())) {
-                while (cursor.hasNext()) {
-                    connection.commands().del(cursor.next());
-                }
-            } catch (Exception e) {
-                log.error("关闭Redis SCAN游标失败", e);
-            }
-            // 关闭游标
-
-            return null;
-        });
-    }
-
-    /**
      * 延迟双删策略
      * 先删除一次，延迟后再删除一次，防止缓存与数据库不一致
      *
@@ -285,7 +275,8 @@ public class PermissionCacheService {
      */
     private void deleteWithDelayedDoubleDelete(String cacheKey) {
         // 第一次删除
-        Boolean firstDelete = redisTemplate.delete(cacheKey);
+        RBucket<Object> bucket = redissonClient.getBucket(cacheKey);
+        boolean firstDelete = bucket.delete();
         log.debug("第一次删除缓存: {}, 结果: {}", cacheKey, firstDelete);
         
         // 异步延迟第二次删除
@@ -293,7 +284,8 @@ public class PermissionCacheService {
         CompletableFuture.runAsync(() -> {
             try {
                 Thread.sleep(delayMillis);
-                Boolean secondDelete = redisTemplate.delete(cacheKey);
+                RBucket<Object> delayBucket = redissonClient.getBucket(cacheKey);
+                boolean secondDelete = delayBucket.delete();
                 log.debug("第二次删除缓存: {}, 结果: {}", cacheKey, secondDelete);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

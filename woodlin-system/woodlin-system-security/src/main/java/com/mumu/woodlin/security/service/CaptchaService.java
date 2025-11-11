@@ -2,7 +2,8 @@ package com.mumu.woodlin.security.service;
 
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import com.wf.captcha.SpecCaptcha;
@@ -25,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class CaptchaService {
     
-    private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
     
     /**
      * 验证码 Redis Key 前缀
@@ -70,7 +71,8 @@ public class CaptchaService {
         
         // 存储到Redis，设置过期时间
         String redisKey = CAPTCHA_KEY_PREFIX + captchaId;
-        stringRedisTemplate.opsForValue().set(redisKey, captchaText, CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        RBucket<String> bucket = redissonClient.getBucket(redisKey);
+        bucket.set(captchaText, CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
         
         // 获取Base64图片
         String captchaImage = captcha.toBase64();
@@ -94,7 +96,8 @@ public class CaptchaService {
         }
         
         String redisKey = CAPTCHA_KEY_PREFIX + captchaId;
-        String storedCaptcha = stringRedisTemplate.opsForValue().get(redisKey);
+        RBucket<String> bucket = redissonClient.getBucket(redisKey);
+        String storedCaptcha = bucket.get();
         
         if (StrUtil.isBlank(storedCaptcha)) {
             log.warn("验证码验证失败: 验证码不存在或已过期, captchaId={}", captchaId);
@@ -102,7 +105,7 @@ public class CaptchaService {
         }
         
         // 验证码只能使用一次，验证后立即删除
-        stringRedisTemplate.delete(redisKey);
+        bucket.delete();
         
         boolean isValid = storedCaptcha.equals(captchaCode.toLowerCase());
         if (!isValid) {
@@ -123,7 +126,8 @@ public class CaptchaService {
     public void clearCaptcha(String captchaId) {
         if (StrUtil.isNotBlank(captchaId)) {
             String redisKey = CAPTCHA_KEY_PREFIX + captchaId;
-            stringRedisTemplate.delete(redisKey);
+            RBucket<String> bucket = redissonClient.getBucket(redisKey);
+            bucket.delete();
             log.debug("清除验证码: captchaId={}", captchaId);
         }
     }
