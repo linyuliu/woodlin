@@ -22,7 +22,9 @@ import com.alibaba.fastjson2.JSONWriter;
  * Redis 配置类
  * 
  * @author mumu
- * @description Redis配置，使用FastJSON2进行序列化以提升性能
+ * @description Redis配置，使用Redisson作为主要客户端，提供优雅的API和高性能
+ *              RedisTemplate仅用于与Spring生态的兼容性（如Spring Session等）
+ *              建议新代码直接使用RedissonClient或RedisUtil工具类
  * @since 2025-01-01
  */
 @Configuration
@@ -31,6 +33,9 @@ public class RedisConfig {
     
     /**
      * 自定义RedisTemplate配置，使用FastJSON2序列化
+     * 
+     * 注意：推荐使用RedissonClient或RedisUtil工具类进行Redis操作，
+     * RedisTemplate主要用于Spring生态兼容（如Spring Session等）
      * 
      * @param connectionFactory Redis连接工厂
      * @return RedisTemplate
@@ -59,6 +64,8 @@ public class RedisConfig {
     
     /**
      * StringRedisTemplate配置
+     * 
+     * 注意：推荐使用RedissonClient或RedisUtil工具类进行Redis操作
      * 
      * @param connectionFactory Redis连接工厂
      * @return StringRedisTemplate
