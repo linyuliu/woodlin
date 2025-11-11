@@ -7,7 +7,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import Layout from '@/components/Layout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 /**
  * 创建路由实例
@@ -19,7 +19,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      component: Layout,
+      component: AdminLayout,
       // 默认重定向到仪表板页面
       redirect: '/dashboard',
       children: [
