@@ -16,14 +16,14 @@ server:
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME:woodlin-admin}
-  
+
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  
+
   # Spring Boot Banner 配置
   main:
     banner-mode: off
-  
+
   # 数据库配置
   datasource:
     dynamic:
@@ -51,18 +51,7 @@ spring:
             max-pool-prepared-statement-per-connection-size: 20
             filters: stat,wall,slf4j
             connection-properties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
-            web-stat-filter:
-              enabled: true
-              url-pattern: "/*"
-              exclusions: "*.js,*.gif,*.jpg,*.bmp,*.png,*.css,*.ico,/druid/*"
-            stat-view-servlet:
-              enabled: true
-              url-pattern: "/druid/*"
-              reset-enable: false
-              login-username: ${DATABASE_DRUID_USERNAME:admin}
-              login-password: ${DATABASE_DRUID_PASSWORD:Passw0rd}
-              allow: ${DATABASE_DRUID_ALLOW:}
-  
+
   # Redis配置
   data:
     redis:
@@ -77,7 +66,7 @@ spring:
           max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
           max-idle: ${REDIS_POOL_MAX_IDLE:10}
           min-idle: ${REDIS_POOL_MIN_IDLE:0}
-  
+
   # Jackson配置
   jackson:
     time-zone: GMT+8
@@ -132,7 +121,7 @@ sa-token:
   # token有效期，单位s 默认30天, -1代表永不过期
   timeout: ${SA_TOKEN_TIMEOUT:2592000}
   # token临时有效期 (指定时间内无操作就视为token过期) 单位: 秒
-  activity-timeout: ${SA_TOKEN_ACTIVITY_TIMEOUT:-1}
+  activeTimeout: ${SA_TOKEN_ACTIVITY_TIMEOUT:3600}
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
   is-concurrent: ${SA_TOKEN_IS_CONCURRENT:true}
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
@@ -158,7 +147,6 @@ springdoc:
     version: '@project.version@'
     contact:
       name: mumu
-      email: mumu@woodlin.com
     license:
       name: MIT License
       url: https://opensource.org/licenses/MIT
@@ -210,15 +198,6 @@ knife4j:
     enable-response-code: true
   # CORS跨域配置
   cors: false
-
-# 日志配置
-logging:
-  level:
-    com.mumu.woodlin: debug
-    org.springframework.security: debug
-    org.mybatis: debug
-  pattern:
-    console: '%clr(%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}'
 
 # 管理端点配置
 management:
