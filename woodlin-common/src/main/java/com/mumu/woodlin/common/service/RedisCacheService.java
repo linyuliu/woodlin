@@ -8,8 +8,9 @@ import java.util.function.Supplier;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.common.config.CacheProperties;
@@ -27,7 +28,7 @@ import com.mumu.woodlin.common.config.CacheProperties;
 @ConditionalOnProperty(name = "woodlin.cache.redis-enabled", havingValue = "true", matchIfMissing = true)
 public class RedisCacheService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedissonClient redissonClient;
     private final CacheProperties cacheProperties;
 
     private static final String DICTIONARY_CACHE_PREFIX = "dict:";
@@ -52,7 +53,8 @@ public class RedisCacheService {
         
         try {
             // 尝试从缓存获取
-            List<T> cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+            RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
+            List<T> cachedData = bucket.get();
             if (Objects.nonNull(cachedData)) {
                 log.debug("从缓存获取字典数据: {}", dictType);
                 return cachedData;
@@ -60,12 +62,12 @@ public class RedisCacheService {
 
             // 缓存不存在，使用分布式锁防止缓存击穿
             String lockKey = CACHE_LOCK_PREFIX + dictType;
-            Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "1", 10, TimeUnit.SECONDS);
+            RBucket<String> lockBucket = redissonClient.getBucket(lockKey);
             
-            if (Boolean.TRUE.equals(lockAcquired)) {
+            if (lockBucket.trySet("1", 10, TimeUnit.SECONDS)) {
                 try {
                     // 再次检查缓存（双重检查）
-                    cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+                    cachedData = bucket.get();
                     if (Objects.nonNull(cachedData)) {
                         return cachedData;
                     }
@@ -75,20 +77,19 @@ public class RedisCacheService {
                     
                     // 存入缓存
                     if (Objects.nonNull(data)) {
-                        redisTemplate.opsForValue().set(cacheKey, data, 
-                            cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
+                        bucket.set(data, cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
                         log.info("字典数据已缓存: {}, 大小: {}", dictType, data.size());
                     }
                     
                     return data;
                 } finally {
                     // 释放锁
-                    redisTemplate.delete(lockKey);
+                    lockBucket.delete();
                 }
             } else {
                 // 获取锁失败，等待一小段时间后重试获取缓存
                 Thread.sleep(50);
-                cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+                cachedData = bucket.get();
                 if (Objects.nonNull(cachedData)) {
                     return cachedData;
                 }
@@ -117,13 +118,14 @@ public class RedisCacheService {
 
         try {
             String cacheKey = DICTIONARY_CACHE_PREFIX + dictType;
+            RBucket<Object> bucket = redissonClient.getBucket(cacheKey);
             
             if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
                 // 延迟双删策略
                 deleteWithDelayedDoubleDelete(cacheKey);
             } else {
                 // 直接删除
-                Boolean deleted = redisTemplate.delete(cacheKey);
+                boolean deleted = bucket.delete();
                 log.info("清除字典缓存: {}, 结果: {}", dictType, deleted);
             }
         } catch (Exception e) {
@@ -140,8 +142,8 @@ public class RedisCacheService {
         }
 
         try {
-            redisTemplate.delete(redisTemplate.keys(DICTIONARY_CACHE_PREFIX + "*"));
-            log.info("清除所有字典缓存");
+            long deleteCount = redissonClient.getKeys().deleteByPattern(DICTIONARY_CACHE_PREFIX + "*");
+            log.info("清除所有字典缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有字典缓存失败", e);
         }
@@ -162,8 +164,8 @@ public class RedisCacheService {
             List<T> data = dataLoader.get();
             if (Objects.nonNull(data) && !data.isEmpty()) {
                 String cacheKey = DICTIONARY_CACHE_PREFIX + dictType;
-                redisTemplate.opsForValue().set(cacheKey, data, 
-                    cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
+                RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
+                bucket.set(data, cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
                 log.info("预热字典缓存完成: {}, 大小: {}", dictType, data.size());
             }
         } catch (Exception e) {
@@ -198,7 +200,8 @@ public class RedisCacheService {
         
         try {
             // 尝试从缓存获取
-            List<T> cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+            RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
+            List<T> cachedData = bucket.get();
             if (Objects.nonNull(cachedData)) {
                 log.debug("从缓存获取配置数据: {}", configType);
                 return cachedData;
@@ -206,12 +209,12 @@ public class RedisCacheService {
 
             // 缓存不存在，使用分布式锁防止缓存击穿
             String lockKey = CACHE_LOCK_PREFIX + configType;
-            Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "1", 10, TimeUnit.SECONDS);
+            RBucket<String> lockBucket = redissonClient.getBucket(lockKey);
             
-            if (Boolean.TRUE.equals(lockAcquired)) {
+            if (lockBucket.trySet("1", 10, TimeUnit.SECONDS)) {
                 try {
                     // 再次检查缓存（双重检查）
-                    cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+                    cachedData = bucket.get();
                     if (Objects.nonNull(cachedData)) {
                         return cachedData;
                     }
@@ -221,20 +224,19 @@ public class RedisCacheService {
                     
                     // 存入缓存
                     if (Objects.nonNull(data)) {
-                        redisTemplate.opsForValue().set(cacheKey, data, 
-                            cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
+                        bucket.set(data, cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
                         log.info("配置数据已缓存: {}, 大小: {}", configType, data.size());
                     }
                     
                     return data;
                 } finally {
                     // 释放锁
-                    redisTemplate.delete(lockKey);
+                    lockBucket.delete();
                 }
             } else {
                 // 获取锁失败，等待一小段时间后重试获取缓存
                 Thread.sleep(50);
-                cachedData = (List<T>) redisTemplate.opsForValue().get(cacheKey);
+                cachedData = bucket.get();
                 if (Objects.nonNull(cachedData)) {
                     return cachedData;
                 }
@@ -263,13 +265,14 @@ public class RedisCacheService {
 
         try {
             String cacheKey = CONFIG_CACHE_PREFIX + configType;
+            RBucket<Object> bucket = redissonClient.getBucket(cacheKey);
             
             if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
                 // 延迟双删策略
                 deleteWithDelayedDoubleDelete(cacheKey);
             } else {
                 // 直接删除
-                Boolean deleted = redisTemplate.delete(cacheKey);
+                boolean deleted = bucket.delete();
                 log.info("清除配置缓存: {}, 结果: {}", configType, deleted);
             }
         } catch (Exception e) {
@@ -286,8 +289,8 @@ public class RedisCacheService {
         }
 
         try {
-            redisTemplate.delete(redisTemplate.keys(CONFIG_CACHE_PREFIX + "*"));
-            log.info("清除所有配置缓存");
+            long deleteCount = redissonClient.getKeys().deleteByPattern(CONFIG_CACHE_PREFIX + "*");
+            log.info("清除所有配置缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有配置缓存失败", e);
         }
@@ -308,8 +311,8 @@ public class RedisCacheService {
             List<T> data = dataLoader.get();
             if (Objects.nonNull(data) && !data.isEmpty()) {
                 String cacheKey = CONFIG_CACHE_PREFIX + configType;
-                redisTemplate.opsForValue().set(cacheKey, data, 
-                    cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
+                RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
+                bucket.set(data, cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
                 log.info("预热配置缓存完成: {}, 大小: {}", configType, data.size());
             }
         } catch (Exception e) {
@@ -325,7 +328,8 @@ public class RedisCacheService {
      */
     private void deleteWithDelayedDoubleDelete(String cacheKey) {
         // 第一次删除
-        Boolean firstDelete = redisTemplate.delete(cacheKey);
+        RBucket<Object> bucket = redissonClient.getBucket(cacheKey);
+        boolean firstDelete = bucket.delete();
         log.debug("第一次删除缓存: {}, 结果: {}", cacheKey, firstDelete);
         
         // 异步延迟第二次删除
@@ -333,7 +337,8 @@ public class RedisCacheService {
         CompletableFuture.runAsync(() -> {
             try {
                 Thread.sleep(delayMillis);
-                Boolean secondDelete = redisTemplate.delete(cacheKey);
+                RBucket<Object> delayBucket = redissonClient.getBucket(cacheKey);
+                boolean secondDelete = delayBucket.delete();
                 log.debug("第二次删除缓存: {}, 结果: {}", cacheKey, secondDelete);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
