@@ -17,7 +17,7 @@ public class RedissonProperties {
     /**
      * 单机服务器配置
      */
-    private SingleServerConfig singleServerConfig;
+    private SingleServerConfig singleServerConfig = new SingleServerConfig();
 
     /**
      * 单机服务器配置
