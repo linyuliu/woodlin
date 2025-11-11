@@ -4,8 +4,9 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class UserActivityMonitoringService {
 
     private final ActivityMonitoringProperties activityProperties;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedissonClient redissonClient;
 
     private static final String USER_ACTIVITY_KEY_PREFIX = "user_activity:";
     private static final String USER_WARNING_KEY_PREFIX = "user_warning:";
@@ -55,8 +56,8 @@ public class UserActivityMonitoringService {
             String currentTime = LocalDateTime.now().toString();
 
             // 记录最后活动时间，设置过期时间为超时时间的2倍（防止过早清理）
-            redisTemplate.opsForValue().set(activityKey, currentTime,
-                activityProperties.getTimeoutSeconds() * 2, TimeUnit.SECONDS);
+            RBucket<String> bucket = redissonClient.getBucket(activityKey);
+            bucket.set(currentTime, activityProperties.getTimeoutSeconds() * 2, TimeUnit.SECONDS);
 
             log.debug("记录用户活动: userId={}, activityType={}, time={}", userId, activityType, currentTime);
         } catch (Exception e) {
@@ -77,7 +78,8 @@ public class UserActivityMonitoringService {
 
         try {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
-            String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
+            RBucket<String> bucket = redissonClient.getBucket(activityKey);
+            String lastActivityTimeStr = bucket.get();
 
             if (Objects.isNull(lastActivityTimeStr)) {
                 return true;
@@ -108,7 +110,8 @@ public class UserActivityMonitoringService {
         try {
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String warningKey = USER_WARNING_KEY_PREFIX + userId;
-            String lastActivityTimeStr = (String) redisTemplate.opsForValue().get(activityKey);
+            RBucket<String> activityBucket = redissonClient.getBucket(activityKey);
+            String lastActivityTimeStr = activityBucket.get();
 
             if (Objects.isNull(lastActivityTimeStr)) {
                 return false;
@@ -122,11 +125,11 @@ public class UserActivityMonitoringService {
 
             // 如果超过警告阈值且未发过警告
             if (inactiveSeconds > warningThreshold) {
-                String warningTime = (String) redisTemplate.opsForValue().get(warningKey);
+                RBucket<String> warningBucket = redissonClient.getBucket(warningKey);
+                String warningTime = warningBucket.get();
                 if (Objects.isNull(warningTime)) {
                     // 记录警告时间，避免重复警告
-                    redisTemplate.opsForValue().set(warningKey, now.toString(),
-                        activityProperties.getWarningBeforeTimeoutSeconds(), TimeUnit.SECONDS);
+                    warningBucket.set(now.toString(), activityProperties.getWarningBeforeTimeoutSeconds(), TimeUnit.SECONDS);
                     return true;
                 }
             }
@@ -150,8 +153,10 @@ public class UserActivityMonitoringService {
             // 清理活动记录
             String activityKey = USER_ACTIVITY_KEY_PREFIX + userId;
             String warningKey = USER_WARNING_KEY_PREFIX + userId;
-            redisTemplate.delete(activityKey);
-            redisTemplate.delete(warningKey);
+            RBucket<String> activityBucket = redissonClient.getBucket(activityKey);
+            RBucket<String> warningBucket = redissonClient.getBucket(warningKey);
+            activityBucket.delete();
+            warningBucket.delete();
 
             log.info("用户因长时间无活动被强制登出: userId={}", userId);
         } catch (Exception e) {
