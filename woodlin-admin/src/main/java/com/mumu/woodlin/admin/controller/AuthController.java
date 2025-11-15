@@ -8,9 +8,11 @@ import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.CaptchaService;
+import com.mumu.woodlin.security.service.SmsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -22,18 +24,20 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author mumu
  * @description 处理用户登录、登出、密码修改等认证相关操作
- * @since 2025-01-01
+ *              支持多种登录方式：密码登录、验证码登录、手机号登录、SSO登录、Passkey登录、TOTP认证
+ * @since 2025-01-15
  */
 @Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "认证管理", description = "用户身份认证相关接口，包括登录、登出、密码管理等功能")
+@Tag(name = "认证管理", description = "用户身份认证相关接口，包括多种登录方式、登出、密码管理等功能")
 public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final CaptchaService captchaService;
+    private final SmsService smsService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private DevTokenProperties devTokenProperties;
@@ -42,12 +46,23 @@ public class AuthController {
     private DevTokenStartupListener devTokenStartupListener;
 
     /**
-     * 用户登录
+     * 统一登录接口 - 支持多种登录方式
+     * 
+     * <p>根据loginType字段选择相应的登录策略：</p>
+     * <ul>
+     *   <li>password - 密码登录（需要username和password）</li>
+     *   <li>captcha - 验证码登录（需要username、captcha和uuid）</li>
+     *   <li>mobile_sms - 手机号登录（需要mobile和smsCode）</li>
+     *   <li>sso - SSO单点登录（需要ssoToken和ssoProvider）</li>
+     *   <li>passkey - Passkey登录（需要passkeyCredentialId和passkeyAuthResponse）</li>
+     *   <li>totp - TOTP双因素认证（需要totpCode）</li>
+     * </ul>
      */
     @PostMapping("/login")
     @Operation(
         summary = "用户登录",
-        description = "通过用户名和密码进行登录认证，登录成功后返回访问令牌（token）"
+        description = "统一登录接口，支持多种登录方式（密码、验证码、手机号、SSO、Passkey、TOTP）。" +
+                     "根据loginType字段选择相应的认证策略，不同登录方式需要提供不同的字段组合。"
     )
     public R<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         LoginResponse response = authenticationService.login(loginRequest);
@@ -94,16 +109,33 @@ public class AuthController {
     }
 
     /**
-     * 获取验证码
+     * 获取图形验证码
      */
     @GetMapping("/captcha")
     @Operation(
-        summary = "获取验证码",
-        description = "生成图形验证码，返回验证码ID和Base64编码的图片"
+        summary = "获取图形验证码",
+        description = "生成图形验证码，返回验证码ID和Base64编码的图片。用于验证码登录或增强密码登录安全性。"
     )
     public R<CaptchaService.CaptchaInfo> getCaptcha() {
         CaptchaService.CaptchaInfo captchaInfo = captchaService.generateCaptcha();
         return R.ok(captchaInfo);
+    }
+    
+    /**
+     * 发送短信验证码
+     */
+    @PostMapping("/sms/send")
+    @Operation(
+        summary = "发送短信验证码",
+        description = "向指定手机号发送短信验证码，用于手机号登录。验证码有效期5分钟。"
+    )
+    public R<Void> sendSmsCode(@NotBlank(message = "手机号不能为空") @RequestParam String mobile) {
+        boolean success = smsService.sendSmsCode(mobile);
+        if (success) {
+            return R.ok("短信验证码已发送");
+        } else {
+            return R.fail("短信验证码发送失败");
+        }
     }
 
     /**
