@@ -281,17 +281,19 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             return false;
         }
 
-        // 检查父角色是否是自己
+        // 如果父级就是自己，必然成环
         if (roleId.equals(parentRoleId)) {
             return true;
         }
 
-        // 使用Lambda查询替代XML，检查父角色是否在后代中
-        LambdaQueryWrapper<SysRoleHierarchy> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysRoleHierarchy::getAncestorRoleId, roleId)
-            .eq(SysRoleHierarchy::getDescendantRoleId, parentRoleId);
-        return hierarchyMapper.selectCount(wrapper) > 0;
+        // 检查 roleId 是否是 parentRoleId 的后代
+        return hierarchyMapper.exists(
+            new LambdaQueryWrapper<SysRoleHierarchy>()
+                .eq(SysRoleHierarchy::getAncestorRoleId, parentRoleId)
+                .eq(SysRoleHierarchy::getDescendantRoleId, roleId)
+        );
     }
+
 
     @Override
     public List<String> selectAllPermissionsByRoleId(Long roleId) {
