@@ -59,7 +59,17 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     public IPage<SysRole> selectRolePage(SysRole role, Integer pageNum, Integer pageSize) {
         Page<SysRole> page = new Page<>(pageNum, pageSize);
-        return roleMapper.selectRolePage(page, role);
+        // 使用Lambda查询替代XML，支持多数据库方言
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRole::getDeleted, "0")
+            .like(StrUtil.isNotBlank(role.getRoleName()), SysRole::getRoleName, role.getRoleName())
+            .like(StrUtil.isNotBlank(role.getRoleCode()), SysRole::getRoleCode, role.getRoleCode())
+            .eq(StrUtil.isNotBlank(role.getStatus()), SysRole::getStatus, role.getStatus())
+            .eq(StrUtil.isNotBlank(role.getTenantId()), SysRole::getTenantId, role.getTenantId())
+            .eq(role.getParentRoleId() != null, SysRole::getParentRoleId, role.getParentRoleId())
+            .orderByAsc(SysRole::getSortOrder)
+            .orderByDesc(SysRole::getCreateTime);
+        return this.page(page, wrapper);
     }
     
     @Override
@@ -159,11 +169,19 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 删除角色
         boolean result = removeByIds(roleIds);
         
-        // 删除角色层次关系
+        // 删除角色层次关系 - 使用Lambda删除
         if (result) {
             for (Long roleId : roleIds) {
-                hierarchyMapper.deleteByRoleId(roleId);
-                inheritedPermissionMapper.deleteByRoleId(roleId);
+                // 删除角色层次关系
+                LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
+                hierarchyWrapper.and(w -> w.eq(SysRoleHierarchy::getDescendantRoleId, roleId)
+                    .or().eq(SysRoleHierarchy::getAncestorRoleId, roleId));
+                hierarchyMapper.delete(hierarchyWrapper);
+                
+                // 删除角色继承权限缓存
+                LambdaQueryWrapper<SysRoleInheritedPermission> permWrapper = new LambdaQueryWrapper<>();
+                permWrapper.eq(SysRoleInheritedPermission::getRoleId, roleId);
+                inheritedPermissionMapper.delete(permWrapper);
                 
                 // 清除角色相关的缓存
                 evictRoleCache(roleId);
@@ -185,7 +203,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     
     @Override
     public List<SysRole> selectDirectChildRoles(Long roleId) {
-        return roleMapper.selectDirectChildRoles(roleId);
+        // 使用Lambda查询替代XML，支持多数据库方言
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRole::getParentRoleId, roleId)
+            .eq(SysRole::getDeleted, "0")
+            .orderByAsc(SysRole::getSortOrder);
+        return this.list(wrapper);
     }
     
     @Override
@@ -201,8 +224,14 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         for (SysRole role : directRoles) {
             allRoleIds.add(role.getRoleId());
             
-            // 添加祖先角色ID
-            List<Long> ancestorIds = hierarchyMapper.selectAncestorRoleIds(role.getRoleId());
+            // 添加祖先角色ID - 使用Lambda查询
+            LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
+            hierarchyWrapper.eq(SysRoleHierarchy::getDescendantRoleId, role.getRoleId())
+                .orderByAsc(SysRoleHierarchy::getDistance);
+            List<SysRoleHierarchy> hierarchies = hierarchyMapper.selectList(hierarchyWrapper);
+            List<Long> ancestorIds = hierarchies.stream()
+                .map(SysRoleHierarchy::getAncestorRoleId)
+                .collect(Collectors.toList());
             allRoleIds.addAll(ancestorIds);
         }
         
@@ -223,8 +252,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
         
         try {
-            // 删除旧的层次关系（保留自己到自己的关系）
-            hierarchyMapper.deleteByRoleId(roleId);
+            // 删除旧的层次关系 - 使用Lambda删除
+            LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
+            hierarchyWrapper.and(w -> w.eq(SysRoleHierarchy::getDescendantRoleId, roleId)
+                .or().eq(SysRoleHierarchy::getAncestorRoleId, roleId));
+            hierarchyMapper.delete(hierarchyWrapper);
             
             // 构建新的层次关系
             List<SysRoleHierarchy> hierarchies = buildRoleHierarchies(role);
@@ -256,13 +288,27 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             return true;
         }
         
-        // 检查父角色是否在后代中
-        return hierarchyMapper.checkCircularDependency(roleId, parentRoleId);
+        // 使用Lambda查询替代XML，检查父角色是否在后代中
+        LambdaQueryWrapper<SysRoleHierarchy> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRoleHierarchy::getAncestorRoleId, roleId)
+            .eq(SysRoleHierarchy::getDescendantRoleId, parentRoleId);
+        return hierarchyMapper.selectCount(wrapper) > 0;
     }
     
     @Override
     public List<String> selectAllPermissionsByRoleId(Long roleId) {
-        List<Long> permissionIds = inheritedPermissionMapper.selectPermissionIdsByRoleId(roleId);
+        // 使用Lambda查询替代XML
+        LambdaQueryWrapper<SysRoleInheritedPermission> wrapper = new LambdaQueryWrapper<>();
+        wrapper.select(SysRoleInheritedPermission::getPermissionId)
+            .eq(SysRoleInheritedPermission::getRoleId, roleId)
+            .orderByAsc(SysRoleInheritedPermission::getPermissionId);
+        List<SysRoleInheritedPermission> permissions = inheritedPermissionMapper.selectList(wrapper);
+        
+        List<Long> permissionIds = permissions.stream()
+            .map(SysRoleInheritedPermission::getPermissionId)
+            .distinct()
+            .collect(Collectors.toList());
+        
         if (CollUtil.isEmpty(permissionIds)) {
             return Collections.emptyList();
         }
@@ -276,7 +322,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     
     @Override
     public List<SysRole> selectTopLevelRoles(String tenantId) {
-        return roleMapper.selectTopLevelRoles(tenantId);
+        // 使用Lambda查询替代XML，支持多数据库方言
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.and(w -> w.isNull(SysRole::getParentRoleId).or().eq(SysRole::getParentRoleId, 0))
+            .eq(SysRole::getDeleted, "0")
+            .eq(StrUtil.isNotBlank(tenantId), SysRole::getTenantId, tenantId)
+            .orderByAsc(SysRole::getSortOrder);
+        return this.list(wrapper);
     }
     
     /**
@@ -339,9 +391,15 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private List<SysRoleHierarchy> buildRoleHierarchies(SysRole role) {
         List<Long> ancestorIds = new ArrayList<>();
         
-        // 获取所有祖先角色ID
+        // 获取所有祖先角色ID - 使用Lambda查询
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
-            ancestorIds = hierarchyMapper.selectAncestorRoleIds(role.getParentRoleId());
+            LambdaQueryWrapper<SysRoleHierarchy> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SysRoleHierarchy::getDescendantRoleId, role.getParentRoleId())
+                .orderByAsc(SysRoleHierarchy::getDistance);
+            List<SysRoleHierarchy> hierarchies = hierarchyMapper.selectList(wrapper);
+            ancestorIds = hierarchies.stream()
+                .map(SysRoleHierarchy::getAncestorRoleId)
+                .collect(Collectors.toList());
         }
         
         return RoleHierarchyUtil.buildHierarchies(role.getRoleId(), ancestorIds, role.getTenantId());
@@ -351,8 +409,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * 刷新角色的继承权限缓存
      */
     private void refreshInheritedPermissions(Long roleId) {
-        // 删除旧缓存
-        inheritedPermissionMapper.deleteByRoleId(roleId);
+        // 删除旧缓存 - 使用Lambda删除
+        LambdaQueryWrapper<SysRoleInheritedPermission> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRoleInheritedPermission::getRoleId, roleId);
+        inheritedPermissionMapper.delete(wrapper);
         
         // 调用存储过程或手动构建缓存
         // 这里简化处理，实际应该调用存储过程或实现复杂的权限聚合逻辑
