@@ -2,11 +2,8 @@ package com.mumu.woodlin.system.service.impl;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,14 +14,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.security.service.PermissionCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
-import com.mumu.woodlin.system.entity.SysPermission;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysRoleHierarchy;
 import com.mumu.woodlin.system.entity.SysRoleInheritedPermission;
@@ -36,7 +34,7 @@ import com.mumu.woodlin.system.util.RoleHierarchyUtil;
 
 /**
  * 角色信息服务实现
- * 
+ *
  * @author mumu
  * @description 角色信息服务实现，支持RBAC1角色继承
  * @since 2025-10-31
@@ -45,17 +43,17 @@ import com.mumu.woodlin.system.util.RoleHierarchyUtil;
 @Service
 @RequiredArgsConstructor
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> implements ISysRoleService {
-    
+
     private final SysRoleMapper roleMapper;
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
-    
+
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
      */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
-    
+    @Autowired(required = false)
+    private PermissionCacheService permissionCacheService;
+
     @Override
     public IPage<SysRole> selectRolePage(SysRole role, Integer pageNum, Integer pageSize) {
         Page<SysRole> page = new Page<>(pageNum, pageSize);
@@ -71,12 +69,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .orderByDesc(SysRole::getCreateTime);
         return this.page(page, wrapper);
     }
-    
+
     @Override
     public List<SysRole> selectRolesByUserId(Long userId) {
         return roleMapper.selectRolesByUserId(userId);
     }
-    
+
     @Override
     public boolean checkRoleNameUnique(SysRole role) {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
@@ -85,7 +83,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         wrapper.ne(role.getRoleId() != null, SysRole::getRoleId, role.getRoleId());
         return count(wrapper) == 0;
     }
-    
+
     @Override
     public boolean checkRoleCodeUnique(SysRole role) {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
@@ -93,31 +91,31 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         wrapper.ne(role.getRoleId() != null, SysRole::getRoleId, role.getRoleId());
         return count(wrapper) == 0;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean insertRole(SysRole role) {
         // 初始化RBAC1字段
         initializeRbac1Fields(role);
-        
+
         // 检查循环依赖
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             if (checkCircularDependency(role.getRoleId(), role.getParentRoleId())) {
                 throw new BusinessException("设置父角色会造成循环依赖");
             }
         }
-        
+
         // 保存角色
         boolean result = save(role);
-        
+
         // 刷新角色层次关系
         if (result) {
             refreshRoleHierarchy(role.getRoleId());
         }
-        
+
         return result;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateRole(SysRole role) {
@@ -127,37 +125,37 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 throw new BusinessException("设置父角色会造成循环依赖");
             }
         }
-        
+
         // 更新角色路径和层级
         updateRbac1Fields(role);
-        
+
         // 更新角色
         boolean result = updateById(role);
-        
+
         // 刷新角色层次关系
         if (result) {
             refreshRoleHierarchy(role.getRoleId());
-            
+
             // 刷新所有子角色的层次关系
             List<SysRole> descendants = selectDescendantRoles(role.getRoleId());
             for (SysRole descendant : descendants) {
                 refreshRoleHierarchy(descendant.getRoleId());
             }
-            
+
             // 清除角色相关的缓存
             evictRoleCache(role.getRoleId());
         }
-        
+
         return result;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteRoleByIds(List<Long> roleIds) {
         if (CollUtil.isEmpty(roleIds)) {
             return false;
         }
-        
+
         // 检查是否有子角色
         for (Long roleId : roleIds) {
             List<SysRole> children = selectDirectChildRoles(roleId);
@@ -165,10 +163,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 throw new BusinessException("存在子角色，无法删除");
             }
         }
-        
+
         // 删除角色
         boolean result = removeByIds(roleIds);
-        
+
         // 删除角色层次关系 - 使用Lambda删除
         if (result) {
             for (Long roleId : roleIds) {
@@ -177,30 +175,30 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 hierarchyWrapper.and(w -> w.eq(SysRoleHierarchy::getDescendantRoleId, roleId)
                     .or().eq(SysRoleHierarchy::getAncestorRoleId, roleId));
                 hierarchyMapper.delete(hierarchyWrapper);
-                
+
                 // 删除角色继承权限缓存
                 LambdaQueryWrapper<SysRoleInheritedPermission> permWrapper = new LambdaQueryWrapper<>();
                 permWrapper.eq(SysRoleInheritedPermission::getRoleId, roleId);
                 inheritedPermissionMapper.delete(permWrapper);
-                
+
                 // 清除角色相关的缓存
                 evictRoleCache(roleId);
             }
         }
-        
+
         return result;
     }
-    
+
     @Override
     public List<SysRole> selectAncestorRoles(Long roleId) {
         return roleMapper.selectAncestorRoles(roleId);
     }
-    
+
     @Override
     public List<SysRole> selectDescendantRoles(Long roleId) {
         return roleMapper.selectDescendantRoles(roleId);
     }
-    
+
     @Override
     public List<SysRole> selectDirectChildRoles(Long roleId) {
         // 使用Lambda查询替代XML，支持多数据库方言
@@ -210,7 +208,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .orderByAsc(SysRole::getSortOrder);
         return this.list(wrapper);
     }
-    
+
     @Override
     public List<SysRole> selectAllRolesByUserId(Long userId) {
         // 获取用户的直接角色
@@ -218,12 +216,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (CollUtil.isEmpty(directRoles)) {
             return Collections.emptyList();
         }
-        
+
         // 获取所有角色ID（包括继承的）
         Set<Long> allRoleIds = new LinkedHashSet<>();
         for (SysRole role : directRoles) {
             allRoleIds.add(role.getRoleId());
-            
+
             // 添加祖先角色ID - 使用Lambda查询
             LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
             hierarchyWrapper.eq(SysRoleHierarchy::getDescendantRoleId, role.getRoleId())
@@ -231,18 +229,18 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             List<SysRoleHierarchy> hierarchies = hierarchyMapper.selectList(hierarchyWrapper);
             List<Long> ancestorIds = hierarchies.stream()
                 .map(SysRoleHierarchy::getAncestorRoleId)
-                .collect(Collectors.toList());
+                .toList();
             allRoleIds.addAll(ancestorIds);
         }
-        
+
         // 查询所有角色详情
         if (allRoleIds.isEmpty()) {
             return directRoles;
         }
-        
+
         return listByIds(allRoleIds);
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean refreshRoleHierarchy(Long roleId) {
@@ -250,25 +248,25 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (role == null) {
             return false;
         }
-        
+
         try {
             // 删除旧的层次关系 - 使用Lambda删除
             LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
             hierarchyWrapper.and(w -> w.eq(SysRoleHierarchy::getDescendantRoleId, roleId)
                 .or().eq(SysRoleHierarchy::getAncestorRoleId, roleId));
             hierarchyMapper.delete(hierarchyWrapper);
-            
+
             // 构建新的层次关系
             List<SysRoleHierarchy> hierarchies = buildRoleHierarchies(role);
-            
+
             // 批量插入
             if (CollUtil.isNotEmpty(hierarchies)) {
                 hierarchyMapper.batchInsert(hierarchies);
             }
-            
+
             // 刷新继承权限缓存
             refreshInheritedPermissions(roleId);
-            
+
             log.info("刷新角色 {} 的层次关系成功", roleId);
             return true;
         } catch (Exception e) {
@@ -276,25 +274,25 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             throw e;
         }
     }
-    
+
     @Override
     public boolean checkCircularDependency(Long roleId, Long parentRoleId) {
         if (roleId == null || parentRoleId == null) {
             return false;
         }
-        
+
         // 检查父角色是否是自己
         if (roleId.equals(parentRoleId)) {
             return true;
         }
-        
+
         // 使用Lambda查询替代XML，检查父角色是否在后代中
         LambdaQueryWrapper<SysRoleHierarchy> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRoleHierarchy::getAncestorRoleId, roleId)
             .eq(SysRoleHierarchy::getDescendantRoleId, parentRoleId);
         return hierarchyMapper.selectCount(wrapper) > 0;
     }
-    
+
     @Override
     public List<String> selectAllPermissionsByRoleId(Long roleId) {
         // 使用Lambda查询替代XML
@@ -303,23 +301,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .eq(SysRoleInheritedPermission::getRoleId, roleId)
             .orderByAsc(SysRoleInheritedPermission::getPermissionId);
         List<SysRoleInheritedPermission> permissions = inheritedPermissionMapper.selectList(wrapper);
-        
+
         List<Long> permissionIds = permissions.stream()
             .map(SysRoleInheritedPermission::getPermissionId)
             .distinct()
             .collect(Collectors.toList());
-        
+
         if (CollUtil.isEmpty(permissionIds)) {
             return Collections.emptyList();
         }
-        
+
         // 这里需要查询权限表获取权限编码
         // 简化处理，返回权限ID列表的字符串形式
         return permissionIds.stream()
             .map(String::valueOf)
             .collect(Collectors.toList());
     }
-    
+
     @Override
     public List<SysRole> selectTopLevelRoles(String tenantId) {
         // 使用Lambda查询替代XML，支持多数据库方言
@@ -330,7 +328,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .orderByAsc(SysRole::getSortOrder);
         return this.list(wrapper);
     }
-    
+
     /**
      * 初始化RBAC1字段
      */
@@ -339,7 +337,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (role.getIsInheritable() == null) {
             role.setIsInheritable("1");
         }
-        
+
         // 计算角色路径和层级
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             SysRole parentRole = getById(role.getParentRoleId());
@@ -354,7 +352,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             role.setRoleLevel(0);
         }
     }
-    
+
     /**
      * 更新RBAC1字段
      */
@@ -363,13 +361,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (existingRole == null) {
             return;
         }
-        
+
         // 检查父角色是否变化
         Long oldParentId = existingRole.getParentRoleId();
         Long newParentId = role.getParentRoleId();
-        
+
         boolean parentChanged = !Objects.equals(oldParentId, newParentId);
-        
+
         if (parentChanged) {
             // 重新计算路径和层级
             if (newParentId != null && newParentId > 0) {
@@ -384,13 +382,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             }
         }
     }
-    
+
     /**
      * 构建角色层次关系
      */
     private List<SysRoleHierarchy> buildRoleHierarchies(SysRole role) {
         List<Long> ancestorIds = new ArrayList<>();
-        
+
         // 获取所有祖先角色ID - 使用Lambda查询
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             LambdaQueryWrapper<SysRoleHierarchy> wrapper = new LambdaQueryWrapper<>();
@@ -401,10 +399,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 .map(SysRoleHierarchy::getAncestorRoleId)
                 .collect(Collectors.toList());
         }
-        
+
         return RoleHierarchyUtil.buildHierarchies(role.getRoleId(), ancestorIds, role.getTenantId());
     }
-    
+
     /**
      * 刷新角色的继承权限缓存
      */
@@ -413,12 +411,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         LambdaQueryWrapper<SysRoleInheritedPermission> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRoleInheritedPermission::getRoleId, roleId);
         inheritedPermissionMapper.delete(wrapper);
-        
+
         // 调用存储过程或手动构建缓存
         // 这里简化处理，实际应该调用存储过程或实现复杂的权限聚合逻辑
         inheritedPermissionMapper.refreshInheritedPermissions(roleId);
     }
-    
+
     @Override
     public List<RoleTreeDTO> buildRoleTree(String tenantId) {
         // 查询所有角色
@@ -427,37 +425,37 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         wrapper.eq(SysRole::getDeleted, "0");
         wrapper.orderByAsc(SysRole::getSortOrder, SysRole::getCreateTime);
         List<SysRole> allRoles = list(wrapper);
-        
+
         // 构建树形结构
         return buildTreeRecursive(allRoles, null);
     }
-    
+
     /**
      * 递归构建角色树
      */
     private List<RoleTreeDTO> buildTreeRecursive(List<SysRole> allRoles, Long parentId) {
         List<RoleTreeDTO> treeList = new ArrayList<>();
-        
+
         for (SysRole role : allRoles) {
             // 判断是否为当前父节点的子节点
             boolean isChild = (parentId == null && (role.getParentRoleId() == null || role.getParentRoleId() == 0))
                 || (parentId != null && parentId.equals(role.getParentRoleId()));
-            
+
             if (isChild) {
                 RoleTreeDTO node = convertToTreeDTO(role);
-                
+
                 // 递归查找子节点
                 List<RoleTreeDTO> children = buildTreeRecursive(allRoles, role.getRoleId());
                 node.setChildren(children);
                 node.setHasChildren(!children.isEmpty());
-                
+
                 treeList.add(node);
             }
         }
-        
+
         return treeList;
     }
-    
+
     /**
      * 转换角色实体为树节点DTO
      */
@@ -475,10 +473,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .setHasChildren(false)
             .setChildren(new ArrayList<>());
     }
-    
+
     /**
      * 清除角色相关的缓存
-     * 
+     *
      * @param roleId 角色ID
      */
     private void evictRoleCache(Long roleId) {
