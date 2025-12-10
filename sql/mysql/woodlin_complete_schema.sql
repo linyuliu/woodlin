@@ -112,6 +112,34 @@ CREATE TABLE `sys_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
 
 -- =============================================
+-- 用户多重认证标识表（支持多种登录方式）
+-- =============================================
+DROP TABLE IF EXISTS `sys_user_auth_identity`;
+CREATE TABLE `sys_user_auth_identity` (
+    `auth_id` bigint(20) NOT NULL COMMENT '认证记录ID',
+    `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+    `auth_type` varchar(30) NOT NULL COMMENT '认证类型（password、mobile_sms、sso、passkey、totp等）',
+    `identifier` varchar(150) NOT NULL COMMENT '登录标识（用户名、手机号、外部用户ID、Passkey凭证ID等）',
+    `credential` varchar(512) DEFAULT NULL COMMENT '凭证信息（密钥、哈希、公钥等）',
+    `credential_salt` varchar(128) DEFAULT NULL COMMENT '凭证盐或公钥ID',
+    `ext_data` text DEFAULT NULL COMMENT '扩展信息（JSON）',
+    `verified` tinyint(1) DEFAULT 0 COMMENT '是否已验证绑定',
+    `status` char(1) DEFAULT '1' COMMENT '状态（1-启用，0-禁用）',
+    `last_used_time` datetime DEFAULT NULL COMMENT '最近使用时间',
+    `tenant_id` varchar(64) DEFAULT NULL COMMENT '租户ID',
+    `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+    `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+    `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+    `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` char(1) DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+    PRIMARY KEY (`auth_id`),
+    UNIQUE KEY `uk_auth_identifier` (`auth_type`, `identifier`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_last_used_time` (`last_used_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户多重认证标识表';
+
+-- =============================================
 -- 角色信息表（包含RBAC1层次结构字段）
 -- =============================================
 DROP TABLE IF EXISTS `sys_role`;

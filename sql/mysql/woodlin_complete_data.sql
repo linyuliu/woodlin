@@ -41,6 +41,16 @@ INSERT INTO `sys_user` VALUES
 (1, 'admin', '超级管理员', '木林', '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu', 'admin@woodlin.com', '15888888888', '', 1, NOW(), '1', 'default', 103, NOW(), '127.0.0.1', 0, 0, NULL, NOW(), 0, NULL, '管理员', 'system', NOW(), 'system', NOW(), '0'),
 (2, 'demo', '演示用户', '演示', '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu', 'demo@woodlin.com', '15666666666', '', 1, NOW(), '1', 'default', 105, NOW(), '127.0.0.1', 0, 0, NULL, NOW(), 0, NULL, '演示用户', 'system', NOW(), 'system', NOW(), '0');
 
+-- 用户多重认证标识（用于多登录方式示例）
+INSERT INTO `sys_user_auth_identity` (
+    `auth_id`, `user_id`, `auth_type`, `identifier`, `credential`, `credential_salt`,
+    `ext_data`, `verified`, `status`, `last_used_time`, `tenant_id`, `remark`,
+    `create_by`, `create_time`, `update_by`, `update_time`, `deleted`
+) VALUES
+(1001, 1, 'totp', '1', 'JBSWY3DPEHPK3PXP', NULL, NULL, 1, '1', NOW(), 'default', '管理员TOTP绑定', 'system', NOW(), 'system', NOW(), '0'),
+(1002, 1, 'passkey', 'passkey-admin-credential', 'passkey-admin-credential-secret', NULL, NULL, 1, '1', NOW(), 'default', '管理员Passkey绑定', 'system', NOW(), 'system', NOW(), '0'),
+(1003, 1, 'sso', 'oauth2:admin_sso', NULL, NULL, '{\"displayName\":\"Admin SSO\"}', 1, '1', NOW(), 'default', '管理员SSO映射', 'system', NOW(), 'system', NOW(), '0');
+
 -- =============================================
 -- 第三部分：角色和权限数据（包含RBAC1支持）
 -- =============================================
