@@ -69,11 +69,14 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-sql2api</artifactId>
         </dependency>
+        <!-- Temporarily disabled due to Kotlin compilation errors in ETL module -->
+        <!--
         <dependency>
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-etl</artifactId>
             <version>${woodlin.version}</version>
         </dependency>
+        -->
 
         <!-- Spring Boot Starter -->
         <dependency>
