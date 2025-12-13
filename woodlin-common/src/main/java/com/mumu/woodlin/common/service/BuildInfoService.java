@@ -1,9 +1,11 @@
 package com.mumu.woodlin.common.service;
 
 import cn.hutool.core.io.resource.ResourceUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.mumu.woodlin.common.config.BuildInfoProperties;
 import com.mumu.woodlin.common.entity.BuildInfo;
 
 import java.io.IOException;
@@ -19,15 +21,18 @@ import java.util.Properties;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class BuildInfoService {
     
     private static final String GIT_PROPERTIES_FILE = "git.properties";
     private final BuildInfo buildInfo;
+    private final BuildInfoProperties buildInfoProperties;
     
     /**
      * 构造函数，加载构建信息
      */
-    public BuildInfoService() {
+    public BuildInfoService(BuildInfoProperties buildInfoProperties) {
+        this.buildInfoProperties = buildInfoProperties;
         this.buildInfo = loadBuildInfo();
     }
     
@@ -37,6 +42,38 @@ public class BuildInfoService {
      * @return 构建信息对象
      */
     public BuildInfo getBuildInfo() {
+        return getBuildInfo(false);
+    }
+    
+    /**
+     * 获取构建信息
+     * 
+     * @param includeRemoteUrl 是否包含远程仓库URL（忽略配置项，强制包含）
+     * @return 构建信息对象
+     */
+    public BuildInfo getBuildInfo(boolean includeRemoteUrl) {
+        // 如果配置不允许包含且未强制要求，则清除远程URL
+        if (!includeRemoteUrl && !Boolean.TRUE.equals(buildInfoProperties.getIncludeRemoteUrl())) {
+            BuildInfo copy = BuildInfo.builder()
+                    .buildTime(buildInfo.getBuildTime())
+                    .buildUser(buildInfo.getBuildUser())
+                    .buildHost(buildInfo.getBuildHost())
+                    .buildVersion(buildInfo.getBuildVersion())
+                    .gitBranch(buildInfo.getGitBranch())
+                    .gitCommitId(buildInfo.getGitCommitId())
+                    .gitCommitIdAbbrev(buildInfo.getGitCommitIdAbbrev())
+                    .gitCommitTime(buildInfo.getGitCommitTime())
+                    .gitCommitMessage(buildInfo.getGitCommitMessage())
+                    .gitCommitMessageShort(buildInfo.getGitCommitMessageShort())
+                    .gitCommitUserName(buildInfo.getGitCommitUserName())
+                    .gitCommitUserEmail(buildInfo.getGitCommitUserEmail())
+                    .gitTags(buildInfo.getGitTags())
+                    .gitTotalCommitCount(buildInfo.getGitTotalCommitCount())
+                    .gitDirty(buildInfo.getGitDirty())
+                    .gitRemoteOriginUrl(null)  // 不包含远程URL
+                    .build();
+            return copy;
+        }
         return buildInfo;
     }
     

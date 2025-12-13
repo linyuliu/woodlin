@@ -256,6 +256,10 @@ page:
 
 # Woodlin 安全配置
 woodlin:
+  # 构建信息配置
+  build-info:
+    # 是否在API响应中包含远程仓库URL（生产环境建议设置为false）
+    include-remote-url: ${BUILD_INFO_INCLUDE_REMOTE_URL:false}
   security:
     # 开发令牌配置（仅用于开发调试）
     dev-token:
