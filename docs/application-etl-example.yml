@@ -1,0 +1,136 @@
+# ETL模块配置示例
+
+# 本文件展示ETL模块所需的各种配置示例
+
+# ============================================
+# Spring Boot 应用配置
+# ============================================
+spring:
+  application:
+    name: woodlin-admin
+  
+  # ============================================
+  # 动态数据源配置
+  # ============================================
+  datasource:
+    dynamic:
+      # 主数据源（默认）
+      primary: master
+      # 严格模式，数据源不存在时报错
+      strict: false
+      # 懒加载，只在使用时才创建连接
+      lazy: true
+      
+      # 数据源列表
+      datasource:
+        # 主数据源 - Woodlin系统数据库
+        master:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+          username: root
+          password: ${DB_PASSWORD:root}
+          hikari:
+            pool-name: MasterPool
+            minimum-idle: 5
+            maximum-pool-size: 20
+            connection-timeout: 30000
+            idle-timeout: 600000
+            max-lifetime: 1800000
+        
+        # 源数据库1 - MySQL
+        source_mysql:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://192.168.1.100:3306/source_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+          username: ${SOURCE_MYSQL_USER:source_user}
+          password: ${SOURCE_MYSQL_PASS:source_pass}
+          hikari:
+            pool-name: SourceMySQLPool
+            minimum-idle: 2
+            maximum-pool-size: 10
+            connection-timeout: 30000
+        
+        # 源数据库2 - PostgreSQL
+        source_pg:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://192.168.1.101:5432/source_db
+          username: ${SOURCE_PG_USER:postgres}
+          password: ${SOURCE_PG_PASS:postgres}
+          hikari:
+            pool-name: SourcePGPool
+            minimum-idle: 2
+            maximum-pool-size: 10
+            connection-timeout: 30000
+        
+        # 目标数据库 - MySQL
+        target_mysql:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://192.168.1.200:3306/target_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+          username: ${TARGET_MYSQL_USER:target_user}
+          password: ${TARGET_MYSQL_PASS:target_pass}
+          hikari:
+            pool-name: TargetMySQLPool
+            minimum-idle: 2
+            maximum-pool-size: 10
+            connection-timeout: 30000
+        
+        # 目标数据库 - PostgreSQL
+        target_pg:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://192.168.1.201:5432/target_db
+          username: ${TARGET_PG_USER:postgres}
+          password: ${TARGET_PG_PASS:postgres}
+          hikari:
+            pool-name: TargetPGPool
+            minimum-idle: 2
+            maximum-pool-size: 10
+            connection-timeout: 30000
+
+  # ============================================
+  # 任务调度配置（使用Quartz）
+  # ============================================
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceName: WoodlinScheduler
+            instanceId: AUTO
+          jobStore:
+            class: org.quartz.impl.jdbcjobstore.JobStoreTX
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+            tablePrefix: QRTZ_
+            isClustered: true
+            clusterCheckinInterval: 10000
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 10
+            threadPriority: 5
+
+# ============================================
+# 日志配置
+# ============================================
+logging:
+  level:
+    com.mumu.woodlin.etl: DEBUG
+    com.mumu.woodlin.sql2api: DEBUG
+    com.baomidou.dynamic.datasource: DEBUG
+
+# ============================================
+# MyBatis Plus 配置
+# ============================================
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.mumu.woodlin.**.entity
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
