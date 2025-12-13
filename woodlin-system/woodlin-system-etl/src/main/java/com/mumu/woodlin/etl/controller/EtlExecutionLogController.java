@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-import com.mumu.woodlin.common.result.Result;
+import com.mumu.woodlin.common.response.Result;
 import com.mumu.woodlin.etl.service.IEtlExecutionLogService;
 
 /**
