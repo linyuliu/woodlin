@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.common.entity.BuildInfo;
+import com.mumu.woodlin.common.service.BuildInfoService;
 import com.mumu.woodlin.system.dto.ConfigBatchUpdateDto;
 import com.mumu.woodlin.system.entity.SysConfig;
 import com.mumu.woodlin.system.service.ISysConfigService;
@@ -44,6 +46,7 @@ import com.mumu.woodlin.system.service.ISysConfigService;
 public class SysConfigController {
     
     private final ISysConfigService configService;
+    private final BuildInfoService buildInfoService;
     
     /**
      * 获取所有配置列表
@@ -345,5 +348,18 @@ public class SysConfigController {
     public R<Void> warmupCache() {
         configService.warmupCache();
         return R.ok("缓存预热成功");
+    }
+    
+    /**
+     * 获取构建信息
+     */
+    @GetMapping("/build-info")
+    @Operation(
+        summary = "获取构建信息",
+        description = "获取应用的构建信息，包括Git提交信息、构建时间等，用于版本追踪和问题诊断"
+    )
+    public R<BuildInfo> getBuildInfo() {
+        BuildInfo buildInfo = buildInfoService.getBuildInfo();
+        return R.ok(buildInfo);
     }
 }
