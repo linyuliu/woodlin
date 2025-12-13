@@ -78,8 +78,12 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
         
         if (updated) {
             // 如果状态或cron表达式发生变化，需要更新调度
-            if (!oldJob.getStatus().equals(etlJob.getStatus()) || 
-                !oldJob.getCronExpression().equals(etlJob.getCronExpression())) {
+            String oldCron = oldJob.getCronExpression();
+            String newCron = etlJob.getCronExpression();
+            boolean cronChanged = (oldCron == null && newCron != null) || 
+                                  (oldCron != null && !oldCron.equals(newCron));
+            
+            if (!oldJob.getStatus().equals(etlJob.getStatus()) || cronChanged) {
                 
                 // 删除旧的调度任务
                 taskScheduleService.deleteJob(oldJob.getJobName(), oldJob.getJobGroup());
@@ -192,11 +196,15 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
      */
     private void createScheduleJob(EtlJob etlJob) {
         try {
+            // 将ETL任务的jobId作为invokeTarget参数传递给调度系统
+            // 调度系统执行时会调用 IEtlJobService.executeJob(jobId)
+            String invokeTarget = String.format("etlJobService.executeJob(%d)", etlJob.getJobId());
+            
             taskScheduleService.createJob(
                 etlJob.getJobName(),
                 etlJob.getJobGroup(),
                 etlJob.getCronExpression(),
-                "com.mumu.woodlin.etl.job.EtlJobExecutor"
+                invokeTarget
             );
             log.info("创建ETL调度任务成功: {}", etlJob.getJobName());
         } catch (Exception e) {
