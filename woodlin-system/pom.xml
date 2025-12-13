@@ -30,6 +30,7 @@
         <module>woodlin-system-generator</module>
         <module>woodlin-system-sql2api</module>
         <module>woodlin-system-dsl</module>
+        <module>woodlin-system-etl</module>
     </modules>
 
 </project>
