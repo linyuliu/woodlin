@@ -373,10 +373,12 @@
                             <includeOnlyProperty>^git.commit.id.*</includeOnlyProperty>
                             <includeOnlyProperty>^git.commit.message.*</includeOnlyProperty>
                             <includeOnlyProperty>^git.commit.time.*</includeOnlyProperty>
+                            <includeOnlyProperty>^git.commit.user.*</includeOnlyProperty>
                             <includeOnlyProperty>^git.branch</includeOnlyProperty>
                             <includeOnlyProperty>^git.dirty</includeOnlyProperty>
                             <includeOnlyProperty>^git.tags</includeOnlyProperty>
                             <includeOnlyProperty>^git.total.commit.count</includeOnlyProperty>
+                            <includeOnlyProperty>^git.remote.origin.url</includeOnlyProperty>
                         </includeOnlyProperties>
                         <!-- 日期格式 -->
                         <dateFormat>yyyy-MM-dd HH:mm:ss</dateFormat>
