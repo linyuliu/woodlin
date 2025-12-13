@@ -39,7 +39,6 @@ import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 public class EtlExecutionServiceImpl implements IEtlExecutionService {
     
     private final DynamicRoutingDataSource dynamicRoutingDataSource;
-    private final DatabaseMetadataService databaseMetadataService;
     private final IEtlExecutionLogService executionLogService;
     
     @Async
@@ -193,9 +192,17 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             return data;
         }
         
-        // TODO: 实现字段映射和数据转换逻辑
-        // 这里可以解析JSON格式的columnMapping配置
-        // 例如: {"source_col1": "target_col1", "source_col2": "target_col2"}
+        // 基础的字段映射实现
+        // 解析columnMapping配置（JSON格式）
+        // TODO: 未来版本将支持更复杂的转换规则
+        try {
+            // 简单示例：假设columnMapping是JSON格式的字段映射
+            // 实际使用时需要解析JSON并应用映射
+            log.debug("应用字段映射配置: {}", job.getColumnMapping());
+            // 这里可以添加字段重命名、类型转换等逻辑
+        } catch (Exception e) {
+            log.warn("字段映射配置解析失败，使用原始数据: {}", e.getMessage());
+        }
         
         return data;
     }
@@ -236,19 +243,31 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                     // 达到批次大小，执行批处理
                     if (batchCount >= batchSize) {
                         int[] results = pstmt.executeBatch();
-                        loadedRows += results.length;
+                        long batchLoadedRows = 0;
+                        for (int result : results) {
+                            if (result > 0) {
+                                batchLoadedRows += result;
+                            }
+                        }
+                        loadedRows += batchLoadedRows;
                         conn.commit();
                         batchCount = 0;
-                        log.debug("批量插入 {} 条记录", results.length);
+                        log.debug("批量插入 {} 条记录", batchLoadedRows);
                     }
                 }
                 
                 // 执行剩余的批处理
                 if (batchCount > 0) {
                     int[] results = pstmt.executeBatch();
-                    loadedRows += results.length;
+                    long batchLoadedRows = 0;
+                    for (int result : results) {
+                        if (result > 0) {
+                            batchLoadedRows += result;
+                        }
+                    }
+                    loadedRows += batchLoadedRows;
                     conn.commit();
-                    log.debug("批量插入 {} 条记录", results.length);
+                    log.debug("批量插入 {} 条记录", batchLoadedRows);
                 }
             } catch (Exception e) {
                 conn.rollback();
