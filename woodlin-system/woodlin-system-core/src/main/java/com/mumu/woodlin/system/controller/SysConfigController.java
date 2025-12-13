@@ -352,11 +352,14 @@ public class SysConfigController {
     
     /**
      * 获取构建信息
+     * 
+     * 注意：此接口包含构建和Git仓库信息，生产环境建议通过权限控制限制访问
      */
     @GetMapping("/build-info")
     @Operation(
         summary = "获取构建信息",
-        description = "获取应用的构建信息，包括Git提交信息、构建时间等，用于版本追踪和问题诊断"
+        description = "获取应用的构建信息，包括Git提交信息、构建时间等，用于版本追踪和问题诊断。" +
+                     "注意：生产环境建议对此接口进行权限控制"
     )
     public R<BuildInfo> getBuildInfo() {
         BuildInfo buildInfo = buildInfoService.getBuildInfo();
