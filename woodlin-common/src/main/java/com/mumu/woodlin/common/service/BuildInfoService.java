@@ -56,7 +56,7 @@ public class BuildInfoService {
                 log.warn("未找到构建信息文件: {}", GIT_PROPERTIES_FILE);
             }
         } catch (IOException e) {
-            log.error("加载构建信息失败: {}", e.getMessage(), e);
+            log.error("加载构建信息文件失败: {} - {}", GIT_PROPERTIES_FILE, e.getMessage(), e);
         }
         
         return BuildInfo.builder()
@@ -75,8 +75,25 @@ public class BuildInfoService {
                 .gitTags(properties.getProperty("git.tags", ""))
                 .gitTotalCommitCount(properties.getProperty("git.total.commit.count", "0"))
                 .gitDirty(properties.getProperty("git.dirty", "false"))
-                .gitRemoteOriginUrl(properties.getProperty("git.remote.origin.url", "未知"))
+                .gitRemoteOriginUrl(sanitizeRemoteUrl(properties.getProperty("git.remote.origin.url", "未知")))
                 .build();
+    }
+    
+    /**
+     * 清理远程仓库 URL，移除敏感信息（如密码、token等）
+     * 注意：生产环境建议通过配置或权限控制来限制构建信息的访问
+     * 
+     * @param url 原始 URL
+     * @return 清理后的 URL
+     */
+    private String sanitizeRemoteUrl(String url) {
+        if (url == null || url.isEmpty() || "未知".equals(url)) {
+            return url;
+        }
+        
+        // 移除 URL 中的认证信息 (例如: https://username:password@github.com/repo)
+        // 保留: https://github.com/repo
+        return url.replaceAll("(https?://)([^:@]+:[^@]+@)", "$1");
     }
     
     /**
