@@ -51,49 +51,49 @@ public class EtlExecutionLogServiceImpl extends ServiceImpl<EtlExecutionLogMappe
     @Transactional(rollbackFor = Exception.class)
     public void recordExecutionSuccess(Long logId, Long extractedRows, Long transformedRows, 
                                        Long loadedRows, String executionDetail) {
-        EtlExecutionLog log = this.getById(logId);
-        if (log == null) {
+        EtlExecutionLog executionLog = this.getById(logId);
+        if (executionLog == null) {
             log.error("执行日志不存在: {}", logId);
             return;
         }
         
         LocalDateTime endTime = LocalDateTime.now();
-        long duration = ChronoUnit.MILLIS.between(log.getStartTime(), endTime);
+        long duration = ChronoUnit.MILLIS.between(executionLog.getStartTime(), endTime);
         
-        log.setExecutionStatus(EtlExecutionStatus.SUCCESS.getCode());
-        log.setEndTime(endTime);
-        log.setDuration(duration);
-        log.setExtractedRows(extractedRows);
-        log.setTransformedRows(transformedRows);
-        log.setLoadedRows(loadedRows);
-        log.setFailedRows(0L);
-        log.setExecutionDetail(executionDetail);
+        executionLog.setExecutionStatus(EtlExecutionStatus.SUCCESS.getCode());
+        executionLog.setEndTime(endTime);
+        executionLog.setDuration(duration);
+        executionLog.setExtractedRows(extractedRows);
+        executionLog.setTransformedRows(transformedRows);
+        executionLog.setLoadedRows(loadedRows);
+        executionLog.setFailedRows(0L);
+        executionLog.setExecutionDetail(executionDetail);
         
-        this.updateById(log);
+        this.updateById(executionLog);
     }
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void recordExecutionFailure(Long logId, Long extractedRows, Long transformedRows, 
                                        Long loadedRows, Long failedRows, String errorMessage) {
-        EtlExecutionLog log = this.getById(logId);
-        if (log == null) {
+        EtlExecutionLog executionLog = this.getById(logId);
+        if (executionLog == null) {
             log.error("执行日志不存在: {}", logId);
             return;
         }
         
         LocalDateTime endTime = LocalDateTime.now();
-        long duration = ChronoUnit.MILLIS.between(log.getStartTime(), endTime);
+        long duration = ChronoUnit.MILLIS.between(executionLog.getStartTime(), endTime);
         
-        log.setExecutionStatus(EtlExecutionStatus.FAILED.getCode());
-        log.setEndTime(endTime);
-        log.setDuration(duration);
-        log.setExtractedRows(extractedRows);
-        log.setTransformedRows(transformedRows);
-        log.setLoadedRows(loadedRows);
-        log.setFailedRows(failedRows);
-        log.setErrorMessage(errorMessage);
+        executionLog.setExecutionStatus(EtlExecutionStatus.FAILED.getCode());
+        executionLog.setEndTime(endTime);
+        executionLog.setDuration(duration);
+        executionLog.setExtractedRows(extractedRows);
+        executionLog.setTransformedRows(transformedRows);
+        executionLog.setLoadedRows(loadedRows);
+        executionLog.setFailedRows(failedRows);
+        executionLog.setErrorMessage(errorMessage);
         
-        this.updateById(log);
+        this.updateById(executionLog);
     }
 }
