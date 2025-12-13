@@ -8,180 +8,149 @@ import org.springframework.stereotype.Service;
 import com.mumu.woodlin.common.config.BuildInfoProperties;
 import com.mumu.woodlin.common.entity.BuildInfo;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
 /**
  * 构建信息服务
- * 
+ * <p>
+ * 只负责：
+ * 1. 加载 git.properties（启动时一次）
+ * 2. 缓存构建信息
+ * 3. 提供格式化输出
  * @author mumu
- * @description 读取并提供应用构建信息，包括Git提交信息、构建时间等
- * @since 2025-01-01
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class BuildInfoService {
-    
-    private static final String GIT_PROPERTIES_FILE = "git.properties";
-    private final BuildInfo buildInfo;
+
+    private static final String DEFAULT_GIT_FILE = "git.properties";
+
     private final BuildInfoProperties buildInfoProperties;
-    
+
     /**
-     * 构造函数，加载构建信息
-     */
-    public BuildInfoService(BuildInfoProperties buildInfoProperties) {
-        this.buildInfoProperties = buildInfoProperties;
-        this.buildInfo = loadBuildInfo();
-    }
-    
-    /**
-     * 获取构建信息
-     * 
-     * @return 构建信息对象
+     * 获取构建信息（缓存）
      */
     public BuildInfo getBuildInfo() {
-        return getBuildInfo(false);
+        return loadBuildInfo();
     }
-    
+
     /**
-     * 获取构建信息
-     * 
-     * @param includeRemoteUrl 是否包含远程仓库URL（忽略配置项，强制包含）
-     * @return 构建信息对象
-     */
-    public BuildInfo getBuildInfo(boolean includeRemoteUrl) {
-        // 如果配置不允许包含且未强制要求，则清除远程URL
-        if (!includeRemoteUrl && !Boolean.TRUE.equals(buildInfoProperties.getIncludeRemoteUrl())) {
-            BuildInfo copy = BuildInfo.builder()
-                    .buildTime(buildInfo.getBuildTime())
-                    .buildUser(buildInfo.getBuildUser())
-                    .buildHost(buildInfo.getBuildHost())
-                    .buildVersion(buildInfo.getBuildVersion())
-                    .gitBranch(buildInfo.getGitBranch())
-                    .gitCommitId(buildInfo.getGitCommitId())
-                    .gitCommitIdAbbrev(buildInfo.getGitCommitIdAbbrev())
-                    .gitCommitTime(buildInfo.getGitCommitTime())
-                    .gitCommitMessage(buildInfo.getGitCommitMessage())
-                    .gitCommitMessageShort(buildInfo.getGitCommitMessageShort())
-                    .gitCommitUserName(buildInfo.getGitCommitUserName())
-                    .gitCommitUserEmail(buildInfo.getGitCommitUserEmail())
-                    .gitTags(buildInfo.getGitTags())
-                    .gitTotalCommitCount(buildInfo.getGitTotalCommitCount())
-                    .gitDirty(buildInfo.getGitDirty())
-                    .gitRemoteOriginUrl(null)  // 不包含远程URL
-                    .build();
-            return copy;
-        }
-        return buildInfo;
-    }
-    
-    /**
-     * 加载构建信息
-     * 
-     * @return 构建信息对象
+     * 实际加载逻辑（仅启动时调用）
      */
     private BuildInfo loadBuildInfo() {
-        Properties properties = new Properties();
-        
-        try (InputStream inputStream = ResourceUtil.getStream(GIT_PROPERTIES_FILE)) {
-            if (inputStream != null) {
-                properties.load(inputStream);
-                log.debug("成功加载构建信息: {}", GIT_PROPERTIES_FILE);
+        Properties p = new Properties();
+        String file = DEFAULT_GIT_FILE;
+
+        try (InputStream in = ResourceUtil.getStream(file)) {
+            if (in != null) {
+                p.load(in);
+                log.info("构建信息已加载: {}", file);
             } else {
-                log.warn("未找到构建信息文件: {}", GIT_PROPERTIES_FILE);
+                log.warn("构建信息文件不存在: {}", file);
             }
         } catch (IOException e) {
-            log.error("加载构建信息文件失败: {} - {}", GIT_PROPERTIES_FILE, e.getMessage(), e);
+            log.error("加载构建信息失败: {}", file, e);
         }
-        
+
         return BuildInfo.builder()
-                .buildTime(properties.getProperty("git.build.time", "未知"))
-                .buildUser(properties.getProperty("git.build.user.name", "未知"))
-                .buildHost(properties.getProperty("git.build.host", "未知"))
-                .buildVersion(properties.getProperty("git.build.version", "1.0.0"))
-                .gitBranch(properties.getProperty("git.branch", "未知"))
-                .gitCommitId(properties.getProperty("git.commit.id.full", "未知"))
-                .gitCommitIdAbbrev(properties.getProperty("git.commit.id.abbrev", "未知"))
-                .gitCommitTime(properties.getProperty("git.commit.time", "未知"))
-                .gitCommitMessage(properties.getProperty("git.commit.message.full", "未知"))
-                .gitCommitMessageShort(properties.getProperty("git.commit.message.short", "未知"))
-                .gitCommitUserName(properties.getProperty("git.commit.user.name", "未知"))
-                .gitCommitUserEmail(properties.getProperty("git.commit.user.email", "未知"))
-                .gitTags(properties.getProperty("git.tags", ""))
-                .gitTotalCommitCount(properties.getProperty("git.total.commit.count", "0"))
-                .gitDirty(properties.getProperty("git.dirty", "false"))
-                .gitRemoteOriginUrl(sanitizeRemoteUrl(properties.getProperty("git.remote.origin.url", "未知")))
-                .build();
+            .buildTime(get(p, "git.build.time", "UNKNOWN"))
+            .buildUser(get(p, "git.build.user.name", "UNKNOWN"))
+            .buildHost(get(p, "git.build.host", "UNKNOWN"))
+            .buildVersion(get(p, "git.build.version", "UNKNOWN"))
+            .gitBranch(get(p, "git.branch", "UNKNOWN"))
+            .gitCommitId(get(p, "git.commit.id.full", "UNKNOWN"))
+            .gitCommitIdAbbrev(get(p, "git.commit.id.abbrev", "UNKNOWN"))
+            .gitCommitTime(get(p, "git.commit.time", "UNKNOWN"))
+            .gitCommitMessage(get(p, "git.commit.message.full", ""))
+            .gitCommitMessageShort(get(p, "git.commit.message.short", ""))
+            .gitCommitUserName(get(p, "git.commit.user.name", ""))
+            .gitCommitUserEmail(maskEmail(get(p, "git.commit.user.email", "")))
+            .gitTags(get(p, "git.tags", ""))
+            .gitTotalCommitCount(get(p, "git.total.commit.count", "0"))
+            .gitDirty(get(p, "git.dirty", "false"))
+            .gitRemoteOriginUrl(
+                sanitizeRemoteUrl(get(p, "git.remote.origin.url", ""))
+            )
+            .build();
     }
-    
+
     /**
-     * 清理远程仓库 URL，移除敏感信息（如密码、token等）
-     * 注意：生产环境建议通过配置或权限控制来限制构建信息的访问
-     * 
-     * @param url 原始 URL
-     * @return 清理后的 URL
-     */
-    private String sanitizeRemoteUrl(String url) {
-        if (url == null || url.isEmpty() || "未知".equals(url)) {
-            return url;
-        }
-        
-        // 移除 URL 中的认证信息 (例如: https://username:password@github.com/repo)
-        // 保留: https://github.com/repo
-        return url.replaceAll("(https?://)([^:@]+:[^@]+@)", "$1");
-    }
-    
-    /**
-     * 格式化打印构建信息（Banner格式）
-     * 
-     * @return 格式化的构建信息字符串
+     * Banner 格式输出
      */
     public String formatBuildInfoBanner() {
-        BuildInfo info = getBuildInfo();
-        
-        StringBuilder banner = new StringBuilder();
-        banner.append("\n");
-        banner.append("====================================================================\n");
-        banner.append("                      Woodlin 构建信息                               \n");
-        banner.append("====================================================================\n");
-        banner.append(String.format("  构建时间:     %s%n", info.getBuildTime()));
-        banner.append(String.format("  构建用户:     %s%n", info.getBuildUser()));
-        banner.append(String.format("  构建主机:     %s%n", info.getBuildHost()));
-        banner.append(String.format("  构建版本:     %s%n", info.getBuildVersion()));
-        banner.append("--------------------------------------------------------------------\n");
-        banner.append(String.format("  Git分支:      %s%n", info.getGitBranch()));
-        banner.append(String.format("  Git提交ID:    %s%n", info.getGitCommitIdAbbrev()));
-        banner.append(String.format("  Git提交时间:  %s%n", info.getGitCommitTime()));
-        banner.append(String.format("  Git提交信息:  %s%n", info.getGitCommitMessageShort()));
-        banner.append(String.format("  Git提交用户:  %s%n", info.getGitCommitUserName()));
-        
-        if (info.getGitTags() != null && !info.getGitTags().isEmpty()) {
-            banner.append(String.format("  Git标签:      %s%n", info.getGitTags()));
+        BuildInfo i = getBuildInfo();
+        if (i == null) {
+            return "[BuildInfo] NOT AVAILABLE";
         }
-        
-        banner.append(String.format("  Git提交总数:  %s%n", info.getGitTotalCommitCount()));
-        banner.append(String.format("  工作区状态:   %s%n", "true".equals(info.getGitDirty()) ? "有未提交更改" : "干净"));
-        banner.append("====================================================================\n");
-        
-        return banner.toString();
+
+        return """
+        ====================================================================
+                              Woodlin Build Info
+        ====================================================================
+          Build Time : %s
+          Build User : %s
+          Build Host : %s
+          Version    : %s
+        --------------------------------------------------------------------
+          Branch     : %s
+          Commit     : %s
+          CommitTime : %s
+          Message    : %s
+          Dirty      : %s
+        ====================================================================
+        """.formatted(
+            i.getBuildTime(),
+            i.getBuildUser(),
+            i.getBuildHost(),
+            i.getBuildVersion(),
+            i.getGitBranch(),
+            i.getGitCommitIdAbbrev(),
+            i.getGitCommitTime(),
+            i.getGitCommitMessageShort(),
+            Boolean.parseBoolean(i.getGitDirty()) ? "YES" : "NO"
+        );
     }
-    
+
     /**
-     * 格式化打印构建信息（简单格式）
-     * 
-     * @return 格式化的构建信息字符串
+     * 简要格式
      */
     public String formatBuildInfoSimple() {
-        BuildInfo info = getBuildInfo();
-        
-        return String.format(
-                "[构建信息] 时间: %s | 分支: %s | 提交: %s | 版本: %s",
-                info.getBuildTime(),
-                info.getGitBranch(),
-                info.getGitCommitIdAbbrev(),
-                info.getBuildVersion()
-        );
+        BuildInfo i = getBuildInfo();
+        if (i == null) {
+            return "[BuildInfo] NOT AVAILABLE";
+        }
+
+        return "[Build] %s | %s | %s"
+            .formatted(i.getBuildVersion(), i.getGitBranch(), i.getGitCommitIdAbbrev());
+    }
+
+    /* ========================== private helper ========================== */
+
+    private static String get(Properties p, String key, String def) {
+        return p.getProperty(key, def);
+    }
+
+    /**
+     * 清理 URL 中的认证信息
+     */
+    private static String sanitizeRemoteUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return url;
+        }
+        return url.replaceAll("(https?://)([^:@]+:[^@]+@)", "$1");
+    }
+
+    /**
+     * 简单脱敏邮箱
+     */
+    private static String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return email;
+        }
+        return email.replaceAll("(.).+(@.+)", "$1***$2");
     }
 }
