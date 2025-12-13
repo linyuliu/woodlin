@@ -55,6 +55,7 @@
         <spotbugs-maven-plugin.version>4.8.6.4</spotbugs-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
         <checkstyle.version>10.21.1</checkstyle.version>
+        <git-commit-id-plugin.version>9.0.1</git-commit-id-plugin.version>
     </properties>
 
     <!-- 依赖管理 -->
@@ -341,6 +342,57 @@
                             </goals>
                         </execution>
                     </executions>
+                </plugin>
+
+                <!-- Git Commit ID 插件 -->
+                <plugin>
+                    <groupId>io.github.git-commit-id</groupId>
+                    <artifactId>git-commit-id-maven-plugin</artifactId>
+                    <version>${git-commit-id-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>get-the-git-infos</id>
+                            <goals>
+                                <goal>revision</goal>
+                            </goals>
+                            <phase>initialize</phase>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <!-- 生成git.properties文件 -->
+                        <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                        <!-- git.properties文件存放路径 -->
+                        <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                        <!-- 失败时构建不中断 -->
+                        <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                        <!-- Git信息包含格式 -->
+                        <format>properties</format>
+                        <!-- 包含Git信息的详细程度 -->
+                        <includeOnlyProperties>
+                            <includeOnlyProperty>^git.build.*</includeOnlyProperty>
+                            <includeOnlyProperty>^git.commit.id.*</includeOnlyProperty>
+                            <includeOnlyProperty>^git.commit.message.*</includeOnlyProperty>
+                            <includeOnlyProperty>^git.commit.time.*</includeOnlyProperty>
+                            <includeOnlyProperty>^git.branch</includeOnlyProperty>
+                            <includeOnlyProperty>^git.dirty</includeOnlyProperty>
+                            <includeOnlyProperty>^git.tags</includeOnlyProperty>
+                            <includeOnlyProperty>^git.total.commit.count</includeOnlyProperty>
+                        </includeOnlyProperties>
+                        <!-- 日期格式 -->
+                        <dateFormat>yyyy-MM-dd HH:mm:ss</dateFormat>
+                        <dateFormatTimeZone>GMT+8</dateFormatTimeZone>
+                        <!-- 详细模式 -->
+                        <verbose>false</verbose>
+                        <!-- Git描述配置 -->
+                        <gitDescribe>
+                            <skip>false</skip>
+                            <always>true</always>
+                            <abbrev>7</abbrev>
+                            <dirty>-dirty</dirty>
+                            <tags>true</tags>
+                            <forceLongFormat>false</forceLongFormat>
+                        </gitDescribe>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
