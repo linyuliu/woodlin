@@ -1,6 +1,5 @@
 package com.mumu.woodlin.admin.controller;
 
-import com.mumu.woodlin.admin.service.DevTokenStartupListener;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.security.config.DevTokenProperties;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
@@ -42,12 +41,10 @@ public class AuthController {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private DevTokenProperties devTokenProperties;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private DevTokenStartupListener devTokenStartupListener;
 
     /**
      * 统一登录接口 - 支持多种登录方式
-     * 
+     *
      * <p>根据loginType字段选择相应的登录策略：</p>
      * <ul>
      *   <li>password - 密码登录（需要username和password）</li>
@@ -120,7 +117,7 @@ public class AuthController {
         CaptchaService.CaptchaInfo captchaInfo = captchaService.generateCaptcha();
         return R.ok(captchaInfo);
     }
-    
+
     /**
      * 发送短信验证码
      */
@@ -135,35 +132,6 @@ public class AuthController {
             return R.ok("短信验证码已发送");
         } else {
             return R.fail("短信验证码发送失败");
-        }
-    }
-
-    /**
-     * 生成开发调试令牌（仅开发环境）
-     */
-    @GetMapping("/dev-token")
-    @Operation(
-        summary = "生成开发调试令牌",
-        description = "为开发调试生成便捷令牌，仅在开发和测试环境可用。返回可直接使用的访问令牌。"
-    )
-    @Profile({"dev", "test"})
-    public R<LoginResponse> generateDevToken() {
-        // 检查是否启用开发令牌功能
-        if (devTokenProperties == null || !devTokenProperties.getEnabled()) {
-            return R.fail("开发令牌功能未启用。请在配置文件中设置 woodlin.security.dev-token.enabled=true");
-        }
-
-        if (devTokenStartupListener == null) {
-            return R.fail("开发令牌服务不可用");
-        }
-
-        try {
-            // 使用启动监听器的方法生成令牌（复用逻辑）
-            LoginResponse response = authenticationService.devLogin("admin");
-            return R.ok(response);
-        } catch (Exception e) {
-            log.error("生成开发令牌失败: {}", e.getMessage(), e);
-            return R.fail("生成开发令牌失败: " + e.getMessage());
         }
     }
 
