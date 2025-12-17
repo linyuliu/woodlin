@@ -1,6 +1,9 @@
 package com.mumu.woodlin.admin.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.BCrypt;
+import com.mumu.woodlin.admin.strategy.LoginStrategy;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
@@ -9,16 +12,14 @@ import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.enums.LoginType;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.PasswordPolicyService;
-import com.mumu.woodlin.admin.strategy.LoginStrategy;
 import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.BCrypt;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,9 +48,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     /**
      * 权限缓存服务（可选依赖）
      */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Autowired(required = false)
     private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
-    
+
     /**
      * 登录策略映射表（按登录类型索引）
      */
@@ -62,7 +63,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public void init() {
         strategyMap = loginStrategies.stream()
             .collect(Collectors.toMap(LoginStrategy::getLoginType, Function.identity()));
-        log.info("已加载 {} 种登录策略: {}", strategyMap.size(), 
+        log.info("已加载 {} 种登录策略: {}", strategyMap.size(),
                 strategyMap.keySet().stream().map(LoginType::getDescription).collect(Collectors.joining(", ")));
     }
 
@@ -81,20 +82,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             log.warn("登录失败: 不支持的登录类型, loginType={}", loginRequest.getLoginType());
             throw BusinessException.of(ResultCode.BAD_REQUEST, "不支持的登录类型");
         }
-        
+
         // 获取对应的登录策略
         LoginStrategy strategy = strategyMap.get(loginType);
         if (strategy == null) {
             log.warn("登录失败: 未找到对应的登录策略, loginType={}", loginType.getDescription());
             throw BusinessException.of(ResultCode.BAD_REQUEST, "登录类型暂不支持");
         }
-        
+
         // 验证请求参数
         if (!strategy.validateRequest(loginRequest)) {
             log.warn("登录失败: 登录请求参数验证失败, loginType={}", loginType.getDescription());
             throw BusinessException.of(ResultCode.BAD_REQUEST, "登录请求参数不完整或不正确");
         }
-        
+
         // 执行登录策略
         log.info("开始执行登录: loginType={}", loginType.getDescription());
         return strategy.login(loginRequest);
@@ -113,12 +114,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (user == null) {
             throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
-        
+
         // 使用Sa-Token登录
         StpUtil.login(user.getUserId(), false);
         StpUtil.getSession().set(SecurityUtil.USER_KEY, user);
         String token = StpUtil.getTokenValue();
-        
+
         // 构建响应
         return new LoginResponse()
             .setToken(token)
@@ -184,6 +185,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setPwdChangeTime(LocalDateTime.now());
         user.setIsFirstLogin(false);
         userService.updateById(user);
+        //todo 删除用户一系列缓存
         log.info("用户 {} 修改密码成功", user.getUsername());
     }
 
