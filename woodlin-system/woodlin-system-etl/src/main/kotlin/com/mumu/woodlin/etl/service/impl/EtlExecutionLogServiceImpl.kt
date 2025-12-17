@@ -11,28 +11,20 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
-
 /**
  * ETL执行历史服务实现
  *
  * 提供ETL任务执行历史的记录和管理功能。
  * 负责记录每次任务执行的详细信息，包括时间、状态、数据统计等。
  *
- * ## 事务管理
- * 所有写操作都使用`@Transactional`注解，确保数据一致性。
- * 发生异常时自动回滚。
- *
  * @author mumu
  * @since 2025-01-01
  */
 @Service
+
 class EtlExecutionLogServiceImpl : ServiceImpl<EtlExecutionLogMapper, EtlExecutionLog>(),
     IEtlExecutionLogService {
-
-    companion object {
-        private val log = LoggerFactory.getLogger(EtlExecutionLogServiceImpl::class.java)
-    }
-
+    private val log = LoggerFactory.getLogger(javaClass)
     /**
      * 记录任务执行开始
      *
@@ -49,7 +41,6 @@ class EtlExecutionLogServiceImpl : ServiceImpl<EtlExecutionLogMapper, EtlExecuti
             jobName = job.jobName
             executionStatus = EtlExecutionStatus.RUNNING.code
             startTime = LocalDateTime.now()
-            tenantId = job.tenantId
             extractedRows = 0L
             transformedRows = 0L
             loadedRows = 0L
