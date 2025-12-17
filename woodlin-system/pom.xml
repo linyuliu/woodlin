@@ -31,7 +31,7 @@
         <module>woodlin-system-sql2api</module>
         <module>woodlin-system-dsl</module>
         <!-- Temporarily disabled due to Kotlin compilation errors - not related to git-commit-id-plugin changes -->
-        <!-- <module>woodlin-system-etl</module> -->
+        <module>woodlin-system-etl</module>
     </modules>
 
 </project>
