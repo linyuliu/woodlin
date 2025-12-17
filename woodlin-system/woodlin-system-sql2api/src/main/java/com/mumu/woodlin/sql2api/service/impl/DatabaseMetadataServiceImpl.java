@@ -3,6 +3,7 @@ package com.mumu.woodlin.sql2api.service.impl;
 import java.sql.Connection;
 import com.mumu.woodlin.common.exception.BusinessException;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.ArrayList;
 import com.mumu.woodlin.common.exception.BusinessException;
@@ -40,6 +41,7 @@ import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
 
 /**
  * 数据库元数据服务实现
@@ -55,6 +57,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     
     private final DataSource dataSource;
     private final List<DatabaseMetadataExtractor> metadataExtractors;
+    private final Sql2ApiDataSourceService sql2ApiDataSourceService;
     
     @Override
     @Cacheable(value = "databaseMetadata", key = "#datasourceName")
@@ -93,7 +96,8 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             try (Connection connection = targetDataSource.getConnection()) {
                 String databaseName = connection.getCatalog();
-                return extractor.extractTables(connection, databaseName, null);
+                String schemaName = safeSchema(connection);
+                return extractor.extractTables(connection, databaseName, schemaName);
             }
             
         } catch (SQLException e) {
@@ -117,7 +121,8 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             try (Connection connection = targetDataSource.getConnection()) {
                 String databaseName = connection.getCatalog();
-                return extractor.extractColumns(connection, databaseName, null, tableName);
+                String schemaName = safeSchema(connection);
+                return extractor.extractColumns(connection, databaseName, schemaName, tableName);
             }
             
         } catch (SQLException e) {
@@ -144,14 +149,17 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
      * 获取目标数据源
      */
     private DataSource getTargetDataSource(String datasourceName) {
+        DataSource sql2ApiDs = sql2ApiDataSourceService.getSql2ApiDataSource(datasourceName);
+        if (sql2ApiDs != null) {
+            return sql2ApiDs;
+        }
         if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {
             DataSource targetDs = dynamicDataSource.getDataSource(datasourceName);
-            if (targetDs == null) {
-                throw new BusinessException("数据源不存在: " + datasourceName);
+            if (targetDs != null) {
+                return targetDs;
             }
-            return targetDs;
         }
-        return dataSource;
+        throw new BusinessException("数据源不存在: " + datasourceName);
     }
     
     /**
@@ -173,5 +181,13 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
         }
         
         return null;
+    }
+
+    private String safeSchema(Connection connection) throws SQLException {
+        try {
+            return connection.getSchema();
+        } catch (SQLFeatureNotSupportedException e) {
+            return null;
+        }
     }
 }
