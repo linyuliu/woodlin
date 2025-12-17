@@ -13,6 +13,9 @@ import com.mumu.woodlin.sql2api.model.request.AddDatasourceRequest;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import jakarta.annotation.PreDestroy;
 
 /**
  * SQL2API 动态数据源管理
@@ -23,6 +26,10 @@ import lombok.extern.slf4j.Slf4j;
 public class Sql2ApiDataSourceService {
 
     private final DataSource dataSource;
+    /**
+     * 独立的数据源注册表（不影响系统动态数据源）
+     */
+    private final Map<String, HikariDataSource> sql2ApiDataSources = new ConcurrentHashMap<>();
 
     /**
      * 动态新增数据源
@@ -46,8 +53,25 @@ public class Sql2ApiDataSourceService {
             if (dynamicRoutingDataSource.getDataSources().containsKey(request.getName())) {
                 throw new BusinessException("数据源已存在: " + request.getName());
             }
+            if (sql2ApiDataSources.containsKey(request.getName())) {
+                throw new BusinessException("SQL2API 独立数据源已存在: " + request.getName());
+            }
             dynamicRoutingDataSource.addDataSource(request.getName(), target);
         }
+
+        sql2ApiDataSources.put(request.getName(), target);
+    }
+
+    /**
+     * 获取独立 SQL2API 数据源
+     */
+    public DataSource getSql2ApiDataSource(String name) {
+        return sql2ApiDataSources.get(name);
+    }
+
+    @PreDestroy
+    public void closeAll() {
+        sql2ApiDataSources.values().forEach(HikariDataSource::close);
     }
 
     private String resolveDriver(String driverClassName, String url) {
