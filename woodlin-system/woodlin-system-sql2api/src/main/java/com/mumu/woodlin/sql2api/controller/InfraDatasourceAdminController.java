@@ -18,7 +18,11 @@ import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.entity.SqlDatasourceConfig;
 import com.mumu.woodlin.sql2api.mapper.Sql2ApiDatasourceMapper;
 import com.mumu.woodlin.sql2api.model.request.AddDatasourceRequest;
+import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
+import com.mumu.woodlin.sql2api.model.TableMetadata;
 import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
+import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +37,7 @@ public class InfraDatasourceAdminController {
 
     private final Sql2ApiDatasourceMapper datasourceMapper;
     private final Sql2ApiDataSourceService dataSourceService;
+    private final DatabaseMetadataService metadataService;
 
     @GetMapping
     public R<List<SqlDatasourceConfig>> list() {
@@ -72,6 +77,21 @@ public class InfraDatasourceAdminController {
                 request.getDatasourceType()
         );
         return R.ok();
+    }
+
+    @GetMapping("/{code}/metadata")
+    public R<DatabaseMetadata> metadata(@PathVariable("code") String code) {
+        return R.ok(metadataService.getDatabaseMetadata(code));
+    }
+
+    @GetMapping("/{code}/tables")
+    public R<List<TableMetadata>> tables(@PathVariable("code") String code) {
+        return R.ok(metadataService.getTables(code));
+    }
+
+    @GetMapping("/{code}/tables/{table}/columns")
+    public R<List<ColumnMetadata>> columns(@PathVariable("code") String code, @PathVariable("table") String table) {
+        return R.ok(metadataService.getColumns(code, table));
     }
 
     private void saveOrUpdate(AddDatasourceRequest request, boolean isUpdate) {
