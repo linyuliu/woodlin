@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS sql2api_orchestration (
 -- ===================================================================
 CREATE TABLE IF NOT EXISTS sql2api_datasource (
     datasource_id BIGINT NOT NULL COMMENT '数据源ID',
+    code VARCHAR2(50) NOT NULL COMMENT '数据源编码',
     datasource_name VARCHAR2(50) NOT NULL COMMENT '数据源名称',
     database_type VARCHAR2(50) NOT NULL COMMENT '数据库类型(MySQL,PostgreSQL,Oracle,DM8等)',
     driver_class VARCHAR2(200) NOT NULL COMMENT '驱动类名',
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS sql2api_datasource (
     update_by VARCHAR2(64) COMMENT '更新者',
     update_time TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (datasource_id),
+    UNIQUE KEY uk_datasource_code (code),
     UNIQUE KEY uk_datasource_name (datasource_name),
     KEY idx_database_type (database_type),
     KEY idx_enabled (enabled)

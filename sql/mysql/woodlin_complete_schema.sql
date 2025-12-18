@@ -575,6 +575,7 @@ CREATE TABLE `sql2api_orchestration` (
 DROP TABLE IF EXISTS `sql2api_datasource`;
 CREATE TABLE `sql2api_datasource` (
     `datasource_id` BIGINT NOT NULL COMMENT '数据源ID',
+    `code` VARCHAR(50) NOT NULL COMMENT '数据源编码',
     `datasource_name` VARCHAR(50) NOT NULL COMMENT '数据源名称',
     `database_type` VARCHAR(50) NOT NULL COMMENT '数据库类型(MySQL,PostgreSQL,Oracle,DM8等)',
     `driver_class` VARCHAR(200) NOT NULL COMMENT '驱动类名',
@@ -594,6 +595,7 @@ CREATE TABLE `sql2api_datasource` (
     `update_by` VARCHAR(64) COMMENT '更新者',
     `update_time` DATETIME COMMENT '更新时间',
     PRIMARY KEY (`datasource_id`),
+    UNIQUE KEY `uk_datasource_code` (`code`),
     UNIQUE KEY `uk_datasource_name` (`datasource_name`),
     KEY `idx_database_type` (`database_type`),
     KEY `idx_enabled` (`enabled`)
