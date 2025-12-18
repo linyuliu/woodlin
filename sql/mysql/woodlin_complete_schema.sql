@@ -588,10 +588,16 @@ CREATE TABLE `infra_datasource` (
     `biz_tags`         VARCHAR(256) DEFAULT NULL COMMENT '业务标签（逗号分隔）',
     `remark`           VARCHAR(512) DEFAULT NULL COMMENT '备注',
     `ext_config`       JSON         DEFAULT NULL COMMENT '扩展配置（连接池/方言/特殊参数）',
-    `create_time`      DATETIME NOT NULL COMMENT '创建时间',
-    `update_time`      DATETIME NOT NULL COMMENT '更新时间',
+    `create_by`        VARCHAR(64)  DEFAULT NULL COMMENT '创建者',
+    `create_time`      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`        VARCHAR(64)  DEFAULT NULL COMMENT '更新者',
+    `update_time`      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`          CHAR(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+    `version`          INT          DEFAULT 1 COMMENT '版本号（乐观锁）',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_datasource_code` (`datasource_code`)
+    UNIQUE KEY `uk_datasource_code` (`datasource_code`),
+    KEY `idx_status` (`status`),
+    KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='基础设施-数据源配置表';
 
 -- =============================================

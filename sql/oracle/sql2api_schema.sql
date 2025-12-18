@@ -86,8 +86,12 @@ CREATE TABLE IF NOT EXISTS infra_datasource (
     biz_tags        VARCHAR2(256) DEFAULT NULL COMMENT '业务标签（逗号分隔）',
     remark          VARCHAR2(512) DEFAULT NULL COMMENT '备注',
     ext_config      CLOB          DEFAULT NULL COMMENT '扩展配置（连接池/方言/特殊参数）',
-    create_time     TIMESTAMP NOT NULL COMMENT '创建时间',
-    update_time     TIMESTAMP NOT NULL COMMENT '更新时间',
+    create_by       VARCHAR2(64)  DEFAULT NULL COMMENT '创建者',
+    create_time     TIMESTAMP DEFAULT SYSTIMESTAMP COMMENT '创建时间',
+    update_by       VARCHAR2(64)  DEFAULT NULL COMMENT '更新者',
+    update_time     TIMESTAMP DEFAULT SYSTIMESTAMP COMMENT '更新时间',
+    deleted         CHAR(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+    version         NUMBER(10)    DEFAULT 1 COMMENT '版本号（乐观锁）',
     PRIMARY KEY (id),
     UNIQUE KEY uk_datasource_code (datasource_code)
 ) -- Comment: 基础设施-数据源配置表;

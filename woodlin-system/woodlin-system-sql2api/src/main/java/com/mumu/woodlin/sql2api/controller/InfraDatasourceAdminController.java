@@ -48,7 +48,7 @@ public class InfraDatasourceAdminController {
     public R<SqlDatasourceConfig> detail(@PathVariable("code") String code) {
         SqlDatasourceConfig config = datasourceMapper.selectOne(new QueryWrapper<SqlDatasourceConfig>()
                 .eq("datasource_code", code));
-        return config == null ? R.failed("数据源不存在") : R.ok(config);
+        return config == null ? R.fail("数据源不存在") : R.ok(config);
     }
 
     @PostMapping
