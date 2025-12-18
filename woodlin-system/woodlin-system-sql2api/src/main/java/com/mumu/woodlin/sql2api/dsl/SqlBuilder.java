@@ -8,8 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 
 /**
  * SQL构建器

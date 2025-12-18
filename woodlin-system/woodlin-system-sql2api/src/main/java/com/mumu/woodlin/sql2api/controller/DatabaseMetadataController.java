@@ -17,11 +17,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mumu.woodlin.common.response.R;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseDocFormat;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseStructureResponse;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
 import com.mumu.woodlin.sql2api.model.request.DatabaseDocExportRequest;
 import com.mumu.woodlin.sql2api.service.DatabaseDocumentExportService;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
