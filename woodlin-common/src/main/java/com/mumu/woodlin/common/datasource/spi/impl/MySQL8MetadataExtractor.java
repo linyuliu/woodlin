@@ -74,11 +74,6 @@ public class MySQL8MetadataExtractor extends AbstractMySQLCompatibleExtractor {
         Map<String, String> mysql80Mappings = new HashMap<>();
         mysql80Mappings.put("json", "String");
         versionSpecificTypeMappings.put("8.0", mysql80Mappings);
-        
-        // MySQL 8.0.17+ 多值索引支持
-        Map<String, String> mysql8017Mappings = new HashMap<>();
-        mysql8017Mappings.put("json", "String");
-        versionSpecificTypeMappings.put("8.0.17", mysql8017Mappings);
     }
     
     @Override
