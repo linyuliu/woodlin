@@ -2,10 +2,10 @@ package com.mumu.woodlin.sql2api.service;
 
 import java.util.List;
 
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseDocFormat;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
