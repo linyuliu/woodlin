@@ -3,8 +3,8 @@ package com.mumu.woodlin.sql2api.dsl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 
 import java.util.Arrays;
 import java.util.List;

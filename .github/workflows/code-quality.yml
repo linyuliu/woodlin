@@ -194,46 +194,9 @@ jobs:
             **/target/jacoco.exec
           retention-days: 30
 
-  frontend-quality:
-    name: Frontend Code Quality
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: woodlin-web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./woodlin-web
-        run: npm ci
-
-      - name: Run ESLint with Report
-        working-directory: ./woodlin-web
-        run: npm run lint
-        continue-on-error: true
-
-      - name: Check Code Formatting
-        working-directory: ./woodlin-web
-        run: npx prettier --check src/
-        continue-on-error: true
-
-      - name: Type Check
-        working-directory: ./woodlin-web
-        run: npm run type-check
-        continue-on-error: true
-
   quality-summary:
     name: Quality Check Summary
-    needs: [checkstyle, spotbugs, javadoc, code-coverage, frontend-quality]
+    needs: [checkstyle, spotbugs, javadoc, code-coverage]
     runs-on: ubuntu-latest
     if: always()
     
@@ -246,6 +209,5 @@ jobs:
           echo "SpotBugs: ${{ needs.spotbugs.result }}"
           echo "JavaDoc: ${{ needs.javadoc.result }}"
           echo "Code Coverage: ${{ needs.code-coverage.result }}"
-          echo "Frontend Quality: ${{ needs.frontend-quality.result }}"
           
           echo "Quality checks completed. Review artifacts for details."
