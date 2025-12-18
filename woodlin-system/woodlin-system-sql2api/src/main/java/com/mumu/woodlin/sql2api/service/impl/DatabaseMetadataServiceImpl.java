@@ -1,47 +1,29 @@
 package com.mumu.woodlin.sql2api.service.impl;
 
 import java.sql.Connection;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.ArrayList;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Collections;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.Comparator;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.List;
-import com.mumu.woodlin.common.exception.BusinessException;
 import java.util.stream.Collectors;
-import com.mumu.woodlin.common.exception.BusinessException;
 import javax.sql.DataSource;
-import com.mumu.woodlin.common.exception.BusinessException;
 
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
-import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.cache.annotation.CacheEvict;
-import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.cache.annotation.Cacheable;
-import com.mumu.woodlin.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
-import com.mumu.woodlin.common.exception.BusinessException;
 
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
-import com.mumu.woodlin.common.exception.BusinessException;
-import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
-import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
+import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 
 /**
  * 数据库元数据服务实现
@@ -149,17 +131,18 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
      * 获取目标数据源
      */
     private DataSource getTargetDataSource(String datasourceName) {
-        DataSource sql2ApiDs = sql2ApiDataSourceService.getSql2ApiDataSource(datasourceName);
-        if (sql2ApiDs != null) {
-            return sql2ApiDs;
-        }
-        if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {
-            DataSource targetDs = dynamicDataSource.getDataSource(datasourceName);
-            if (targetDs != null) {
-                return targetDs;
+        try {
+            return sql2ApiDataSourceService.getDataSourceByCode(datasourceName);
+        } catch (BusinessException ignore) {
+            // fallback to dynamic routing if configured
+            if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {
+                DataSource targetDs = dynamicDataSource.getDataSource(datasourceName);
+                if (targetDs != null) {
+                    return targetDs;
+                }
             }
+            throw ignore;
         }
-        throw new BusinessException("数据源不存在: " + datasourceName);
     }
     
     /**

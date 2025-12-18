@@ -2,11 +2,9 @@ package com.mumu.woodlin.sql2api.service;
 
 import javax.sql.DataSource;
 
-import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import com.mumu.woodlin.common.exception.BusinessException;
@@ -37,45 +35,34 @@ public class Sql2ApiDataSourceService {
     private final Map<String, HikariDataSource> sql2ApiDataSources = new ConcurrentHashMap<>();
 
     /**
-     * 动态新增数据源
+     * sql2api 只读：通过 datasourceCode 引用基础设施数据源
      */
-    @Transactional(rollbackFor = Exception.class)
-    public void addDataSource(AddDatasourceRequest request) {
-        if (!(dataSource instanceof DynamicRoutingDataSource dynamicRoutingDataSource)) {
-            throw new BusinessException("未启用动态数据源，无法新增数据源");
+    public DataSource getDataSourceByCode(String datasourceCode) {
+        Assert.hasText(datasourceCode, "数据源编码不能为空");
+        if (sql2ApiDataSources.containsKey(datasourceCode)) {
+            return sql2ApiDataSources.get(datasourceCode);
         }
-
-        Assert.hasText(request.getCode(), "数据源编码不能为空");
-        String key = request.getCode();
-
-        String driverClassName = resolveDriver(request.getDriverClassName(), request.getUrl());
-
+        SqlDatasourceConfig config = datasourceMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SqlDatasourceConfig>()
+                        .eq("datasource_code", datasourceCode)
+        );
+        if (config == null) {
+            throw new BusinessException("数据源不存在: " + datasourceCode);
+        }
+        if (config.getStatus() != null && config.getStatus() == 0) {
+            throw new BusinessException("数据源已禁用: " + datasourceCode);
+        }
+        String driverClassName = resolveDriver(config.getDriverClass(), config.getJdbcUrl());
         HikariDataSource target = DataSourceBuilder.create()
                 .type(HikariDataSource.class)
                 .driverClassName(driverClassName)
-                .url(request.getUrl())
-                .username(request.getUsername())
-                .password(request.getPassword())
+                .url(config.getJdbcUrl())
+                .username(config.getUsername())
+                .password(config.getPassword())
                 .build();
-
-        validateConnectivity(target, request);
-
-        synchronized (dynamicRoutingDataSource) {
-            if (dynamicRoutingDataSource.getDataSources().containsKey(request.getName())) {
-                throw new BusinessException("数据源已存在: " + request.getName());
-            }
-            if (sql2ApiDataSources.containsKey(key) || sql2ApiDataSources.containsKey(request.getName())) {
-                throw new BusinessException("SQL2API 独立数据源已存在: " + key);
-            }
-            dynamicRoutingDataSource.addDataSource(request.getName(), target);
-        }
-
-        sql2ApiDataSources.put(key, target);
-        if (!StrUtil.equalsIgnoreCase(key, request.getName())) {
-            sql2ApiDataSources.put(request.getName(), target);
-        }
-
-        persistDatasource(request, driverClassName);
+        validateConnectivity(target, config.getTestSql(), config.getDatasourceType());
+        sql2ApiDataSources.put(datasourceCode, target);
+        return target;
     }
 
     /**
@@ -90,42 +77,28 @@ public class Sql2ApiDataSourceService {
         sql2ApiDataSources.values().forEach(HikariDataSource::close);
     }
 
-    private void persistDatasource(AddDatasourceRequest request, String driverClassName) {
-        SqlDatasourceConfig record = new SqlDatasourceConfig();
-        record.setDatasourceName(request.getName());
-        record.setCode(request.getCode());
-        record.setDatabaseType(request.getDatabaseType());
-        record.setDriverClass(driverClassName);
-        record.setJdbcUrl(request.getUrl());
-        record.setUsername(request.getUsername());
-        record.setPassword(request.getPassword());
-        record.setTestQuery(StrUtil.emptyToDefault(request.getTestQuery(), defaultTestQuery(request.getDatabaseType())));
-        record.setEnabled(Boolean.TRUE);
-        record.setDatasourceDesc(request.getDescription());
-
-        Long existed = datasourceMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SqlDatasourceConfig>()
-                        .eq("code", request.getCode())
-                        .or()
-                        .eq("datasource_name", request.getName())
-        );
-        if (existed != null && existed > 0) {
-            throw new BusinessException("数据源编码或名称已存在");
-        }
-        datasourceMapper.insert(record);
+    public DataSource buildTemporaryDataSource(AddDatasourceRequest request) {
+        String driverClassName = resolveDriver(request.getDriverClass(), request.getJdbcUrl());
+        return DataSourceBuilder.create()
+                .type(HikariDataSource.class)
+                .driverClassName(driverClassName)
+                .url(request.getJdbcUrl())
+                .username(request.getUsername())
+                .password(request.getPassword())
+                .build();
     }
 
-    private void validateConnectivity(DataSource target, AddDatasourceRequest request) {
-        String testSql = StrUtil.emptyToDefault(request.getTestQuery(), defaultTestQuery(request.getDatabaseType()));
+    public void validateConnectivity(DataSource target, String testSql, String databaseType) {
+        String sql = StrUtil.emptyToDefault(testSql, defaultTestQuery(databaseType));
         try (var conn = target.getConnection();
-             var ps = conn.prepareStatement(testSql)) {
+             var ps = conn.prepareStatement(sql)) {
             ps.execute();
         } catch (Exception e) {
             throw new BusinessException("数据源连接验证失败: " + e.getMessage(), e);
         }
     }
 
-    private String defaultTestQuery(String databaseType) {
+    public String defaultTestQuery(String databaseType) {
         if (StrUtil.isBlank(databaseType)) {
             return "SELECT 1";
         }

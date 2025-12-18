@@ -22,11 +22,9 @@ import com.mumu.woodlin.sql2api.model.DatabaseDocFormat;
 import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseStructureResponse;
 import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.sql2api.model.request.AddDatasourceRequest;
 import com.mumu.woodlin.sql2api.model.request.DatabaseDocExportRequest;
 import com.mumu.woodlin.sql2api.service.DatabaseDocumentExportService;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
-import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
@@ -45,7 +43,6 @@ public class DatabaseMetadataController {
 
     private final DatabaseMetadataService databaseMetadataService;
     private final DatabaseDocumentExportService documentExportService;
-    private final Sql2ApiDataSourceService dataSourceService;
 
     @GetMapping("/{datasourceName}/tables")
     @Operation(summary = "获取表结构", description = "返回指定数据源下的所有表及列信息")
@@ -68,13 +65,6 @@ public class DatabaseMetadataController {
         List<TableMetadata> tables = databaseMetadataService.getTables(datasourceName);
         fillColumnsIfNeeded(datasourceName, tables);
         return R.ok(new DatabaseStructureResponse(metadata, tables));
-    }
-
-    @PostMapping("/datasource")
-    @Operation(summary = "动态新增数据源", description = "新增数据源后即可用于 SQL2API 和元数据提取")
-    public R<Void> addDatasource(@Valid @RequestBody AddDatasourceRequest request) {
-        dataSourceService.addDataSource(request);
-        return R.ok();
     }
 
     @PostMapping("/export")

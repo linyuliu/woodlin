@@ -12,28 +12,28 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * SQL 数据源配置（通用表）
+ * 基础设施数据源配置（通用）
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("sql_datasource")
-@Schema(description = "SQL 数据源配置")
+@TableName("infra_datasource")
+@Schema(description = "基础设施数据源配置")
 public class SqlDatasourceConfig extends BaseEntity {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @TableId(value = "datasource_id", type = IdType.ASSIGN_ID)
-    private Long datasourceId;
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    private Long id;
+
+    @TableField("datasource_code")
+    private String datasourceCode;
 
     @TableField("datasource_name")
     private String datasourceName;
 
-    @TableField("code")
-    private String code;
-
-    @TableField("database_type")
-    private String databaseType;
+    @TableField("datasource_type")
+    private String datasourceType;
 
     @TableField("driver_class")
     private String driverClass;
@@ -47,12 +47,21 @@ public class SqlDatasourceConfig extends BaseEntity {
     @TableField("password")
     private String password;
 
-    @TableField("test_query")
-    private String testQuery;
+    @TableField("test_sql")
+    private String testSql;
 
-    @TableField("enabled")
-    private Boolean enabled;
+    @TableField("status")
+    private Integer status;
 
-    @TableField("datasource_desc")
-    private String datasourceDesc;
+    @TableField("owner")
+    private String owner;
+
+    @TableField("biz_tags")
+    private String bizTags;
+
+    @TableField("remark")
+    private String remark;
+
+    @TableField("ext_config")
+    private String extConfig;
 }
