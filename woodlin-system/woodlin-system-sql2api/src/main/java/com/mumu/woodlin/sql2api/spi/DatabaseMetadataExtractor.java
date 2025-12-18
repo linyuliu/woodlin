@@ -5,10 +5,10 @@ import java.sql.SQLException;
 import java.util.List;
 import javax.sql.DataSource;
 
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.SchemaMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 
 /**
  * 数据库元数据提取器接口 (SPI)
@@ -36,22 +36,22 @@ public interface DatabaseMetadataExtractor {
     /**
      * 提取数据库元数据
      */
-    com.mumu.woodlin.common.datasource.model.DatabaseMetadata extractDatabaseMetadata(DataSource dataSource) throws SQLException;
+    DatabaseMetadata extractDatabaseMetadata(DataSource dataSource) throws SQLException;
     
     /**
      * 提取Schema信息
      */
-    List<com.mumu.woodlin.common.datasource.model.SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException;
+    List<SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException;
     
     /**
      * 提取表信息
      */
-    List<com.mumu.woodlin.common.datasource.model.TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException;
+    List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException;
     
     /**
      * 提取列信息
      */
-    List<com.mumu.woodlin.common.datasource.model.ColumnMetadata> extractColumns(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException;
+    List<ColumnMetadata> extractColumns(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException;
     
     /**
      * 获取表注释
