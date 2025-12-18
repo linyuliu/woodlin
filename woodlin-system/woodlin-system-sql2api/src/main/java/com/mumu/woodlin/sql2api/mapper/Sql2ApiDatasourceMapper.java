@@ -1,9 +1,9 @@
 package com.mumu.woodlin.sql2api.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.mumu.woodlin.sql2api.entity.Sql2ApiDatasource;
+import com.mumu.woodlin.sql2api.entity.SqlDatasourceConfig;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface Sql2ApiDatasourceMapper extends BaseMapper<Sql2ApiDatasource> {
+public interface Sql2ApiDatasourceMapper extends BaseMapper<SqlDatasourceConfig> {
 }

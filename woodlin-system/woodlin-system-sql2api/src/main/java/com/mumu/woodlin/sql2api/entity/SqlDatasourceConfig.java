@@ -12,13 +12,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * SQL2API 动态数据源配置
+ * SQL 数据源配置（通用表）
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("sql2api_datasource")
-@Schema(description = "SQL2API 数据源配置")
-public class Sql2ApiDatasource extends BaseEntity {
+@TableName("sql_datasource")
+@Schema(description = "SQL 数据源配置")
+public class SqlDatasourceConfig extends BaseEntity {
 
     @Serial
     private static final long serialVersionUID = 1L;
