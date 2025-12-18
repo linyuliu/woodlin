@@ -155,7 +155,7 @@ data class EtlJob(
      *
      * 定义任务执行时间，例如：
      * - "0 0 2 * * ?" 每天凌晨2点
-     * - "0 */30 * * * ?" 每30分钟
+     * - "0 0/30 * * * ?" 每30分钟
      */
     @TableField("cron_expression")
     @Schema(description = "cron执行表达式", example = "0 0 2 * * ?")
