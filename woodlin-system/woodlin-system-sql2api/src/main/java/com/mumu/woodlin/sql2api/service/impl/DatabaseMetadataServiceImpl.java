@@ -18,9 +18,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.common.exception.BusinessException;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
 import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
