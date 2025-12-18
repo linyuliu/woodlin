@@ -68,36 +68,29 @@ CREATE TABLE IF NOT EXISTS sql2api_orchestration (
 ) -- Comment: API编排配置表;
 
 -- ===================================================================
--- 表名：sql_datasource
--- 说明：SQL 通用数据源配置表
+-- 表名：infra_datasource
+-- 说明：基础设施-数据源配置表
 -- ===================================================================
-CREATE TABLE IF NOT EXISTS sql_datasource (
-    datasource_id BIGINT NOT NULL COMMENT '数据源ID',
-    code VARCHAR(50) NOT NULL COMMENT '数据源编码',
-    datasource_name VARCHAR(50) NOT NULL COMMENT '数据源名称',
-    database_type VARCHAR(50) NOT NULL COMMENT '数据库类型(MySQL,PostgreSQL,Oracle,DM8等)',
-    driver_class VARCHAR(200) NOT NULL COMMENT '驱动类名',
-    jdbc_url VARCHAR(500) NOT NULL COMMENT 'JDBC连接URL',
-    username VARCHAR(100) NOT NULL COMMENT '用户名',
-    password VARCHAR(200) NOT NULL COMMENT '密码(加密存储)',
-    initial_size INT DEFAULT 5 COMMENT '初始连接数',
-    min_idle INT DEFAULT 5 COMMENT '最小空闲连接数',
-    max_active INT DEFAULT 20 COMMENT '最大活动连接数',
-    max_wait INT DEFAULT 60000 COMMENT '最大等待时间(毫秒)',
-    test_on_borrow SMALLINT DEFAULT 1 COMMENT '获取连接时检测',
-    test_query VARCHAR(100) DEFAULT 'SELECT 1' COMMENT '测试查询',
-    enabled SMALLINT DEFAULT 1 COMMENT '是否启用',
-    datasource_desc VARCHAR(500) COMMENT '数据源描述',
-    create_by VARCHAR(64) COMMENT '创建者',
-    create_time TIMESTAMP COMMENT '创建时间',
-    update_by VARCHAR(64) COMMENT '更新者',
-    update_time TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (datasource_id),
-    UNIQUE KEY uk_datasource_code (code),
-    UNIQUE KEY uk_datasource_name (datasource_name),
-    KEY idx_database_type (database_type),
-    KEY idx_enabled (enabled)
-) -- Comment: SQL 通用数据源配置表;
+CREATE TABLE IF NOT EXISTS infra_datasource (
+    id              BIGINT NOT NULL COMMENT '主键ID',
+    datasource_code VARCHAR(64)  NOT NULL COMMENT '数据源唯一编码（工程级）',
+    datasource_name VARCHAR(128) NOT NULL COMMENT '数据源名称（展示用）',
+    datasource_type VARCHAR(32)  NOT NULL COMMENT '数据源类型：MYSQL / PG / ORACLE / DM / CLICKHOUSE',
+    driver_class    VARCHAR(256) NOT NULL COMMENT 'JDBC Driver',
+    jdbc_url        VARCHAR(512) NOT NULL COMMENT 'JDBC URL',
+    username        VARCHAR(128) NOT NULL COMMENT '账号',
+    password        VARCHAR(256) NOT NULL COMMENT '密码（加密）',
+    test_sql        VARCHAR(512) DEFAULT NULL COMMENT '连通性校验SQL',
+    status          SMALLINT     NOT NULL DEFAULT 1 COMMENT '状态：1-启用 0-禁用',
+    owner           VARCHAR(64)  DEFAULT NULL COMMENT '负责人',
+    biz_tags        VARCHAR(256) DEFAULT NULL COMMENT '业务标签（逗号分隔）',
+    remark          VARCHAR(512) DEFAULT NULL COMMENT '备注',
+    ext_config      JSON         DEFAULT NULL COMMENT '扩展配置（连接池/方言/特殊参数）',
+    create_time     TIMESTAMP NOT NULL COMMENT '创建时间',
+    update_time     TIMESTAMP NOT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_datasource_code (datasource_code)
+) -- Comment: 基础设施-数据源配置表;
 
 -- ===================================================================
 -- 表名：sql2api_execute_log
