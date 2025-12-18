@@ -11,11 +11,11 @@ import java.util.Set;
 
 import com.alibaba.excel.EasyExcel;
 import com.mumu.woodlin.common.exception.BusinessException;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.sql2api.model.DatabaseColumnDocRow;
 import com.mumu.woodlin.sql2api.model.DatabaseDocFormat;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;

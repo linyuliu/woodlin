@@ -15,12 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.sql2api.entity.SqlDatasourceConfig;
 import com.mumu.woodlin.sql2api.mapper.Sql2ApiDatasourceMapper;
 import com.mumu.woodlin.sql2api.model.request.AddDatasourceRequest;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.DatabaseMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
 import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 
