@@ -34,6 +34,13 @@ import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
  *   <li>TiDB: 分布式特性相关元数据</li>
  * </ul>
  * </p>
+ * <p>
+ * 性能优化：
+ * <ul>
+ *   <li>默认使用 SHOW TABLES / SHOW FULL COLUMNS 等原生命令提取元数据，性能更好</li>
+ *   <li>可通过 useNativeCommands 配置切换到 information_schema 查询方式</li>
+ * </ul>
+ * </p>
  * 
  * @author mumu
  * @since 2025-01-04
@@ -47,9 +54,34 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     /** 版本特定的类型映射，key为最低版本号 */
     protected Map<String, Map<String, String>> versionSpecificTypeMappings = new HashMap<>();
     
+    /** 是否使用原生命令（SHOW/DESC）提取元数据，默认为true以获得更好的性能 */
+    protected boolean useNativeCommands = true;
+    
     public AbstractMySQLCompatibleExtractor() {
         initializeDefaultTypeMapping();
         initializeVersionSpecificMappings();
+    }
+    
+    /**
+     * 设置是否使用原生MySQL命令（SHOW/DESC）提取元数据
+     * <p>
+     * 原生命令（SHOW TABLES, SHOW FULL COLUMNS等）通常比查询 information_schema 更快，
+     * 尤其是在表数量较多的数据库中。
+     * </p>
+     * 
+     * @param useNativeCommands true使用原生命令（性能更好），false使用information_schema查询
+     */
+    public void setUseNativeCommands(boolean useNativeCommands) {
+        this.useNativeCommands = useNativeCommands;
+    }
+    
+    /**
+     * 获取是否使用原生命令
+     * 
+     * @return 是否使用原生命令
+     */
+    public boolean isUseNativeCommands() {
+        return useNativeCommands;
     }
     
     /**
@@ -202,6 +234,95 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     
     @Override
     public List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException {
+        if (useNativeCommands) {
+            return extractTablesNative(connection, databaseName);
+        }
+        return extractTablesFromInfoSchema(connection, databaseName);
+    }
+    
+    /**
+     * 使用原生SHOW命令提取表列表（性能更好）
+     * <p>
+     * 使用 SHOW TABLE STATUS 命令获取表信息，相比查询 information_schema.TABLES 更快。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @return 表元数据列表
+     * @throws SQLException SQL异常
+     */
+    protected List<TableMetadata> extractTablesNative(Connection connection, String databaseName) throws SQLException {
+        List<TableMetadata> tables = new ArrayList<>();
+        String version = getDatabaseVersion(connection);
+        
+        // 使用 SHOW TABLE STATUS 获取表的详细信息（包括注释、引擎等）
+        String sql = "SHOW TABLE STATUS FROM `" + escapeSqlIdentifier(databaseName) + "`";
+        
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String tableName = rs.getString("Name");
+                String tableComment = rs.getString("Comment");
+                String engine = rs.getString("Engine");
+                String collation = rs.getString("Collation");
+                String createTime = rs.getString("Create_time");
+                String updateTime = rs.getString("Update_time");
+                
+                // 判断表类型：如果Engine为null，可能是VIEW
+                String tableType = (engine != null) ? "BASE TABLE" : "VIEW";
+                
+                TableMetadata table = TableMetadata.builder()
+                        .tableName(tableName)
+                        .databaseName(databaseName)
+                        .comment(tableComment)
+                        .tableType(tableType)
+                        .engine(engine)
+                        .collation(collation)
+                        .createTime(createTime)
+                        .updateTime(updateTime)
+                        .build();
+                
+                // 提取列信息，同时获取主键（主键信息在SHOW FULL COLUMNS结果的Key字段中）
+                List<ColumnMetadata> columns = extractColumnsNative(connection, databaseName, tableName, version);
+                table.setColumns(columns);
+                // 从列信息中找出主键列
+                table.setPrimaryKey(findPrimaryKeyFromColumns(columns));
+                tables.add(table);
+            }
+        }
+        
+        return tables;
+    }
+    
+    /**
+     * 从列列表中查找主键列名
+     * <p>
+     * 优化：直接从已提取的列元数据中获取主键信息，避免额外的数据库查询。
+     * </p>
+     * 
+     * @param columns 列元数据列表
+     * @return 主键列名，如果没有主键则返回null
+     */
+    protected String findPrimaryKeyFromColumns(List<ColumnMetadata> columns) {
+        if (columns == null || columns.isEmpty()) {
+            return null;
+        }
+        return columns.stream()
+                .filter(col -> Boolean.TRUE.equals(col.getPrimaryKey()))
+                .map(ColumnMetadata::getColumnName)
+                .findFirst()
+                .orElse(null);
+    }
+    
+    /**
+     * 使用 information_schema 提取表列表（兼容模式）
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @return 表元数据列表
+     * @throws SQLException SQL异常
+     */
+    protected List<TableMetadata> extractTablesFromInfoSchema(Connection connection, String databaseName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
         String sql = getTablesQuery();
         
@@ -243,6 +364,80 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     
     @Override
     public List<ColumnMetadata> extractColumns(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
+        if (useNativeCommands) {
+            String version = getDatabaseVersion(connection);
+            return extractColumnsNative(connection, databaseName, tableName, version);
+        }
+        return extractColumnsFromInfoSchema(connection, databaseName, tableName);
+    }
+    
+    /**
+     * 使用原生SHOW命令提取列信息（性能更好）
+     * <p>
+     * 使用 SHOW FULL COLUMNS FROM table 命令获取列信息，相比查询 information_schema.COLUMNS 更快。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @param version 数据库版本
+     * @return 列元数据列表
+     * @throws SQLException SQL异常
+     */
+    protected List<ColumnMetadata> extractColumnsNative(Connection connection, String databaseName, String tableName, String version) throws SQLException {
+        List<ColumnMetadata> columns = new ArrayList<>();
+        
+        // 使用 SHOW FULL COLUMNS 获取列的详细信息（包括注释）
+        String sql = "SHOW FULL COLUMNS FROM `" + escapeSqlIdentifier(tableName) + "` FROM `" + escapeSqlIdentifier(databaseName) + "`";
+        
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            int ordinalPosition = 1;
+            while (rs.next()) {
+                String columnName = rs.getString("Field");
+                String columnType = rs.getString("Type");  // 例如: varchar(255), int(11), decimal(10,2)
+                String dataType = parseDataType(columnType);
+                String collation = rs.getString("Collation");
+                String isNullable = rs.getString("Null");
+                String columnKey = rs.getString("Key");
+                String defaultValue = rs.getString("Default");
+                String extra = rs.getString("Extra");
+                String comment = rs.getString("Comment");
+                
+                boolean isPrimaryKey = "PRI".equals(columnKey);
+                boolean isAutoIncrement = extra != null && extra.toLowerCase().contains("auto_increment");
+                
+                ColumnMetadata column = ColumnMetadata.builder()
+                        .columnName(columnName)
+                        .tableName(tableName)
+                        .databaseName(databaseName)
+                        .comment(comment)
+                        .dataType(dataType)
+                        .nullable("YES".equalsIgnoreCase(isNullable))
+                        .defaultValue(defaultValue)
+                        .primaryKey(isPrimaryKey)
+                        .autoIncrement(isAutoIncrement)
+                        .ordinalPosition(ordinalPosition++)
+                        .javaType(mapToJavaType(dataType, version))
+                        .build();
+                
+                columns.add(column);
+            }
+        }
+        
+        return columns;
+    }
+    
+    /**
+     * 使用 information_schema 提取列信息（兼容模式）
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @return 列元数据列表
+     * @throws SQLException SQL异常
+     */
+    protected List<ColumnMetadata> extractColumnsFromInfoSchema(Connection connection, String databaseName, String tableName) throws SQLException {
         List<ColumnMetadata> columns = new ArrayList<>();
         String sql = getColumnsQuery();
         
@@ -259,6 +454,41 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         }
         
         return columns;
+    }
+    
+    /**
+     * 解析列类型，从完整类型中提取基础数据类型
+     * 例如: varchar(255) -> varchar, int(11) -> int, decimal(10,2) -> decimal
+     * 
+     * @param columnType 完整列类型
+     * @return 基础数据类型
+     */
+    protected String parseDataType(String columnType) {
+        if (columnType == null) {
+            return null;
+        }
+        // 移除括号及其内容，以及unsigned等修饰符
+        int parenIndex = columnType.indexOf('(');
+        if (parenIndex > 0) {
+            return columnType.substring(0, parenIndex).trim().toLowerCase();
+        }
+        // 移除 unsigned, zerofill 等修饰符
+        String type = columnType.split("\\s+")[0].toLowerCase();
+        return type;
+    }
+    
+    /**
+     * 转义SQL标识符，防止SQL注入
+     * 
+     * @param identifier SQL标识符（表名、数据库名等）
+     * @return 转义后的标识符
+     */
+    protected String escapeSqlIdentifier(String identifier) {
+        if (identifier == null) {
+            return null;
+        }
+        // 替换反引号为双反引号以防止SQL注入
+        return identifier.replace("`", "``");
     }
     
     /**
@@ -297,6 +527,49 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     
     @Override
     public String getTableComment(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
+        if (useNativeCommands) {
+            return getTableCommentNative(connection, databaseName, tableName);
+        }
+        return getTableCommentFromInfoSchema(connection, databaseName, tableName);
+    }
+    
+    /**
+     * 使用原生SHOW命令获取表注释（性能更好）
+     * <p>
+     * 使用 SHOW TABLE STATUS LIKE 'tablename' 获取表注释，比查询 information_schema 更快。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @return 表注释
+     * @throws SQLException SQL异常
+     */
+    protected String getTableCommentNative(Connection connection, String databaseName, String tableName) throws SQLException {
+        String sql = "SHOW TABLE STATUS FROM `" + escapeSqlIdentifier(databaseName) + "` LIKE ?";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, tableName);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("Comment");
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 使用 information_schema 获取表注释（兼容模式）
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @return 表注释
+     * @throws SQLException SQL异常
+     */
+    protected String getTableCommentFromInfoSchema(Connection connection, String databaseName, String tableName) throws SQLException {
         String sql = "SELECT TABLE_COMMENT FROM information_schema.TABLES " +
                      "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
         
@@ -317,6 +590,46 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      * 查找表的主键
      */
     protected String findPrimaryKey(Connection connection, String databaseName, String tableName) throws SQLException {
+        if (useNativeCommands) {
+            return findPrimaryKeyNative(connection, databaseName, tableName);
+        }
+        return findPrimaryKeyFromInfoSchema(connection, databaseName, tableName);
+    }
+    
+    /**
+     * 使用原生SHOW命令查找表的主键（性能更好）
+     * <p>
+     * 使用 SHOW KEYS FROM table WHERE Key_name = 'PRIMARY' 获取主键信息。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @return 主键列名
+     * @throws SQLException SQL异常
+     */
+    protected String findPrimaryKeyNative(Connection connection, String databaseName, String tableName) throws SQLException {
+        String sql = "SHOW KEYS FROM `" + escapeSqlIdentifier(tableName) + "` FROM `" + escapeSqlIdentifier(databaseName) + "` WHERE Key_name = 'PRIMARY'";
+        
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getString("Column_name");
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 使用 information_schema 查找表的主键（兼容模式）
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param tableName 表名称
+     * @return 主键列名
+     * @throws SQLException SQL异常
+     */
+    protected String findPrimaryKeyFromInfoSchema(Connection connection, String databaseName, String tableName) throws SQLException {
         String sql = "SELECT COLUMN_NAME FROM information_schema.COLUMNS " +
                      "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_KEY = 'PRI' LIMIT 1";
         
