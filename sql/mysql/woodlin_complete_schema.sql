@@ -570,10 +570,10 @@ CREATE TABLE `sql2api_orchestration` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API编排配置表';
 
 -- =============================================
--- 动态数据源配置表
+-- SQL 通用数据源配置表
 -- =============================================
-DROP TABLE IF EXISTS `sql2api_datasource`;
-CREATE TABLE `sql2api_datasource` (
+DROP TABLE IF EXISTS `sql_datasource`;
+CREATE TABLE `sql_datasource` (
     `datasource_id` BIGINT NOT NULL COMMENT '数据源ID',
     `code` VARCHAR(50) NOT NULL COMMENT '数据源编码',
     `datasource_name` VARCHAR(50) NOT NULL COMMENT '数据源名称',

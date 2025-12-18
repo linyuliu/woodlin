@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import com.mumu.woodlin.common.exception.BusinessException;
-import com.mumu.woodlin.sql2api.entity.Sql2ApiDatasource;
+import com.mumu.woodlin.sql2api.entity.SqlDatasourceConfig;
 import com.mumu.woodlin.sql2api.mapper.Sql2ApiDatasourceMapper;
 import com.mumu.woodlin.sql2api.model.request.AddDatasourceRequest;
 
@@ -91,7 +91,7 @@ public class Sql2ApiDataSourceService {
     }
 
     private void persistDatasource(AddDatasourceRequest request, String driverClassName) {
-        Sql2ApiDatasource record = new Sql2ApiDatasource();
+        SqlDatasourceConfig record = new SqlDatasourceConfig();
         record.setDatasourceName(request.getName());
         record.setCode(request.getCode());
         record.setDatabaseType(request.getDatabaseType());
@@ -104,7 +104,7 @@ public class Sql2ApiDataSourceService {
         record.setDatasourceDesc(request.getDescription());
 
         Long existed = datasourceMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Sql2ApiDatasource>()
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SqlDatasourceConfig>()
                         .eq("code", request.getCode())
                         .or()
                         .eq("datasource_name", request.getName())

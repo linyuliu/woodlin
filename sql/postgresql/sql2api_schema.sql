@@ -68,10 +68,10 @@ CREATE TABLE IF NOT EXISTS sql2api_orchestration (
 ) -- Comment: API编排配置表;
 
 -- ===================================================================
--- 表名：sql2api_datasource
--- 说明：动态数据源配置表
+-- 表名：sql_datasource
+-- 说明：SQL 通用数据源配置表
 -- ===================================================================
-CREATE TABLE IF NOT EXISTS sql2api_datasource (
+CREATE TABLE IF NOT EXISTS sql_datasource (
     datasource_id BIGINT NOT NULL COMMENT '数据源ID',
     code VARCHAR(50) NOT NULL COMMENT '数据源编码',
     datasource_name VARCHAR(50) NOT NULL COMMENT '数据源名称',
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS sql2api_datasource (
     UNIQUE KEY uk_datasource_name (datasource_name),
     KEY idx_database_type (database_type),
     KEY idx_enabled (enabled)
-) -- Comment: 动态数据源配置表;
+) -- Comment: SQL 通用数据源配置表;
 
 -- ===================================================================
 -- 表名：sql2api_execute_log
