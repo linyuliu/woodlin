@@ -13,10 +13,22 @@ import lombok.Data;
 public class AddDatasourceRequest {
 
     /**
+     * 数据源编码（唯一标识）
+     */
+    @NotBlank(message = "数据源编码不能为空")
+    private String code;
+
+    /**
      * 数据源名称
      */
     @NotBlank(message = "数据源名称不能为空")
     private String name;
+
+    /**
+     * 数据库类型 (MySQL, PostgreSQL, Oracle 等)
+     */
+    @NotBlank(message = "数据库类型不能为空")
+    private String databaseType;
 
     /**
      * JDBC 连接串
@@ -40,4 +52,14 @@ public class AddDatasourceRequest {
      * 驱动类名称，可选
      */
     private String driverClassName;
+
+    /**
+     * 测试SQL
+     */
+    private String testQuery;
+
+    /**
+     * 描述
+     */
+    private String description;
 }
