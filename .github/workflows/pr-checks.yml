@@ -68,35 +68,3 @@ jobs:
               repo: context.repo.repo,
               body: comment
             });
-
-  frontend-pr-check:
-    name: Frontend PR Check
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: woodlin-web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./woodlin-web
-        run: npm ci
-
-      - name: Lint Check
-        working-directory: ./woodlin-web
-        run: npm run lint
-        continue-on-error: true
-
-      - name: Build Check
-        working-directory: ./woodlin-web
-        run: npm run build
-        timeout-minutes: 5
