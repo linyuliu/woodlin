@@ -4,62 +4,64 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
- * 新增数据源请求
- *
- * @author mumu
- * @since 2025-01-01
+ * 数据源配置请求（admin CRUD 用）
  */
 @Data
 public class AddDatasourceRequest {
 
-    /**
-     * 数据源编码（唯一标识）
-     */
     @NotBlank(message = "数据源编码不能为空")
-    private String code;
+    private String datasourceCode;
 
-    /**
-     * 数据源名称
-     */
     @NotBlank(message = "数据源名称不能为空")
-    private String name;
+    private String datasourceName;
 
-    /**
-     * 数据库类型 (MySQL, PostgreSQL, Oracle 等)
-     */
-    @NotBlank(message = "数据库类型不能为空")
-    private String databaseType;
+    @NotBlank(message = "数据源类型不能为空")
+    private String datasourceType;
 
-    /**
-     * JDBC 连接串
-     */
-    @NotBlank(message = "数据源URL不能为空")
-    private String url;
+    @NotBlank(message = "JDBC URL 不能为空")
+    private String jdbcUrl;
 
-    /**
-     * 数据库用户名
-     */
-    @NotBlank(message = "数据库用户名不能为空")
+    @NotBlank(message = "账号不能为空")
     private String username;
 
-    /**
-     * 数据库密码
-     */
-    @NotBlank(message = "数据库密码不能为空")
+    @NotBlank(message = "密码不能为空")
     private String password;
 
-    /**
-     * 驱动类名称，可选
-     */
-    private String driverClassName;
+    @NotBlank(message = "驱动类不能为空")
+    private String driverClass;
 
     /**
-     * 测试SQL
+     * 主键（更新时使用）
      */
-    private String testQuery;
+    private Long id;
 
     /**
-     * 描述
+     * 连通性校验 SQL
      */
-    private String description;
+    private String testSql;
+
+    /**
+     * 状态：1-启用 0-禁用
+     */
+    private Integer status;
+
+    /**
+     * 负责人
+     */
+    private String owner;
+
+    /**
+     * 业务标签（逗号分隔）
+     */
+    private String bizTags;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 扩展配置（JSON）
+     */
+    private String extConfig;
 }
