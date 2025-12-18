@@ -11,12 +11,9 @@ import java.time.format.DateTimeFormatter;
 import cn.hutool.core.date.DatePattern;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.Serializers;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
@@ -111,13 +108,13 @@ public class JacksonConfig {
         // 使用 setSerializerProvider 的方式来注册自定义序列化器
         objectMapper.setSerializerFactory(
             objectMapper.getSerializerFactory()
-                .withAdditionalSerializers(new com.fasterxml.jackson.databind.ser.Serializers.Base() {
+                .withAdditionalSerializers(new Serializers.Base() {
                     @Override
                     @SuppressWarnings({"unchecked", "rawtypes"})
-                    public com.fasterxml.jackson.databind.JsonSerializer<?> findSerializer(
-                            com.fasterxml.jackson.databind.SerializationConfig config,
-                            com.fasterxml.jackson.databind.JavaType type,
-                            com.fasterxml.jackson.databind.BeanDescription beanDesc) {
+                    public JsonSerializer<?> findSerializer(
+                            SerializationConfig config,
+                            JavaType type,
+                            BeanDescription beanDesc) {
                         Class<?> rawClass = type.getRawClass();
                         if (Result.class.isAssignableFrom(rawClass)) {
                             return new ResultSerializer(responseProperties);
@@ -137,6 +134,7 @@ public class JacksonConfig {
      * 自动扫描并注册所有实现 DictEnum 的枚举类
      * 无需手动写包名，基于 DictEnum 所在包自动扫描。
      */
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void registerDictEnumSerializers(SimpleModule module) {
         try {
             // 自动确定 DictEnum 的基础包路径
@@ -148,6 +146,7 @@ public class JacksonConfig {
             scanner.addIncludeFilter(new AssignableTypeFilter(DictEnum.class));
 
             // 扫描并注册序列化器与反序列化器
+
             scanner.findCandidateComponents(basePackage).forEach(beanDef -> {
                 try {
                     Class<?> clazz = Class.forName(beanDef.getBeanClassName());
