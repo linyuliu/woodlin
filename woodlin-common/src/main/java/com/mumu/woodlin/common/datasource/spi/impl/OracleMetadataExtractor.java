@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
@@ -40,8 +41,8 @@ import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
 public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
     
     @Override
-    public String getDatabaseType() {
-        return "Oracle";
+    public DatabaseType getDatabaseType() {
+        return DatabaseType.ORACLE;
     }
     
     @Override
