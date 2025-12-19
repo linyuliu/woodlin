@@ -7,8 +7,6 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -46,11 +44,13 @@ public class DatabaseMetadataService {
     
     /**
      * 获取数据源的完整元数据
+     * <p>
+     * 注意：此方法不使用缓存，因为元数据可能会变化
+     * </p>
      * 
      * @param datasourceCode 数据源编码
      * @return 数据库元数据
      */
-    @Cacheable(value = "infraDatabaseMetadata", key = "#datasourceCode")
     public DatabaseMetadata getDatabaseMetadata(String datasourceCode) {
         log.info("获取数据源 {} 的元数据", datasourceCode);
         
@@ -84,12 +84,12 @@ public class DatabaseMetadataService {
      * 获取数据源的Schema列表
      * <p>
      * 注意：某些数据库（如MySQL）不支持Schema概念，会返回空列表
+     * 此方法不使用缓存，因为Schema可能会变化
      * </p>
      * 
      * @param datasourceCode 数据源编码
      * @return Schema列表
      */
-    @Cacheable(value = "infraDatabaseSchemas", key = "#datasourceCode")
     public List<SchemaMetadata> getSchemas(String datasourceCode) {
         log.info("获取数据源 {} 的Schema列表", datasourceCode);
         
@@ -108,11 +108,13 @@ public class DatabaseMetadataService {
     
     /**
      * 获取数据源的表列表
+     * <p>
+     * 此方法不使用缓存，因为表列表可能会变化
+     * </p>
      * 
      * @param datasourceCode 数据源编码
      * @return 表列表
      */
-    @Cacheable(value = "infraDatabaseTables", key = "#datasourceCode")
     public List<TableMetadata> getTables(String datasourceCode) {
         log.info("获取数据源 {} 的表列表", datasourceCode);
         
@@ -132,12 +134,14 @@ public class DatabaseMetadataService {
     
     /**
      * 获取指定表的字段列表
+     * <p>
+     * 此方法不使用缓存，因为字段列表可能会变化
+     * </p>
      * 
      * @param datasourceCode 数据源编码
      * @param tableName 表名
      * @return 字段列表
      */
-    @Cacheable(value = "infraTableColumns", key = "#datasourceCode + ':' + #tableName")
     public List<ColumnMetadata> getColumns(String datasourceCode, String tableName) {
         log.info("获取数据源 {} 表 {} 的字段列表", datasourceCode, tableName);
         
@@ -157,13 +161,15 @@ public class DatabaseMetadataService {
     
     /**
      * 刷新元数据缓存
+     * <p>
+     * 注意：元数据提取不再使用缓存，此方法保留用于兼容性
+     * </p>
      * 
      * @param datasourceCode 数据源编码
      */
-    @CacheEvict(value = {"infraDatabaseMetadata", "infraDatabaseSchemas", "infraDatabaseTables", "infraTableColumns"}, 
-                allEntries = true)
+    @Deprecated
     public void refreshMetadataCache(String datasourceCode) {
-        log.info("刷新数据源 {} 的元数据缓存", datasourceCode);
+        log.info("刷新数据源 {} 的元数据缓存（已废弃，元数据不再使用缓存）", datasourceCode);
     }
     
     /**
@@ -226,37 +232,35 @@ public class DatabaseMetadataService {
     
     /**
      * 解析驱动类名
+     * <p>
+     * 优先使用配置的驱动类名，如果未配置则通过DatabaseMetadataExtractorFactory
+     * 根据JDBC URL推断数据库类型并获取对应的驱动类名
+     * </p>
      * 
      * @param driverClassName 配置的驱动类名
      * @param jdbcUrl JDBC URL
      * @return 驱动类全限定名
      */
     private String resolveDriver(String driverClassName, String jdbcUrl) {
+        // 如果已配置驱动类名，直接返回
         if (driverClassName != null && !driverClassName.isEmpty()) {
             return driverClassName;
         }
         
-        // 根据JDBC URL推断驱动类
-        String url = jdbcUrl.toLowerCase();
-        if (url.startsWith("jdbc:mysql")) {
-            return "com.mysql.cj.jdbc.Driver";
-        } else if (url.startsWith("jdbc:postgresql")) {
-            return "org.postgresql.Driver";
-        } else if (url.startsWith("jdbc:oracle")) {
-            return "oracle.jdbc.OracleDriver";
-        } else if (url.startsWith("jdbc:sqlserver") || url.startsWith("jdbc:microsoft:sqlserver")) {
-            return "com.microsoft.sqlserver.jdbc.SQLServerDriver";
-        } else if (url.startsWith("jdbc:dm")) {
-            return "dm.jdbc.driver.DmDriver";
-        } else if (url.startsWith("jdbc:kingbase") || url.startsWith("jdbc:kingbase8")) {
-            return "com.kingbase8.Driver";
-        } else if (url.startsWith("jdbc:h2")) {
-            return "org.h2.Driver";
-        } else if (url.startsWith("jdbc:sqlite")) {
-            return "org.sqlite.JDBC";
+        // 通过JDBC URL推断数据库类型
+        String databaseType = extractorFactory.inferDatabaseType(jdbcUrl);
+        if (databaseType == null) {
+            throw new BusinessException("无法识别JDBC URL的数据库类型，请指定 driverClass");
         }
         
-        throw new BusinessException("无法识别数据源驱动，请指定 driverClass");
+        // 获取该数据库类型的默认驱动类名
+        String defaultDriver = extractorFactory.getDefaultDriverClass(databaseType);
+        if (defaultDriver == null) {
+            throw new BusinessException("无法获取数据库类型 " + databaseType + " 的驱动类名，请指定 driverClass");
+        }
+        
+        log.debug("根据JDBC URL推断数据库类型: {}, 使用驱动: {}", databaseType, defaultDriver);
+        return defaultDriver;
     }
     
     /**
