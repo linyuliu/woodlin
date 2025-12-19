@@ -19,14 +19,8 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
 public class StarRocksMetadataExtractor extends AbstractMySQLCompatibleExtractor {
     
     @Override
-    protected boolean supportsSchema() {
-        return false;
-    }
     
     @Override
-    protected boolean supportsCatalog() {
-        return true;
-    }
     
     @Override
     public DatabaseType getDatabaseType() {

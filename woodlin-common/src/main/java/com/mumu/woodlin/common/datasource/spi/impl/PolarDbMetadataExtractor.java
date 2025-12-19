@@ -19,14 +19,8 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
 public class PolarDbMetadataExtractor extends AbstractMySQLCompatibleExtractor {
     
     @Override
-    protected boolean supportsSchema() {
-        return false; // PolarDB使用Catalog，不使用Schema
-    }
     
     @Override
-    protected boolean supportsCatalog() {
-        return true;
-    }
     
     @Override
     public DatabaseType getDatabaseType() {

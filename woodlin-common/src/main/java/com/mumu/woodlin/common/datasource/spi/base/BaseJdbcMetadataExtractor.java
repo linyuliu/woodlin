@@ -74,8 +74,8 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
             DatabaseMetaData meta = conn.getMetaData();
             
             DatabaseMetadata db = new DatabaseMetadata();
-            db.setProductName(meta.getDatabaseProductName());
-            db.setProductVersion(meta.getDatabaseProductVersion());
+            db.setDatabaseProductName(meta.getDatabaseProductName());
+            db.setDatabaseProductVersion(meta.getDatabaseProductVersion());
             db.setDriverName(meta.getDriverName());
             db.setDriverVersion(meta.getDriverVersion());
             
@@ -94,7 +94,12 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
             while (rs.next()) {
                 SchemaMetadata schema = new SchemaMetadata();
                 schema.setSchemaName(rs.getString("TABLE_SCHEM"));
-                schema.setCatalogName(rs.getString("TABLE_CATALOG"));
+                // TABLE_CATALOG might not exist in all databases
+                try {
+                    schema.setDatabaseName(rs.getString("TABLE_CATALOG"));
+                } catch (SQLException e) {
+                    // Ignore if TABLE_CATALOG doesn't exist
+                }
                 list.add(schema);
             }
         }
@@ -142,15 +147,15 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
             while (rs.next()) {
                 ColumnMetadata col = new ColumnMetadata();
                 col.setColumnName(rs.getString("COLUMN_NAME"));
-                col.setTypeName(rs.getString("TYPE_NAME"));
-                col.setDataType(rs.getInt("DATA_TYPE"));
+                col.setDataType(rs.getString("TYPE_NAME"));
+                col.setJdbcType(rs.getInt("DATA_TYPE"));
                 col.setColumnSize(rs.getInt("COLUMN_SIZE"));
                 col.setNullable(rs.getInt("NULLABLE") == DatabaseMetaData.columnNullable);
                 
                 // 尝试获取列注释（某些数据库在REMARKS字段提供）
                 String remarks = rs.getString("REMARKS");
                 if (remarks != null && !remarks.isEmpty()) {
-                    col.setRemarks(remarks);
+                    col.setComment(remarks);
                 }
                 
                 columns.add(col);
