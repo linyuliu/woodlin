@@ -18,9 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.datasource.entity.InfraDatasourceConfig;
 import com.mumu.woodlin.datasource.mapper.InfraDatasourceMapper;
 import com.mumu.woodlin.datasource.model.request.DatasourceRequest;
+import com.mumu.woodlin.datasource.service.DatabaseMetadataService;
 import com.mumu.woodlin.datasource.service.InfraDatasourceService;
 
 import cn.hutool.core.util.StrUtil;
@@ -39,11 +44,12 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/admin/infra/datasource")
 @RequiredArgsConstructor
-@Tag(name = "数据源管理", description = "基础设施数据源的增删改查、测试连接接口")
+@Tag(name = "数据源管理", description = "基础设施数据源的增删改查、测试连接和元数据提取接口")
 public class InfraDatasourceController {
 
     private final InfraDatasourceMapper datasourceMapper;
     private final InfraDatasourceService datasourceService;
+    private final DatabaseMetadataService metadataService;
 
     /**
      * 查询所有数据源列表
@@ -134,6 +140,71 @@ public class InfraDatasourceController {
                 request.getDatasourceType()
         );
         return R.ok();
+    }
+
+    /**
+     * 获取数据源的完整元数据
+     * <p>
+     * 包括数据库基本信息、版本信息、字符集等完整元数据
+     * </p>
+     * 
+     * @param code 数据源唯一编码
+     * @return 数据库元数据
+     */
+    @GetMapping("/{code}/metadata")
+    @Operation(summary = "获取数据库元数据", description = "获取数据源的完整元数据信息，包括数据库版本、字符集、支持的Schema等")
+    public R<DatabaseMetadata> metadata(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @PathVariable("code") String code) {
+        return R.ok(metadataService.getDatabaseMetadata(code));
+    }
+
+    /**
+     * 获取数据源的Schema列表
+     * <p>
+     * 注意：某些数据库（如MySQL）不支持Schema概念，会返回空列表或默认值
+     * </p>
+     * 
+     * @param code 数据源唯一编码
+     * @return Schema列表
+     */
+    @GetMapping("/{code}/schemas")
+    @Operation(summary = "获取Schema列表", description = "获取数据源中所有的Schema（模式）列表。注意：MySQL等数据库不支持Schema概念")
+    public R<List<SchemaMetadata>> schemas(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @PathVariable("code") String code) {
+        return R.ok(metadataService.getSchemas(code));
+    }
+
+    /**
+     * 获取数据源的表列表
+     * 
+     * @param code 数据源唯一编码
+     * @return 表元数据列表
+     */
+    @GetMapping("/{code}/tables")
+    @Operation(summary = "获取表列表", description = "获取数据源中所有的表信息，包括表名、表类型、注释等")
+    public R<List<TableMetadata>> tables(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @PathVariable("code") String code) {
+        return R.ok(metadataService.getTables(code));
+    }
+
+    /**
+     * 获取指定表的字段列表
+     * 
+     * @param code 数据源唯一编码
+     * @param table 表名
+     * @return 字段元数据列表
+     */
+    @GetMapping("/{code}/tables/{table}/columns")
+    @Operation(summary = "获取表字段列表", description = "获取指定表的所有字段信息，包括字段名、类型、长度、约束等详细信息")
+    public R<List<ColumnMetadata>> columns(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @PathVariable("code") String code,
+            @Parameter(description = "表名", required = true)
+            @PathVariable("table") String table) {
+        return R.ok(metadataService.getColumns(code, table));
     }
 
     /**
