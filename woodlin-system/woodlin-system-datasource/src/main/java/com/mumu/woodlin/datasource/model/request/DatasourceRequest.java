@@ -30,7 +30,9 @@ public class DatasourceRequest {
     @NotBlank(message = "密码不能为空")
     private String password;
 
-    @NotBlank(message = "驱动类不能为空")
+    /**
+     * 驱动类（可选，如果为空则根据JDBC URL自动推断）
+     */
     private String driverClass;
 
     /**
