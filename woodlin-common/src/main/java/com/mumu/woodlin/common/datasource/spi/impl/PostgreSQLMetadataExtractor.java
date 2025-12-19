@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import lombok.extern.slf4j.Slf4j;
 
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.base.AbstractPostgreSQLCompatibleExtractor;
 
 /**
@@ -34,8 +35,8 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractPostgreSQLCompatibleE
 public class PostgreSQLMetadataExtractor extends AbstractPostgreSQLCompatibleExtractor {
     
     @Override
-    public String getDatabaseType() {
-        return "PostgreSQL";
+    public DatabaseType getDatabaseType() {
+        return DatabaseType.POSTGRESQL;
     }
     
     @Override

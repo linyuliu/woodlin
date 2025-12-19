@@ -10,14 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.MySQLMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.PostgreSQLMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.OracleMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.TiDBMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.DM8MetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.KingbaseESMetadataExtractor;
-import com.mumu.woodlin.sql2api.spi.impl.VastbaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractorFactory;
 
 /**
  * SQL2API模块配置类
@@ -34,35 +28,25 @@ public class Sql2ApiConfiguration {
     
     /**
      * 注册所有数据库元数据提取器
-     * 支持SPI机制自动发现和手动注册
+     * 使用 woodlin-common 中的统一 DatabaseMetadataExtractorFactory
      */
     @Bean
     public List<DatabaseMetadataExtractor> databaseMetadataExtractors() {
-        List<DatabaseMetadataExtractor> extractors = new ArrayList<>();
+        // 使用统一的工厂获取所有已注册的提取器
+        DatabaseMetadataExtractorFactory factory = DatabaseMetadataExtractorFactory.getInstance();
+        List<DatabaseMetadataExtractor> extractors = factory.getAllExtractors();
         
-        // 1. 手动注册内置提取器
-        extractors.add(new MySQLMetadataExtractor());
-        extractors.add(new PostgreSQLMetadataExtractor());
-        extractors.add(new OracleMetadataExtractor());
+        log.info("已从统一工厂加载 {} 个数据库元数据提取器", extractors.size());
         
-        // MySQL兼容数据库
-        extractors.add(new TiDBMetadataExtractor());
-        extractors.add(new DM8MetadataExtractor());
-        
-        // PostgreSQL兼容数据库
-        extractors.add(new KingbaseESMetadataExtractor());
-        extractors.add(new VastbaseMetadataExtractor());
-        
-        log.info("已注册内置数据库元数据提取器: MySQL, PostgreSQL, Oracle, TiDB, DM8, KingbaseES, Vastbase");
-        
-        // 2. 通过SPI机制加载外部提取器
+        // 2. 通过SPI机制加载外部提取器（如果有的话）
         ServiceLoader<DatabaseMetadataExtractor> serviceLoader = ServiceLoader.load(DatabaseMetadataExtractor.class);
         for (DatabaseMetadataExtractor extractor : serviceLoader) {
-            log.info("通过SPI加载数据库元数据提取器: {}", extractor.getDatabaseType());
-            extractors.add(extractor);
+            if (!extractors.contains(extractor)) {
+                log.info("通过SPI加载额外的数据库元数据提取器: {}", extractor.getDatabaseType().name());
+                extractors.add(extractor);
+            }
         }
         
-        log.info("已注册 {} 个数据库元数据提取器", extractors.size());
         return extractors;
     }
 }

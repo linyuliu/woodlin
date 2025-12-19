@@ -13,11 +13,35 @@ import javax.sql.DataSource;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.mumu.woodlin.common.datasource.spi.impl.MySQLMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.ClickHouseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.DmMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.DorisMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.GBaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.GaussDbMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.GreenplumMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.H2MetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.HiveMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.ImpalaMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.InfluxDbMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.KingbaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.MariaDbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.MySQL5MetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.MySQL8MetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.MySQLMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.OceanBaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.OpenGaussMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.OracleMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.OscarMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.PolarDbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.PostgreSQLMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.SqlServerMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.SqliteMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.StarRocksMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.TDengineMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.TiDbMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.UxdbMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.VastbaseMetadataExtractor;
+import com.mumu.woodlin.common.datasource.spi.impl.VitessMetadataExtractor;
 
 /**
  * 数据库元数据提取器工厂
@@ -66,7 +90,7 @@ public class DatabaseMetadataExtractorFactory {
             ServiceLoader<DatabaseMetadataExtractor> loader = ServiceLoader.load(DatabaseMetadataExtractor.class);
             for (DatabaseMetadataExtractor extractor : loader) {
                 extractors.add(extractor);
-                log.debug("Loaded metadata extractor via SPI: {}", extractor.getDatabaseType());
+                log.debug("Loaded metadata extractor via SPI: {}", extractor.getDatabaseType().name());
             }
         } catch (Exception e) {
             log.warn("Failed to load metadata extractors via SPI: {}", e.getMessage());
@@ -81,10 +105,44 @@ public class DatabaseMetadataExtractorFactory {
         registerIfNotExists(new MySQL5MetadataExtractor());
         registerIfNotExists(new MySQL8MetadataExtractor());
         
-        // 注册通用提取器
+        // 注册主流关系型数据库提取器
         registerIfNotExists(new MySQLMetadataExtractor());
+        registerIfNotExists(new MariaDbMetadataExtractor());
         registerIfNotExists(new PostgreSQLMetadataExtractor());
         registerIfNotExists(new OracleMetadataExtractor());
+        registerIfNotExists(new SqlServerMetadataExtractor());
+        
+        // 注册MySQL协议兼容数据库提取器
+        registerIfNotExists(new TiDbMetadataExtractor());
+        registerIfNotExists(new OceanBaseMetadataExtractor());
+        registerIfNotExists(new PolarDbMetadataExtractor());
+        registerIfNotExists(new VitessMetadataExtractor());
+        
+        // 注册国产数据库提取器
+        registerIfNotExists(new DmMetadataExtractor());
+        registerIfNotExists(new KingbaseMetadataExtractor());
+        registerIfNotExists(new GBaseMetadataExtractor());
+        registerIfNotExists(new GaussDbMetadataExtractor());
+        registerIfNotExists(new OpenGaussMetadataExtractor());
+        registerIfNotExists(new OscarMetadataExtractor());
+        registerIfNotExists(new UxdbMetadataExtractor());
+        registerIfNotExists(new VastbaseMetadataExtractor());
+        
+        // 注册分析型/数据仓库提取器
+        registerIfNotExists(new ClickHouseMetadataExtractor());
+        registerIfNotExists(new StarRocksMetadataExtractor());
+        registerIfNotExists(new DorisMetadataExtractor());
+        registerIfNotExists(new GreenplumMetadataExtractor());
+        registerIfNotExists(new HiveMetadataExtractor());
+        registerIfNotExists(new ImpalaMetadataExtractor());
+        
+        // 注册时序数据库提取器
+        registerIfNotExists(new TDengineMetadataExtractor());
+        registerIfNotExists(new InfluxDbMetadataExtractor());
+        
+        // 注册嵌入式数据库提取器
+        registerIfNotExists(new H2MetadataExtractor());
+        registerIfNotExists(new SqliteMetadataExtractor());
     }
     
     /**
@@ -95,7 +153,7 @@ public class DatabaseMetadataExtractorFactory {
                 .anyMatch(e -> e.getClass().equals(extractor.getClass()));
         if (!exists) {
             extractors.add(extractor);
-            log.debug("Registered builtin metadata extractor: {}", extractor.getDatabaseType());
+            log.debug("Registered builtin metadata extractor: {}", extractor.getDatabaseType().name());
         }
     }
     
@@ -107,7 +165,7 @@ public class DatabaseMetadataExtractorFactory {
     public void register(DatabaseMetadataExtractor extractor) {
         if (extractor != null) {
             extractors.add(extractor);
-            log.info("Registered metadata extractor: {}", extractor.getDatabaseType());
+            log.info("Registered metadata extractor: {}", extractor.getDatabaseType().name());
         }
     }
     
@@ -158,7 +216,7 @@ public class DatabaseMetadataExtractorFactory {
                     }
                 }
             } catch (Exception e) {
-                log.debug("Extractor {} check failed: {}", extractor.getDatabaseType(), e.getMessage());
+                log.debug("Extractor {} check failed: {}", extractor.getDatabaseType().name(), e.getMessage());
             }
         }
         
@@ -168,7 +226,7 @@ public class DatabaseMetadataExtractorFactory {
         if (!candidates.isEmpty()) {
             DatabaseMetadataExtractor selected = candidates.get(0);
             log.debug("Selected metadata extractor: {} (priority: {})", 
-                    selected.getDatabaseType(), selected.getPriority());
+                    selected.getDatabaseType().name(), selected.getPriority());
             return Optional.of(selected);
         }
         
@@ -190,7 +248,7 @@ public class DatabaseMetadataExtractorFactory {
         String type = databaseType.toLowerCase();
         
         return extractors.stream()
-                .filter(e -> e.getDatabaseType().toLowerCase().contains(type))
+                .filter(e -> e.getDatabaseType().name().toLowerCase().contains(type))
                 .min(Comparator.comparingInt(DatabaseMetadataExtractor::getPriority));
     }
     
