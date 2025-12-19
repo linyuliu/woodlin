@@ -24,7 +24,7 @@ import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
-import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
+import com.mumu.woodlin.datasource.service.InfraDatasourceService;
 
 /**
  * 数据库元数据服务实现
@@ -40,7 +40,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     
     private final DataSource dataSource;
     private final List<DatabaseMetadataExtractor> metadataExtractors;
-    private final Sql2ApiDataSourceService sql2ApiDataSourceService;
+    private final InfraDatasourceService infraDatasourceService;
     
     @Override
     @Cacheable(value = "databaseMetadata", key = "#datasourceName")
@@ -158,7 +158,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
      */
     private DataSource getTargetDataSource(String datasourceName) {
         try {
-            return sql2ApiDataSourceService.getDataSourceByCode(datasourceName);
+            return infraDatasourceService.getDataSourceByCode(datasourceName);
         } catch (BusinessException ignore) {
             // fallback to dynamic routing if configured
             if (dataSource instanceof DynamicRoutingDataSource dynamicDataSource) {

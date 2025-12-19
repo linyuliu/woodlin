@@ -40,6 +40,13 @@
             <version>${woodlin.version}</version>
         </dependency>
 
+        <!-- Woodlin System Datasource Module -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-datasource</artifactId>
+            <version>${woodlin.version}</version>
+        </dependency>
+
         <!-- Woodlin System Security Module -->
         <dependency>
             <groupId>com.mumu</groupId>
