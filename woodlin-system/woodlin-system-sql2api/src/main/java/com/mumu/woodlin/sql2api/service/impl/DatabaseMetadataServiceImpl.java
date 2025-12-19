@@ -21,9 +21,9 @@ import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
+import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
 import com.mumu.woodlin.sql2api.service.Sql2ApiDataSourceService;
-import com.mumu.woodlin.sql2api.spi.DatabaseMetadataExtractor;
 
 /**
  * 数据库元数据服务实现
@@ -116,7 +116,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     @Override
     public List<String> getSupportedDatabaseTypes() {
         return metadataExtractors.stream()
-                .map(DatabaseMetadataExtractor::getDatabaseType)
+                .map(e -> e.getDatabaseType().name())
                 .sorted()
                 .collect(Collectors.toList());
     }
@@ -157,7 +157,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             for (DatabaseMetadataExtractor extractor : sortedExtractors) {
                 if (extractor.supports(connection)) {
-                    log.info("找到匹配的元数据提取器: {}", extractor.getDatabaseType());
+                    log.info("找到匹配的元数据提取器: {}", extractor.getDatabaseType().name());
                     return extractor;
                 }
             }

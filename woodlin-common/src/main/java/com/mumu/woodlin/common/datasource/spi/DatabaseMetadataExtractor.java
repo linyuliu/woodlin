@@ -7,6 +7,7 @@ import javax.sql.DataSource;
 
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 
@@ -33,9 +34,9 @@ public interface DatabaseMetadataExtractor {
     /**
      * 获取支持的数据库类型
      * 
-     * @return 数据库类型标识，如 "MySQL", "PostgreSQL", "Oracle", "DM8" 等
+     * @return 数据库类型枚举值
      */
-    String getDatabaseType();
+    DatabaseType getDatabaseType();
     
     /**
      * 获取支持的最低数据库版本

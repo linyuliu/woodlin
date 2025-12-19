@@ -10,6 +10,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtractor;
 
 /**
@@ -39,8 +40,8 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
 public class MySQL8MetadataExtractor extends AbstractMySQLCompatibleExtractor {
     
     @Override
-    public String getDatabaseType() {
-        return "MySQL8";
+    public DatabaseType getDatabaseType() {
+        return DatabaseType.MYSQL;
     }
     
     @Override
