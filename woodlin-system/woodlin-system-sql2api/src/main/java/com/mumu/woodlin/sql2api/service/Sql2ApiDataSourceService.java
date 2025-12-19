@@ -7,6 +7,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractorFactory;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.sql2api.entity.SqlDatasourceConfig;
 import com.mumu.woodlin.sql2api.mapper.Sql2ApiDatasourceMapper;
@@ -29,6 +30,8 @@ public class Sql2ApiDataSourceService {
 
     private final DataSource dataSource;
     private final Sql2ApiDatasourceMapper datasourceMapper;
+    private final DatabaseMetadataExtractorFactory extractorFactory = DatabaseMetadataExtractorFactory.getInstance();
+    
     /**
      * 独立的数据源注册表（不影响系统动态数据源）
      */
@@ -98,36 +101,59 @@ public class Sql2ApiDataSourceService {
         }
     }
 
+    /**
+     * 获取默认测试SQL
+     * <p>
+     * 使用DatabaseMetadataExtractorFactory根据数据库类型获取对应的测试SQL
+     * </p>
+     * 
+     * @param databaseType 数据库类型
+     * @return 测试SQL
+     */
     public String defaultTestQuery(String databaseType) {
         if (StrUtil.isBlank(databaseType)) {
             return "SELECT 1";
         }
-        String type = databaseType.toLowerCase();
-        if (type.contains("oracle")) {
-            return "SELECT 1 FROM dual";
+        
+        String testSql = extractorFactory.getDefaultTestQuery(databaseType);
+        if (testSql != null) {
+            return testSql;
         }
-        if (type.contains("postgres")) {
-            return "SELECT 1";
-        }
-        if (type.contains("sqlserver") || type.contains("mssql")) {
-            return "SELECT 1";
-        }
+        
+        log.warn("无法获取数据库类型 {} 的默认测试SQL，使用默认值 'SELECT 1'", databaseType);
         return "SELECT 1";
     }
 
-    private String resolveDriver(String driverClassName, String url) {
+    /**
+     * 解析驱动类名
+     * <p>
+     * 优先使用配置的驱动类名，如果未配置则通过DatabaseMetadataExtractorFactory
+     * 根据JDBC URL推断数据库类型并获取对应的驱动类名
+     * </p>
+     * 
+     * @param driverClassName 配置的驱动类名
+     * @param jdbcUrl JDBC URL
+     * @return 驱动类全限定名
+     */
+    private String resolveDriver(String driverClassName, String jdbcUrl) {
+        // 如果已配置驱动类名，直接返回
         if (StrUtil.isNotBlank(driverClassName)) {
             return driverClassName;
         }
-        if (StrUtil.startWithIgnoreCase(url, "jdbc:mysql")) {
-            return "com.mysql.cj.jdbc.Driver";
+        
+        // 通过JDBC URL推断数据库类型
+        String databaseType = extractorFactory.inferDatabaseType(jdbcUrl);
+        if (databaseType == null) {
+            throw new BusinessException("无法识别JDBC URL的数据库类型，请指定 driverClassName");
         }
-        if (StrUtil.startWithIgnoreCase(url, "jdbc:postgresql")) {
-            return "org.postgresql.Driver";
+        
+        // 获取该数据库类型的默认驱动类名
+        String defaultDriver = extractorFactory.getDefaultDriverClass(databaseType);
+        if (defaultDriver == null) {
+            throw new BusinessException("无法获取数据库类型 " + databaseType + " 的驱动类名，请指定 driverClassName");
         }
-        if (StrUtil.startWithIgnoreCase(url, "jdbc:oracle")) {
-            return "oracle.jdbc.OracleDriver";
-        }
-        throw new BusinessException("无法识别数据源驱动，请指定 driverClassName");
+        
+        log.debug("根据JDBC URL推断数据库类型: {}, 使用驱动: {}", databaseType, defaultDriver);
+        return defaultDriver;
     }
 }
