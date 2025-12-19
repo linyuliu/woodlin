@@ -125,11 +125,17 @@ public class InfraDatasourceService {
         String sql = StrUtil.emptyToDefault(testSql, defaultTestQuery(databaseType));
         try (var conn = dataSource.getConnection();
              var ps = conn.prepareStatement(sql)) {
+            // 设置查询超时为5秒，避免连接挂起
+            ps.setQueryTimeout(5);
             ps.execute();
             log.info("数据源连接验证成功");
         } catch (Exception e) {
             log.error("数据源连接验证失败", e);
-            throw new BusinessException("数据源连接验证失败: " + e.getMessage(), e);
+            // 使用通用错误消息，避免泄露敏感信息
+            String safeMessage = e.getMessage() != null && e.getMessage().length() < 200 
+                ? sanitizeErrorMessage(e.getMessage()) 
+                : "连接失败，请检查数据源配置";
+            throw new BusinessException("数据源连接验证失败: " + safeMessage, e);
         }
     }
 
@@ -187,5 +193,22 @@ public class InfraDatasourceService {
         log.info("关闭所有数据源连接，共 {} 个", datasourceRegistry.size());
         datasourceRegistry.values().forEach(HikariDataSource::close);
         datasourceRegistry.clear();
+    }
+
+    /**
+     * 清理错误消息中的敏感信息
+     * 
+     * @param message 原始错误消息
+     * @return 清理后的错误消息
+     */
+    private String sanitizeErrorMessage(String message) {
+        if (message == null) {
+            return "连接失败";
+        }
+        // 移除可能包含的连接字符串、密码等敏感信息
+        return message
+                .replaceAll("jdbc:[^\\s]+", "jdbc:***")
+                .replaceAll("password[=:]\\S+", "password=***")
+                .replaceAll("user[=:]\\S+", "user=***");
     }
 }
