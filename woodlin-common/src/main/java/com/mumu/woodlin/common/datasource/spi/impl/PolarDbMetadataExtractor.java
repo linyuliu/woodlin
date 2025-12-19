@@ -12,32 +12,28 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
  * PolarDB是阿里云开发的云原生关系型数据库，兼容MySQL协议。
  * 支持读写分离、计算存储分离和弹性扩展。
  * </p>
- * 
+ *
  * @author mumu
  * @since 2025-01-04
  */
 public class PolarDbMetadataExtractor extends AbstractMySQLCompatibleExtractor {
-    
-    @Override
-    
-    @Override
-    
+
     @Override
     public DatabaseType getDatabaseType() {
         return DatabaseType.POLARDB;
     }
-    
+
     @Override
     public boolean supports(Connection conn) throws SQLException {
         String productName = conn.getMetaData().getDatabaseProductName();
         return productName != null && productName.toLowerCase().contains("polardb");
     }
-    
+
     @Override
     public String getDefaultDriverClass() {
         return "com.mysql.cj.jdbc.Driver";
     }
-    
+
     @Override
     public int getPriority() {
         return 50;

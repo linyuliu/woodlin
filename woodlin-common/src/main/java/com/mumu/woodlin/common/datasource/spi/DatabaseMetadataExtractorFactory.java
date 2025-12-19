@@ -42,6 +42,7 @@ import com.mumu.woodlin.common.datasource.spi.impl.TiDbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.UxdbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.VastbaseMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.VitessMetadataExtractor;
+import org.springframework.context.annotation.ComponentScan;
 
 /**
  * 数据库元数据提取器工厂
@@ -105,20 +106,20 @@ public class DatabaseMetadataExtractorFactory {
         // 注册版本特定的提取器（优先级更高）
         registerIfNotExists(new MySQL5MetadataExtractor());
         registerIfNotExists(new MySQL8MetadataExtractor());
-        
+
         // 注册主流关系型数据库提取器
         registerIfNotExists(new MySQLMetadataExtractor());
         registerIfNotExists(new MariaDbMetadataExtractor());
         registerIfNotExists(new PostgreSQLMetadataExtractor());
         registerIfNotExists(new OracleMetadataExtractor());
         registerIfNotExists(new SqlServerMetadataExtractor());
-        
+
         // 注册MySQL协议兼容数据库提取器
         registerIfNotExists(new TiDbMetadataExtractor());
         registerIfNotExists(new OceanBaseMetadataExtractor());
         registerIfNotExists(new PolarDbMetadataExtractor());
         registerIfNotExists(new VitessMetadataExtractor());
-        
+
         // 注册国产数据库提取器
         registerIfNotExists(new DmMetadataExtractor());
         registerIfNotExists(new KingbaseMetadataExtractor());
@@ -128,7 +129,7 @@ public class DatabaseMetadataExtractorFactory {
         registerIfNotExists(new OscarMetadataExtractor());
         registerIfNotExists(new UxdbMetadataExtractor());
         registerIfNotExists(new VastbaseMetadataExtractor());
-        
+
         // 注册分析型/数据仓库提取器
         registerIfNotExists(new ClickHouseMetadataExtractor());
         registerIfNotExists(new StarRocksMetadataExtractor());
@@ -136,11 +137,11 @@ public class DatabaseMetadataExtractorFactory {
         registerIfNotExists(new GreenplumMetadataExtractor());
         registerIfNotExists(new HiveMetadataExtractor());
         registerIfNotExists(new ImpalaMetadataExtractor());
-        
+
         // 注册时序数据库提取器
         registerIfNotExists(new TDengineMetadataExtractor());
         registerIfNotExists(new InfluxDbMetadataExtractor());
-        
+
         // 注册嵌入式数据库提取器
         registerIfNotExists(new H2MetadataExtractor());
         registerIfNotExists(new SqliteMetadataExtractor());
@@ -226,7 +227,7 @@ public class DatabaseMetadataExtractorFactory {
 
         if (!candidates.isEmpty()) {
             DatabaseMetadataExtractor selected = candidates.get(0);
-            log.debug("Selected metadata extractor: {} (priority: {})", 
+            log.debug("Selected metadata extractor: {} (priority: {})",
                     selected.getDatabaseType().name(), selected.getPriority());
             return Optional.of(selected);
         }
