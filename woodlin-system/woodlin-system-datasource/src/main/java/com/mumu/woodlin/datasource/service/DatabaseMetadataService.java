@@ -147,7 +147,7 @@ public class DatabaseMetadataService {
      * @param datasourceCode 数据源编码
      */
     @CacheEvict(value = {"infraDatabaseMetadata", "infraDatabaseSchemas", "infraDatabaseTables", "infraTableColumns"}, 
-                key = "#datasourceCode")
+                allEntries = true)
     public void refreshMetadataCache(String datasourceCode) {
         log.info("刷新数据源 {} 的元数据缓存", datasourceCode);
     }
@@ -174,6 +174,8 @@ public class DatabaseMetadataService {
         try {
             return connection.getSchema();
         } catch (SQLException e) {
+            // Some databases don't support schema concept or getSchema() operation
+            log.debug("Failed to get schema from connection: {}", e.getMessage());
             return null;
         }
     }
