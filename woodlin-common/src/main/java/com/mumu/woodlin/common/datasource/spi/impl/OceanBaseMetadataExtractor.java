@@ -12,32 +12,29 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
  * OceanBase是蚂蚁金服开发的分布式关系型数据库，兼容MySQL协议。
  * 支持金融级高可用、ACID事务和水平扩展。
  * </p>
- * 
+ *
  * @author mumu
  * @since 2025-01-04
  */
 public class OceanBaseMetadataExtractor extends AbstractMySQLCompatibleExtractor {
-    
-    @Override
-    
-    @Override
-    
+
+
     @Override
     public DatabaseType getDatabaseType() {
         return DatabaseType.OCEANBASE;
     }
-    
+
     @Override
     public boolean supports(Connection conn) throws SQLException {
         String productName = conn.getMetaData().getDatabaseProductName();
         return productName != null && productName.toLowerCase().contains("oceanbase");
     }
-    
+
     @Override
     public String getDefaultDriverClass() {
         return "com.mysql.cj.jdbc.Driver";
     }
-    
+
     @Override
     public int getPriority() {
         return 50;

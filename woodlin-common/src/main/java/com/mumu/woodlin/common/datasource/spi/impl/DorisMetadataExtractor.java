@@ -15,21 +15,19 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtrac
  * <p>
  * 注意：StarRocks从Doris分支而来，因此supports方法同时检测doris和starrocks。
  * </p>
- * 
+ *
  * @author mumu
  * @since 2025-01-04
  */
 public class DorisMetadataExtractor extends AbstractMySQLCompatibleExtractor {
-    
-    @Override
-    
-    @Override
-    
+
+
+
     @Override
     public DatabaseType getDatabaseType() {
         return DatabaseType.DORIS;
     }
-    
+
     @Override
     public boolean supports(Connection conn) throws SQLException {
         String productName = conn.getMetaData().getDatabaseProductName();
@@ -40,12 +38,12 @@ public class DorisMetadataExtractor extends AbstractMySQLCompatibleExtractor {
         // Doris和StarRocks都可以识别，但StarRocks有专用extractor，优先级更高
         return name.contains("doris") || name.contains("starrocks");
     }
-    
+
     @Override
     public String getDefaultDriverClass() {
         return "com.mysql.cj.jdbc.Driver";
     }
-    
+
     @Override
     public int getPriority() {
         return 60; // 低于StarRocks的优先级，让StarRocks extractor优先匹配
