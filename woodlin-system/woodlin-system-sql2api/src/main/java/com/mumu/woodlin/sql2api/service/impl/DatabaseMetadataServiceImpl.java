@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
 import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
@@ -60,6 +61,31 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
         } catch (SQLException e) {
             log.error("获取数据库元数据失败，数据源: {}", datasourceName, e);
             throw new BusinessException("获取数据库元数据失败: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    @Cacheable(value = "databaseSchemas", key = "#datasourceName")
+    public List<SchemaMetadata> getSchemas(String datasourceName) {
+        log.info("获取数据源 {} 的Schema列表", datasourceName);
+        
+        try {
+            DataSource targetDataSource = getTargetDataSource(datasourceName);
+            DatabaseMetadataExtractor extractor = findExtractor(targetDataSource);
+            
+            if (extractor == null) {
+                throw new BusinessException("不支持的数据库类型");
+            }
+            
+            try (Connection connection = targetDataSource.getConnection()) {
+                String databaseName = connection.getCatalog();
+                List<SchemaMetadata> schemas = extractor.extractSchemas(connection, databaseName);
+                return schemas != null ? schemas : Collections.emptyList();
+            }
+            
+        } catch (SQLException e) {
+            log.error("获取Schema列表失败，数据源: {}", datasourceName, e);
+            throw new BusinessException("获取Schema列表失败: " + e.getMessage(), e);
         }
     }
     
@@ -122,7 +148,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     }
     
     @Override
-    @CacheEvict(value = {"databaseMetadata", "databaseTables", "tableColumns"}, allEntries = true)
+    @CacheEvict(value = {"databaseMetadata", "databaseSchemas", "databaseTables", "tableColumns"}, allEntries = true)
     public void refreshMetadataCache(String datasourceName) {
         log.info("刷新数据源 {} 的元数据缓存", datasourceName);
     }

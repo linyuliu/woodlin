@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 
 /**
@@ -22,6 +23,17 @@ public interface DatabaseMetadataService {
      * @return 数据库元数据
      */
     DatabaseMetadata getDatabaseMetadata(String datasourceName);
+    
+    /**
+     * 获取指定数据源的所有Schema信息
+     * <p>
+     * 注意：某些数据库（如MySQL）不支持Schema概念，会返回空列表或默认值
+     * </p>
+     * 
+     * @param datasourceName 数据源名称
+     * @return Schema列表
+     */
+    List<SchemaMetadata> getSchemas(String datasourceName);
     
     /**
      * 获取指定数据源的所有表信息
