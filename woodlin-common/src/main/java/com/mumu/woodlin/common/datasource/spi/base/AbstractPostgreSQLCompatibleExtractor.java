@@ -226,14 +226,16 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         List<SchemaMetadata> schemas = new ArrayList<>();
         String sql = getSchemasQuery();
         
-        try (PreparedStatement pstmt = connection.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-            while (rs.next()) {
-                schemas.add(SchemaMetadata.builder()
-                        .schemaName(rs.getString("schema_name"))
-                        .databaseName(databaseName)
-                        .comment(rs.getString("comment"))
-                        .build());
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);  // 30秒查询超时
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    schemas.add(SchemaMetadata.builder()
+                            .schemaName(rs.getString("schema_name"))
+                            .databaseName(databaseName)
+                            .comment(rs.getString("comment"))
+                            .build());
+                }
             }
         }
         return schemas;
@@ -257,6 +259,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         String sql = getTablesQuery();
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, targetSchema);
             
@@ -301,6 +304,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         String sql = getColumnsQuery();
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, targetSchema);
             pstmt.setString(3, tableName);
@@ -360,6 +364,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                      "WHERE pgc.relname = ? AND pgn.nspname = ?";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, tableName);
             pstmt.setString(2, targetSchema);
             
@@ -382,6 +387,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                      "WHERE i.indrelid = (? || '.' || ?)::regclass AND i.indisprimary LIMIT 1";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, schemaName);
             pstmt.setString(2, tableName);
             
