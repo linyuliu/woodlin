@@ -48,7 +48,8 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
         "/auth/captcha",
         "/auth/register",
         "/auth/forgot-password",
-        "/auth/dev-token"
+        "/auth/dev-token",
+        "/admin/**"
     };
 
     /**
@@ -93,7 +94,7 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 构建排除路径列表
         String[] excludePatterns = buildExcludePatterns();
-        
+
         // 注册用户活动监控拦截器
         registry.addInterceptor(userActivityInterceptor)
                 .addPathPatterns("/**")
@@ -117,16 +118,16 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
     private String[] buildExcludePatterns() {
         int totalLength = AUTH_PATHS.length + DOC_PATHS.length + SYSTEM_PATHS.length;
         String[] excludePatterns = new String[totalLength];
-        
+
         int index = 0;
         System.arraycopy(AUTH_PATHS, 0, excludePatterns, index, AUTH_PATHS.length);
         index += AUTH_PATHS.length;
-        
+
         System.arraycopy(DOC_PATHS, 0, excludePatterns, index, DOC_PATHS.length);
         index += DOC_PATHS.length;
-        
+
         System.arraycopy(SYSTEM_PATHS, 0, excludePatterns, index, SYSTEM_PATHS.length);
-        
+
         return excludePatterns;
     }
 }
