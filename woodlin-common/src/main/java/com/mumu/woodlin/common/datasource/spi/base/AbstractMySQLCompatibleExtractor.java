@@ -360,44 +360,48 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                 .comment(rs.getString("TABLE_COMMENT"))
                 .tableType(rs.getString("TABLE_TYPE"));
         
-        // Try to populate optional fields if available in the result set
-        try {
-            String engine = rs.getString("ENGINE");
-            if (engine != null) {
-                builder.engine(engine);
-            }
-        } catch (SQLException e) {
-            // Column might not exist, ignore
-        }
-        
-        try {
-            String collation = rs.getString("TABLE_COLLATION");
-            if (collation != null) {
-                builder.collation(collation);
-            }
-        } catch (SQLException e) {
-            // Column might not exist, ignore
-        }
-        
-        try {
-            String createTime = rs.getString("CREATE_TIME");
-            if (createTime != null) {
-                builder.createTime(createTime);
-            }
-        } catch (SQLException e) {
-            // Column might not exist, ignore
-        }
-        
-        try {
-            String updateTime = rs.getString("UPDATE_TIME");
-            if (updateTime != null) {
-                builder.updateTime(updateTime);
-            }
-        } catch (SQLException e) {
-            // Column might not exist, ignore
-        }
+        // Populate optional fields if available in the result set
+        builder.engine(getOptionalString(rs, "ENGINE"));
+        builder.collation(getOptionalString(rs, "TABLE_COLLATION"));
+        builder.createTime(getOptionalString(rs, "CREATE_TIME"));
+        builder.updateTime(getOptionalString(rs, "UPDATE_TIME"));
         
         return builder.build();
+    }
+    
+    /**
+     * 安全地从ResultSet中获取可选的字符串字段
+     * 如果字段不存在或为null，返回null而不抛出异常
+     *
+     * @param rs ResultSet对象
+     * @param columnName 列名
+     * @return 字段值，如果不存在或为null则返回null
+     */
+    protected String getOptionalString(ResultSet rs, String columnName) {
+        try {
+            return rs.getString(columnName);
+        } catch (SQLException e) {
+            // Column doesn't exist in this result set
+            return null;
+        }
+    }
+    
+    /**
+     * 安全地从ResultSet中获取可选的整数字段
+     * 如果字段不存在或为null，返回null而不抛出异常
+     *
+     * @param rs ResultSet对象
+     * @param columnName 列名
+     * @return 字段值，如果不存在或为null则返回null
+     */
+    protected Integer getOptionalInteger(ResultSet rs, String columnName) {
+        try {
+            int value = rs.getInt(columnName);
+            return rs.wasNull() ? null : value;
+        } catch (SQLException e) {
+            // Column doesn't exist in this result set
+            return null;
+        }
     }
 
     @Override
@@ -624,40 +628,14 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         boolean isAutoIncrement = extra != null && extra.toLowerCase().contains("auto_increment");
 
         // Extract column size and decimal digits from information_schema
-        Integer columnSize = null;
-        Integer decimalDigits = null;
-        
-        try {
-            // CHARACTER_MAXIMUM_LENGTH for string types
-            columnSize = rs.getInt("CHARACTER_MAXIMUM_LENGTH");
-            if (rs.wasNull()) {
-                columnSize = null;
-            }
-        } catch (SQLException e) {
-            // Column might not exist in older MySQL versions or for non-string types
+        // Try CHARACTER_MAXIMUM_LENGTH first (for string types)
+        Integer columnSize = getOptionalInteger(rs, "CHARACTER_MAXIMUM_LENGTH");
+        // If not found, try NUMERIC_PRECISION (for numeric types)
+        if (columnSize == null) {
+            columnSize = getOptionalInteger(rs, "NUMERIC_PRECISION");
         }
-        
-        try {
-            // NUMERIC_PRECISION for numeric types
-            if (columnSize == null) {
-                columnSize = rs.getInt("NUMERIC_PRECISION");
-                if (rs.wasNull()) {
-                    columnSize = null;
-                }
-            }
-        } catch (SQLException e) {
-            // Column might not exist in older MySQL versions or for non-numeric types
-        }
-        
-        try {
-            // NUMERIC_SCALE for decimal digits
-            decimalDigits = rs.getInt("NUMERIC_SCALE");
-            if (rs.wasNull()) {
-                decimalDigits = null;
-            }
-        } catch (SQLException e) {
-            // Column might not exist in older MySQL versions or for non-numeric types
-        }
+        // Get decimal digits (for numeric types)
+        Integer decimalDigits = getOptionalInteger(rs, "NUMERIC_SCALE");
 
         return ColumnMetadata.builder()
                 .columnName(rs.getString("COLUMN_NAME"))
