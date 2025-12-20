@@ -405,12 +405,18 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                 boolean isPrimaryKey = "PRI".equals(columnKey);
                 boolean isAutoIncrement = extra != null && extra.toLowerCase().contains("auto_increment");
 
+                // Parse column size and decimal digits from columnType
+                Integer columnSize = parseColumnSize(columnType, dataType);
+                Integer decimalDigits = parseDecimalDigits(columnType);
+
                 ColumnMetadata column = ColumnMetadata.builder()
                         .columnName(columnName)
                         .tableName(tableName)
                         .databaseName(databaseName)
                         .comment(comment)
                         .dataType(dataType)
+                        .columnSize(columnSize)
+                        .decimalDigits(decimalDigits)
                         .nullable("YES".equalsIgnoreCase(isNullable))
                         .defaultValue(defaultValue)
                         .primaryKey(isPrimaryKey)
@@ -476,6 +482,74 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     }
 
     /**
+     * 从列类型中解析列大小/长度
+     * 例如: varchar(255) -> 255, int(11) -> 11, decimal(10,2) -> 10, text -> null
+     *
+     * @param columnType 完整列类型，如 "varchar(255)", "int(11)", "decimal(10,2)"
+     * @param dataType 基础数据类型
+     * @return 列大小，如果无法解析则返回null
+     */
+    protected Integer parseColumnSize(String columnType, String dataType) {
+        if (columnType == null) {
+            return null;
+        }
+        
+        try {
+            int startParen = columnType.indexOf('(');
+            int endParen = columnType.indexOf(')');
+            
+            if (startParen > 0 && endParen > startParen) {
+                String sizeStr = columnType.substring(startParen + 1, endParen).trim();
+                
+                // For decimal types like decimal(10,2), get the first number (precision)
+                int commaIndex = sizeStr.indexOf(',');
+                if (commaIndex > 0) {
+                    sizeStr = sizeStr.substring(0, commaIndex).trim();
+                }
+                
+                return Integer.parseInt(sizeStr);
+            }
+        } catch (NumberFormatException e) {
+            log.debug("无法解析列大小，列类型: {}", columnType);
+        }
+        
+        return null;
+    }
+
+    /**
+     * 从列类型中解析小数位数
+     * 例如: decimal(10,2) -> 2, decimal(10) -> null, varchar(255) -> null
+     *
+     * @param columnType 完整列类型
+     * @return 小数位数，如果无法解析或不适用则返回null
+     */
+    protected Integer parseDecimalDigits(String columnType) {
+        if (columnType == null) {
+            return null;
+        }
+        
+        try {
+            int startParen = columnType.indexOf('(');
+            int endParen = columnType.indexOf(')');
+            
+            if (startParen > 0 && endParen > startParen) {
+                String sizeStr = columnType.substring(startParen + 1, endParen).trim();
+                
+                // For decimal types like decimal(10,2), get the second number (scale)
+                int commaIndex = sizeStr.indexOf(',');
+                if (commaIndex > 0 && commaIndex < sizeStr.length() - 1) {
+                    String scaleStr = sizeStr.substring(commaIndex + 1).trim();
+                    return Integer.parseInt(scaleStr);
+                }
+            }
+        } catch (NumberFormatException e) {
+            log.debug("无法解析小数位数，列类型: {}", columnType);
+        }
+        
+        return null;
+    }
+
+    /**
      * 转义SQL标识符，防止SQL注入
      *
      * @param identifier SQL标识符（表名、数据库名等）
@@ -508,12 +582,50 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         String extra = rs.getString("EXTRA");
         boolean isAutoIncrement = extra != null && extra.toLowerCase().contains("auto_increment");
 
+        // Extract column size and decimal digits from information_schema
+        Integer columnSize = null;
+        Integer decimalDigits = null;
+        
+        try {
+            // CHARACTER_MAXIMUM_LENGTH for string types
+            columnSize = rs.getInt("CHARACTER_MAXIMUM_LENGTH");
+            if (rs.wasNull()) {
+                columnSize = null;
+            }
+        } catch (SQLException e) {
+            // Column might not exist in older MySQL versions or for non-string types
+        }
+        
+        try {
+            // NUMERIC_PRECISION for numeric types
+            if (columnSize == null) {
+                columnSize = rs.getInt("NUMERIC_PRECISION");
+                if (rs.wasNull()) {
+                    columnSize = null;
+                }
+            }
+        } catch (SQLException e) {
+            // Column might not exist in older MySQL versions or for non-numeric types
+        }
+        
+        try {
+            // NUMERIC_SCALE for decimal digits
+            decimalDigits = rs.getInt("NUMERIC_SCALE");
+            if (rs.wasNull()) {
+                decimalDigits = null;
+            }
+        } catch (SQLException e) {
+            // Column might not exist in older MySQL versions or for non-numeric types
+        }
+
         return ColumnMetadata.builder()
                 .columnName(rs.getString("COLUMN_NAME"))
                 .tableName(tableName)
                 .databaseName(databaseName)
                 .comment(rs.getString("COLUMN_COMMENT"))
                 .dataType(dataType)
+                .columnSize(columnSize)
+                .decimalDigits(decimalDigits)
                 .nullable("YES".equalsIgnoreCase(rs.getString("IS_NULLABLE")))
                 .defaultValue(rs.getString("COLUMN_DEFAULT"))
                 .primaryKey(isPrimaryKey)
