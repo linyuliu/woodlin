@@ -225,22 +225,22 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     private CompatibilityMode detectCompatibilityMode(Connection connection) {
         // 尝试多种方式检测兼容模式
         
-        // 方式1：通过 SHOW db_mode 命令（KingBase V8+）
-        try (PreparedStatement pstmt = connection.prepareStatement("SHOW db_mode");
+        // 方式1：通过 SHOW database_mode 命令（KingBase V8+）
+        try (PreparedStatement pstmt = connection.prepareStatement("SHOW database_mode");
              ResultSet rs = pstmt.executeQuery()) {
             if (rs.next()) {
                 String mode = rs.getString(1);
                 CompatibilityMode detectedMode = CompatibilityMode.fromCode(mode);
-                log.debug("通过 SHOW db_mode 检测到模式: {}", detectedMode.getDescription());
+                log.debug("通过 SHOW database_mode 检测到模式: {}", detectedMode.getDescription());
                 return detectedMode;
             }
         } catch (SQLException e) {
-            log.debug("SHOW db_mode 命令失败，尝试其他方式: {}", e.getMessage());
+            log.debug("SHOW database_mode 命令失败，尝试其他方式: {}", e.getMessage());
         }
         
         // 方式2：查询 pg_settings 表
         try (PreparedStatement pstmt = connection.prepareStatement(
-                "SELECT setting FROM pg_settings WHERE name = 'db_mode'");
+                "SELECT setting FROM pg_settings WHERE name = 'database_mode'");
              ResultSet rs = pstmt.executeQuery()) {
             if (rs.next()) {
                 String mode = rs.getString("setting");
@@ -254,7 +254,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
         
         // 方式3：通过 current_setting 函数
         try (PreparedStatement pstmt = connection.prepareStatement(
-                "SELECT current_setting('db_mode')");
+                "SELECT current_setting('database_mode')");
              ResultSet rs = pstmt.executeQuery()) {
             if (rs.next()) {
                 String mode = rs.getString(1);
@@ -286,31 +286,51 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
      */
     private List<TableMetadata> extractTablesNative(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
         
         // KingBase 使用 sys_class 和 sys_namespace 系统表
         // 这些表是 KingBase 内部实现，不同于 PostgreSQL 的 pg_class 和 pg_namespace
-        String sql = "SELECT " +
-                     "  c.relname AS table_name, " +
-                     "  COALESCE(d.description, '') AS table_comment " +
-                     "FROM sys_class c " +
-                     "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
-                     "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
-                     "WHERE n.nspname = ? " +
-                     "  AND c.relkind = 'r' " +  // 'r' = 普通表
-                     "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast') " +
-                     "ORDER BY c.relname";
+        String sql;
+        boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
+        
+        if (hasSchemaFilter) {
+            // 指定 schema 时，只查询该 schema 的表
+            sql = "SELECT " +
+                  "  c.relname AS table_name, " +
+                  "  n.nspname AS schema_name, " +
+                  "  COALESCE(d.description, '') AS table_comment " +
+                  "FROM sys_class c " +
+                  "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
+                  "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
+                  "WHERE n.nspname = ? " +
+                  "  AND c.relkind = 'r' " +  // 'r' = 普通表
+                  "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast') " +
+                  "ORDER BY n.nspname, c.relname";
+        } else {
+            // 未指定 schema 时，查询所有非系统 schema 的表
+            sql = "SELECT " +
+                  "  c.relname AS table_name, " +
+                  "  n.nspname AS schema_name, " +
+                  "  COALESCE(d.description, '') AS table_comment " +
+                  "FROM sys_class c " +
+                  "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
+                  "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
+                  "WHERE c.relkind = 'r' " +  // 'r' = 普通表
+                  "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast', 'pg_catalog', 'pg_toast') " +
+                  "ORDER BY n.nspname, c.relname";
+        }
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
-            pstmt.setString(1, targetSchema);
+            if (hasSchemaFilter) {
+                pstmt.setString(1, schemaName);
+            }
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     TableMetadata table = TableMetadata.builder()
                             .tableName(rs.getString("table_name"))
                             .databaseName(databaseName)
-                            .schemaName(targetSchema)
+                            .schemaName(rs.getString("schema_name"))
                             .comment(rs.getString("table_comment"))
                             .build();
                     tables.add(table);
@@ -330,28 +350,47 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
      */
     private List<TableMetadata> extractTablesViaPgCatalog(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
         
-        String sql = "SELECT " +
-                     "  c.relname AS table_name, " +
-                     "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
-                     "FROM pg_catalog.pg_class c " +
-                     "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
-                     "WHERE n.nspname = ? " +
-                     "  AND c.relkind = 'r' " +
-                     "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
-                     "ORDER BY c.relname";
+        String sql;
+        boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
+        
+        if (hasSchemaFilter) {
+            // 指定 schema 时，只查询该 schema 的表
+            sql = "SELECT " +
+                  "  c.relname AS table_name, " +
+                  "  n.nspname AS schema_name, " +
+                  "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
+                  "FROM pg_catalog.pg_class c " +
+                  "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
+                  "WHERE n.nspname = ? " +
+                  "  AND c.relkind = 'r' " +
+                  "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
+                  "ORDER BY n.nspname, c.relname";
+        } else {
+            // 未指定 schema 时，查询所有非系统 schema 的表
+            sql = "SELECT " +
+                  "  c.relname AS table_name, " +
+                  "  n.nspname AS schema_name, " +
+                  "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
+                  "FROM pg_catalog.pg_class c " +
+                  "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
+                  "WHERE c.relkind = 'r' " +
+                  "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'sys_catalog', 'sys_toast') " +
+                  "ORDER BY n.nspname, c.relname";
+        }
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
-            pstmt.setString(1, targetSchema);
+            if (hasSchemaFilter) {
+                pstmt.setString(1, schemaName);
+            }
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     TableMetadata table = TableMetadata.builder()
                             .tableName(rs.getString("table_name"))
                             .databaseName(databaseName)
-                            .schemaName(targetSchema)
+                            .schemaName(rs.getString("schema_name"))
                             .comment(rs.getString("table_comment"))
                             .build();
                     tables.add(table);
