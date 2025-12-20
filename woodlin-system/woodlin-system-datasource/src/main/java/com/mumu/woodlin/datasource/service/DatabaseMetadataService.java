@@ -4,7 +4,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Properties;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,8 +33,8 @@ import com.mumu.woodlin.datasource.mapper.InfraDatasourceMapper;
  * 支持多种数据库类型的Schema、表、字段等元数据信息获取。
  * </p>
  * <p>
- * 注意：本服务使用原生JDBC连接（DriverManager）而非连接池，因为元数据提取通常是
- * 低频操作，不需要连接池的性能优化，且使用原生连接可以避免连接池管理的复杂性。
+ * 优化说明：本服务使用轻量级连接池（HikariCP）来提高元数据提取性能，
+ * 避免每次都创建新连接导致的延迟。连接池针对元数据提取场景进行了优化配置。
  * </p>
  * 
  * @author mumu
@@ -43,9 +49,18 @@ public class DatabaseMetadataService {
     private final DatabaseMetadataExtractorFactory extractorFactory = DatabaseMetadataExtractorFactory.getInstance();
     
     /**
+     * 元数据连接池缓存
+     * <p>
+     * 为每个数据源维护一个轻量级连接池，用于元数据提取操作。
+     * 连接池配置了较小的最大连接数和较短的超时时间。
+     * </p>
+     */
+    private final Map<String, HikariDataSource> metadataDataSources = new ConcurrentHashMap<>();
+    
+    /**
      * 获取数据源的完整元数据
      * <p>
-     * 注意：此方法不使用缓存，因为元数据可能会变化
+     * 使用连接池优化性能，避免每次创建连接的开销
      * </p>
      * 
      * @param datasourceCode 数据源编码
@@ -55,11 +70,12 @@ public class DatabaseMetadataService {
         log.info("获取数据源 {} 的元数据", datasourceCode);
         
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
+        HikariDataSource dataSource = getOrCreateMetadataDataSource(config);
         
-        try (Connection connection = createJdbcConnection(config)) {
+        try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             
-            // 使用Connection直接提取元数据，避免创建DataSource
+            // 使用Connection直接提取元数据
             java.sql.DatabaseMetaData metaData = connection.getMetaData();
             DatabaseMetadata metadata = DatabaseMetadata.builder()
                     .databaseName(connection.getCatalog())
@@ -83,8 +99,7 @@ public class DatabaseMetadataService {
     /**
      * 获取数据源的Schema列表
      * <p>
-     * 注意：某些数据库（如MySQL）不支持Schema概念，会返回空列表
-     * 此方法不使用缓存，因为Schema可能会变化
+     * 使用连接池优化性能
      * </p>
      * 
      * @param datasourceCode 数据源编码
@@ -94,8 +109,9 @@ public class DatabaseMetadataService {
         log.info("获取数据源 {} 的Schema列表", datasourceCode);
         
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
+        HikariDataSource dataSource = getOrCreateMetadataDataSource(config);
         
-        try (Connection connection = createJdbcConnection(config)) {
+        try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
             return extractor.extractSchemas(connection, databaseName);
@@ -109,7 +125,7 @@ public class DatabaseMetadataService {
     /**
      * 获取数据源的表列表
      * <p>
-     * 此方法不使用缓存，因为表列表可能会变化
+     * 使用连接池优化性能
      * </p>
      * 
      * @param datasourceCode 数据源编码
@@ -119,8 +135,9 @@ public class DatabaseMetadataService {
         log.info("获取数据源 {} 的表列表", datasourceCode);
         
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
+        HikariDataSource dataSource = getOrCreateMetadataDataSource(config);
         
-        try (Connection connection = createJdbcConnection(config)) {
+        try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
             String schemaName = getSchema(connection);
@@ -135,7 +152,7 @@ public class DatabaseMetadataService {
     /**
      * 获取指定表的字段列表
      * <p>
-     * 此方法不使用缓存，因为字段列表可能会变化
+     * 使用连接池优化性能
      * </p>
      * 
      * @param datasourceCode 数据源编码
@@ -146,8 +163,9 @@ public class DatabaseMetadataService {
         log.info("获取数据源 {} 表 {} 的字段列表", datasourceCode, tableName);
         
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
+        HikariDataSource dataSource = getOrCreateMetadataDataSource(config);
         
-        try (Connection connection = createJdbcConnection(config)) {
+        try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
             String schemaName = getSchema(connection);
@@ -162,14 +180,19 @@ public class DatabaseMetadataService {
     /**
      * 刷新元数据缓存
      * <p>
-     * 注意：元数据提取不再使用缓存，此方法保留用于兼容性
+     * 关闭并重新创建数据源连接池，用于处理数据源配置变更的情况
      * </p>
      * 
      * @param datasourceCode 数据源编码
      */
-    @Deprecated
     public void refreshMetadataCache(String datasourceCode) {
-        log.info("刷新数据源 {} 的元数据缓存（已废弃，元数据不再使用缓存）", datasourceCode);
+        log.info("刷新数据源 {} 的元数据缓存", datasourceCode);
+        
+        HikariDataSource dataSource = metadataDataSources.remove(datasourceCode);
+        if (dataSource != null) {
+            dataSource.close();
+            log.debug("已关闭数据源 {} 的元数据连接池", datasourceCode);
+        }
     }
     
     /**
@@ -195,28 +218,146 @@ public class DatabaseMetadataService {
     }
     
     /**
-     * 创建原生JDBC连接
+     * 获取或创建元数据连接池
      * <p>
-     * 使用DriverManager创建简单的JDBC连接，不使用连接池。
-     * 元数据提取是低频操作，不需要连接池的性能优化。
+     * 为元数据提取操作创建优化配置的连接池：
+     * - 最小连接数: 1（保持一个活跃连接以避免重复建立连接）
+     * - 最大连接数: 3（元数据提取为低并发操作）
+     * - 连接超时: 10秒（避免长时间等待）
+     * - 空闲超时: 5分钟（及时释放不用的连接）
+     * - 最大生命周期: 30分钟（定期刷新连接）
+     * </p>
+     * 
+     * @param config 数据源配置
+     * @return HikariCP数据源
+     */
+    private HikariDataSource getOrCreateMetadataDataSource(InfraDatasourceConfig config) {
+        return metadataDataSources.computeIfAbsent(config.getDatasourceCode(), code -> {
+            log.info("为数据源 {} 创建元数据连接池", code);
+            
+            try {
+                HikariConfig hikariConfig = new HikariConfig();
+                
+                // 加载驱动类
+                String driverClass = resolveDriver(config.getDriverClass(), config.getJdbcUrl());
+                hikariConfig.setDriverClassName(driverClass);
+                
+                // 基本连接信息
+                hikariConfig.setJdbcUrl(config.getJdbcUrl());
+                hikariConfig.setUsername(config.getUsername());
+                hikariConfig.setPassword(config.getPassword());
+                
+                // 连接池优化配置（针对元数据提取场景）
+                hikariConfig.setMinimumIdle(1);  // 保持至少一个空闲连接
+                hikariConfig.setMaximumPoolSize(3);  // 最大3个连接，元数据提取并发度低
+                hikariConfig.setConnectionTimeout(10000);  // 10秒连接超时，避免长时间等待
+                hikariConfig.setIdleTimeout(300000);  // 5分钟空闲超时
+                hikariConfig.setMaxLifetime(1800000);  // 30分钟最大生命周期
+                hikariConfig.setValidationTimeout(5000);  // 5秒验证超时
+                
+                // 连接池名称（便于监控和调试）
+                hikariConfig.setPoolName("MetadataPool-" + code);
+                
+                // 连接测试配置
+                hikariConfig.setConnectionTestQuery(resolveTestQuery(config));
+                
+                // 禁用自动提交（元数据查询为只读操作）
+                hikariConfig.setAutoCommit(false);
+                hikariConfig.setReadOnly(true);
+                
+                // 初始化连接池
+                HikariDataSource dataSource = new HikariDataSource(hikariConfig);
+                
+                // 验证连接可用性
+                try (Connection conn = dataSource.getConnection()) {
+                    log.info("成功创建并验证元数据连接池: {}", code);
+                }
+                
+                return dataSource;
+                
+            } catch (Exception e) {
+                log.error("创建元数据连接池失败，数据源: {}", code, e);
+                throw new BusinessException("创建元数据连接池失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 解析测试查询SQL
+     * 
+     * @param config 数据源配置
+     * @return 测试SQL
+     */
+    private String resolveTestQuery(InfraDatasourceConfig config) {
+        if (config.getTestSql() != null && !config.getTestSql().isEmpty()) {
+            return config.getTestSql();
+        }
+        
+        String databaseType = config.getDatasourceType();
+        if (databaseType != null && !databaseType.isEmpty()) {
+            String testSql = extractorFactory.getDefaultTestQuery(databaseType);
+            if (testSql != null) {
+                return testSql;
+            }
+        }
+        
+        return "SELECT 1";
+    }
+    
+    /**
+     * 清理所有元数据连接池
+     * <p>
+     * 在应用关闭时自动调用
+     * </p>
+     */
+    @PreDestroy
+    public void closeAllMetadataDataSources() {
+        log.info("关闭所有元数据连接池，共 {} 个", metadataDataSources.size());
+        metadataDataSources.values().forEach(dataSource -> {
+            try {
+                dataSource.close();
+            } catch (Exception e) {
+                log.warn("关闭元数据连接池失败", e);
+            }
+        });
+        metadataDataSources.clear();
+    }
+    
+    /**
+     * 创建原生JDBC连接（已废弃，使用连接池代替）
+     * <p>
+     * 保留此方法仅用于兼容性，新代码应使用 getOrCreateMetadataDataSource
      * </p>
      * 
      * @param config 数据源配置
      * @return JDBC连接
      * @throws SQLException SQL异常
+     * @deprecated 使用 {@link #getOrCreateMetadataDataSource(InfraDatasourceConfig)} 代替
      */
+    @Deprecated
     private Connection createJdbcConnection(InfraDatasourceConfig config) throws SQLException {
         try {
             // 加载驱动类
             String driverClass = resolveDriver(config.getDriverClass(), config.getJdbcUrl());
             Class.forName(driverClass);
             
+            // 设置连接超时属性
+            Properties props = new Properties();
+            props.setProperty("user", config.getUsername());
+            props.setProperty("password", config.getPassword());
+            props.setProperty("connectTimeout", "10000");  // 10秒连接超时
+            props.setProperty("socketTimeout", "30000");  // 30秒套接字超时
+            
             // 使用DriverManager创建原生JDBC连接
+            DriverManager.setLoginTimeout(10);  // 设置全局登录超时
             Connection connection = DriverManager.getConnection(
                     config.getJdbcUrl(),
-                    config.getUsername(),
-                    config.getPassword()
+                    props
             );
+            
+            // 设置只读模式和查询超时
+            connection.setReadOnly(true);
+            connection.setAutoCommit(false);
             
             log.debug("成功创建JDBC连接: {}", config.getJdbcUrl());
             return connection;
