@@ -1,5 +1,6 @@
 package com.mumu.woodlin.sql2api.spi.impl;
 
+import com.mumu.woodlin.common.datasource.spi.impl.OracleMetadataExtractor;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
