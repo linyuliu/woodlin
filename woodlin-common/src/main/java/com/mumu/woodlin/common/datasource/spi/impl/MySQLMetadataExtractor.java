@@ -96,24 +96,6 @@ public class MySQLMetadataExtractor extends AbstractMySQLCompatibleExtractor {
     }
     
     @Override
-    protected String getTablesQuery() {
-        return "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_TYPE, ENGINE, " +
-               "TABLE_COLLATION, CREATE_TIME, UPDATE_TIME " +
-               "FROM information_schema.TABLES " +
-               "WHERE TABLE_SCHEMA = ?";
-    }
-    
-    @Override
-    protected String getColumnsQuery() {
-        return "SELECT COLUMN_NAME, COLUMN_COMMENT, DATA_TYPE, COLUMN_TYPE, " +
-               "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
-               "IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, ORDINAL_POSITION " +
-               "FROM information_schema.COLUMNS " +
-               "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
-               "ORDER BY ORDINAL_POSITION";
-    }
-    
-    @Override
     public int getPriority() {
         return 10; // 高优先级
     }
