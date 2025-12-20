@@ -4,10 +4,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
+import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,10 +32,11 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractPostgreSQLCompatibleE
  * </ul>
  * </p>
  * <p>
- * 实现策略：
- * 1. 优先检测兼容模式，根据模式调整元数据提取策略
- * 2. 使用PostgreSQL协议作为基础，针对不同模式进行适配
- * 3. 处理不同模式下的数据类型映射差异
+ * 实现策略（2025-01更新）：
+ * 1. 使用 KingBase 原生系统表（sys_class, sys_namespace, sys_attribute, sys_type）进行元数据提取
+ * 2. 虽然 KingBase 有兼容模式，但其内部实现与真正的数据库不同，不能直接使用 MySQL/Oracle 的元数据提取方式
+ * 3. 提供 pg_catalog 作为后备方案，确保在不同 KingBase 版本中的兼容性
+ * 4. 兼容模式检测保留用于连接测试和类型映射
  * </p>
  * 
  * @author mumu
@@ -132,41 +135,81 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     }
     
     @Override
-    public List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException {
-        // 检测并设置兼容模式
-        CompatibilityMode mode = detectCompatibilityMode(connection);
-        currentMode.set(mode);
+    public List<SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException {
+        // 使用 KingBase 原生系统表提取 Schema 列表
+        List<SchemaMetadata> schemas = new ArrayList<>();
         
-        try {
-            // 根据兼容模式选择不同的提取策略
-            return switch (mode) {
-                case ORACLE -> extractTablesOracleMode(connection, databaseName, schemaName);
-                case MYSQL -> extractTablesMySQLMode(connection, databaseName, schemaName);
-                case MSSQL -> extractTablesMSSQLMode(connection, databaseName, schemaName);
-                default -> super.extractTables(connection, databaseName, schemaName);
-            };
-        } finally {
-            currentMode.remove();
+        // KingBase 使用 sys_namespace 系统表
+        String sql = "SELECT " +
+                     "  nspname AS schema_name, " +
+                     "  COALESCE(pg_catalog.obj_description(oid, 'pg_namespace'), '') AS comment " +
+                     "FROM sys_namespace " +
+                     "WHERE nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1') " +
+                     "ORDER BY nspname";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    SchemaMetadata schema = SchemaMetadata.builder()
+                            .schemaName(rs.getString("schema_name"))
+                            .databaseName(databaseName)
+                            .comment(rs.getString("comment"))
+                            .build();
+                    schemas.add(schema);
+                }
+            }
+        } catch (SQLException e) {
+            // 如果 sys_namespace 不可用，使用 pg_namespace 作为后备
+            log.warn("KingBase 原生系统表查询 Schema 失败，尝试使用 pg_namespace 作为后备: {}", e.getMessage());
+            return extractSchemasViaPgCatalog(connection, databaseName);
         }
+        
+        return schemas;
+    }
+    
+    /**
+     * 使用 pg_catalog 提取 Schema 列表（后备方案）
+     */
+    private List<SchemaMetadata> extractSchemasViaPgCatalog(Connection connection, String databaseName) throws SQLException {
+        List<SchemaMetadata> schemas = new ArrayList<>();
+        
+        String sql = "SELECT " +
+                     "  nspname AS schema_name, " +
+                     "  COALESCE(pg_catalog.obj_description(oid, 'pg_namespace'), '') AS comment " +
+                     "FROM pg_catalog.pg_namespace " +
+                     "WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1') " +
+                     "ORDER BY nspname";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    SchemaMetadata schema = SchemaMetadata.builder()
+                            .schemaName(rs.getString("schema_name"))
+                            .databaseName(databaseName)
+                            .comment(rs.getString("comment"))
+                            .build();
+                    schemas.add(schema);
+                }
+            }
+        }
+        
+        return schemas;
+    }
+    
+    @Override
+    public List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException {
+        // 使用 KingBase 原生系统表提取元数据，不依赖兼容模式
+        return extractTablesNative(connection, databaseName, schemaName);
     }
     
     @Override
     public List<ColumnMetadata> extractColumns(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
-        // 检测并设置兼容模式
-        CompatibilityMode mode = detectCompatibilityMode(connection);
-        currentMode.set(mode);
-        
-        try {
-            // 根据兼容模式选择不同的提取策略
-            return switch (mode) {
-                case ORACLE -> extractColumnsOracleMode(connection, databaseName, schemaName, tableName);
-                case MYSQL -> extractColumnsMySQLMode(connection, databaseName, schemaName, tableName);
-                case MSSQL -> extractColumnsMSSQLMode(connection, databaseName, schemaName, tableName);
-                default -> super.extractColumns(connection, databaseName, schemaName, tableName);
-            };
-        } finally {
-            currentMode.remove();
-        }
+        // 使用 KingBase 原生系统表提取元数据，不依赖兼容模式
+        return extractColumnsNative(connection, databaseName, schemaName, tableName);
     }
     
     /**
@@ -229,132 +272,283 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     }
     
     /**
-     * Oracle兼容模式下提取表列表
+     * 使用 KingBase 原生系统表提取表列表
+     * <p>
+     * KingBase 基于 PostgreSQL 开发，但其内部实现与真实的 PostgreSQL 有差异。
+     * 使用 KingBase 自己的系统表（sys_class, sys_namespace）进行元数据提取。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param schemaName Schema名称
+     * @return 表元数据列表
+     * @throws SQLException SQL异常
      */
-    private List<TableMetadata> extractTablesOracleMode(Connection connection, String databaseName, String schemaName) throws SQLException {
-        // Oracle模式下，使用 USER_TABLES 或 ALL_TABLES 视图（如果可用）
-        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName.toUpperCase() : "PUBLIC";
+    private List<TableMetadata> extractTablesNative(Connection connection, String databaseName, String schemaName) throws SQLException {
+        List<TableMetadata> tables = new ArrayList<>();
+        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
         
-        String sql = "SELECT table_name, " +
-                     "COALESCE((SELECT comments FROM user_tab_comments WHERE table_name = t.table_name), '') as comments " +
-                     "FROM user_tables t " +
-                     "WHERE UPPER(owner) = ? OR owner IS NULL " +
-                     "ORDER BY table_name";
+        // KingBase 使用 sys_class 和 sys_namespace 系统表
+        // 这些表是 KingBase 内部实现，不同于 PostgreSQL 的 pg_class 和 pg_namespace
+        String sql = "SELECT " +
+                     "  c.relname AS table_name, " +
+                     "  COALESCE(d.description, '') AS table_comment " +
+                     "FROM sys_class c " +
+                     "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
+                     "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
+                     "WHERE n.nspname = ? " +
+                     "  AND c.relkind = 'r' " +  // 'r' = 普通表
+                     "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast') " +
+                     "ORDER BY c.relname";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
             pstmt.setString(1, targetSchema);
-            // 如果Oracle模式查询失败，回退到PostgreSQL模式
+            
             try (ResultSet rs = pstmt.executeQuery()) {
-                return buildTableList(rs, databaseName, targetSchema);
+                while (rs.next()) {
+                    TableMetadata table = TableMetadata.builder()
+                            .tableName(rs.getString("table_name"))
+                            .databaseName(databaseName)
+                            .schemaName(targetSchema)
+                            .comment(rs.getString("table_comment"))
+                            .build();
+                    tables.add(table);
+                }
             }
         } catch (SQLException e) {
-            log.warn("Oracle模式查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractTables(connection, databaseName, schemaName);
+            // 如果 sys_* 系统表不可用，尝试使用 pg_* 系统表作为后备
+            log.warn("KingBase 原生系统表查询失败，尝试使用 pg_* 系统表作为后备: {}", e.getMessage());
+            return extractTablesViaPgCatalog(connection, databaseName, schemaName);
         }
-    }
-    
-    /**
-     * MySQL兼容模式下提取表列表
-     */
-    private List<TableMetadata> extractTablesMySQLMode(Connection connection, String databaseName, String schemaName) throws SQLException {
-        // MySQL模式下，使用 information_schema.tables
-        String targetDb = (databaseName != null && !databaseName.isEmpty()) ? databaseName : connection.getCatalog();
         
-        String sql = "SELECT table_name, table_comment " +
-                     "FROM information_schema.tables " +
-                     "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
-                     "ORDER BY table_name";
-        
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, targetDb);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                return buildTableList(rs, targetDb, null);
-            }
-        } catch (SQLException e) {
-            log.warn("MySQL模式查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractTables(connection, databaseName, schemaName);
-        }
-    }
-    
-    /**
-     * SQL Server兼容模式下提取表列表
-     */
-    private List<TableMetadata> extractTablesMSSQLMode(Connection connection, String databaseName, String schemaName) throws SQLException {
-        // MSSQL模式下，使用 sys.tables 视图
-        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "dbo";
-        
-        String sql = "SELECT t.name as table_name, " +
-                     "COALESCE(ep.value, '') as table_comment " +
-                     "FROM sys.tables t " +
-                     "LEFT JOIN sys.extended_properties ep ON ep.major_id = t.object_id AND ep.minor_id = 0 " +
-                     "WHERE SCHEMA_NAME(t.schema_id) = ? " +
-                     "ORDER BY t.name";
-        
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, targetSchema);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                return buildTableList(rs, databaseName, targetSchema);
-            }
-        } catch (SQLException e) {
-            log.warn("MSSQL模式查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractTables(connection, databaseName, schemaName);
-        }
-    }
-    
-    /**
-     * Oracle兼容模式下提取列信息
-     */
-    private List<ColumnMetadata> extractColumnsOracleMode(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
-        // Oracle模式使用 user_tab_columns 视图
-        try {
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        } catch (SQLException e) {
-            log.warn("Oracle模式列查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        }
-    }
-    
-    /**
-     * MySQL兼容模式下提取列信息
-     */
-    private List<ColumnMetadata> extractColumnsMySQLMode(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
-        // MySQL模式使用 information_schema.columns
-        try {
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        } catch (SQLException e) {
-            log.warn("MySQL模式列查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        }
-    }
-    
-    /**
-     * SQL Server兼容模式下提取列信息
-     */
-    private List<ColumnMetadata> extractColumnsMSSQLMode(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
-        // MSSQL模式使用 sys.columns
-        try {
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        } catch (SQLException e) {
-            log.warn("MSSQL模式列查询失败，回退到PostgreSQL模式: {}", e.getMessage());
-            return super.extractColumns(connection, databaseName, schemaName, tableName);
-        }
-    }
-    
-    /**
-     * 构建表元数据列表
-     */
-    private List<TableMetadata> buildTableList(ResultSet rs, String databaseName, String schemaName) throws SQLException {
-        List<TableMetadata> tables = new java.util.ArrayList<>();
-        while (rs.next()) {
-            TableMetadata table = TableMetadata.builder()
-                    .tableName(rs.getString(1))
-                    .databaseName(databaseName)
-                    .schemaName(schemaName)
-                    .comment(rs.getString(2))
-                    .build();
-            tables.add(table);
-        }
         return tables;
+    }
+    
+    /**
+     * 使用 pg_catalog 提取表列表（后备方案）
+     */
+    private List<TableMetadata> extractTablesViaPgCatalog(Connection connection, String databaseName, String schemaName) throws SQLException {
+        List<TableMetadata> tables = new ArrayList<>();
+        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
+        
+        String sql = "SELECT " +
+                     "  c.relname AS table_name, " +
+                     "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
+                     "FROM pg_catalog.pg_class c " +
+                     "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
+                     "WHERE n.nspname = ? " +
+                     "  AND c.relkind = 'r' " +
+                     "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
+                     "ORDER BY c.relname";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            pstmt.setString(1, targetSchema);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    TableMetadata table = TableMetadata.builder()
+                            .tableName(rs.getString("table_name"))
+                            .databaseName(databaseName)
+                            .schemaName(targetSchema)
+                            .comment(rs.getString("table_comment"))
+                            .build();
+                    tables.add(table);
+                }
+            }
+        }
+        
+        return tables;
+    }
+    
+    /**
+     * 使用 KingBase 原生系统表提取列信息
+     * <p>
+     * 直接查询 KingBase 的系统表（sys_attribute, sys_class, sys_namespace）
+     * 获取列的详细信息，不依赖兼容模式。
+     * </p>
+     * 
+     * @param connection 数据库连接
+     * @param databaseName 数据库名称
+     * @param schemaName Schema名称
+     * @param tableName 表名
+     * @return 列元数据列表
+     * @throws SQLException SQL异常
+     */
+    private List<ColumnMetadata> extractColumnsNative(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
+        List<ColumnMetadata> columns = new ArrayList<>();
+        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
+        
+        // KingBase 使用 sys_attribute 和 sys_type 系统表
+        String sql = "SELECT " +
+                     "  a.attname AS column_name, " +
+                     "  t.typname AS data_type, " +
+                     "  a.attnotnull AS not_null, " +
+                     "  a.attnum AS ordinal_position, " +
+                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS formatted_type, " +
+                     "  COALESCE(pg_catalog.col_description(c.oid, a.attnum), '') AS column_comment, " +
+                     "  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
+                     "FROM sys_attribute a " +
+                     "INNER JOIN sys_class c ON a.attrelid = c.oid " +
+                     "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
+                     "INNER JOIN sys_type t ON a.atttypid = t.oid " +
+                     "LEFT JOIN sys_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum " +
+                     "WHERE n.nspname = ? " +
+                     "  AND c.relname = ? " +
+                     "  AND a.attnum > 0 " +  // 跳过系统列
+                     "  AND NOT a.attisdropped " +  // 跳过已删除的列
+                     "ORDER BY a.attnum";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            pstmt.setString(1, targetSchema);
+            pstmt.setString(2, tableName);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String dataType = rs.getString("data_type");
+                    String columnDefault = rs.getString("column_default");
+                    boolean isAutoIncrement = columnDefault != null && 
+                                             (columnDefault.contains("nextval") || 
+                                              columnDefault.contains("seq_"));
+                    
+                    ColumnMetadata column = ColumnMetadata.builder()
+                            .columnName(rs.getString("column_name"))
+                            .tableName(tableName)
+                            .schemaName(targetSchema)
+                            .databaseName(databaseName)
+                            .dataType(dataType)
+                            .nullable(!rs.getBoolean("not_null"))
+                            .ordinalPosition(rs.getInt("ordinal_position"))
+                            .comment(rs.getString("column_comment"))
+                            .defaultValue(columnDefault)
+                            .autoIncrement(isAutoIncrement)
+                            .javaType(mapKingBaseTypeToJava(dataType))
+                            .build();
+                    
+                    columns.add(column);
+                }
+            }
+        } catch (SQLException e) {
+            // 如果 sys_* 系统表不可用，尝试使用 pg_* 系统表作为后备
+            log.warn("KingBase 原生系统表查询列失败，尝试使用 pg_* 系统表作为后备: {}", e.getMessage());
+            return extractColumnsViaPgCatalog(connection, databaseName, schemaName, tableName);
+        }
+        
+        return columns;
+    }
+    
+    /**
+     * 使用 pg_catalog 提取列信息（后备方案）
+     */
+    private List<ColumnMetadata> extractColumnsViaPgCatalog(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
+        List<ColumnMetadata> columns = new ArrayList<>();
+        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
+        
+        String sql = "SELECT " +
+                     "  a.attname AS column_name, " +
+                     "  t.typname AS data_type, " +
+                     "  a.attnotnull AS not_null, " +
+                     "  a.attnum AS ordinal_position, " +
+                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS formatted_type, " +
+                     "  COALESCE(pg_catalog.col_description(c.oid, a.attnum), '') AS column_comment, " +
+                     "  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
+                     "FROM pg_catalog.pg_attribute a " +
+                     "INNER JOIN pg_catalog.pg_class c ON a.attrelid = c.oid " +
+                     "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
+                     "INNER JOIN pg_catalog.pg_type t ON a.atttypid = t.oid " +
+                     "LEFT JOIN pg_catalog.pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum " +
+                     "WHERE n.nspname = ? " +
+                     "  AND c.relname = ? " +
+                     "  AND a.attnum > 0 " +
+                     "  AND NOT a.attisdropped " +
+                     "ORDER BY a.attnum";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            pstmt.setString(1, targetSchema);
+            pstmt.setString(2, tableName);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String dataType = rs.getString("data_type");
+                    String columnDefault = rs.getString("column_default");
+                    boolean isAutoIncrement = columnDefault != null && 
+                                             (columnDefault.contains("nextval") || 
+                                              columnDefault.contains("seq_"));
+                    
+                    ColumnMetadata column = ColumnMetadata.builder()
+                            .columnName(rs.getString("column_name"))
+                            .tableName(tableName)
+                            .schemaName(targetSchema)
+                            .databaseName(databaseName)
+                            .dataType(dataType)
+                            .nullable(!rs.getBoolean("not_null"))
+                            .ordinalPosition(rs.getInt("ordinal_position"))
+                            .comment(rs.getString("column_comment"))
+                            .defaultValue(columnDefault)
+                            .autoIncrement(isAutoIncrement)
+                            .javaType(mapKingBaseTypeToJava(dataType))
+                            .build();
+                    
+                    columns.add(column);
+                }
+            }
+        }
+        
+        return columns;
+    }
+    
+    /**
+     * 将 KingBase 数据类型映射到 Java 类型
+     * <p>
+     * KingBase 的类型系统基于 PostgreSQL，但在不同兼容模式下可能有所不同。
+     * 这里提供一个统一的类型映射，不依赖兼容模式。
+     * </p>
+     * 
+     * @param kingbaseType KingBase 数据类型
+     * @return Java 类型
+     */
+    private String mapKingBaseTypeToJava(String kingbaseType) {
+        if (kingbaseType == null) {
+            return "Object";
+        }
+        
+        String type = kingbaseType.toLowerCase();
+        
+        // 使用父类的类型映射
+        String javaType = typeMapping.get(type);
+        if (javaType != null) {
+            return javaType;
+        }
+        
+        // KingBase 特有类型映射（不在父类映射中）
+        return switch (type) {
+            // 数字类型
+            case "number" -> "BigDecimal";
+            case "tinyint" -> "Byte";
+            case "mediumint" -> "Integer";
+            
+            // 字符类型
+            case "varchar2", "nvarchar2", "nvarchar" -> "String";
+            case "nchar" -> "String";
+            case "clob", "ntext", "longtext", "mediumtext", "tinytext" -> "String";
+            
+            // 二进制类型
+            case "blob", "raw", "image" -> "byte[]";
+            
+            // 日期时间类型
+            case "datetime" -> "LocalDateTime";
+            
+            // 金额类型
+            case "money", "smallmoney" -> "BigDecimal";
+            
+            // 唯一标识符
+            case "uniqueidentifier" -> "UUID";
+            
+            default -> "Object";
+        };
     }
     
     @Override
