@@ -92,44 +92,6 @@ public class MySQL8MetadataExtractor extends AbstractMySQLCompatibleExtractor {
     }
     
     @Override
-    protected String getTablesQuery() {
-        // MySQL 8.x 可以获取更多表信息
-        return "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_TYPE, ENGINE, " +
-               "TABLE_COLLATION, CREATE_TIME, UPDATE_TIME, TABLE_ROWS " +
-               "FROM information_schema.TABLES " +
-               "WHERE TABLE_SCHEMA = ?";
-    }
-    
-    @Override
-    protected String getColumnsQuery() {
-        // MySQL 8.x 的列查询，包括 GENERATION_EXPRESSION 用于生成列
-        // 注意：MySQL 8.0.13+ 支持 IS_VISIBLE 列
-        return "SELECT COLUMN_NAME, COLUMN_COMMENT, DATA_TYPE, COLUMN_TYPE, " +
-               "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
-               "IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, ORDINAL_POSITION, " +
-               "GENERATION_EXPRESSION, SRS_ID " +
-               "FROM information_schema.COLUMNS " +
-               "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
-               "ORDER BY ORDINAL_POSITION";
-    }
-    
-    /**
-     * MySQL 8.0.13+ 支持查询不可见列
-     */
-    protected String getColumnsQueryWithVisibility() {
-        return "SELECT c.COLUMN_NAME, c.COLUMN_COMMENT, c.DATA_TYPE, c.COLUMN_TYPE, " +
-               "c.CHARACTER_MAXIMUM_LENGTH, c.NUMERIC_PRECISION, c.NUMERIC_SCALE, " +
-               "c.IS_NULLABLE, c.COLUMN_DEFAULT, c.COLUMN_KEY, c.EXTRA, c.ORDINAL_POSITION, " +
-               "c.GENERATION_EXPRESSION, c.SRS_ID, " +
-               "COALESCE((SELECT 'NO' FROM information_schema.COLUMNS ic " +
-               "WHERE ic.TABLE_SCHEMA = c.TABLE_SCHEMA AND ic.TABLE_NAME = c.TABLE_NAME " +
-               "AND ic.COLUMN_NAME = c.COLUMN_NAME AND ic.EXTRA LIKE '%INVISIBLE%'), 'YES') AS IS_VISIBLE " +
-               "FROM information_schema.COLUMNS c " +
-               "WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ? " +
-               "ORDER BY c.ORDINAL_POSITION";
-    }
-    
-    @Override
     public int getPriority() {
         // 比通用 MySQL 提取器优先级更高，因为它是版本特定的
         return 5;

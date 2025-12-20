@@ -344,7 +344,9 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      * 获取查询表列表的SQL，子类可覆盖以支持不同版本
      */
     protected String getTablesQuery() {
-        return "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_TYPE " +
+        // 基础查询，MySQL特定的提取器会覆盖以添加更多字段
+        return "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_TYPE, ENGINE, " +
+               "TABLE_COLLATION, CREATE_TIME, UPDATE_TIME " +
                "FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?";
     }
 
@@ -352,12 +354,50 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      * 构建表元数据
      */
     protected TableMetadata buildTableMetadata(ResultSet rs, String databaseName) throws SQLException {
-        return TableMetadata.builder()
+        TableMetadata.TableMetadataBuilder builder = TableMetadata.builder()
                 .tableName(rs.getString("TABLE_NAME"))
                 .databaseName(databaseName)
                 .comment(rs.getString("TABLE_COMMENT"))
-                .tableType(rs.getString("TABLE_TYPE"))
-                .build();
+                .tableType(rs.getString("TABLE_TYPE"));
+        
+        // Try to populate optional fields if available in the result set
+        try {
+            String engine = rs.getString("ENGINE");
+            if (engine != null) {
+                builder.engine(engine);
+            }
+        } catch (SQLException e) {
+            // Column might not exist, ignore
+        }
+        
+        try {
+            String collation = rs.getString("TABLE_COLLATION");
+            if (collation != null) {
+                builder.collation(collation);
+            }
+        } catch (SQLException e) {
+            // Column might not exist, ignore
+        }
+        
+        try {
+            String createTime = rs.getString("CREATE_TIME");
+            if (createTime != null) {
+                builder.createTime(createTime);
+            }
+        } catch (SQLException e) {
+            // Column might not exist, ignore
+        }
+        
+        try {
+            String updateTime = rs.getString("UPDATE_TIME");
+            if (updateTime != null) {
+                builder.updateTime(updateTime);
+            }
+        } catch (SQLException e) {
+            // Column might not exist, ignore
+        }
+        
+        return builder.build();
     }
 
     @Override
@@ -567,7 +607,8 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      * 获取查询列信息的SQL，子类可覆盖以支持不同版本
      */
     protected String getColumnsQuery() {
-        return "SELECT COLUMN_NAME, COLUMN_COMMENT, DATA_TYPE, " +
+        return "SELECT COLUMN_NAME, COLUMN_COMMENT, DATA_TYPE, COLUMN_TYPE, " +
+               "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
                "IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, ORDINAL_POSITION " +
                "FROM information_schema.COLUMNS " +
                "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION";

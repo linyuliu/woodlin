@@ -98,26 +98,6 @@ public class MySQL5MetadataExtractor extends AbstractMySQLCompatibleExtractor {
     }
     
     @Override
-    protected String getTablesQuery() {
-        // MySQL 5.x 的表查询（与 8.x 相同，但为了清晰起见单独定义）
-        return "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_TYPE, ENGINE, " +
-               "TABLE_COLLATION, CREATE_TIME, UPDATE_TIME " +
-               "FROM information_schema.TABLES " +
-               "WHERE TABLE_SCHEMA = ?";
-    }
-    
-    @Override
-    protected String getColumnsQuery() {
-        // MySQL 5.x 的列查询
-        return "SELECT COLUMN_NAME, COLUMN_COMMENT, DATA_TYPE, COLUMN_TYPE, " +
-               "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
-               "IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, ORDINAL_POSITION " +
-               "FROM information_schema.COLUMNS " +
-               "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
-               "ORDER BY ORDINAL_POSITION";
-    }
-    
-    @Override
     public int getPriority() {
         // 比通用 MySQL 提取器优先级更高，因为它是版本特定的
         return 5;
