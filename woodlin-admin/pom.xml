@@ -65,10 +65,6 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-generator</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.mumu</groupId>
-            <artifactId>woodlin-system-sql2api</artifactId>
-        </dependency>
         <!-- Temporarily disabled due to Kotlin compilation errors in ETL module -->
         <!--
         <dependency>
@@ -77,6 +73,12 @@
             <version>${woodlin.version}</version>
         </dependency>
         -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-datasource</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
 
         <!-- Spring Boot Starter -->
         <dependency>
