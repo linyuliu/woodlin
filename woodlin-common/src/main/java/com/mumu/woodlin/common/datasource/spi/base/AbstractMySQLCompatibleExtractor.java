@@ -527,7 +527,15 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
 
     /**
      * 从列类型中解析列大小/长度
-     * 例如: varchar(255) -> 255, int(11) -> 11, decimal(10,2) -> 10, text -> null
+     * <p>
+     * 对于不同类型返回不同含义的值：
+     * <ul>
+     *   <li>字符串类型（varchar, char）：返回字符长度，如 varchar(255) -> 255</li>
+     *   <li>整数类型（int, bigint）：返回显示宽度，如 int(11) -> 11</li>
+     *   <li>小数类型（decimal, numeric）：返回精度（总位数），如 decimal(10,2) -> 10</li>
+     *   <li>无大小类型（text, datetime）：返回 null</li>
+     * </ul>
+     * </p>
      *
      * @param columnType 完整列类型，如 "varchar(255)", "int(11)", "decimal(10,2)"
      * @param dataType 基础数据类型
