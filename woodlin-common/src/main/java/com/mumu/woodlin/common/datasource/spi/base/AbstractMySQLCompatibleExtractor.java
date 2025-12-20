@@ -256,36 +256,38 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         // 使用 SHOW TABLE STATUS 获取表的详细信息（包括注释、引擎等）
         String sql = "SHOW TABLE STATUS FROM `" + escapeSqlIdentifier(databaseName) + "`";
 
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String tableName = rs.getString("Name");
-                String tableComment = rs.getString("Comment");
-                String engine = rs.getString("Engine");
-                String collation = rs.getString("Collation");
-                String createTime = rs.getString("Create_time");
-                String updateTime = rs.getString("Update_time");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.setQueryTimeout(30);  // 30秒查询超时
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String tableName = rs.getString("Name");
+                    String tableComment = rs.getString("Comment");
+                    String engine = rs.getString("Engine");
+                    String collation = rs.getString("Collation");
+                    String createTime = rs.getString("Create_time");
+                    String updateTime = rs.getString("Update_time");
 
-                // 判断表类型：如果Engine为null，可能是VIEW
-                String tableType = (engine != null) ? "BASE TABLE" : "VIEW";
+                    // 判断表类型：如果Engine为null，可能是VIEW
+                    String tableType = (engine != null) ? "BASE TABLE" : "VIEW";
 
-                TableMetadata table = TableMetadata.builder()
-                        .tableName(tableName)
-                        .databaseName(databaseName)
-                        .comment(tableComment)
-                        .tableType(tableType)
-                        .engine(engine)
-                        .collation(collation)
-                        .createTime(createTime)
-                        .updateTime(updateTime)
-                        .build();
+                    TableMetadata table = TableMetadata.builder()
+                            .tableName(tableName)
+                            .databaseName(databaseName)
+                            .comment(tableComment)
+                            .tableType(tableType)
+                            .engine(engine)
+                            .collation(collation)
+                            .createTime(createTime)
+                            .updateTime(updateTime)
+                            .build();
 
-                // 提取列信息，同时获取主键（主键信息在SHOW FULL COLUMNS结果的Key字段中）
-                List<ColumnMetadata> columns = extractColumnsNative(connection, databaseName, tableName, version);
-                table.setColumns(columns);
-                // 从列信息中找出主键列
-                table.setPrimaryKey(findPrimaryKeyFromColumns(columns));
-                tables.add(table);
+                    // 提取列信息，同时获取主键（主键信息在SHOW FULL COLUMNS结果的Key字段中）
+                    List<ColumnMetadata> columns = extractColumnsNative(connection, databaseName, tableName, version);
+                    table.setColumns(columns);
+                    // 从列信息中找出主键列
+                    table.setPrimaryKey(findPrimaryKeyFromColumns(columns));
+                    tables.add(table);
+                }
             }
         }
 
@@ -325,6 +327,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         String sql = getTablesQuery();
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
 
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -432,10 +435,11 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         // 使用 SHOW FULL COLUMNS 获取列的详细信息（包括注释）
         String sql = "SHOW FULL COLUMNS FROM `" + escapeSqlIdentifier(tableName) + "` FROM `" + escapeSqlIdentifier(databaseName) + "`";
 
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            int ordinalPosition = 1;
-            while (rs.next()) {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.setQueryTimeout(30);  // 30秒查询超时
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                int ordinalPosition = 1;
+                while (rs.next()) {
                 String columnName = rs.getString("Field");
                 String columnType = rs.getString("Type");
                 String dataType = parseDataType(columnType);
@@ -472,6 +476,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                 columns.add(column);
             }
         }
+    }
 
         return columns;
     }
@@ -490,6 +495,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         String sql = getColumnsQuery();
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, tableName);
 
@@ -686,6 +692,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
         String sql = "SHOW TABLE STATUS FROM `" + escapeSqlIdentifier(databaseName) + "` LIKE ?";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, tableName);
 
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -711,6 +718,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                      "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, tableName);
 
@@ -748,10 +756,12 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
     protected String findPrimaryKeyNative(Connection connection, String databaseName, String tableName) throws SQLException {
         String sql = "SHOW KEYS FROM `" + escapeSqlIdentifier(tableName) + "` FROM `" + escapeSqlIdentifier(databaseName) + "` WHERE Key_name = 'PRIMARY'";
 
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
-                return rs.getString("Column_name");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.setQueryTimeout(10);  // 10秒查询超时（主键查询通常很快）
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                if (rs.next()) {
+                    return rs.getString("Column_name");
+                }
             }
         }
         return null;
@@ -771,6 +781,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                      "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_KEY = 'PRI' LIMIT 1";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, tableName);
 
