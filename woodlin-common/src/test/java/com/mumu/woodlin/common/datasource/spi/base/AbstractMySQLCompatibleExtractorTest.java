@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.impl.MySQLMetadataExtractor;
 
 /**
@@ -68,7 +69,7 @@ class AbstractMySQLCompatibleExtractorTest {
     
     @Test
     void testGetDatabaseType() {
-        assertEquals("MySQL", extractor.getDatabaseType());
+        assertEquals(DatabaseType.MYSQL, extractor.getDatabaseType());
     }
     
     @Test
@@ -102,6 +103,43 @@ class AbstractMySQLCompatibleExtractorTest {
         assertEquals("bigint", extractor.parseDataType("bigint(20) unsigned"));
         assertEquals("text", extractor.parseDataType("text"));
         assertNull(extractor.parseDataType(null));
+    }
+    
+    @Test
+    void testParseColumnSize() {
+        // String types
+        assertEquals(255, extractor.parseColumnSize("varchar(255)", "varchar"));
+        assertEquals(100, extractor.parseColumnSize("char(100)", "char"));
+        
+        // Numeric types with length
+        assertEquals(11, extractor.parseColumnSize("int(11)", "int"));
+        assertEquals(20, extractor.parseColumnSize("bigint(20)", "bigint"));
+        
+        // Decimal types - should return precision
+        assertEquals(10, extractor.parseColumnSize("decimal(10,2)", "decimal"));
+        assertEquals(15, extractor.parseColumnSize("decimal(15,4)", "decimal"));
+        
+        // Types without size
+        assertNull(extractor.parseColumnSize("text", "text"));
+        assertNull(extractor.parseColumnSize("datetime", "datetime"));
+        assertNull(extractor.parseColumnSize(null, null));
+    }
+    
+    @Test
+    void testParseDecimalDigits() {
+        // Decimal types with scale
+        assertEquals(2, extractor.parseDecimalDigits("decimal(10,2)"));
+        assertEquals(4, extractor.parseDecimalDigits("decimal(15,4)"));
+        assertEquals(0, extractor.parseDecimalDigits("decimal(10,0)"));
+        
+        // Decimal types without scale
+        assertNull(extractor.parseDecimalDigits("decimal(10)"));
+        
+        // Non-decimal types
+        assertNull(extractor.parseDecimalDigits("varchar(255)"));
+        assertNull(extractor.parseDecimalDigits("int(11)"));
+        assertNull(extractor.parseDecimalDigits("text"));
+        assertNull(extractor.parseDecimalDigits(null));
     }
     
     @Test
