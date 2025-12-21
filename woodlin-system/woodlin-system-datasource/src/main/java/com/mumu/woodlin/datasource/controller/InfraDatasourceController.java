@@ -38,7 +38,7 @@ import lombok.RequiredArgsConstructor;
  * 提供数据源的完整生命周期管理，包括增删改查、连接测试等功能。
  * 该控制器是平台级基础设施能力，为sql2api、ETL、报表等业务模块提供统一的数据源管理入口。
  * </p>
- * 
+ *
  * @author mumu
  * @since 1.0.0
  */
@@ -54,7 +54,7 @@ public class InfraDatasourceController {
 
     /**
      * 查询所有数据源列表
-     * 
+     *
      * @return 数据源配置列表
      */
     @GetMapping
@@ -65,7 +65,7 @@ public class InfraDatasourceController {
 
     /**
      * 根据数据源编码查询详情
-     * 
+     *
      * @param code 数据源唯一编码
      * @return 数据源配置详情
      */
@@ -81,7 +81,7 @@ public class InfraDatasourceController {
 
     /**
      * 创建新数据源
-     * 
+     *
      * @param request 数据源配置信息
      * @return 操作结果
      */
@@ -96,7 +96,7 @@ public class InfraDatasourceController {
 
     /**
      * 更新数据源配置
-     * 
+     *
      * @param request 数据源配置信息
      * @return 操作结果
      */
@@ -111,7 +111,7 @@ public class InfraDatasourceController {
 
     /**
      * 删除数据源
-     * 
+     *
      * @param code 数据源唯一编码
      * @return 操作结果
      */
@@ -126,7 +126,7 @@ public class InfraDatasourceController {
 
     /**
      * 测试数据源连接
-     * 
+     *
      * @param request 数据源配置信息
      * @return 测试结果
      */
@@ -148,7 +148,7 @@ public class InfraDatasourceController {
      * <p>
      * 包括数据库基本信息、版本信息、字符集等完整元数据
      * </p>
-     * 
+     *
      * @param code 数据源唯一编码
      * @return 数据库元数据
      */
@@ -165,7 +165,7 @@ public class InfraDatasourceController {
      * <p>
      * 注意：某些数据库（如MySQL）不支持Schema概念，会返回空列表或默认值
      * </p>
-     * 
+     *
      * @param code 数据源唯一编码
      * @return Schema列表
      */
@@ -179,7 +179,7 @@ public class InfraDatasourceController {
 
     /**
      * 获取数据源的表列表
-     * 
+     *
      * @param code 数据源唯一编码
      * @return 表元数据列表
      */
@@ -187,13 +187,15 @@ public class InfraDatasourceController {
     @Operation(summary = "获取表列表", description = "获取数据源中所有的表信息，包括表名、表类型、注释等")
     public R<List<TableMetadata>> tables(
             @Parameter(description = "数据源唯一编码", required = true)
-            @RequestParam("code") String code) {
-        return R.ok(metadataService.getTables(code));
+            @RequestParam(name ="code") String code,
+            @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
+            @RequestParam(name = "schemaName", required = false) String schemaName) {
+        return R.ok(metadataService.getTables(code,schemaName));
     }
 
     /**
      * 获取指定表的字段列表
-     * 
+     *
      * @param code 数据源唯一编码
      * @param table 表名
      * @return 字段元数据列表
@@ -203,14 +205,16 @@ public class InfraDatasourceController {
     public R<List<ColumnMetadata>> columns(
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code,
-            @Parameter(description = "表名", required = true)
+            @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
+            @RequestParam("schemaName") String schemaName,
+            @Parameter(description = "表名", required = false)
             @RequestParam("table") String table) {
-        return R.ok(metadataService.getColumns(code, table));
+        return R.ok(metadataService.getColumns(code,schemaName, table));
     }
 
     /**
      * 保存或更新数据源配置
-     * 
+     *
      * @param request 数据源配置请求
      * @param isUpdate 是否为更新操作
      */
@@ -218,14 +222,14 @@ public class InfraDatasourceController {
         QueryWrapper<InfraDatasourceConfig> wrapper = new QueryWrapper<InfraDatasourceConfig>()
                 .eq("datasource_code", request.getDatasourceCode());
         InfraDatasourceConfig exist = datasourceMapper.selectOne(wrapper);
-        
+
         if (!isUpdate && exist != null) {
             throw new BusinessException("数据源编码已存在");
         }
         if (isUpdate && exist == null) {
             throw new BusinessException("数据源不存在，无法更新");
         }
-        
+
         InfraDatasourceConfig record = exist == null ? new InfraDatasourceConfig() : exist;
         record.setDatasourceCode(request.getDatasourceCode());
         record.setDatasourceName(request.getDatasourceName());
@@ -234,7 +238,7 @@ public class InfraDatasourceController {
         record.setJdbcUrl(request.getJdbcUrl());
         record.setUsername(request.getUsername());
         record.setPassword(request.getPassword());
-        record.setTestSql(StrUtil.emptyToDefault(request.getTestSql(), 
+        record.setTestSql(StrUtil.emptyToDefault(request.getTestSql(),
                 datasourceService.defaultTestQuery(request.getDatasourceType())));
         record.setStatus(request.getStatus() == null ? 1 : request.getStatus());
         record.setOwner(request.getOwner());

@@ -32,24 +32,24 @@ import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
  *   <li>PostgreSQL 14+: MULTIRANGE类型支持</li>
  * </ul>
  * </p>
- * 
+ *
  * @author mumu
  * @since 2025-01-04
  */
 @Slf4j
 public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseMetadataExtractor {
-    
+
     /** 基础类型映射 */
     protected Map<String, String> typeMapping = new HashMap<>();
-    
+
     /** 版本特定的类型映射，key为最低版本号 */
     protected Map<String, Map<String, String>> versionSpecificTypeMappings = new HashMap<>();
-    
+
     public AbstractPostgreSQLCompatibleExtractor() {
         initializeDefaultTypeMapping();
         initializeVersionSpecificMappings();
     }
-    
+
     /**
      * 初始化默认类型映射
      */
@@ -71,7 +71,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         typeMapping.put("serial", "Integer");
         typeMapping.put("bigserial", "Long");
         typeMapping.put("smallserial", "Short");
-        
+
         // 字符串类型
         typeMapping.put("character varying", "String");
         typeMapping.put("varchar", "String");
@@ -79,7 +79,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         typeMapping.put("char", "String");
         typeMapping.put("text", "String");
         typeMapping.put("name", "String");
-        
+
         // 日期时间类型
         typeMapping.put("date", "LocalDate");
         typeMapping.put("time", "LocalTime");
@@ -89,30 +89,30 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         typeMapping.put("timestamp without time zone", "LocalDateTime");
         typeMapping.put("timestamp with time zone", "OffsetDateTime");
         typeMapping.put("interval", "String");
-        
+
         // 布尔类型
         typeMapping.put("boolean", "Boolean");
         typeMapping.put("bool", "Boolean");
-        
+
         // 二进制类型
         typeMapping.put("bytea", "byte[]");
-        
+
         // UUID类型
         typeMapping.put("uuid", "UUID");
-        
+
         // 网络类型
         typeMapping.put("inet", "String");
         typeMapping.put("cidr", "String");
         typeMapping.put("macaddr", "String");
         typeMapping.put("macaddr8", "String");
-        
+
         // JSON类型
         typeMapping.put("json", "String");
         typeMapping.put("jsonb", "String");
-        
+
         // XML类型
         typeMapping.put("xml", "String");
-        
+
         // 数组类型 (简化处理)
         typeMapping.put("array", "Object[]");
         typeMapping.put("_int4", "Integer[]");
@@ -120,7 +120,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         typeMapping.put("_text", "String[]");
         typeMapping.put("_varchar", "String[]");
     }
-    
+
     /**
      * 初始化版本特定的类型映射
      * 子类可覆盖此方法添加版本特定映射
@@ -129,11 +129,11 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         // PostgreSQL 10+ 支持 identity column
         Map<String, String> pg10Mappings = new HashMap<>();
         versionSpecificTypeMappings.put("10", pg10Mappings);
-        
+
         // PostgreSQL 12+ JSON路径查询增强
         Map<String, String> pg12Mappings = new HashMap<>();
         versionSpecificTypeMappings.put("12", pg12Mappings);
-        
+
         // PostgreSQL 14+ MULTIRANGE类型
         Map<String, String> pg14Mappings = new HashMap<>();
         pg14Mappings.put("int4multirange", "String");
@@ -144,19 +144,21 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         pg14Mappings.put("tstzmultirange", "String");
         versionSpecificTypeMappings.put("14", pg14Mappings);
     }
-    
+
     /**
      * 获取数据库版本信息
      */
     protected String getDatabaseVersion(Connection connection) throws SQLException {
         return connection.getMetaData().getDatabaseProductVersion();
     }
-    
+
     /**
      * 解析版本号中的主版本号
      */
     protected int getMajorVersion(String version) {
-        if (version == null) return 0;
+        if (version == null) {
+            return 0;
+        }
         try {
             String[] parts = version.split("\\.");
             return Integer.parseInt(parts[0].replaceAll("\\D.*", ""));
@@ -164,12 +166,14 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
             return 0;
         }
     }
-    
+
     /**
      * 解析版本号中的次版本号
      */
     protected int getMinorVersion(String version) {
-        if (version == null) return 0;
+        if (version == null) {
+            return 0;
+        }
         try {
             String[] parts = version.split("\\.");
             if (parts.length > 1) {
@@ -180,24 +184,24 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return 0;
     }
-    
+
     @Override
     public String getDefaultDriverClass() {
         return "org.postgresql.Driver";
     }
-    
+
     @Override
     public String getDefaultTestQuery() {
         return "SELECT 1";
     }
-    
+
     @Override
     public DatabaseMetadata extractDatabaseMetadata(DataSource dataSource) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
             String databaseName = connection.getCatalog();
             String version = getDatabaseVersion(connection);
-            
+
             DatabaseMetadata dbMetadata = DatabaseMetadata.builder()
                     .databaseName(databaseName)
                     .databaseProductName(metaData.getDatabaseProductName())
@@ -208,24 +212,24 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                     .driverVersion(metaData.getDriverVersion())
                     .supportsSchemas(true)
                     .build();
-            
+
             extractCharsetInfo(connection, databaseName, dbMetadata);
             return dbMetadata;
         }
     }
-    
+
     /**
      * 提取字符集信息，子类可覆盖
      */
     protected void extractCharsetInfo(Connection connection, String databaseName, DatabaseMetadata dbMetadata) throws SQLException {
         // 默认实现，子类可覆盖
     }
-    
+
     @Override
     public List<SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException {
         List<SchemaMetadata> schemas = new ArrayList<>();
         String sql = getSchemasQuery();
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);  // 30秒查询超时
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -240,7 +244,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return schemas;
     }
-    
+
     /**
      * 获取查询Schema列表的SQL
      */
@@ -251,18 +255,18 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
                "ORDER BY n.nspname";
     }
-    
+
     @Override
     public List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
         String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
         String sql = getTablesQuery();
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, targetSchema);
-            
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     TableMetadata table = buildTableMetadata(rs, databaseName, targetSchema);
@@ -274,7 +278,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return tables;
     }
-    
+
     /**
      * 获取查询表列表的SQL
      */
@@ -284,7 +288,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                "LEFT JOIN pg_catalog.pg_class pgc ON pgc.relname = t.table_name " +
                "WHERE t.table_catalog = ? AND t.table_schema = ?";
     }
-    
+
     /**
      * 构建表元数据
      */
@@ -296,19 +300,19 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                 .comment(rs.getString("comment"))
                 .build();
     }
-    
+
     @Override
     public List<ColumnMetadata> extractColumns(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
         List<ColumnMetadata> columns = new ArrayList<>();
         String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
         String sql = getColumnsQuery();
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);  // 30秒查询超时
             pstmt.setString(1, databaseName);
             pstmt.setString(2, targetSchema);
             pstmt.setString(3, tableName);
-            
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 String version = getDatabaseVersion(connection);
                 while (rs.next()) {
@@ -318,7 +322,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return columns;
     }
-    
+
     /**
      * 获取查询列信息的SQL
      */
@@ -331,7 +335,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                "WHERE c.table_catalog = ? AND c.table_schema = ? AND c.table_name = ? " +
                "ORDER BY c.ordinal_position";
     }
-    
+
     /**
      * 构建列元数据
      */
@@ -339,7 +343,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         String dataType = rs.getString("data_type");
         String columnDefault = rs.getString("column_default");
         boolean isAutoIncrement = columnDefault != null && columnDefault.contains("nextval");
-        
+
         return ColumnMetadata.builder()
                 .columnName(rs.getString("column_name"))
                 .tableName(tableName)
@@ -354,7 +358,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                 .javaType(mapToJavaType(dataType, version))
                 .build();
     }
-    
+
     @Override
     public String getTableComment(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
         String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
@@ -362,12 +366,12 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                      "FROM pg_catalog.pg_class pgc " +
                      "JOIN pg_catalog.pg_namespace pgn ON pgn.oid = pgc.relnamespace " +
                      "WHERE pgc.relname = ? AND pgn.nspname = ?";
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, tableName);
             pstmt.setString(2, targetSchema);
-            
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getString("comment");
@@ -376,7 +380,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return null;
     }
-    
+
     /**
      * 查找表的主键
      */
@@ -385,12 +389,12 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                      "FROM pg_index i " +
                      "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) " +
                      "WHERE i.indrelid = (? || '.' || ?)::regclass AND i.indisprimary LIMIT 1";
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(10);  // 10秒查询超时
             pstmt.setString(1, schemaName);
             pstmt.setString(2, tableName);
-            
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getString("column_name");
@@ -402,48 +406,58 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         }
         return null;
     }
-    
+
     /**
      * 将SQL类型映射到Java类型，支持版本特定映射
      */
     protected String mapToJavaType(String sqlType, String version) {
-        if (sqlType == null) return "Object";
+        if (sqlType == null) {
+            return "Object";
+        }
         String type = sqlType.toLowerCase();
-        
+
         // 首先检查版本特定映射
         for (Map.Entry<String, Map<String, String>> entry : versionSpecificTypeMappings.entrySet()) {
             if (isVersionGreaterOrEqual(version, entry.getKey())) {
                 String javaType = entry.getValue().get(type);
-                if (javaType != null) return javaType;
+                if (javaType != null) {
+                    return javaType;
+                }
             }
         }
-        
+
         // 然后使用默认映射
         return typeMapping.getOrDefault(type, "Object");
     }
-    
+
     /**
      * 比较版本号
      */
     protected boolean isVersionGreaterOrEqual(String currentVersion, String requiredVersion) {
-        if (currentVersion == null || requiredVersion == null) return false;
-        
+        if (currentVersion == null || requiredVersion == null) {
+            return false;
+        }
+
         try {
             String[] current = currentVersion.split("\\.");
             String[] required = requiredVersion.split("\\.");
-            
+
             for (int i = 0; i < Math.min(current.length, required.length); i++) {
                 int c = Integer.parseInt(current[i].replaceAll("\\D.*", ""));
                 int r = Integer.parseInt(required[i].replaceAll("\\D.*", ""));
-                if (c > r) return true;
-                if (c < r) return false;
+                if (c > r) {
+                    return true;
+                }
+                if (c < r) {
+                    return false;
+                }
             }
             return true;
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     @Override
     public int getPriority() {
         return 100;

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Properties;
 
+import cn.hutool.core.util.StrUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
@@ -81,7 +82,7 @@ public class DatabaseMetadataService {
             // 使用Connection直接提取元数据
             java.sql.DatabaseMetaData metaData = connection.getMetaData();
             String databaseName = connection.getCatalog();
-            
+
             DatabaseMetadata metadata = DatabaseMetadata.builder()
                     .databaseName(databaseName)
                     .databaseProductName(metaData.getDatabaseProductName())
@@ -95,7 +96,7 @@ public class DatabaseMetadataService {
 
             // 提取字符集和排序规则信息
             extractCharsetAndCollation(connection, metadata);
-            
+
             // 如果支持Schema，提取Schema列表
             if (Boolean.TRUE.equals(metadata.getSupportsSchemas())) {
                 try {
@@ -113,7 +114,7 @@ public class DatabaseMetadataService {
             throw new BusinessException("获取数据库元数据失败: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * 提取字符集和排序规则信息
      * <p>
@@ -127,7 +128,7 @@ public class DatabaseMetadataService {
     private void extractCharsetAndCollation(Connection connection, DatabaseMetadata metadata) {
         try {
             String productName = cn.hutool.core.util.StrUtil.nullToEmpty(metadata.getDatabaseProductName()).toLowerCase();
-            
+
             // MySQL及其兼容数据库（MariaDB、TiDB等）
             if (cn.hutool.core.util.StrUtil.containsAny(productName, "mysql", "mariadb", "tidb", "oceanbase")) {
                 try (Statement stmt = connection.createStatement();
@@ -137,7 +138,7 @@ public class DatabaseMetadataService {
                         metadata.setCollation(rs.getString("collation"));
                     }
                 }
-            } 
+            }
             // PostgreSQL及其兼容数据库
             else if (cn.hutool.core.util.StrUtil.containsAny(productName, "postgresql", "opengauss", "kingbase", "gaussdb", "vastbase")) {
                 try (Statement stmt = connection.createStatement();
@@ -207,7 +208,7 @@ public class DatabaseMetadataService {
      * @param datasourceCode 数据源编码
      * @return 表列表
      */
-    public List<TableMetadata> getTables(String datasourceCode) {
+    public List<TableMetadata> getTables(String datasourceCode,String schemaName) {
         log.info("获取数据源 {} 的表列表", datasourceCode);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -216,7 +217,7 @@ public class DatabaseMetadataService {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
-            String schemaName = getSchema(connection);
+            schemaName = StrUtil.emptyToDefault(schemaName,getSchema(connection)) ;
             return extractor.extractTables(connection, databaseName, schemaName);
 
         } catch (SQLException e) {
@@ -235,7 +236,7 @@ public class DatabaseMetadataService {
      * @param tableName 表名
      * @return 字段列表
      */
-    public List<ColumnMetadata> getColumns(String datasourceCode, String tableName) {
+    public List<ColumnMetadata> getColumns(String datasourceCode,String schemaName, String tableName) {
         log.info("获取数据源 {} 表 {} 的字段列表", datasourceCode, tableName);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -244,7 +245,7 @@ public class DatabaseMetadataService {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
-            String schemaName = getSchema(connection);
+            schemaName = StrUtil.emptyToDefault(schemaName,getSchema(connection)) ;
             return extractor.extractColumns(connection, databaseName, schemaName, tableName);
 
         } catch (SQLException e) {

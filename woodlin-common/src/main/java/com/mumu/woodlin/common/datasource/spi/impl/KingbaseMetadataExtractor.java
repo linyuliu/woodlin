@@ -282,12 +282,9 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
      */
     private List<TableMetadata> extractTablesNative(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-
-        // KingBase 使用 sys_class 和 sys_namespace 系统表
-        // 这些表是 KingBase 内部实现，不同于 PostgreSQL 的 pg_class 和 pg_namespace
         String sql;
         boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
-if (hasSchemaFilter) {
+        if (hasSchemaFilter) {
             // 指定 schema 时，只查询该 schema 的表
             sql = "SELECT " +
                   "  c.relname AS table_name, " +
@@ -512,12 +509,12 @@ if (hasSchemaFilter) {
                     String realType = rs.getString("real_type");
                     String pgTypeName = rs.getString("pg_type_name");
                     String infoDataType = rs.getString("info_data_type");
-                    
-                    // 使用 format_type 的结果作为主要类型，如果为空则回退到 pg_type_name，最后是 info_data_type
-                    String dataType = realType != null ? realType : (pgTypeName != null ? pgTypeName : infoDataType);
-                    
+
+                    // 使用 pgTypeName 的结果作为主要类型，如果为空则回退到 realType，最后是 info_data_type
+                    String dataType = pgTypeName != null ?  pgTypeName: (realType != null ? realType : infoDataType);
+
                     String columnDefault = rs.getString("col_default");
-                    
+
                     // 判断是否自增列：检查默认值是否包含 nextval 或 seq_
                     boolean isAutoIncrement = columnDefault != null &&
                                              (columnDefault.contains("nextval") ||
@@ -529,7 +526,7 @@ if (hasSchemaFilter) {
                             .tableName(tableName)
                             .schemaName(targetSchema)
                             .databaseName(databaseName)
-                            .dataType(dataType)  // 使用 format_type 的结果，包含完整的类型修饰符
+                            .dataType(dataType)
                             .nullable("YES".equalsIgnoreCase(rs.getString("is_nullable")))
                             .ordinalPosition(rs.getInt("ordinal_position"))
                             .comment(rs.getString("comment"))
@@ -587,7 +584,7 @@ if (hasSchemaFilter) {
                     String realType = rs.getString("real_type");
                     String pgTypeName = rs.getString("pg_type_name");
                     String dataType = realType != null ? realType : pgTypeName;
-                    
+
                     String columnDefault = rs.getString("column_default");
                     boolean isAutoIncrement = columnDefault != null &&
                                              (columnDefault.contains("nextval") ||
@@ -634,7 +631,7 @@ if (hasSchemaFilter) {
         }
 
         String type = kingbaseType.toLowerCase();
-        
+
         // 处理 format_type() 返回的格式化类型
         // 提取基础类型名称（去掉长度、精度等修饰符）
         String baseType = extractBaseType(type);
@@ -672,7 +669,7 @@ if (hasSchemaFilter) {
             default -> "Object";
         };
     }
-    
+
     /**
      * 从 format_type() 返回的格式化类型中提取基础类型名称
      * <p>
@@ -691,9 +688,9 @@ if (hasSchemaFilter) {
         if (formattedType == null) {
             return null;
         }
-        
+
         String type = formattedType.trim();
-        
+
         // 对于带 with/without time zone 的类型，保持完整（这是重要的类型修饰符）
         if (type.contains("with time zone") || type.contains("without time zone")) {
             // 提取 "timestamp with time zone" 或 "time with time zone" 等
@@ -703,18 +700,18 @@ if (hasSchemaFilter) {
                 return type.contains("with time zone") ? "time with time zone" : "time without time zone";
             }
         }
-        
+
         // 去掉括号中的长度/精度信息，如 "character varying(255)" → "character varying"
         int parenIndex = type.indexOf('(');
         if (parenIndex > 0) {
             type = type.substring(0, parenIndex).trim();
         }
-        
+
         // 去掉数组标记 []
         if (type.endsWith("[]")) {
             type = type.substring(0, type.length() - 2).trim();
         }
-        
+
         return type;
     }
 
