@@ -2,7 +2,9 @@ package com.mumu.woodlin.datasource.service;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +62,8 @@ public class DatabaseMetadataService {
     /**
      * 获取数据源的完整元数据
      * <p>
-     * 使用连接池优化性能，避免每次创建连接的开销
+     * 使用连接池优化性能，避免每次创建连接的开销。
+     * 优化后提取完整的数据库元数据信息，包括字符集、排序规则、Schema列表等。
      * </p>
      *
      * @param datasourceCode 数据源编码
@@ -77,8 +80,10 @@ public class DatabaseMetadataService {
 
             // 使用Connection直接提取元数据
             java.sql.DatabaseMetaData metaData = connection.getMetaData();
+            String databaseName = connection.getCatalog();
+            
             DatabaseMetadata metadata = DatabaseMetadata.builder()
-                    .databaseName(connection.getCatalog())
+                    .databaseName(databaseName)
                     .databaseProductName(metaData.getDatabaseProductName())
                     .databaseProductVersion(metaData.getDatabaseProductVersion())
                     .majorVersion(metaData.getDatabaseMajorVersion())
@@ -88,11 +93,82 @@ public class DatabaseMetadataService {
                     .supportsSchemas(metaData.supportsSchemasInTableDefinitions())
                     .build();
 
+            // 提取字符集和排序规则信息
+            extractCharsetAndCollation(connection, metadata);
+            
+            // 如果支持Schema，提取Schema列表
+            if (Boolean.TRUE.equals(metadata.getSupportsSchemas())) {
+                try {
+                    List<SchemaMetadata> schemas = extractor.extractSchemas(connection, databaseName);
+                    metadata.setSchemas(schemas);
+                } catch (Exception e) {
+                    log.warn("提取Schema列表失败，数据源: {}", datasourceCode, e);
+                }
+            }
+
             return metadata;
 
         } catch (SQLException e) {
             log.error("获取数据库元数据失败，数据源: {}", datasourceCode, e);
             throw new BusinessException("获取数据库元数据失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 提取字符集和排序规则信息
+     * <p>
+     * 针对不同数据库类型使用特定的SQL查询获取字符集和排序规则。
+     * 使用Hutool的StrUtil处理字符串以保持代码简洁。
+     * </p>
+     *
+     * @param connection 数据库连接
+     * @param metadata 数据库元数据对象
+     */
+    private void extractCharsetAndCollation(Connection connection, DatabaseMetadata metadata) {
+        try {
+            String productName = cn.hutool.core.util.StrUtil.nullToEmpty(metadata.getDatabaseProductName()).toLowerCase();
+            
+            // MySQL及其兼容数据库（MariaDB、TiDB等）
+            if (cn.hutool.core.util.StrUtil.containsAny(productName, "mysql", "mariadb", "tidb", "oceanbase")) {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT @@character_set_database AS charset, @@collation_database AS collation")) {
+                    if (rs.next()) {
+                        metadata.setCharset(rs.getString("charset"));
+                        metadata.setCollation(rs.getString("collation"));
+                    }
+                }
+            } 
+            // PostgreSQL及其兼容数据库
+            else if (cn.hutool.core.util.StrUtil.containsAny(productName, "postgresql", "opengauss", "kingbase", "gaussdb", "vastbase")) {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT pg_encoding_to_char(encoding) AS charset, datcollate AS collation FROM pg_database WHERE datname = current_database()")) {
+                    if (rs.next()) {
+                        metadata.setCharset(rs.getString("charset"));
+                        metadata.setCollation(rs.getString("collation"));
+                    }
+                }
+            }
+            // Oracle
+            else if (cn.hutool.core.util.StrUtil.contains(productName, "oracle")) {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT value AS charset FROM nls_database_parameters WHERE parameter = 'NLS_CHARACTERSET'")) {
+                    if (rs.next()) {
+                        metadata.setCharset(rs.getString("charset"));
+                    }
+                }
+            }
+            // SQL Server
+            else if (cn.hutool.core.util.StrUtil.containsAny(productName, "sql server", "sqlserver")) {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT DATABASEPROPERTYEX(DB_NAME(), 'Collation') AS collation")) {
+                    if (rs.next()) {
+                        metadata.setCollation(rs.getString("collation"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            // 提取字符集失败不应影响整体元数据获取，仅记录警告
+            log.warn("提取字符集和排序规则信息失败: {}", e.getMessage());
         }
     }
 
@@ -284,19 +360,23 @@ public class DatabaseMetadataService {
 
     /**
      * 解析测试查询SQL
+     * <p>
+     * 使用Hutool的StrUtil简化字符串判断逻辑，提高代码可读性。
+     * </p>
      *
      * @param config 数据源配置
      * @return 测试SQL
      */
     private String resolveTestQuery(InfraDatasourceConfig config) {
-        if (config.getTestSql() != null && !config.getTestSql().isEmpty()) {
+        // 优先使用配置的测试SQL
+        if (cn.hutool.core.util.StrUtil.isNotBlank(config.getTestSql())) {
             return config.getTestSql();
         }
 
-        String databaseType = config.getDatasourceType();
-        if (databaseType != null && !databaseType.isEmpty()) {
-            String testSql = extractorFactory.getDefaultTestQuery(databaseType);
-            if (testSql != null) {
+        // 根据数据库类型获取默认测试SQL
+        if (cn.hutool.core.util.StrUtil.isNotBlank(config.getDatasourceType())) {
+            String testSql = extractorFactory.getDefaultTestQuery(config.getDatasourceType());
+            if (cn.hutool.core.util.StrUtil.isNotBlank(testSql)) {
                 return testSql;
             }
         }
@@ -375,7 +455,8 @@ public class DatabaseMetadataService {
      * 解析驱动类名
      * <p>
      * 优先使用配置的驱动类名，如果未配置则通过DatabaseMetadataExtractorFactory
-     * 根据JDBC URL推断数据库类型并获取对应的驱动类名
+     * 根据JDBC URL推断数据库类型并获取对应的驱动类名。
+     * 使用Hutool的StrUtil简化字符串判断逻辑。
      * </p>
      *
      * @param driverClassName 配置的驱动类名
@@ -384,19 +465,19 @@ public class DatabaseMetadataService {
      */
     private String resolveDriver(String driverClassName, String jdbcUrl) {
         // 如果已配置驱动类名，直接返回
-        if (driverClassName != null && !driverClassName.isEmpty()) {
+        if (cn.hutool.core.util.StrUtil.isNotBlank(driverClassName)) {
             return driverClassName;
         }
 
         // 通过JDBC URL推断数据库类型
         String databaseType = extractorFactory.inferDatabaseType(jdbcUrl);
-        if (databaseType == null) {
+        if (cn.hutool.core.util.StrUtil.isBlank(databaseType)) {
             throw new BusinessException("无法识别JDBC URL的数据库类型，请指定 driverClass");
         }
 
         // 获取该数据库类型的默认驱动类名
         String defaultDriver = extractorFactory.getDefaultDriverClass(databaseType);
-        if (defaultDriver == null) {
+        if (cn.hutool.core.util.StrUtil.isBlank(defaultDriver)) {
             throw new BusinessException("无法获取数据库类型 " + databaseType + " 的驱动类名，请指定 driverClass");
         }
 
