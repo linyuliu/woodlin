@@ -33,11 +33,13 @@ import com.mumu.woodlin.common.datasource.spi.base.AbstractPostgreSQLCompatibleE
  * </ul>
  * </p>
  * <p>
- * 实现策略（2025-01更新）：
- * 1. 使用 KingBase 原生系统表（sys_class, sys_namespace, sys_attribute, sys_type）进行元数据提取
- * 2. 虽然 KingBase 有兼容模式，但其内部实现与真正的数据库不同，不能直接使用 MySQL/Oracle 的元数据提取方式
- * 3. 提供 pg_catalog 作为后备方案，确保在不同 KingBase 版本中的兼容性
- * 4. 兼容模式检测保留用于连接测试和类型映射
+ * 实现策略（2025-12更新）：
+ * 1. 直接使用 PostgreSQL 标准系统表（pg_catalog）进行元数据提取，这是最稳定可靠的方式
+ * 2. KingBase 基于 PostgreSQL 开发，完全兼容 pg_catalog 系统表
+ * 3. 不再使用 sys_* 系统表，因为它们在某些 KingBase 版本中可能不可用或不稳定
+ * 4. 所有 SQL 查询使用文本块语法（"""）提升可读性和可维护性
+ * 5. 添加详细的 SQL 注释，说明每个字段的含义和用途
+ * 6. 兼容模式检测保留用于连接测试和类型映射
  * </p>
  *
  * @author mumu
@@ -132,16 +134,28 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
 
     @Override
     public List<SchemaMetadata> extractSchemas(Connection connection, String databaseName) throws SQLException {
-        // 使用 KingBase 原生系统表提取 Schema 列表
+        // 使用 KingBase 的 pg_namespace 系统表提取 Schema 列表
+        // KingBase 基于 PostgreSQL，使用 pg_catalog 系统表更加稳定可靠
         List<SchemaMetadata> schemas = new ArrayList<>();
 
-        // KingBase 使用 sys_namespace 系统表
-        String sql = "SELECT " +
-                     "  nspname AS schema_name, " +
-                     "  COALESCE(pg_catalog.obj_description(oid, 'pg_namespace'), '') AS comment " +
-                     "FROM sys_namespace " +
-                     "WHERE nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1') " +
-                     "ORDER BY nspname";
+        // 查询所有用户创建的 Schema（排除系统 Schema）
+        String sql = """
+                SELECT
+                  oid AS oid,                                                    -- Schema的对象ID
+                  nspname AS schemaname,                                         -- Schema名称
+                  nspacl,                                                        -- Schema访问控制列表
+                  pg_get_userbyid(nspowner) AS schemaowner,                      -- Schema所有者
+                  obj_description(oid) AS description                            -- Schema描述/注释
+                FROM pg_namespace
+                WHERE nspname NOT IN (                                           -- 排除系统Schema
+                  'pg_catalog',          -- PostgreSQL系统目录
+                  'information_schema',  -- SQL标准信息模式
+                  'pg_toast',            -- TOAST存储系统Schema
+                  'pg_temp_1',           -- 临时表Schema
+                  'pg_toast_temp_1'      -- 临时TOAST Schema
+                )
+                ORDER BY nspname                                                 -- 按Schema名称排序
+                """;
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
@@ -149,44 +163,9 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     SchemaMetadata schema = SchemaMetadata.builder()
-                            .schemaName(rs.getString("schema_name"))
+                            .schemaName(rs.getString("schemaname"))
                             .databaseName(databaseName)
-                            .comment(rs.getString("comment"))
-                            .build();
-                    schemas.add(schema);
-                }
-            }
-        } catch (SQLException e) {
-            // 如果 sys_namespace 不可用，使用 pg_namespace 作为后备
-            log.warn("KingBase 原生系统表查询 Schema 失败，尝试使用 pg_namespace 作为后备: {}", e.getMessage());
-            return extractSchemasViaPgCatalog(connection, databaseName);
-        }
-
-        return schemas;
-    }
-
-    /**
-     * 使用 pg_catalog 提取 Schema 列表（后备方案）
-     */
-    private List<SchemaMetadata> extractSchemasViaPgCatalog(Connection connection, String databaseName) throws SQLException {
-        List<SchemaMetadata> schemas = new ArrayList<>();
-
-        String sql = "SELECT " +
-                     "  nspname AS schema_name, " +
-                     "  COALESCE(pg_catalog.obj_description(oid, 'pg_namespace'), '') AS comment " +
-                     "FROM pg_catalog.pg_namespace " +
-                     "WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1') " +
-                     "ORDER BY nspname";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setQueryTimeout(30);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    SchemaMetadata schema = SchemaMetadata.builder()
-                            .schemaName(rs.getString("schema_name"))
-                            .databaseName(databaseName)
-                            .comment(rs.getString("comment"))
+                            .comment(rs.getString("description"))
                             .build();
                     schemas.add(schema);
                 }
@@ -268,48 +247,135 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     }
 
     /**
-     * 使用 KingBase 原生系统表提取表列表
+     * 使用 KingBase 的 pg_catalog 系统表提取表列表
      * <p>
-     * KingBase 基于 PostgreSQL 开发，但其内部实现与真实的 PostgreSQL 有差异。
-     * 使用 KingBase 自己的系统表（sys_class, sys_namespace）进行元数据提取。
+     * KingBase 基于 PostgreSQL 开发，使用 PostgreSQL 的 pg_catalog 系统表更稳定可靠。
+     * 本方法参考了 KingBase 官方工具使用的 SQL 查询，包含丰富的元数据信息。
+     * </p>
+     * <p>
+     * 查询说明：
+     * <ul>
+     *   <li>c.relkind: 'r'=普通表, 'f'=外部表, 'p'=分区表</li>
+     *   <li>c.relhasindex: 表是否有索引</li>
+     *   <li>c.relhasrules: 表是否有规则</li>
+     *   <li>c.relhastriggers: 表是否有触发器</li>
+     *   <li>c.relispartition: 是否为分区表</li>
+     *   <li>c.relpersistence: 表持久性('p'=永久, 'u'=不记录日志, 't'=临时)</li>
+     * </ul>
      * </p>
      *
      * @param connection 数据库连接
      * @param databaseName 数据库名称
-     * @param schemaName Schema名称
+     * @param schemaName Schema名称，如果为null则查询所有非系统Schema的表
      * @return 表元数据列表
      * @throws SQLException SQL异常
      */
     private List<TableMetadata> extractTablesNative(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-        String sql;
         boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
+        
+        String sql;
         if (hasSchemaFilter) {
             // 指定 schema 时，只查询该 schema 的表
-            sql = "SELECT " +
-                  "  c.relname AS table_name, " +
-                  "  n.nspname AS schema_name, " +
-                  "  COALESCE(d.description, '') AS table_comment " +
-                  "FROM sys_class c " +
-                  "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
-                  "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
-                  "WHERE n.nspname = ? " +
-                  "  AND c.relkind = 'r' " +  // 'r' = 普通表
-                  "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast') " +
-                  "ORDER BY n.nspname, c.relname";
+            // 这个SQL参考了KingBase官方工具的查询方式，确保兼容性
+            sql = """
+                    SELECT
+                      c.oid,                                                      -- 表的对象ID
+                      n.nspname AS schemaname,                                    -- Schema名称
+                      c.relname AS tablename,                                     -- 表名
+                      c.relacl,                                                   -- 表的访问控制列表
+                      pg_get_userbyid(c.relowner) AS tableowner,                  -- 表所有者
+                      obj_description(c.oid) AS description,                      -- 表注释/描述
+                      c.relkind,                                                  -- 表类型：'r'=普通表, 'f'=外部表, 'p'=分区表
+                      ci.relname AS cluster,                                      -- 聚簇索引名称
+                      c.relhasindex AS hasindexes,                                -- 是否有索引
+                      c.relhasrules AS hasrules,                                  -- 是否有规则
+                      t.spcname AS tablespace,                                    -- 表空间名称
+                      c.reloptions AS param,                                      -- 表参数
+                      c.relhastriggers AS hastriggers,                            -- 是否有触发器
+                      c.relpersistence AS unlogged,                               -- 表持久性(p=永久, u=不记录日志, t=临时)
+                      ft.ftoptions,                                               -- 外部表选项
+                      fs.srvname,                                                 -- 外部服务器名称
+                      c.relispartition,                                           -- 是否为分区表
+                      pg_get_expr(c.relpartbound, c.oid) AS relpartbound,         -- 分区边界
+                      c.reltuples,                                                -- 表行数估计值
+                      ((SELECT count(*) FROM pg_inherits WHERE inhparent = c.oid) > 0) AS inhtable, -- 是否有继承子表
+                      i2.nspname AS inhschemaname,                                -- 继承父表的Schema
+                      i2.relname AS inhtablename                                  -- 继承父表名称
+                    FROM pg_class c
+                    LEFT JOIN pg_namespace n ON n.oid = c.relnamespace            -- 关联Schema信息
+                    LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace          -- 关联表空间信息
+                    LEFT JOIN (                                                   -- 关联继承关系
+                      pg_inherits i
+                      INNER JOIN pg_class c2 ON i.inhparent = c2.oid
+                      LEFT JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                    ) i2 ON i2.inhrelid = c.oid
+                    LEFT JOIN pg_index ind ON (ind.indrelid = c.oid) AND (ind.indisclustered = 't') -- 关联聚簇索引
+                    LEFT JOIN pg_class ci ON ci.oid = ind.indexrelid              -- 关联索引名称
+                    LEFT JOIN pg_foreign_table ft ON ft.ftrelid = c.oid           -- 关联外部表信息
+                    LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid        -- 关联外部服务器
+                    WHERE (
+                      (c.relkind = 'r'::"char") OR                                -- 普通表
+                      (c.relkind = 'f'::"char") OR                                -- 外部表
+                      (c.relkind = 'p'::"char")                                   -- 分区表
+                    )
+                    AND n.nspname = ?                                             -- 过滤指定Schema
+                    ORDER BY schemaname, tablename                                -- 排序
+                    """;
         } else {
             // 未指定 schema 时，查询所有非系统 schema 的表
-            sql = "SELECT " +
-                  "  c.relname AS table_name, " +
-                  "  n.nspname AS schema_name, " +
-                  "  COALESCE(d.description, '') AS table_comment " +
-                  "FROM sys_class c " +
-                  "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
-                  "LEFT JOIN sys_description d ON d.objoid = c.oid AND d.objsubid = 0 " +
-                  "WHERE c.relkind = 'r' " +  // 'r' = 普通表
-                  "  AND n.nspname NOT IN ('sys_catalog', 'information_schema', 'sys_toast', 'pg_catalog', 'pg_toast') " +
-                  "ORDER BY n.nspname, c.relname";
+            sql = """
+                    SELECT
+                      c.oid,                                                      -- 表的对象ID
+                      n.nspname AS schemaname,                                    -- Schema名称
+                      c.relname AS tablename,                                     -- 表名
+                      c.relacl,                                                   -- 表的访问控制列表
+                      pg_get_userbyid(c.relowner) AS tableowner,                  -- 表所有者
+                      obj_description(c.oid) AS description,                      -- 表注释/描述
+                      c.relkind,                                                  -- 表类型：'r'=普通表, 'f'=外部表, 'p'=分区表
+                      ci.relname AS cluster,                                      -- 聚簇索引名称
+                      c.relhasindex AS hasindexes,                                -- 是否有索引
+                      c.relhasrules AS hasrules,                                  -- 是否有规则
+                      t.spcname AS tablespace,                                    -- 表空间名称
+                      c.reloptions AS param,                                      -- 表参数
+                      c.relhastriggers AS hastriggers,                            -- 是否有触发器
+                      c.relpersistence AS unlogged,                               -- 表持久性(p=永久, u=不记录日志, t=临时)
+                      ft.ftoptions,                                               -- 外部表选项
+                      fs.srvname,                                                 -- 外部服务器名称
+                      c.relispartition,                                           -- 是否为分区表
+                      pg_get_expr(c.relpartbound, c.oid) AS relpartbound,         -- 分区边界
+                      c.reltuples,                                                -- 表行数估计值
+                      ((SELECT count(*) FROM pg_inherits WHERE inhparent = c.oid) > 0) AS inhtable, -- 是否有继承子表
+                      i2.nspname AS inhschemaname,                                -- 继承父表的Schema
+                      i2.relname AS inhtablename                                  -- 继承父表名称
+                    FROM pg_class c
+                    LEFT JOIN pg_namespace n ON n.oid = c.relnamespace            -- 关联Schema信息
+                    LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace          -- 关联表空间信息
+                    LEFT JOIN (                                                   -- 关联继承关系
+                      pg_inherits i
+                      INNER JOIN pg_class c2 ON i.inhparent = c2.oid
+                      LEFT JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                    ) i2 ON i2.inhrelid = c.oid
+                    LEFT JOIN pg_index ind ON (ind.indrelid = c.oid) AND (ind.indisclustered = 't') -- 关联聚簇索引
+                    LEFT JOIN pg_class ci ON ci.oid = ind.indexrelid              -- 关联索引名称
+                    LEFT JOIN pg_foreign_table ft ON ft.ftrelid = c.oid           -- 关联外部表信息
+                    LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid        -- 关联外部服务器
+                    WHERE (
+                      (c.relkind = 'r'::"char") OR                                -- 普通表
+                      (c.relkind = 'f'::"char") OR                                -- 外部表
+                      (c.relkind = 'p'::"char")                                   -- 分区表
+                    )
+                    AND n.nspname NOT IN (                                        -- 排除系统Schema
+                      'pg_catalog',          -- PostgreSQL系统目录
+                      'information_schema',  -- SQL标准信息模式
+                      'pg_toast',            -- TOAST存储系统Schema
+                      'pg_temp_1',           -- 临时表Schema
+                      'pg_toast_temp_1'      -- 临时TOAST Schema
+                    )
+                    ORDER BY schemaname, tablename                                -- 排序
+                    """;
         }
+        
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
             if (hasSchemaFilter) {
@@ -319,69 +385,10 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     TableMetadata table = TableMetadata.builder()
-                            .tableName(rs.getString("table_name"))
+                            .tableName(rs.getString("tablename"))
                             .databaseName(databaseName)
-                            .schemaName(rs.getString("schema_name"))
-                            .comment(rs.getString("table_comment"))
-                            .build();
-                    tables.add(table);
-                }
-            }
-        } catch (SQLException e) {
-            // 如果 sys_* 系统表不可用，尝试使用 pg_* 系统表作为后备
-            log.warn("KingBase 原生系统表查询失败，尝试使用 pg_* 系统表作为后备: {}", e.getMessage());
-            return extractTablesViaPgCatalog(connection, databaseName, schemaName);
-        }
-
-        return tables;
-    }
-
-    /**
-     * 使用 pg_catalog 提取表列表（后备方案）
-     */
-    private List<TableMetadata> extractTablesViaPgCatalog(Connection connection, String databaseName, String schemaName) throws SQLException {
-        List<TableMetadata> tables = new ArrayList<>();
-
-        String sql;
-        boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
-
-        if (hasSchemaFilter) {
-            // 指定 schema 时，只查询该 schema 的表
-            sql = "SELECT " +
-                  "  c.relname AS table_name, " +
-                  "  n.nspname AS schema_name, " +
-                  "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
-                  "FROM pg_catalog.pg_class c " +
-                  "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
-                  "WHERE n.nspname = ? " +
-                  "  AND c.relkind = 'r' " +
-                  "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
-                  "ORDER BY n.nspname, c.relname";
-        } else {
-            // 未指定 schema 时，查询所有非系统 schema 的表
-            sql = "SELECT " +
-                  "  c.relname AS table_name, " +
-                  "  n.nspname AS schema_name, " +
-                  "  COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS table_comment " +
-                  "FROM pg_catalog.pg_class c " +
-                  "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
-                  "WHERE c.relkind = 'r' " +
-                  "  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'sys_catalog', 'sys_toast') " +
-                  "ORDER BY n.nspname, c.relname";
-        }
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setQueryTimeout(30);
-            if (hasSchemaFilter) {
-                pstmt.setString(1, schemaName);
-            }
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    TableMetadata table = TableMetadata.builder()
-                            .tableName(rs.getString("table_name"))
-                            .databaseName(databaseName)
-                            .schemaName(rs.getString("schema_name"))
-                            .comment(rs.getString("table_comment"))
+                            .schemaName(rs.getString("schemaname"))
+                            .comment(rs.getString("description"))
                             .build();
                     tables.add(table);
                 }
@@ -392,7 +399,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     }
 
     /**
-     * 使用 KingBase 原生系统表提取列信息（完整版）
+     * 使用 KingBase 的 pg_catalog 系统表提取列信息（完整版）
      * <p>
      * 使用 information_schema.columns 结合 PostgreSQL 系统表进行元数据提取。
      * 这是参考 PostgreSQL 官方元数据查询方式改进后的 KingBase 兼容版本。
@@ -429,73 +436,58 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
 
         // 使用 information_schema.columns 结合 pg_* 系统表的完整元数据查询
         // 这个 SQL 参考了 PostgreSQL 官方的元数据提取方式，并针对 KingBase 进行了优化
-        String sql = "SELECT " +
-                     // 基础列信息（来自 information_schema）
-                     "  col.table_schema AS schema_name, " +              // Schema名称
-                     "  col.table_name, " +                               // 表名
-                     "  col.column_name, " +                              // 列名
-                     "  col.character_maximum_length, " +                 // 字符类型最大长度
-                     "  col.is_nullable, " +                              // 是否可空
-                     "  col.numeric_precision, " +                        // 数值精度
-                     "  col.numeric_scale, " +                            // 数值小数位数
-                     "  col.datetime_precision, " +                       // 日期时间精度
-                     "  col.ordinal_position, " +                         // 列顺序位置
-                     // 类型信息（三种类型表示，用于兼容和精确性）
-                     "  col.data_type AS info_data_type, " +              // information_schema 的标准类型（用于兼容）
-                     "  et.typname AS pg_type_name, " +                   // PostgreSQL/KingBase 真实类型名（如 timestamptz）
-                     "  format_type(b.atttypid, b.atttypmod) AS real_type, " +  // 格式化后的完整类型（最准确，如 "timestamp with time zone"）
-                     // 类型详细信息（来自 pg_attribute 和 pg_type）
-                     "  b.atttypmod, " +                                  // 类型修饰符（包含长度、精度等信息）
-                     "  b.attndims, " +                                   // 数组维度数
-                     "  et.typelem, " +                                   // 数组元素类型OID
-                     "  et.typlen, " +                                    // 类型长度
-                     "  et.typtype, " +                                   // 类型类别（b=基础类型, c=复合类型, e=枚举类型等）
-                     // 数组元素类型信息
-                     "  nbt.nspname AS elem_schema, " +                   // 数组元素类型所在schema
-                     "  bt.typname AS elem_name, " +                      // 数组元素类型名称
-                     "  b.atttypid, " +                                   // 列类型OID
-                     // 注释和默认值
-                     "  col_description(c.oid, col.ordinal_position) AS comment, " +  // 列注释
-                     "  col.column_default AS col_default, " +            // 列默认值
-                     "  col.generation_expression, " +                    // 生成列表达式
-                     "  b.attacl, " +                                     // 列级别访问控制列表
-                     // 排序规则信息
-                     "  colnsp.nspname AS collation_schema_name, " +      // 排序规则schema
-                     "  coll.collname, " +                                // 排序规则名称
-                     // 表类型
-                     "  c.relkind, " +                                    // 表类型（r=表, v=视图, m=物化视图等）
-                     "  b.attfdwoptions AS foreign_options " +            // 外部表选项
-                     "FROM information_schema.columns AS col " +
-                     // 关联 pg_namespace 获取 schema 信息
-                     "JOIN pg_namespace ns ON ns.nspname = col.table_schema " +
-                     // 关联 pg_class 获取表信息
-                     "JOIN pg_class c ON col.table_name = c.relname AND c.relnamespace = ns.oid " +
-                     // 关联 pg_attribute 获取列属性详细信息（改为 JOIN 确保获取到类型信息）
-                     "JOIN pg_attribute b ON b.attrelid = c.oid AND b.attname = col.column_name " +
-                     // 关联 pg_type 获取列类型信息（改为 JOIN 确保获取到类型信息）
-                     "JOIN pg_type et ON et.oid = b.atttypid " +
-                     // 关联 pg_attrdef 获取默认值定义
-                     "LEFT JOIN pg_attrdef a ON c.oid = a.adrelid AND col.ordinal_position = a.adnum " +
-                     // 关联 pg_collation 获取排序规则
-                     "LEFT JOIN pg_collation coll ON coll.oid = b.attcollation " +
-                     "LEFT JOIN pg_namespace colnsp ON coll.collnamespace = colnsp.oid " +
-                     // 关联序列依赖（用于判断自增列）
-                     "LEFT JOIN (" +
-                     "  pg_depend dep " +
-                     "  JOIN pg_sequence seq ON dep.classid = 'pg_class'::regclass::oid " +
-                     "    AND dep.objid = seq.seqrelid " +
-                     "    AND dep.deptype = 'i'::\"char\" " +
-                     ") ON dep.refclassid = 'pg_class'::regclass::oid " +
-                     "  AND dep.refobjid = c.oid " +
-                     "  AND dep.refobjsubid = b.attnum " +
-                     // 关联数组元素类型（如果是数组类型）
-                     "LEFT JOIN pg_type bt ON et.typelem = bt.oid " +
-                     "LEFT JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid " +
-                     // WHERE 条件
-                     "WHERE col.table_schema = ? " +
-                     "  AND col.table_name = ? " +
-                     // 排序
-                     "ORDER BY col.ordinal_position";
+        String sql = """
+                SELECT
+                  col.table_schema AS schema_name,                               -- Schema名称
+                  col.table_name,                                                -- 表名
+                  col.column_name,                                               -- 列名
+                  col.character_maximum_length,                                  -- 字符类型最大长度
+                  col.is_nullable,                                               -- 是否可空(YES/NO)
+                  col.numeric_precision,                                         -- 数值精度
+                  col.numeric_scale,                                             -- 数值小数位数
+                  col.datetime_precision,                                        -- 日期时间精度
+                  col.ordinal_position,                                          -- 列顺序位置
+                  col.data_type AS info_data_type,                               -- information_schema 的标准类型（用于兼容）
+                  et.typname AS pg_type_name,                                    -- PostgreSQL/KingBase 真实类型名（如 timestamptz）
+                  format_type(b.atttypid, b.atttypmod) AS real_type,             -- 格式化后的完整类型（最准确）
+                  b.atttypmod,                                                   -- 类型修饰符（包含长度、精度等信息）
+                  b.attndims,                                                    -- 数组维度数
+                  et.typelem,                                                    -- 数组元素类型OID
+                  et.typlen,                                                     -- 类型长度
+                  et.typtype,                                                    -- 类型类别（b=基础类型, c=复合类型, e=枚举类型等）
+                  nbt.nspname AS elem_schema,                                    -- 数组元素类型所在schema
+                  bt.typname AS elem_name,                                       -- 数组元素类型名称
+                  b.atttypid,                                                    -- 列类型OID
+                  col_description(c.oid, col.ordinal_position) AS comment,       -- 列注释
+                  col.column_default AS col_default,                             -- 列默认值
+                  col.generation_expression,                                     -- 生成列表达式
+                  b.attacl,                                                      -- 列级别访问控制列表
+                  colnsp.nspname AS collation_schema_name,                       -- 排序规则schema
+                  coll.collname,                                                 -- 排序规则名称
+                  c.relkind,                                                     -- 表类型（r=表, v=视图, m=物化视图等）
+                  b.attfdwoptions AS foreign_options                             -- 外部表选项
+                FROM information_schema.columns AS col
+                JOIN pg_namespace ns ON ns.nspname = col.table_schema            -- 关联 pg_namespace 获取 schema 信息
+                JOIN pg_class c ON col.table_name = c.relname AND c.relnamespace = ns.oid -- 关联 pg_class 获取表信息
+                JOIN pg_attribute b ON b.attrelid = c.oid AND b.attname = col.column_name -- 关联 pg_attribute 获取列属性详细信息
+                JOIN pg_type et ON et.oid = b.atttypid                           -- 关联 pg_type 获取列类型信息
+                LEFT JOIN pg_attrdef a ON c.oid = a.adrelid AND col.ordinal_position = a.adnum -- 关联 pg_attrdef 获取默认值定义
+                LEFT JOIN pg_collation coll ON coll.oid = b.attcollation         -- 关联 pg_collation 获取排序规则
+                LEFT JOIN pg_namespace colnsp ON coll.collnamespace = colnsp.oid -- 排序规则所在namespace
+                LEFT JOIN (                                                      -- 关联序列依赖（用于判断自增列）
+                  pg_depend dep
+                  JOIN pg_sequence seq ON dep.classid = 'pg_class'::regclass::oid
+                    AND dep.objid = seq.seqrelid
+                    AND dep.deptype = 'i'::"char"
+                ) ON dep.refclassid = 'pg_class'::regclass::oid
+                  AND dep.refobjid = c.oid
+                  AND dep.refobjsubid = b.attnum
+                LEFT JOIN pg_type bt ON et.typelem = bt.oid                      -- 关联数组元素类型（如果是数组类型）
+                LEFT JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid          -- 数组元素类型所在namespace
+                WHERE col.table_schema = ?                                       -- 过滤Schema
+                  AND col.table_name = ?                                         -- 过滤表名
+                ORDER BY col.ordinal_position                                    -- 按列顺序排序
+                """;
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
@@ -530,75 +522,6 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
                             .nullable("YES".equalsIgnoreCase(rs.getString("is_nullable")))
                             .ordinalPosition(rs.getInt("ordinal_position"))
                             .comment(rs.getString("comment"))
-                            .defaultValue(columnDefault)
-                            .autoIncrement(isAutoIncrement)
-                            .javaType(mapKingBaseTypeToJava(dataType))
-                            .build();
-
-                    columns.add(column);
-                }
-            }
-        } catch (SQLException e) {
-            // 如果标准查询失败，尝试使用 pg_catalog 作为后备
-            log.warn("KingBase 标准元数据查询失败，尝试使用 pg_catalog 作为后备: {}", e.getMessage());
-            return extractColumnsViaPgCatalog(connection, databaseName, schemaName, tableName);
-        }
-
-        return columns;
-    }
-
-    /**
-     * 使用 pg_catalog 提取列信息（后备方案）
-     */
-    private List<ColumnMetadata> extractColumnsViaPgCatalog(Connection connection, String databaseName, String schemaName, String tableName) throws SQLException {
-        List<ColumnMetadata> columns = new ArrayList<>();
-        String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
-
-        String sql = "SELECT " +
-                     "  a.attname AS column_name, " +
-                     "  t.typname AS pg_type_name, " +
-                     "  a.attnotnull AS not_null, " +
-                     "  a.attnum AS ordinal_position, " +
-                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS real_type, " +
-                     "  COALESCE(pg_catalog.col_description(c.oid, a.attnum), '') AS column_comment, " +
-                     "  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
-                     "FROM pg_catalog.pg_attribute a " +
-                     "INNER JOIN pg_catalog.pg_class c ON a.attrelid = c.oid " +
-                     "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
-                     "INNER JOIN pg_catalog.pg_type t ON a.atttypid = t.oid " +
-                     "LEFT JOIN pg_catalog.pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum " +
-                     "WHERE n.nspname = ? " +
-                     "  AND c.relname = ? " +
-                     "  AND a.attnum > 0 " +
-                     "  AND NOT a.attisdropped " +
-                     "ORDER BY a.attnum";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setQueryTimeout(30);
-            pstmt.setString(1, targetSchema);
-            pstmt.setString(2, tableName);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    // 优先使用 format_type 的结果
-                    String realType = rs.getString("real_type");
-                    String pgTypeName = rs.getString("pg_type_name");
-                    String dataType = realType != null ? realType : pgTypeName;
-
-                    String columnDefault = rs.getString("column_default");
-                    boolean isAutoIncrement = columnDefault != null &&
-                                             (columnDefault.contains("nextval") ||
-                                              columnDefault.contains("seq_"));
-
-                    ColumnMetadata column = ColumnMetadata.builder()
-                            .columnName(rs.getString("column_name"))
-                            .tableName(tableName)
-                            .schemaName(targetSchema)
-                            .databaseName(databaseName)
-                            .dataType(dataType)
-                            .nullable(!rs.getBoolean("not_null"))
-                            .ordinalPosition(rs.getInt("ordinal_position"))
-                            .comment(rs.getString("column_comment"))
                             .defaultValue(columnDefault)
                             .autoIncrement(isAutoIncrement)
                             .javaType(mapKingBaseTypeToJava(dataType))
