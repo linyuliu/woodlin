@@ -315,9 +315,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
                     LEFT JOIN pg_foreign_table ft ON ft.ftrelid = c.oid           -- 关联外部表信息
                     LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid        -- 关联外部服务器
                     WHERE (
-                      (c.relkind = 'r'::"char") OR                                -- 普通表
-                      (c.relkind = 'f'::"char") OR                                -- 外部表
-                      (c.relkind = 'p'::"char")                                   -- 分区表
+                      c.relkind IN ('r', 'f', 'p')                                -- 过滤表类型：r=普通表, f=外部表, p=分区表
                     )
                     AND n.nspname = ?                                             -- 过滤指定Schema
                     ORDER BY schemaname, tablename                                -- 排序
@@ -361,9 +359,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
                     LEFT JOIN pg_foreign_table ft ON ft.ftrelid = c.oid           -- 关联外部表信息
                     LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid        -- 关联外部服务器
                     WHERE (
-                      (c.relkind = 'r'::"char") OR                                -- 普通表
-                      (c.relkind = 'f'::"char") OR                                -- 外部表
-                      (c.relkind = 'p'::"char")                                   -- 分区表
+                      c.relkind IN ('r', 'f', 'p')                                -- 过滤表类型：r=普通表, f=外部表, p=分区表
                     )
                     AND n.nspname NOT IN (                                        -- 排除系统Schema
                       'pg_catalog',          -- PostgreSQL系统目录
@@ -478,7 +474,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
                   pg_depend dep
                   JOIN pg_sequence seq ON dep.classid = 'pg_class'::regclass::oid
                     AND dep.objid = seq.seqrelid
-                    AND dep.deptype = 'i'::"char"
+                    AND dep.deptype = 'i'
                 ) ON dep.refclassid = 'pg_class'::regclass::oid
                   AND dep.refobjid = c.oid
                   AND dep.refobjsubid = b.attnum
