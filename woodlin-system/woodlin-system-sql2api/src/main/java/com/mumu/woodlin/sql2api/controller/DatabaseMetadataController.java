@@ -44,25 +44,39 @@ public class DatabaseMetadataController {
     private final DatabaseMetadataService databaseMetadataService;
     private final DatabaseDocumentExportService documentExportService;
 
-    @GetMapping("/{datasourceName}/tables")
-    @Operation(summary = "获取表结构", description = "返回指定数据源下的所有表及列信息")
-    public R<List<TableMetadata>> getTables(@PathVariable String datasourceName) {
-        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceName);
+    @GetMapping("/tables")
+    @Operation(summary = "获取表结构", description = "返回指定数据源下的所有表及列信息。支持通过schema参数过滤特定模式的表")
+    public R<List<TableMetadata>> getTables(
+            @Parameter(description = "数据源名称", required = true)
+            @RequestParam String datasourceName,
+            @Parameter(description = "Schema名称（可选，用于过滤特定模式的表）", required = false)
+            @RequestParam(required = false) String schema) {
+        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceName, schema);
         fillColumnsIfNeeded(datasourceName, tables);
         return R.ok(tables);
     }
 
-    @GetMapping("/{datasourceName}/tables/{tableName}/columns")
-    @Operation(summary = "获取表字段", description = "返回指定表的字段结构信息，类似于 MySQL 的 DESCRIBE")
-    public R<List<ColumnMetadata>> getColumns(@PathVariable String datasourceName, @PathVariable String tableName) {
-        return R.ok(databaseMetadataService.getColumns(datasourceName, tableName));
+    @GetMapping("/columns")
+    @Operation(summary = "获取表字段", description = "返回指定表的字段结构信息，类似于 MySQL 的 DESCRIBE。支持通过schema参数指定表所在的模式")
+    public R<List<ColumnMetadata>> getColumns(
+            @Parameter(description = "数据源名称", required = true)
+            @RequestParam String datasourceName,
+            @Parameter(description = "表名", required = true)
+            @RequestParam String tableName,
+            @Parameter(description = "Schema名称（可选，指定表所在的模式）", required = false)
+            @RequestParam(required = false) String schema) {
+        return R.ok(databaseMetadataService.getColumns(datasourceName, tableName, schema));
     }
 
-    @GetMapping("/{datasourceName}/structure")
-    @Operation(summary = "获取数据库结构元数据", description = "返回数据库基础信息和表字段结构")
-    public R<DatabaseStructureResponse> getStructure(@PathVariable String datasourceName) {
+    @GetMapping("/structure")
+    @Operation(summary = "获取数据库结构元数据", description = "返回数据库基础信息和表字段结构。支持通过schema参数过滤特定模式的表")
+    public R<DatabaseStructureResponse> getStructure(
+            @Parameter(description = "数据源名称", required = true)
+            @RequestParam String datasourceName,
+            @Parameter(description = "Schema名称（可选，用于过滤特定模式的表）", required = false)
+            @RequestParam(required = false) String schema) {
         DatabaseMetadata metadata = databaseMetadataService.getDatabaseMetadata(datasourceName);
-        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceName);
+        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceName, schema);
         fillColumnsIfNeeded(datasourceName, tables);
         return R.ok(new DatabaseStructureResponse(metadata, tables));
     }

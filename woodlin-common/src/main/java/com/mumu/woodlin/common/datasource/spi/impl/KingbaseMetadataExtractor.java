@@ -395,10 +395,20 @@ if (hasSchemaFilter) {
     }
 
     /**
-     * 使用 KingBase 原生系统表提取列信息
+     * 使用 KingBase 原生系统表提取列信息（完整版）
      * <p>
-     * 直接查询 KingBase 的系统表（sys_attribute, sys_class, sys_namespace）
-     * 获取列的详细信息，不依赖兼容模式。
+     * 使用 information_schema.columns 结合 PostgreSQL 系统表进行元数据提取。
+     * 这是参考 PostgreSQL 官方元数据查询方式改进后的 KingBase 兼容版本。
+     * </p>
+     * <p>
+     * SQL查询说明：
+     * 1. 基础信息：从 information_schema.columns 获取标准的列信息（表名、列名、数据类型、是否可空等）
+     * 2. 类型详情：从 pg_attribute 和 pg_type 获取类型的详细信息（atttypmod, attndims, typelem, typlen, typtype）
+     * 3. 数组类型：通过 typelem 关联 pg_type 获取数组元素类型信息（elem_schema, elem_name）
+     * 4. 注释信息：使用 col_description 函数获取列注释
+     * 5. 默认值：使用 column_default 获取列的默认值
+     * 6. 排序规则：通过 attcollation 关联 pg_collation 获取排序规则信息
+     * 7. 表类型：获取 relkind 判断是表、视图还是其他类型
      * </p>
      *
      * @param connection 数据库连接
@@ -412,25 +422,76 @@ if (hasSchemaFilter) {
         List<ColumnMetadata> columns = new ArrayList<>();
         String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
 
-        // KingBase 使用 sys_attribute 和 sys_type 系统表
+        // 使用 information_schema.columns 结合 pg_* 系统表的完整元数据查询
+        // 这个 SQL 参考了 PostgreSQL 官方的元数据提取方式，并针对 KingBase 进行了优化
         String sql = "SELECT " +
-                     "  a.attname AS column_name, " +
-                     "  t.typname AS data_type, " +
-                     "  a.attnotnull AS not_null, " +
-                     "  a.attnum AS ordinal_position, " +
-                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS formatted_type, " +
-                     "  COALESCE(pg_catalog.col_description(c.oid, a.attnum), '') AS column_comment, " +
-                     "  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
-                     "FROM sys_attribute a " +
-                     "INNER JOIN sys_class c ON a.attrelid = c.oid " +
-                     "INNER JOIN sys_namespace n ON c.relnamespace = n.oid " +
-                     "INNER JOIN sys_type t ON a.atttypid = t.oid " +
-                     "LEFT JOIN sys_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum " +
-                     "WHERE n.nspname = ? " +
-                     "  AND c.relname = ? " +
-                     "  AND a.attnum > 0 " +  // 跳过系统列
-                     "  AND NOT a.attisdropped " +  // 跳过已删除的列
-                     "ORDER BY a.attnum";
+                     // 基础列信息（来自 information_schema）
+                     "  col.table_schema AS schema_name, " +              // Schema名称
+                     "  col.table_name, " +                               // 表名
+                     "  col.column_name, " +                              // 列名
+                     "  col.character_maximum_length, " +                 // 字符类型最大长度
+                     "  col.is_nullable, " +                              // 是否可空
+                     "  col.numeric_precision, " +                        // 数值精度
+                     "  col.numeric_scale, " +                            // 数值小数位数
+                     "  col.datetime_precision, " +                       // 日期时间精度
+                     "  col.ordinal_position, " +                         // 列顺序位置
+                     // 类型详细信息（来自 pg_attribute 和 pg_type）
+                     "  b.atttypmod, " +                                  // 类型修饰符（包含长度、精度等信息）
+                     "  b.attndims, " +                                   // 数组维度数
+                     "  col.data_type AS col_type, " +                    // 数据类型名称
+                     "  et.typelem, " +                                   // 数组元素类型OID
+                     "  et.typlen, " +                                    // 类型长度
+                     "  et.typtype, " +                                   // 类型类别（b=基础类型, c=复合类型, e=枚举类型等）
+                     // 数组元素类型信息
+                     "  nbt.nspname AS elem_schema, " +                   // 数组元素类型所在schema
+                     "  bt.typname AS elem_name, " +                      // 数组元素类型名称
+                     "  b.atttypid, " +                                   // 列类型OID
+                     // UDT（用户定义类型）信息
+                     "  '' AS udt_schema, " +                             // UDT schema（暂时为空）
+                     "  col.data_type AS udt_name, " +                    // UDT名称
+                     // 注释和默认值
+                     "  col_description(c.oid, col.ordinal_position) AS comment, " +  // 列注释
+                     "  col.column_default AS col_default, " +            // 列默认值
+                     "  col.generation_expression, " +                    // 生成列表达式
+                     "  b.attacl, " +                                     // 列级别访问控制列表
+                     // 排序规则信息
+                     "  colnsp.nspname AS collation_schema_name, " +      // 排序规则schema
+                     "  coll.collname, " +                                // 排序规则名称
+                     // 表类型
+                     "  c.relkind, " +                                    // 表类型（r=表, v=视图, m=物化视图等）
+                     "  b.attfdwoptions AS foreign_options " +            // 外部表选项
+                     "FROM information_schema.columns AS col " +
+                     // 关联 pg_namespace 获取 schema 信息
+                     "LEFT JOIN pg_namespace ns ON ns.nspname = col.table_schema " +
+                     // 关联 pg_class 获取表信息
+                     "LEFT JOIN pg_class c ON col.table_name = c.relname AND c.relnamespace = ns.oid " +
+                     // 关联 pg_attrdef 获取默认值定义
+                     "LEFT JOIN pg_attrdef a ON c.oid = a.adrelid AND col.ordinal_position = a.adnum " +
+                     // 关联 pg_attribute 获取列属性详细信息
+                     "LEFT JOIN pg_attribute b ON b.attrelid = c.oid AND b.attname = col.column_name " +
+                     // 关联 pg_type 获取列类型信息
+                     "LEFT JOIN pg_type et ON et.oid = b.atttypid " +
+                     // 关联 pg_collation 获取排序规则
+                     "LEFT JOIN pg_collation coll ON coll.oid = b.attcollation " +
+                     "LEFT JOIN pg_namespace colnsp ON coll.collnamespace = colnsp.oid " +
+                     // 关联序列依赖（用于判断自增列）
+                     "LEFT JOIN (" +
+                     "  pg_depend dep " +
+                     "  JOIN pg_sequence seq ON dep.classid = 'pg_class'::regclass::oid " +
+                     "    AND dep.objid = seq.seqrelid " +
+                     "    AND dep.deptype = 'i'::\"char\" " +
+                     ") ON dep.refclassid = 'pg_class'::regclass::oid " +
+                     "  AND dep.refobjid = c.oid " +
+                     "  AND dep.refobjsubid = b.attnum " +
+                     // 关联数组元素类型（如果是数组类型）
+                     "LEFT JOIN pg_type bt ON et.typelem = bt.oid " +
+                     "LEFT JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid " +
+                     // WHERE 条件
+                     "WHERE col.table_schema = ? " +
+                     "  AND col.table_name = ? " +
+                     // 排序
+                     "ORDER BY col.table_schema, col.table_name, col.ordinal_position";
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
             pstmt.setString(1, targetSchema);
@@ -438,24 +499,27 @@ if (hasSchemaFilter) {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    String dataType = rs.getString("data_type");
-                    String columnDefault = rs.getString("column_default");
+                    // 获取列的数据类型
+                    String dataType = rs.getString("col_type");
+                    String columnDefault = rs.getString("col_default");
+                    
+                    // 判断是否自增列：检查默认值是否包含 nextval 或 seq_
                     boolean isAutoIncrement = columnDefault != null &&
                                              (columnDefault.contains("nextval") ||
                                               columnDefault.contains("seq_"));
 
-
-    ColumnMetadata column = ColumnMetadata.builder()
+                    // 构建列元数据对象
+                    ColumnMetadata column = ColumnMetadata.builder()
                             .columnName(rs.getString("column_name"))
                             .tableName(tableName)
                             .schemaName(targetSchema)
                             .databaseName(databaseName)
                             .dataType(dataType)
-                            .nullable(!rs.getBoolean("not_null"))
+                            .nullable("YES".equalsIgnoreCase(rs.getString("is_nullable")))
                             .ordinalPosition(rs.getInt("ordinal_position"))
-                            .comment(rs.getString("column_comment"))
+                            .comment(rs.getString("comment"))
                             .defaultValue(columnDefault)
-.autoIncrement(isAutoIncrement)
+                            .autoIncrement(isAutoIncrement)
                             .javaType(mapKingBaseTypeToJava(dataType))
                             .build();
 
@@ -463,8 +527,8 @@ if (hasSchemaFilter) {
                 }
             }
         } catch (SQLException e) {
-            // 如果 sys_* 系统表不可用，尝试使用 pg_* 系统表作为后备
-            log.warn("KingBase 原生系统表查询列失败，尝试使用 pg_* 系统表作为后备: {}", e.getMessage());
+            // 如果标准查询失败，尝试使用 pg_catalog 作为后备
+            log.warn("KingBase 标准元数据查询失败，尝试使用 pg_catalog 作为后备: {}", e.getMessage());
             return extractColumnsViaPgCatalog(connection, databaseName, schemaName, tableName);
         }
 
