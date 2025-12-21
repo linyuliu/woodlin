@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -151,11 +152,11 @@ public class InfraDatasourceController {
      * @param code 数据源唯一编码
      * @return 数据库元数据
      */
-    @GetMapping("/{code}/metadata")
+    @GetMapping("/metadata")
     @Operation(summary = "获取数据库元数据", description = "获取数据源的完整元数据信息，包括数据库版本、字符集、支持的Schema等")
     public R<DatabaseMetadata> metadata(
             @Parameter(description = "数据源唯一编码", required = true)
-            @PathVariable("code") String code) {
+            @RequestParam("code") String code) {
         return R.ok(metadataService.getDatabaseMetadata(code));
     }
 
@@ -168,11 +169,11 @@ public class InfraDatasourceController {
      * @param code 数据源唯一编码
      * @return Schema列表
      */
-    @GetMapping("/{code}/schemas")
+    @GetMapping("/schemas")
     @Operation(summary = "获取Schema列表", description = "获取数据源中所有的Schema（模式）列表。注意：MySQL等数据库不支持Schema概念")
     public R<List<SchemaMetadata>> schemas(
             @Parameter(description = "数据源唯一编码", required = true)
-            @PathVariable("code") String code) {
+            @RequestParam("code") String code) {
         return R.ok(metadataService.getSchemas(code));
     }
 
@@ -182,11 +183,11 @@ public class InfraDatasourceController {
      * @param code 数据源唯一编码
      * @return 表元数据列表
      */
-    @GetMapping("/{code}/tables")
+    @GetMapping("/tables")
     @Operation(summary = "获取表列表", description = "获取数据源中所有的表信息，包括表名、表类型、注释等")
     public R<List<TableMetadata>> tables(
             @Parameter(description = "数据源唯一编码", required = true)
-            @PathVariable("code") String code) {
+            @RequestParam("code") String code) {
         return R.ok(metadataService.getTables(code));
     }
 
@@ -197,13 +198,13 @@ public class InfraDatasourceController {
      * @param table 表名
      * @return 字段元数据列表
      */
-    @GetMapping("/{code}/tables/{table}/columns")
+    @GetMapping("/columns")
     @Operation(summary = "获取表字段列表", description = "获取指定表的所有字段信息，包括字段名、类型、长度、约束等详细信息")
     public R<List<ColumnMetadata>> columns(
             @Parameter(description = "数据源唯一编码", required = true)
-            @PathVariable("code") String code,
+            @RequestParam("code") String code,
             @Parameter(description = "表名", required = true)
-            @PathVariable("table") String table) {
+            @RequestParam("table") String table) {
         return R.ok(metadataService.getColumns(code, table));
     }
 
