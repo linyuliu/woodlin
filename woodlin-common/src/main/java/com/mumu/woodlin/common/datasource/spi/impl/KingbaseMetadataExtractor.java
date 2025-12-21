@@ -404,11 +404,19 @@ if (hasSchemaFilter) {
      * SQL查询说明：
      * 1. 基础信息：从 information_schema.columns 获取标准的列信息（表名、列名、数据类型、是否可空等）
      * 2. 类型详情：从 pg_attribute 和 pg_type 获取类型的详细信息（atttypmod, attndims, typelem, typlen, typtype）
-     * 3. 数组类型：通过 typelem 关联 pg_type 获取数组元素类型信息（elem_schema, elem_name）
-     * 4. 注释信息：使用 col_description 函数获取列注释
-     * 5. 默认值：使用 column_default 获取列的默认值
-     * 6. 排序规则：通过 attcollation 关联 pg_collation 获取排序规则信息
-     * 7. 表类型：获取 relkind 判断是表、视图还是其他类型
+     * 3. 真实类型：使用 format_type(b.atttypid, b.atttypmod) 获取完整的类型定义，包括 with time zone 等修饰符
+     * 4. 数组类型：通过 typelem 关联 pg_type 获取数组元素类型信息（elem_schema, elem_name）
+     * 5. 注释信息：使用 col_description 函数获取列注释
+     * 6. 默认值：使用 column_default 获取列的默认值
+     * 7. 排序规则：通过 attcollation 关联 pg_collation 获取排序规则信息
+     * 8. 表类型：获取 relkind 判断是表、视图还是其他类型
+     * </p>
+     * <p>
+     * 关于类型的说明：
+     * - col.data_type: information_schema 中的高层抽象类型，可能显示为 USER-DEFINED
+     * - et.typname: pg_type 中的原始类型名称，如 timestamptz, timestamp
+     * - format_type(): 格式化后的完整类型，如 "timestamp with time zone", "character varying(255)"
+     * 本实现使用 format_type() 作为主要类型，因为它最准确且包含所有类型修饰符
      * </p>
      *
      * @param connection 数据库连接
@@ -435,10 +443,13 @@ if (hasSchemaFilter) {
                      "  col.numeric_scale, " +                            // 数值小数位数
                      "  col.datetime_precision, " +                       // 日期时间精度
                      "  col.ordinal_position, " +                         // 列顺序位置
+                     // 类型信息（三种类型表示，用于兼容和精确性）
+                     "  col.data_type AS info_data_type, " +              // information_schema 的标准类型（用于兼容）
+                     "  et.typname AS pg_type_name, " +                   // PostgreSQL/KingBase 真实类型名（如 timestamptz）
+                     "  format_type(b.atttypid, b.atttypmod) AS real_type, " +  // 格式化后的完整类型（最准确，如 "timestamp with time zone"）
                      // 类型详细信息（来自 pg_attribute 和 pg_type）
                      "  b.atttypmod, " +                                  // 类型修饰符（包含长度、精度等信息）
                      "  b.attndims, " +                                   // 数组维度数
-                     "  col.data_type AS col_type, " +                    // 数据类型名称
                      "  et.typelem, " +                                   // 数组元素类型OID
                      "  et.typlen, " +                                    // 类型长度
                      "  et.typtype, " +                                   // 类型类别（b=基础类型, c=复合类型, e=枚举类型等）
@@ -446,9 +457,6 @@ if (hasSchemaFilter) {
                      "  nbt.nspname AS elem_schema, " +                   // 数组元素类型所在schema
                      "  bt.typname AS elem_name, " +                      // 数组元素类型名称
                      "  b.atttypid, " +                                   // 列类型OID
-                     // UDT（用户定义类型）信息
-                     "  '' AS udt_schema, " +                             // UDT schema（暂时为空）
-                     "  col.data_type AS udt_name, " +                    // UDT名称
                      // 注释和默认值
                      "  col_description(c.oid, col.ordinal_position) AS comment, " +  // 列注释
                      "  col.column_default AS col_default, " +            // 列默认值
@@ -462,15 +470,15 @@ if (hasSchemaFilter) {
                      "  b.attfdwoptions AS foreign_options " +            // 外部表选项
                      "FROM information_schema.columns AS col " +
                      // 关联 pg_namespace 获取 schema 信息
-                     "LEFT JOIN pg_namespace ns ON ns.nspname = col.table_schema " +
+                     "JOIN pg_namespace ns ON ns.nspname = col.table_schema " +
                      // 关联 pg_class 获取表信息
-                     "LEFT JOIN pg_class c ON col.table_name = c.relname AND c.relnamespace = ns.oid " +
+                     "JOIN pg_class c ON col.table_name = c.relname AND c.relnamespace = ns.oid " +
+                     // 关联 pg_attribute 获取列属性详细信息（改为 JOIN 确保获取到类型信息）
+                     "JOIN pg_attribute b ON b.attrelid = c.oid AND b.attname = col.column_name " +
+                     // 关联 pg_type 获取列类型信息（改为 JOIN 确保获取到类型信息）
+                     "JOIN pg_type et ON et.oid = b.atttypid " +
                      // 关联 pg_attrdef 获取默认值定义
                      "LEFT JOIN pg_attrdef a ON c.oid = a.adrelid AND col.ordinal_position = a.adnum " +
-                     // 关联 pg_attribute 获取列属性详细信息
-                     "LEFT JOIN pg_attribute b ON b.attrelid = c.oid AND b.attname = col.column_name " +
-                     // 关联 pg_type 获取列类型信息
-                     "LEFT JOIN pg_type et ON et.oid = b.atttypid " +
                      // 关联 pg_collation 获取排序规则
                      "LEFT JOIN pg_collation coll ON coll.oid = b.attcollation " +
                      "LEFT JOIN pg_namespace colnsp ON coll.collnamespace = colnsp.oid " +
@@ -490,7 +498,7 @@ if (hasSchemaFilter) {
                      "WHERE col.table_schema = ? " +
                      "  AND col.table_name = ? " +
                      // 排序
-                     "ORDER BY col.table_schema, col.table_name, col.ordinal_position";
+                     "ORDER BY col.ordinal_position";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
@@ -499,8 +507,15 @@ if (hasSchemaFilter) {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    // 获取列的数据类型
-                    String dataType = rs.getString("col_type");
+                    // 获取列的数据类型 - 优先使用 format_type 的结果，这是最准确的类型表示
+                    // format_type 会返回完整的类型定义，如 "timestamp with time zone", "character varying(255)" 等
+                    String realType = rs.getString("real_type");
+                    String pgTypeName = rs.getString("pg_type_name");
+                    String infoDataType = rs.getString("info_data_type");
+                    
+                    // 使用 format_type 的结果作为主要类型，如果为空则回退到 pg_type_name，最后是 info_data_type
+                    String dataType = realType != null ? realType : (pgTypeName != null ? pgTypeName : infoDataType);
+                    
                     String columnDefault = rs.getString("col_default");
                     
                     // 判断是否自增列：检查默认值是否包含 nextval 或 seq_
@@ -514,7 +529,7 @@ if (hasSchemaFilter) {
                             .tableName(tableName)
                             .schemaName(targetSchema)
                             .databaseName(databaseName)
-                            .dataType(dataType)
+                            .dataType(dataType)  // 使用 format_type 的结果，包含完整的类型修饰符
                             .nullable("YES".equalsIgnoreCase(rs.getString("is_nullable")))
                             .ordinalPosition(rs.getInt("ordinal_position"))
                             .comment(rs.getString("comment"))
@@ -544,12 +559,12 @@ if (hasSchemaFilter) {
 
         String sql = "SELECT " +
                      "  a.attname AS column_name, " +
-                     "  t.typname AS data_type, " +
+                     "  t.typname AS pg_type_name, " +
                      "  a.attnotnull AS not_null, " +
                      "  a.attnum AS ordinal_position, " +
-                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS formatted_type, " +
+                     "  pg_catalog.format_type(a.atttypid, a.atttypmod) AS real_type, " +
                      "  COALESCE(pg_catalog.col_description(c.oid, a.attnum), '') AS column_comment, " +
-"  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
+                     "  pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default " +
                      "FROM pg_catalog.pg_attribute a " +
                      "INNER JOIN pg_catalog.pg_class c ON a.attrelid = c.oid " +
                      "INNER JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid " +
@@ -568,7 +583,11 @@ if (hasSchemaFilter) {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    String dataType = rs.getString("data_type");
+                    // 优先使用 format_type 的结果
+                    String realType = rs.getString("real_type");
+                    String pgTypeName = rs.getString("pg_type_name");
+                    String dataType = realType != null ? realType : pgTypeName;
+                    
                     String columnDefault = rs.getString("column_default");
                     boolean isAutoIncrement = columnDefault != null &&
                                              (columnDefault.contains("nextval") ||
@@ -601,8 +620,12 @@ if (hasSchemaFilter) {
      * KingBase 的类型系统基于 PostgreSQL，但在不同兼容模式下可能有所不同。
      * 这里提供一个统一的类型映射，不依赖兼容模式。
      * </p>
+     * <p>
+     * 注意：此方法现在接收 format_type() 的结果，格式如 "timestamp with time zone", "character varying(255)" 等。
+     * 需要提取基础类型名称进行映射。
+     * </p>
      *
-     * @param kingbaseType KingBase 数据类型
+     * @param kingbaseType KingBase 数据类型（可能包含修饰符，如 "timestamp with time zone"）
      * @return Java 类型
      */
     private String mapKingBaseTypeToJava(String kingbaseType) {
@@ -611,15 +634,19 @@ if (hasSchemaFilter) {
         }
 
         String type = kingbaseType.toLowerCase();
+        
+        // 处理 format_type() 返回的格式化类型
+        // 提取基础类型名称（去掉长度、精度等修饰符）
+        String baseType = extractBaseType(type);
 
         // 使用父类的类型映射
-        String javaType = typeMapping.get(type);
+        String javaType = typeMapping.get(baseType);
         if (javaType != null) {
             return javaType;
         }
 
         // KingBase 特有类型映射（不在父类映射中）
-        return switch (type) {
+        return switch (baseType) {
             // 数字类型
             case "number" -> "BigDecimal";
             case "tinyint" -> "Byte";
@@ -644,6 +671,51 @@ if (hasSchemaFilter) {
 
             default -> "Object";
         };
+    }
+    
+    /**
+     * 从 format_type() 返回的格式化类型中提取基础类型名称
+     * <p>
+     * 例如：
+     * - "timestamp with time zone" → "timestamp with time zone" (保持完整)
+     * - "timestamp without time zone" → "timestamp without time zone" (保持完整)
+     * - "character varying(255)" → "character varying"
+     * - "numeric(10,2)" → "numeric"
+     * - "integer" → "integer"
+     * </p>
+     *
+     * @param formattedType format_type() 返回的格式化类型
+     * @return 基础类型名称
+     */
+    private String extractBaseType(String formattedType) {
+        if (formattedType == null) {
+            return null;
+        }
+        
+        String type = formattedType.trim();
+        
+        // 对于带 with/without time zone 的类型，保持完整（这是重要的类型修饰符）
+        if (type.contains("with time zone") || type.contains("without time zone")) {
+            // 提取 "timestamp with time zone" 或 "time with time zone" 等
+            if (type.startsWith("timestamp")) {
+                return type.contains("with time zone") ? "timestamp with time zone" : "timestamp without time zone";
+            } else if (type.startsWith("time")) {
+                return type.contains("with time zone") ? "time with time zone" : "time without time zone";
+            }
+        }
+        
+        // 去掉括号中的长度/精度信息，如 "character varying(255)" → "character varying"
+        int parenIndex = type.indexOf('(');
+        if (parenIndex > 0) {
+            type = type.substring(0, parenIndex).trim();
+        }
+        
+        // 去掉数组标记 []
+        if (type.endsWith("[]")) {
+            type = type.substring(0, type.length() - 2).trim();
+        }
+        
+        return type;
     }
 
     @Override
