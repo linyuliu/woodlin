@@ -44,6 +44,15 @@ public interface DatabaseMetadataService {
     List<TableMetadata> getTables(String datasourceName);
     
     /**
+     * 获取指定数据源和Schema的所有表信息
+     * 
+     * @param datasourceName 数据源名称
+     * @param schemaName Schema名称（可选）
+     * @return 表列表
+     */
+    List<TableMetadata> getTables(String datasourceName, String schemaName);
+    
+    /**
      * 获取指定表的列信息
      * 
      * @param datasourceName 数据源名称
@@ -51,6 +60,16 @@ public interface DatabaseMetadataService {
      * @return 列列表
      */
     List<ColumnMetadata> getColumns(String datasourceName, String tableName);
+    
+    /**
+     * 获取指定表的列信息（支持指定Schema）
+     * 
+     * @param datasourceName 数据源名称
+     * @param tableName 表名称
+     * @param schemaName Schema名称（可选）
+     * @return 列列表
+     */
+    List<ColumnMetadata> getColumns(String datasourceName, String tableName, String schemaName);
     
     /**
      * 获取支持的数据库类型列表

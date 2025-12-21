@@ -92,7 +92,13 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     @Override
     @Cacheable(value = "databaseTables", key = "#datasourceName")
     public List<TableMetadata> getTables(String datasourceName) {
-        log.info("获取数据源 {} 的表列表", datasourceName);
+        return getTables(datasourceName, null);
+    }
+    
+    @Override
+    @Cacheable(value = "databaseTables", key = "#datasourceName + ':' + (#schemaName != null ? #schemaName : 'default')")
+    public List<TableMetadata> getTables(String datasourceName, String schemaName) {
+        log.info("获取数据源 {} 的表列表，Schema: {}", datasourceName, schemaName != null ? schemaName : "默认");
         
         try {
             DataSource targetDataSource = getTargetDataSource(datasourceName);
@@ -104,12 +110,13 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             try (Connection connection = targetDataSource.getConnection()) {
                 String databaseName = connection.getCatalog();
-                String schemaName = safeSchema(connection);
-                return extractor.extractTables(connection, databaseName, schemaName);
+                // 如果未指定schema，使用连接的默认schema
+                String targetSchema = schemaName != null ? schemaName : safeSchema(connection);
+                return extractor.extractTables(connection, databaseName, targetSchema);
             }
             
         } catch (SQLException e) {
-            log.error("获取表列表失败，数据源: {}", datasourceName, e);
+            log.error("获取表列表失败，数据源: {}, Schema: {}", datasourceName, schemaName, e);
             throw new BusinessException("获取表列表失败: " + e.getMessage(), e);
         }
     }
@@ -117,7 +124,13 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
     @Override
     @Cacheable(value = "tableColumns", key = "#datasourceName + ':' + #tableName")
     public List<ColumnMetadata> getColumns(String datasourceName, String tableName) {
-        log.info("获取数据源 {} 表 {} 的列信息", datasourceName, tableName);
+        return getColumns(datasourceName, tableName, null);
+    }
+    
+    @Override
+    @Cacheable(value = "tableColumns", key = "#datasourceName + ':' + #tableName + ':' + (#schemaName != null ? #schemaName : 'default')")
+    public List<ColumnMetadata> getColumns(String datasourceName, String tableName, String schemaName) {
+        log.info("获取数据源 {} 表 {} 的列信息，Schema: {}", datasourceName, tableName, schemaName != null ? schemaName : "默认");
         
         try {
             DataSource targetDataSource = getTargetDataSource(datasourceName);
@@ -129,12 +142,13 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
             
             try (Connection connection = targetDataSource.getConnection()) {
                 String databaseName = connection.getCatalog();
-                String schemaName = safeSchema(connection);
-                return extractor.extractColumns(connection, databaseName, schemaName, tableName);
+                // 如果未指定schema，使用连接的默认schema
+                String targetSchema = schemaName != null ? schemaName : safeSchema(connection);
+                return extractor.extractColumns(connection, databaseName, targetSchema, tableName);
             }
             
         } catch (SQLException e) {
-            log.error("获取列信息失败，数据源: {}, 表: {}", datasourceName, tableName, e);
+            log.error("获取列信息失败，数据源: {}, 表: {}, Schema: {}", datasourceName, tableName, schemaName, e);
             throw new BusinessException("获取列信息失败: " + e.getMessage(), e);
         }
     }
