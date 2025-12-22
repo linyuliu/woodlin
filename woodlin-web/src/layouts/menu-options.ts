@@ -1,6 +1,5 @@
-import type { MenuOption } from 'naive-ui'
-import { h } from 'vue'
-import { NIcon } from 'naive-ui'
+import { h, type Component } from 'vue'
+import { NIcon, type MenuOption } from 'naive-ui'
 import {
   HomeOutline,
   PeopleOutline,
@@ -17,7 +16,7 @@ export interface AppMenuItem {
   children?: AppMenuItem[]
 }
 
-const renderIcon = (icon: any) => {
+const renderIcon = (icon: Component) => {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
