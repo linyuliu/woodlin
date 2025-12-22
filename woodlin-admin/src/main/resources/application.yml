@@ -429,3 +429,35 @@ woodlin:
     # 示例: X-Response-Fields: code,data,message
     # 示例: X-Response-Fields: -timestamp,-requestId (排除字段)
     request-header-name: ${RESPONSE_REQUEST_HEADER_NAME:X-Response-Fields}
+  # CORS跨域配置
+  cors:
+    # 是否启用CORS（默认启用）
+    enabled: ${CORS_ENABLED:true}
+    # 允许的源配置
+    # 注意：此处为默认配置，具体环境的配置请在 application-{profile}.yml 中覆盖
+    # dev/test环境：使用通配符 "*" 方便开发调试
+    # prod环境：配置具体域名保证安全性
+    allowed-origin-patterns:
+      - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
+    # 允许的HTTP方法
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      - PATCH
+    # 允许的请求头
+    allowed-headers:
+      - "*"
+    # 暴露的响应头
+    exposed-headers:
+      - Authorization
+      - Content-Type
+      - X-Total-Count
+    # 是否允许携带凭证
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+    # 预检请求缓存时间（秒）
+    max-age: ${CORS_MAX_AGE:3600}
+    # 应用的路径模式
+    path-pattern: "/**"
