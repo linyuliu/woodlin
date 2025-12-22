@@ -77,6 +77,26 @@ const router = createRouter({
           }
         },
         {
+          path: 'dict',
+          name: 'DictManagement',
+          component: () => import('@/views/system/DictView.vue'),
+          meta: {
+            title: '字典管理',
+            icon: 'book-outline',
+            // permissions: ['system:dict:view']
+          }
+        },
+        {
+          path: 'config',
+          name: 'ConfigManagement',
+          component: () => import('@/views/system/ConfigView.vue'),
+          meta: {
+            title: '配置管理',
+            icon: 'options-outline',
+            // permissions: ['system:config:view']
+          }
+        },
+        {
           path: 'system-settings',
           name: 'SystemSettings',
           component: () => import('@/views/system/SystemSettingsView.vue'),
