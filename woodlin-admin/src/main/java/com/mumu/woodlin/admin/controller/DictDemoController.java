@@ -24,7 +24,7 @@ import com.mumu.woodlin.common.response.Result;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/dict")
+@RequestMapping("/dict")
 @Tag(name = "字典管理", description = "字典数据管理接口")
 public class DictDemoController {
     

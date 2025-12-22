@@ -9,6 +9,16 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
 /**
+ * 后端统一响应格式
+ */
+interface ApiResponse<T = any> {
+  code: number
+  message: string
+  data: T
+  timestamp?: string
+}
+
+/**
  * 创建axios实例
  * 配置基础URL、超时时间等默认参数
  */
@@ -49,7 +59,7 @@ request.interceptors.request.use(
  * 在收到响应后执行，可以统一处理响应数据、错误码等
  */
 request.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response: AxiosResponse<ApiResponse>) => {
     const { data } = response
     
     console.warn(`✅ API响应: ${response.config.url}`, data)
@@ -62,7 +72,7 @@ request.interceptors.response.use(
     }
     
     // 返回数据部分，简化组件中的数据获取
-    return data.data || data
+    return data.data
   },
   (error) => {
     console.error('❌ HTTP请求错误:', error)
@@ -102,7 +112,7 @@ export const api = {
    * @returns Promise<T>
    */
   get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-    request.get(url, config),
+    request.get<ApiResponse<T>>(url, config).then(res => res as unknown as T),
   
   /**
    * POST请求
@@ -112,7 +122,7 @@ export const api = {
    * @returns Promise<T>
    */
   post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
-    request.post(url, data, config),
+    request.post<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
   
   /**
    * PUT请求
@@ -122,7 +132,7 @@ export const api = {
    * @returns Promise<T>
    */
   put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
-    request.put(url, data, config),
+    request.put<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
   
   /**
    * DELETE请求
@@ -131,7 +141,7 @@ export const api = {
    * @returns Promise<T>
    */
   delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-    request.delete(url, config),
+    request.delete<ApiResponse<T>>(url, config).then(res => res as unknown as T),
     
   /**
    * PATCH请求
@@ -141,5 +151,5 @@ export const api = {
    * @returns Promise<T>
    */
   patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
-    request.patch(url, data, config),
+    request.patch<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
 }

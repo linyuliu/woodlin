@@ -26,7 +26,7 @@ import com.mumu.woodlin.common.service.RedisCacheService;
  */
 @Tag(name = "缓存管理", description = "Redis缓存管理接口")
 @RestController
-@RequestMapping("/api/cache")
+@RequestMapping("/cache")
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "woodlin.cache.redis-enabled", havingValue = "true")
 public class CacheManagementController {
