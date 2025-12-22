@@ -23,10 +23,21 @@ export interface SysRole {
 }
 
 /**
+ * 角色列表查询参数
+ */
+export interface RoleListParams {
+  pageNum?: number
+  pageSize?: number
+  roleName?: string
+  roleCode?: string
+  status?: string
+}
+
+/**
  * 分页查询角色列表
  * @param params 查询参数
  */
-export function getRoleList(params: any) {
+export function getRoleList(params: RoleListParams) {
   return request({
     url: '/system/role/list',
     method: 'get',
