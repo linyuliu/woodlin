@@ -65,7 +65,7 @@ function pathToFunctionName(path, method) {
  * 生成 TypeScript 类型定义
  */
 function generateTypes(schemas) {
-  if (!schemas) return ''
+  if (!schemas) {return ''}
   
   let types = '// 自动生成的类型定义\n\n'
   
@@ -88,7 +88,7 @@ function generateTypes(schemas) {
  * 映射 OpenAPI 类型到 TypeScript 类型
  */
 function mapSchemaType(schema) {
-  if (!schema) return 'any'
+  if (!schema) {return 'any'}
   
   if (schema.$ref) {
     const typeName = schema.$ref.split('/').pop()
