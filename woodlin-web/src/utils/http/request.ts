@@ -194,7 +194,8 @@ class HttpRequest {
       }
     }
 
-    const responseData = response?.data as any
+    // Extract error message with proper typing
+    const responseData = response?.data as ApiResponse | undefined
     const errorMsg = responseData?.message || error.message || '请求失败'
     return Promise.reject(new Error(errorMsg))
   }
