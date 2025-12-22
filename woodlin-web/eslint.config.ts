@@ -2,8 +2,19 @@ import { globalIgnores } from 'eslint/config'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 import pluginVue from 'eslint-plugin-vue'
 import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
-// 导入自动生成的全局变量配置
-import autoImportGlobals from './.eslintrc-auto-import.json' with { type: 'json' }
+import { readFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+// 尝试加载自动生成的全局变量配置
+let autoImportGlobals = { globals: {} }
+const autoImportPath = fileURLToPath(new URL('./.eslintrc-auto-import.json', import.meta.url))
+if (existsSync(autoImportPath)) {
+  try {
+    autoImportGlobals = JSON.parse(readFileSync(autoImportPath, 'utf-8'))
+  } catch {
+    console.warn('Failed to load auto-import globals, using empty config')
+  }
+}
 
 export default defineConfigWithVueTs(
   {
