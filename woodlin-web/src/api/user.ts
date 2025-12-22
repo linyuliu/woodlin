@@ -25,10 +25,23 @@ export interface SysUser {
 }
 
 /**
+ * 用户列表查询参数
+ */
+export interface UserListParams {
+  pageNum?: number
+  pageSize?: number
+  username?: string
+  nickname?: string
+  email?: string
+  status?: string
+  deptId?: number
+}
+
+/**
  * 分页查询用户列表
  * @param params 查询参数
  */
-export function getUserList(params: any) {
+export function getUserList(params: UserListParams) {
   return request({
     url: '/system/user/list',
     method: 'get',
@@ -73,22 +86,12 @@ export function updateUser(data: SysUser) {
 
 /**
  * 删除用户
- * @param userIds 用户ID，多个用逗号分隔
+ * @param userIds 用户ID，可以是字符串（多个用逗号分隔）或数组
  */
-export function deleteUser(userIds: string) {
+export function deleteUser(userIds: string | number[]) {
+  const ids = Array.isArray(userIds) ? userIds.join(',') : userIds
   return request({
-    url: `/system/user/${userIds}`,
-    method: 'delete'
-  })
-}
-
-/**
- * 批量删除用户
- * @param userIds 用户ID数组
- */
-export function batchDeleteUser(userIds: number[]) {
-  return request({
-    url: `/system/user/${userIds.join(',')}`,
+    url: `/system/user/${ids}`,
     method: 'delete'
   })
 }
@@ -97,7 +100,7 @@ export function batchDeleteUser(userIds: number[]) {
  * 导出用户列表
  * @param params 查询参数
  */
-export function exportUser(params: any) {
+export function exportUser(params: UserListParams) {
   return request({
     url: '/system/user/export',
     method: 'get',
