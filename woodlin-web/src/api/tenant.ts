@@ -27,10 +27,21 @@ export interface SysTenant {
 }
 
 /**
+ * 租户列表查询参数
+ */
+export interface TenantListParams {
+  pageNum?: number
+  pageSize?: number
+  tenantName?: string
+  tenantCode?: string
+  status?: string
+}
+
+/**
  * 分页查询租户列表
  * @param params 查询参数
  */
-export function getTenantList(params: any) {
+export function getTenantList(params: TenantListParams) {
   return request({
     url: '/system/tenant/list',
     method: 'get',
