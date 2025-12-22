@@ -194,7 +194,8 @@ class HttpRequest {
       }
     }
 
-    const errorMsg = response?.data?.message || error.message || '请求失败'
+    const responseData = response?.data as any
+    const errorMsg = responseData?.message || error.message || '请求失败'
     return Promise.reject(new Error(errorMsg))
   }
 

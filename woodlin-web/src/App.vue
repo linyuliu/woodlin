@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { NConfigProvider } from 'naive-ui'
+import { NConfigProvider, NMessageProvider, NDialogProvider, NLoadingBarProvider } from 'naive-ui'
 import { ref } from 'vue'
 
 /**
@@ -21,10 +21,19 @@ const theme = ref(null)
 <template>
   <!-- Naive UI配置提供者，为整个应用提供主题配置 -->
   <NConfigProvider :theme="theme">
-    <div class="app">
-      <!-- 路由视图容器，渲染匹配的路由组件 -->
-      <RouterView />
-    </div>
+    <!-- 消息提示提供者，用于全局消息通知 -->
+    <NMessageProvider>
+      <!-- 对话框提供者，用于全局对话框 -->
+      <NDialogProvider>
+        <!-- 加载条提供者，用于页面加载进度 -->
+        <NLoadingBarProvider>
+          <div class="app">
+            <!-- 路由视图容器，渲染匹配的路由组件 -->
+            <RouterView />
+          </div>
+        </NLoadingBarProvider>
+      </NDialogProvider>
+    </NMessageProvider>
   </NConfigProvider>
 </template>
 
