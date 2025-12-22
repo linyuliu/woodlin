@@ -110,7 +110,7 @@ export function changePassword(data: ChangePasswordRequest): Promise<void> {
 /**
  * 获取当前用户信息
  */
-export function getUserInfo(): Promise<any> {
+export function getUserInfo(): Promise<Record<string, unknown>> {
   return request.get('/auth/userinfo')
 }
 
