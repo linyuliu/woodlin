@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.servlet.config.annotation.CorsRegistration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -41,7 +42,7 @@ public class CorsConfig implements WebMvcConfigurer {
         }
         
         // 创建 CORS 注册
-        var registration = registry.addMapping(corsProperties.getPathPattern());
+        CorsRegistration registration = registry.addMapping(corsProperties.getPathPattern());
         
         // 配置允许的源
         if (hasAllowedOrigins) {
