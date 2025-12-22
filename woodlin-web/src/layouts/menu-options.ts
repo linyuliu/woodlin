@@ -6,7 +6,8 @@ import {
   ShieldCheckmarkOutline,
   BusinessOutline,
   SettingsOutline,
-  AppsOutline
+  AppsOutline,
+  KeyOutline
 } from '@vicons/ionicons5'
 
 export interface AppMenuItem {
@@ -45,6 +46,11 @@ export const appMenuItems: AppMenuItem[] = [
         label: '部门管理',
         key: '/dept',
         icon: renderIcon(BusinessOutline)
+      },
+      {
+        label: '权限管理',
+        key: '/permission',
+        icon: renderIcon(KeyOutline)
       },
       {
         label: '系统设置',
