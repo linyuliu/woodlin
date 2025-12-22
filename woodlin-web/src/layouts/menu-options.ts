@@ -7,7 +7,8 @@ import {
   BusinessOutline,
   SettingsOutline,
   AppsOutline,
-  KeyOutline
+  KeyOutline,
+  CodeSlashOutline
 } from '@vicons/ionicons5'
 
 export interface AppMenuItem {
@@ -56,6 +57,18 @@ export const appMenuItems: AppMenuItem[] = [
         label: '系统设置',
         key: '/system-settings',
         icon: renderIcon(SettingsOutline)
+      }
+    ]
+  },
+  {
+    label: '开发工具',
+    key: 'dev-tools',
+    icon: renderIcon(CodeSlashOutline),
+    children: [
+      {
+        label: 'SQL转API',
+        key: '/sql2api',
+        icon: renderIcon(CodeSlashOutline)
       }
     ]
   },
