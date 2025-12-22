@@ -78,7 +78,11 @@
             <artifactId>woodlin-system-datasource</artifactId>
             <version>1.0.0</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-sql2api</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 
         <!-- Spring Boot Starter -->
         <dependency>
