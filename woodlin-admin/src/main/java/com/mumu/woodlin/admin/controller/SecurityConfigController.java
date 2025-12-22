@@ -22,7 +22,7 @@ import com.mumu.woodlin.security.service.UserActivityMonitoringService;
  */
 @Tag(name = "系统安全配置", description = "系统安全相关配置管理接口，包括用户活动监控、会话管理等功能")
 @RestController
-@RequestMapping("/api/security")
+@RequestMapping("/security")
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "woodlin.security.activity-monitoring.enabled", havingValue = "true", matchIfMissing = true)
 public class SecurityConfigController {
