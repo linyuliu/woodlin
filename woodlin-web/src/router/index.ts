@@ -3,11 +3,13 @@
  * 
  * @author mumu
  * @description 定义应用的路由结构和导航配置，包括页面路由、权限路由等
+ *              使用优雅的路由守卫系统，参考vue-vben-admin设计
  * @since 2025-01-01
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { setupRouterGuards } from './guards'
 
 /**
  * 创建路由实例
@@ -29,7 +31,9 @@ const router = createRouter({
           component: () => import('@/views/DashboardView.vue'),
           meta: {
             title: '仪表板',
-            icon: 'dashboard-outline'
+            icon: 'dashboard-outline',
+            // 路由权限配置（可选）
+            // permissions: ['dashboard:view']
           }
         },
         {
@@ -38,7 +42,8 @@ const router = createRouter({
           component: () => import('@/views/system/UserView.vue'),
           meta: {
             title: '用户管理',
-            icon: 'people-outline'
+            icon: 'people-outline',
+            // permissions: ['system:user:view']
           }
         },
         {
@@ -47,7 +52,8 @@ const router = createRouter({
           component: () => import('@/views/system/RoleView.vue'),
           meta: {
             title: '角色管理',
-            icon: 'shield-outline'
+            icon: 'shield-outline',
+            // permissions: ['system:role:view']
           }
         },
         {
@@ -56,7 +62,8 @@ const router = createRouter({
           component: () => import('@/views/system/DeptView.vue'),
           meta: {
             title: '部门管理',
-            icon: 'business-outline'
+            icon: 'business-outline',
+            // permissions: ['system:dept:view']
           }
         },
         {
@@ -65,7 +72,8 @@ const router = createRouter({
           component: () => import('@/views/system/SystemSettingsView.vue'),
           meta: {
             title: '系统设置',
-            icon: 'settings-outline'
+            icon: 'settings-outline',
+            // permissions: ['system:settings:view']
           }
         },
         {
@@ -74,7 +82,8 @@ const router = createRouter({
           component: () => import('@/views/tenant/TenantView.vue'),
           meta: {
             title: '租户管理',
-            icon: 'home-outline'
+            icon: 'home-outline',
+            // permissions: ['system:tenant:view']
           }
         },
       ],
@@ -92,19 +101,10 @@ const router = createRouter({
 })
 
 /**
- * 路由守卫 - 全局前置守卫
- * 在每次路由跳转前执行，用于权限验证、登录状态检查等
+ * 配置路由守卫
+ * 
+ * 包括登录验证、权限检查、页面标题设置等
  */
-router.beforeEach((to, from, next) => {
-  // 设置页面标题
-  if (to.meta?.title) {
-    document.title = `${to.meta.title} - Woodlin管理系统`
-  }
-  
-  // 这里可以添加权限验证逻辑
-  // 例如：检查用户是否已登录，是否有访问权限等
-  
-  next()
-})
+setupRouterGuards(router)
 
 export default router

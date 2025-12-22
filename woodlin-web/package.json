@@ -14,7 +14,8 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "version:info": "node scripts/generate-version.js"
+    "version:info": "node scripts/generate-version.js",
+    "generate:api": "node scripts/generate-api.js"
   },
   "dependencies": {
     "@vicons/antd": "^0.13.0",
