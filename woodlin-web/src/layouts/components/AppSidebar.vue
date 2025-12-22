@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NLayoutSider, NMenu } from 'naive-ui'
-import type { MenuOption } from 'naive-ui'
+import { NLayoutSider, NMenu, type MenuOption } from 'naive-ui'
 
 const props = defineProps<{
   collapsed: boolean
