@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { NCard, NForm, NFormItem, NInput, NButton, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { login, type LoginRequest } from '@/api/auth'
 import PasswordChangeDialog from '@/components/PasswordChangeDialog.vue'
 
 const router = useRouter()
@@ -28,12 +28,13 @@ const handleLogin = async () => {
   loading.value = true
   
   try {
-    const response = await axios.post('/api/auth/login', {
+    const loginRequest: LoginRequest = {
+      loginType: 'password',
       username: loginForm.value.username,
       password: loginForm.value.password
-    })
+    }
     
-    const data = response.data.data
+    const data = await login(loginRequest)
     
     // 存储token
     localStorage.setItem('token', data.token)

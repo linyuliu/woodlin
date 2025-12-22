@@ -129,6 +129,72 @@ public class SwaggerConfig {
     }
 
     /**
+     * 数据源管理模块API分组
+     */
+    @Bean
+    public GroupedOpenApi datasourceApi() {
+        return GroupedOpenApi.builder()
+                .group("8-数据源管理")
+                .pathsToMatch("/admin/infra/datasource/**")
+                .build();
+    }
+
+    /**
+     * ETL管理模块API分组
+     */
+    @Bean
+    public GroupedOpenApi etlApi() {
+        return GroupedOpenApi.builder()
+                .group("9-ETL管理")
+                .pathsToMatch("/etl/**")
+                .build();
+    }
+
+    /**
+     * 缓存管理模块API分组
+     */
+    @Bean
+    public GroupedOpenApi cacheApi() {
+        return GroupedOpenApi.builder()
+                .group("10-缓存管理")
+                .pathsToMatch("/cache/**")
+                .build();
+    }
+
+    /**
+     * 字典管理模块API分组
+     */
+    @Bean
+    public GroupedOpenApi dictApi() {
+        return GroupedOpenApi.builder()
+                .group("11-字典管理")
+                .pathsToMatch("/dict/**")
+                .build();
+    }
+
+    /**
+     * 安全配置模块API分组
+     */
+    @Bean
+    public GroupedOpenApi securityConfigApi() {
+        return GroupedOpenApi.builder()
+                .group("12-安全配置")
+                .pathsToMatch("/security/**")
+                .build();
+    }
+
+    /**
+     * DSL管理模块API分组
+     */
+    @Bean
+    public GroupedOpenApi dslApi() {
+        return GroupedOpenApi.builder()
+                .group("13-DSL管理")
+                .pathsToMatch("/dsl/**")
+                .build();
+    }
+
+    /**
      * 所有API分组
      */
     @Bean
