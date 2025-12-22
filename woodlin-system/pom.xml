@@ -29,7 +29,7 @@
         <module>woodlin-system-task</module>
         <module>woodlin-system-generator</module>
         <module>woodlin-system-datasource</module>
-<!--        <module>woodlin-system-sql2api</module>-->
+        <module>woodlin-system-sql2api</module>
         <module>woodlin-system-dsl</module>
         <!-- Temporarily disabled due to Kotlin compilation errors - not related to git-commit-id-plugin changes -->
 <!--        <module>woodlin-system-etl</module>-->
