@@ -185,7 +185,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setPwdChangeTime(LocalDateTime.now());
         user.setIsFirstLogin(false);
         userService.updateById(user);
-        //todo 删除用户一系列缓存
+        
+        // TODO: 删除用户相关缓存（包括权限缓存、用户信息缓存、会话缓存等）
+        // 需要实现以下缓存清理逻辑:
+        // 1. 清除用户权限缓存 (permissionCacheService.evictUserCache)
+        // 2. 清除用户信息缓存
+        // 3. 清除旧会话token（强制重新登录）
+        
         log.info("用户 {} 修改密码成功", user.getUsername());
     }
 
