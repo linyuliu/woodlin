@@ -67,6 +67,16 @@ const router = createRouter({
           }
         },
         {
+          path: 'permission',
+          name: 'PermissionManagement',
+          component: () => import('@/views/system/permission/PermissionManagementView.vue'),
+          meta: {
+            title: '权限管理',
+            icon: 'key-outline',
+            // permissions: ['system:permission:view']
+          }
+        },
+        {
           path: 'system-settings',
           name: 'SystemSettings',
           component: () => import('@/views/system/SystemSettingsView.vue'),
