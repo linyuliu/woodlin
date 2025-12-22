@@ -96,6 +96,16 @@ const router = createRouter({
             // permissions: ['system:tenant:view']
           }
         },
+        {
+          path: 'sql2api',
+          name: 'SqlApiEditor',
+          component: () => import('@/views/sql2api/SqlApiEditor.vue'),
+          meta: {
+            title: 'SQL转API',
+            icon: 'code-outline',
+            // permissions: ['system:sql2api:view']
+          }
+        },
       ],
     },
     {
