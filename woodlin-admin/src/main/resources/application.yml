@@ -53,6 +53,8 @@ spring:
             connection-properties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
 
   # Redis配置
+  # 注意：Redisson会自动使用此配置，无需单独配置Redisson
+  # 如需自定义Redisson高级配置，可添加redisson.single-server-config配置项
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -227,21 +229,6 @@ snail-job:
       max-retry-count: ${SNAIL_JOB_MAX_RETRY_COUNT:3}
       # 重试间隔(秒)
       retry-interval: ${SNAIL_JOB_RETRY_INTERVAL:30}
-
-# Redisson 配置
-redisson:
-  # 单节点配置
-  single-server-config:
-    address: ${REDISSON_ADDRESS:redis://localhost:6379}
-    database: ${REDISSON_DATABASE:0}
-    password: ${REDISSON_PASSWORD:}
-    connection-pool-size: ${REDISSON_CONNECTION_POOL_SIZE:64}
-    connection-minimum-idle-size: ${REDISSON_CONNECTION_MIN_IDLE_SIZE:10}
-    idle-connection-timeout: ${REDISSON_IDLE_CONNECTION_TIMEOUT:10000}
-    connect-timeout: ${REDISSON_CONNECT_TIMEOUT:10000}
-    timeout: ${REDISSON_TIMEOUT:3000}
-    retry-attempts: ${REDISSON_RETRY_ATTEMPTS:3}
-    retry-interval: ${REDISSON_RETRY_INTERVAL:1500}
 
 # 分页配置
 page:
