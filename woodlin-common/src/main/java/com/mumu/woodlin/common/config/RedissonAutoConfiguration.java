@@ -108,7 +108,7 @@ public class RedissonAutoConfiguration {
             config.setTimeout((int) redisProperties.getTimeout().toMillis());
         }
         if (redisProperties.getLettuce() != null && redisProperties.getLettuce().getPool() != null) {
-            var pool = redisProperties.getLettuce().getPool();
+            RedisProperties.Pool pool = redisProperties.getLettuce().getPool();
             if (pool.getMaxActive() > 0) {
                 config.setConnectionPoolSize(pool.getMaxActive());
             }
