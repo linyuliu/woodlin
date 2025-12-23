@@ -46,6 +46,11 @@ public class PermissionCacheService {
     private static final String ROLE_PERMISSION_PREFIX = "auth:role:permissions:";
 
     /**
+     * 用户路由缓存key前缀
+     */
+    private static final String USER_ROUTE_PREFIX = "auth:user:routes:";
+
+    /**
      * 获取用户权限缓存
      *
      * @param userId 用户ID
@@ -178,7 +183,7 @@ public class PermissionCacheService {
     }
 
     /**
-     * 清除用户的权限和角色缓存
+     * 清除用户的权限、角色和路由缓存
      *
      * @param userId 用户ID
      */
@@ -186,17 +191,21 @@ public class PermissionCacheService {
         try {
             String permKey = USER_PERMISSION_PREFIX + userId;
             String roleKey = USER_ROLE_PREFIX + userId;
+            String routeKey = USER_ROUTE_PREFIX + userId;
             
             if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
                 // 延迟双删策略
                 deleteWithDelayedDoubleDelete(permKey);
                 deleteWithDelayedDoubleDelete(roleKey);
+                deleteWithDelayedDoubleDelete(routeKey);
             } else {
                 // 直接删除
                 RBucket<Object> permBucket = redissonClient.getBucket(permKey);
                 RBucket<Object> roleBucket = redissonClient.getBucket(roleKey);
+                RBucket<Object> routeBucket = redissonClient.getBucket(routeKey);
                 permBucket.delete();
                 roleBucket.delete();
+                routeBucket.delete();
             }
             
             log.info("清除用户缓存: userId={}", userId);
@@ -254,6 +263,91 @@ public class PermissionCacheService {
             log.info("清除所有角色权限缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有角色权限缓存失败", e);
+        }
+    }
+
+    /**
+     * 获取用户路由缓存
+     *
+     * @param userId 用户ID
+     * @return 路由列表，如果未缓存返回null
+     */
+    public <T> List<T> getUserRoutes(Long userId) {
+        if (isEnabled()) {
+            return null;
+        }
+
+        try {
+            String key = USER_ROUTE_PREFIX + userId;
+            RBucket<List<T>> bucket = redissonClient.getBucket(key);
+            List<T> routes = bucket.get();
+            if (routes != null) {
+                log.debug("从缓存获取用户路由: userId={}, count={}", userId, routes.size());
+            }
+            return routes;
+        } catch (Exception e) {
+            log.error("获取用户路由缓存失败: userId={}", userId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 缓存用户路由
+     *
+     * @param userId 用户ID
+     * @param routes 路由列表
+     */
+    public <T> void cacheUserRoutes(Long userId, List<T> routes) {
+        if (isEnabled() || Objects.isNull(routes)) {
+            return;
+        }
+
+        try {
+            String key = USER_ROUTE_PREFIX + userId;
+            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
+            RBucket<List<T>> bucket = redissonClient.getBucket(key);
+            bucket.set(routes, expireSeconds, TimeUnit.SECONDS);
+            log.debug("缓存用户路由成功: userId={}, count={}", userId, routes.size());
+        } catch (Exception e) {
+            log.error("缓存用户路由失败: userId={}", userId, e);
+        }
+    }
+
+    /**
+     * 清除用户的路由缓存
+     *
+     * @param userId 用户ID
+     */
+    public void evictUserRouteCache(Long userId) {
+        try {
+            String key = USER_ROUTE_PREFIX + userId;
+            
+            if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
+                // 延迟双删策略
+                deleteWithDelayedDoubleDelete(key);
+            } else {
+                // 直接删除
+                RBucket<Object> bucket = redissonClient.getBucket(key);
+                bucket.delete();
+            }
+            
+            log.info("清除用户路由缓存: userId={}", userId);
+        } catch (Exception e) {
+            log.error("清除用户路由缓存失败: userId={}", userId, e);
+        }
+    }
+
+    /**
+     * 清除所有用户路由缓存（权限变更时使用）
+     */
+    public void evictAllUserRoutes() {
+        try {
+            // 使用Redisson的deleteByPattern清理所有用户路由缓存
+            RKeys keys = redissonClient.getKeys();
+            long deleteCount = keys.deleteByPattern(USER_ROUTE_PREFIX + "*");
+            log.info("清除所有用户路由缓存，删除数量: {}", deleteCount);
+        } catch (Exception e) {
+            log.error("清除所有用户路由缓存失败", e);
         }
     }
 

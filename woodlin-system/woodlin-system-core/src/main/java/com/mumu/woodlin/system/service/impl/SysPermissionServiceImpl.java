@@ -105,7 +105,16 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             return Collections.emptyList();
         }
         
-        // 查询用户所有权限（包括继承的权限）
+        // 尝试从缓存获取
+        if (permissionCacheService != null) {
+            List<RouteVO> cachedRoutes = permissionCacheService.getUserRoutes(userId);
+            if (cachedRoutes != null) {
+                log.debug("从缓存获取用户路由: userId={}, count={}", userId, cachedRoutes.size());
+                return cachedRoutes;
+            }
+        }
+        
+        // 从数据库查询用户所有权限（包括继承的权限）
         List<SysPermission> permissions = selectPermissionsByUserId(userId);
         if (CollUtil.isEmpty(permissions)) {
             return Collections.emptyList();
@@ -129,7 +138,14 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             .collect(Collectors.toList());
         
         // 构建树形结构
-        return buildRouteTree(routes, 0L);
+        List<RouteVO> routeTree = buildRouteTree(routes, 0L);
+        
+        // 缓存结果
+        if (permissionCacheService != null) {
+            permissionCacheService.cacheUserRoutes(userId, routeTree);
+        }
+        
+        return routeTree;
     }
     
     /**
