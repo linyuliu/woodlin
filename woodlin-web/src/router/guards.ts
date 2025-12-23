@@ -78,6 +78,11 @@ function createAuthGuard(router: Router): void {
             router.addRoute(route)
           })
           
+          // 添加404 catch-all路由（必须在所有动态路由之后）
+          const { notFoundRoute } = await import('./routes')
+          router.addRoute(notFoundRoute)
+          console.log('✅ 404路由已添加')
+          
           // 重新导航到目标路由
           next({ ...to, replace: true })
           return
