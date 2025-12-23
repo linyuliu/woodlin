@@ -15,7 +15,7 @@
  * ```
  */
 
-import type { Router, RouteLocationNormalized } from 'vue-router'
+import type { Router } from 'vue-router'
 import { getConfig } from '@/config'
 import { useAuthStore, useUserStore, usePermissionStore } from '@/stores'
 
