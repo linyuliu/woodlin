@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import com.mumu.woodlin.system.dto.RouteVO;
 import com.mumu.woodlin.system.entity.SysPermission;
 
 /**
@@ -46,4 +47,12 @@ public interface ISysPermissionService extends IService<SysPermission> {
      * @return 权限编码列表
      */
     List<String> selectPermissionCodesByUserId(Long userId);
+    
+    /**
+     * 根据用户ID查询菜单路由列表（包括角色继承的权限）
+     * 
+     * @param userId 用户ID
+     * @return 路由列表（树形结构）
+     */
+    List<RouteVO> selectRoutesByUserId(Long userId);
 }

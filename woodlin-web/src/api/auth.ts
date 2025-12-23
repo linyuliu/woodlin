@@ -152,3 +152,10 @@ export function getCaptcha(): Promise<CaptchaInfo> {
 export function sendSmsCode(mobile: string): Promise<void> {
   return request.post('/auth/sms/send', null, { params: { mobile } })
 }
+
+/**
+ * 获取当前用户的路由菜单
+ */
+export function getUserRoutes(): Promise<Record<string, unknown>[]> {
+  return request.get('/auth/routes')
+}
