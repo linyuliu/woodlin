@@ -175,7 +175,7 @@ public class PasswordLoginStrategy implements LoginStrategy {
         // 查询用户的所有角色（包括继承的角色，支持RBAC1）
         List<SysRole> roles = roleService.selectAllRolesByUserId(user.getUserId());
         
-        // 提取角色ID和角色编码
+        // 提取角色ID、角色编码和角色名称
         List<Long> roleIds = roles.stream()
             .map(SysRole::getRoleId)
             .collect(Collectors.toList());
@@ -184,8 +184,22 @@ public class PasswordLoginStrategy implements LoginStrategy {
             .map(SysRole::getRoleCode)
             .collect(Collectors.toList());
         
+        List<String> roleNames = roles.stream()
+            .map(SysRole::getRoleName)
+            .collect(Collectors.toList());
+        
         // 查询用户的所有权限（包括角色继承的权限，支持RBAC1）
-        List<String> permissions = permissionService.selectPermissionCodesByUserId(user.getUserId());
+        // 获取完整的权限对象以便分类
+        List<com.mumu.woodlin.system.entity.SysPermission> permissionEntities = 
+            permissionService.selectPermissionsByUserId(user.getUserId());
+        
+        // 使用PermissionUtil分类权限
+        List<String> allPermissions = com.mumu.woodlin.system.util.PermissionUtil
+            .getAllPermissionCodes(permissionEntities);
+        List<String> menuPermissions = com.mumu.woodlin.system.util.PermissionUtil
+            .filterMenuPermissions(permissionEntities);
+        List<String> buttonPermissions = com.mumu.woodlin.system.util.PermissionUtil
+            .filterButtonPermissions(permissionEntities);
         
         return new LoginUser()
             .setUserId(user.getUserId())
@@ -201,7 +215,10 @@ public class PasswordLoginStrategy implements LoginStrategy {
             .setDeptId(user.getDeptId())
             .setRoleIds(roleIds)
             .setRoleCodes(roleCodes)
-            .setPermissions(permissions)
+            .setRoleNames(roleNames)
+            .setPermissions(allPermissions)
+            .setMenuPermissions(menuPermissions)
+            .setButtonPermissions(buttonPermissions)
             .setLoginTime(LocalDateTime.now())
             .setLoginIp(getClientIp());
     }
