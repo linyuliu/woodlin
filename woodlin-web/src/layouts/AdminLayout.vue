@@ -6,11 +6,18 @@ import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 import AppContent from './components/AppContent.vue'
 import { appMenuItems, toNaiveMenuOptions } from './menu-options'
+import { useAuthStore, useAppStore } from '@/stores'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const appStore = useAppStore()
 
-const collapsed = ref(false)
+// Use app store for collapsed state
+const collapsed = computed({
+  get: () => appStore.sidebarCollapsed,
+  set: (value) => appStore.setSidebarCollapsed(value)
+})
 
 const menuOptions = toNaiveMenuOptions(appMenuItems)
 
@@ -38,12 +45,11 @@ const handleMenuSelect = (key: string) => {
 }
 
 const handleToggleCollapse = () => {
-  collapsed.value = !collapsed.value
+  appStore.toggleSidebar()
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  router.push('/login')
+const handleLogout = async () => {
+  await authStore.doLogout()
 }
 </script>
 
