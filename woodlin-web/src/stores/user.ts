@@ -108,7 +108,26 @@ export const useUserStore = defineStore('user', () => {
   async function fetchUserInfo(): Promise<UserInfo> {
     try {
       const data = await getUserInfo()
-      const info = data as UserInfo
+      // 将返回的数据转换为UserInfo类型，添加必要的字段处理
+      const info: UserInfo = {
+        id: (data as any).userId || (data as any).id,
+        username: (data as any).username || '',
+        nickname: (data as any).nickname,
+        realName: (data as any).realName,
+        email: (data as any).email,
+        mobile: (data as any).mobile,
+        avatar: (data as any).avatar,
+        gender: (data as any).gender,
+        deptId: (data as any).deptId,
+        deptName: (data as any).deptName,
+        tenantId: (data as any).tenantId,
+        tenantName: (data as any).tenantName,
+        roles: (data as any).roleCodes || (data as any).roles || [],
+        permissions: (data as any).permissions || [],
+        status: (data as any).status,
+        createTime: (data as any).createTime,
+        lastLoginTime: (data as any).lastLoginTime || (data as any).loginTime
+      }
       setUserInfo(info)
       return info
     } catch (error) {

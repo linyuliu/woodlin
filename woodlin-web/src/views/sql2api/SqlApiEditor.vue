@@ -102,7 +102,7 @@ WHERE status = #{status}
           <!-- 参数配置 -->
           <n-form-item label="参数配置">
             <n-space vertical style="width: 100%">
-              <n-button @click="handleAddParam" type="dashed" block>
+              <n-button @click="handleAddParam" dashed block>
                 <template #icon>
                   <n-icon><AddOutline /></n-icon>
                 </template>

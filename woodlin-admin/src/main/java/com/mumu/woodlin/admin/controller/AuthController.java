@@ -1,7 +1,6 @@
 package com.mumu.woodlin.admin.controller;
 
 import com.mumu.woodlin.common.response.R;
-import com.mumu.woodlin.security.config.DevTokenProperties;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
 import com.mumu.woodlin.security.dto.ForgotPasswordRequest;
 import com.mumu.woodlin.security.dto.LoginRequest;
@@ -15,7 +14,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,10 +36,6 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final CaptchaService captchaService;
     private final SmsService smsService;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private DevTokenProperties devTokenProperties;
-
 
     /**
      * 统一登录接口 - 支持多种登录方式
