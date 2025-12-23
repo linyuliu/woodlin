@@ -63,9 +63,9 @@ woodlin-security 是 Woodlin 系统的安全认证模块，基于 Sa-Token 实�
 Authorization: Bearer {token}
 ```
 
-**示例**：
+**示例**（注意：请使用实际的token值，此处仅为格式示例）：
 ```
-Authorization: Bearer 761010b5-cf1a-4ec5-8624-70ffa4c3bb4b
+Authorization: Bearer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
 Sa-Token 配置了 `token-prefix: Bearer`，会自动从 Authorization 头中提取 Bearer 之后的 token 值进行验证。
