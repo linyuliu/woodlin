@@ -14,12 +14,15 @@ import request from '@/utils/request'
 export interface SysUser {
   userId?: number
   username: string
+  password?: string
   nickname?: string
   email?: string
+  mobile?: string
   phone?: string
   gender?: string
   status?: string
   deptId?: number
+  roleIds?: number[]
   createTime?: string
   updateTime?: string
 }
@@ -112,10 +115,15 @@ export function exportUser(params: UserListParams) {
 /**
  * 重置用户密码
  * @param userId 用户ID
+ * @param password 新密码
  */
-export function resetUserPassword(userId: number) {
+export function resetUserPassword(userId: number, password: string) {
   return request({
-    url: `/system/user/resetPwd/${userId}`,
-    method: 'put'
+    url: '/system/user/resetPwd',
+    method: 'put',
+    params: {
+      userId,
+      password
+    }
   })
 }

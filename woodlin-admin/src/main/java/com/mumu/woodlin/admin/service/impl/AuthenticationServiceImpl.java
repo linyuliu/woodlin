@@ -2,16 +2,19 @@ package com.mumu.woodlin.admin.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.BCrypt;
 import com.mumu.woodlin.admin.strategy.LoginStrategy;
+import com.mumu.woodlin.common.constant.SystemConstant;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.util.PasswordEncoderUtil;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
+import com.mumu.woodlin.security.dto.ForgotPasswordRequest;
 import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.enums.LoginType;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.PasswordPolicyService;
+import com.mumu.woodlin.security.service.SmsService;
 import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.service.ISysUserService;
@@ -44,6 +47,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final ISysUserService userService;
     private final PasswordPolicyService passwordPolicyService;
     private final List<LoginStrategy> loginStrategies;
+    private final SmsService smsService;
 
     /**
      * 权限缓存服务（可选依赖）
@@ -168,7 +172,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         // 验证旧密码
-        if (!BCrypt.checkpw(request.getOldPassword(), user.getPassword())) {
+        if (!PasswordEncoderUtil.matches(request.getOldPassword(), user.getPassword())) {
             throw BusinessException.of(ResultCode.OLD_PASSWORD_ERROR, "旧密码错误");
         }
 
@@ -181,18 +185,114 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         // 更新密码
-        user.setPassword(BCrypt.hashpw(request.getNewPassword(), BCrypt.gensalt()));
+        user.setPassword(PasswordEncoderUtil.encode(request.getNewPassword()));
         user.setPwdChangeTime(LocalDateTime.now());
         user.setIsFirstLogin(false);
         userService.updateById(user);
         
-        // TODO: 删除用户相关缓存（包括权限缓存、用户信息缓存、会话缓存等）
-        // 需要实现以下缓存清理逻辑:
-        // 1. 清除用户权限缓存 (permissionCacheService.evictUserCache)
-        // 2. 清除用户信息缓存
-        // 3. 清除旧会话token（强制重新登录）
+        // 清除用户相关缓存（包括权限缓存、用户信息缓存、会话缓存等）
+        if (permissionCacheService != null) {
+            permissionCacheService.evictUserCache(userId);
+            log.info("已清除用户 {} 的权限缓存", userId);
+        }
         
-        log.info("用户 {} 修改密码成功", user.getUsername());
+        // 强制用户重新登录（清除当前会话）
+        StpUtil.logout(userId);
+        log.info("用户 {} 修改密码成功，已强制重新登录", user.getUsername());
+    }
+    
+    /**
+     * 忘记密码重置（通过验证码，无需登录）
+     *
+     * @param request 忘记密码重置请求
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPasswordByCode(ForgotPasswordRequest request) {
+        // 验证新密码和确认密码是否一致
+        if (!StrUtil.equals(request.getNewPassword(), request.getConfirmPassword())) {
+            throw BusinessException.of(ResultCode.PASSWORD_MISMATCH, "新密码和确认密码不一致");
+        }
+        
+        // 查找用户（支持用户名、手机号、邮箱）
+        SysUser user = findUserByIdentifier(request.getUsername());
+        if (user == null) {
+            throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
+        }
+        
+        // 验证验证码
+        validateVerificationCode(request.getCodeType(), request.getUsername(), request.getCode());
+        
+        // 验证新密码策略
+        PasswordPolicyService.PasswordValidationResult validationResult =
+            passwordPolicyService.validatePassword(request.getNewPassword());
+        
+        if (!validationResult.isValid()) {
+            throw BusinessException.of(ResultCode.PASSWORD_POLICY_VIOLATION, validationResult.getMessage());
+        }
+        
+        // 更新密码
+        user.setPassword(PasswordEncoderUtil.encode(request.getNewPassword()));
+        user.setPwdChangeTime(LocalDateTime.now());
+        user.setIsFirstLogin(false);
+        user.setPwdErrorCount(0);  // 重置错误次数
+        user.setLockTime(null);     // 解除锁定
+        userService.updateById(user);
+        
+        // 清除用户相关缓存
+        if (permissionCacheService != null) {
+            permissionCacheService.evictUserCache(user.getUserId());
+            log.info("已清除用户 {} 的权限缓存", user.getUserId());
+        }
+        
+        // 强制用户重新登录（清除所有会话）
+        StpUtil.logout(user.getUserId());
+        log.info("用户 {} 通过验证码重置密码成功", user.getUsername());
+    }
+    
+    /**
+     * 根据标识符查找用户（支持用户名、手机号、邮箱）
+     *
+     * @param identifier 标识符
+     * @return 用户信息
+     */
+    private SysUser findUserByIdentifier(String identifier) {
+        // 先尝试用户名
+        SysUser user = userService.selectUserByUsername(identifier);
+        if (user != null) {
+            return user;
+        }
+        
+        // TODO: 如果需要支持手机号和邮箱查找，可以在这里添加
+        // 需要在 ISysUserService 中添加相应的查询方法
+        
+        return null;
+    }
+    
+    /**
+     * 验证验证码
+     *
+     * @param codeType 验证码类型
+     * @param identifier 标识符（手机号或邮箱）
+     * @param code 验证码
+     */
+    private void validateVerificationCode(String codeType, String identifier, String code) {
+        boolean isValid = false;
+        
+        if ("sms".equals(codeType)) {
+            // 验证短信验证码
+            isValid = smsService.verifySmsCode(identifier, code);
+        } else if ("email".equals(codeType)) {
+            // TODO: 验证邮件验证码（需要实现 EmailService）
+            log.warn("邮件验证码功能暂未实现");
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "邮件验证码功能暂未实现");
+        } else {
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "不支持的验证码类型");
+        }
+        
+        if (!isValid) {
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "验证码错误或已过期");
+        }
     }
 
     /**

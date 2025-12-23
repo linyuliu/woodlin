@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +29,7 @@ import com.mumu.woodlin.system.mapper.SysUserMapper;
 import com.mumu.woodlin.system.service.ISysUserBusinessService;
 import com.mumu.woodlin.system.service.ISysUserExcelService;
 import com.mumu.woodlin.system.service.ISysUserService;
+import com.mumu.woodlin.system.service.ISysUserRoleService;
 
 /**
  * 用户业务服务实现类
@@ -43,6 +45,13 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
     
     private final ISysUserService userService;
     private final ISysUserExcelService excelService;
+    private final ISysUserRoleService userRoleService;
+    
+    /**
+     * 权限缓存服务（可选依赖）
+     */
+    @Autowired(required = false)
+    private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
     
     /**
      * 分页查询用户列表
@@ -70,6 +79,10 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
             throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
         
+        // 查询用户的角色ID列表
+        List<Long> roleIds = userRoleService.selectRoleIdsByUserId(userId);
+        user.setRoleIds(roleIds);
+        
         return user;
     }
     
@@ -83,7 +96,18 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
             throw BusinessException.of(ResultCode.BAD_REQUEST, "用户信息不能为空");
         }
         
-        return userService.insertUser(user);
+        // 创建用户
+        boolean result = userService.insertUser(user);
+        
+        // 保存用户角色关联
+        if (result && ObjectUtil.isNotEmpty(user.getRoleIds())) {
+            userRoleService.saveUserRoles(user.getUserId(), user.getRoleIds());
+            log.info("用户 {} 创建成功，已分配 {} 个角色", user.getUsername(), user.getRoleIds().size());
+        } else {
+            log.info("用户 {} 创建成功，未分配角色", user.getUsername());
+        }
+        
+        return result;
     }
     
     /**
@@ -97,9 +121,24 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
         }
         
         // 验证用户存在
-        getUserById(user.getUserId());
+        SysUser existUser = getUserById(user.getUserId());
         
-        return userService.updateUser(user);
+        // 更新用户基本信息
+        boolean result = userService.updateUser(user);
+        
+        // 更新用户角色关联
+        if (result && user.getRoleIds() != null) {
+            userRoleService.saveUserRoles(user.getUserId(), user.getRoleIds());
+            log.info("用户 {} 更新成功，已分配 {} 个角色", user.getUsername(), user.getRoleIds().size());
+        }
+        
+        // 清除用户缓存
+        if (result && permissionCacheService != null) {
+            permissionCacheService.evictUserCache(user.getUserId());
+            log.info("已清除用户 {} 的权限缓存", user.getUserId());
+        }
+        
+        return result;
     }
     
     /**
@@ -112,6 +151,19 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
             throw BusinessException.of(ResultCode.BAD_REQUEST, "用户ID列表不能为空");
         }
         
+        // 删除用户角色关联
+        for (String userIdStr : userIds) {
+            Long userId = Long.parseLong(userIdStr);
+            userRoleService.deleteUserRoles(userId);
+            
+            // 清除用户缓存
+            if (permissionCacheService != null) {
+                permissionCacheService.evictUserCache(userId);
+                log.info("已清除用户 {} 的权限缓存", userId);
+            }
+        }
+        
+        // 删除用户
         return userService.removeByIds(userIds);
     }
     
@@ -129,9 +181,18 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
         }
         
         // 验证用户存在
-        getUserById(userId);
+        SysUser user = getUserById(userId);
         
-        return userService.resetPassword(userId, newPassword);
+        // 重置密码（会自动加密）
+        boolean result = userService.resetPassword(userId, newPassword);
+        
+        // 清除用户缓存（强制重新登录）
+        if (result && permissionCacheService != null) {
+            permissionCacheService.evictUserCache(userId);
+            log.info("用户 {} 密码重置成功，已清除缓存", user.getUsername());
+        }
+        
+        return result;
     }
     
     /**
@@ -147,7 +208,16 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
         // 验证用户存在
         getUserById(user.getUserId());
         
-        return userService.updateById(user);
+        // 更新用户状态
+        boolean result = userService.updateById(user);
+        
+        // 清除用户缓存
+        if (result && permissionCacheService != null) {
+            permissionCacheService.evictUserCache(user.getUserId());
+            log.info("用户 {} 状态修改成功，已清除缓存", user.getUserId());
+        }
+        
+        return result;
     }
     
     /**
