@@ -75,7 +75,7 @@ export const useUserStore = defineStore('user', () => {
   
   /** 用户名称（优先显示昵称，其次真实姓名，最后用户名） */
   const displayName = computed(() => {
-    if (!userInfo.value) return ''
+    if (!userInfo.value) {return ''}
     return userInfo.value.nickname || userInfo.value.realName || userInfo.value.username
   })
   

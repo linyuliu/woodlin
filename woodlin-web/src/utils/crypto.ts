@@ -119,10 +119,10 @@ export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_k
  * TODO: 实际项目中应使用真实的RSA加密库，如 jsencrypt
  * 
  * @param data 要加密的数据
- * @param publicKey 公钥
+ * @param _publicKey 公钥（未使用，占位参数）
  * @returns 加密后的字符串
  */
-export function rsaEncrypt(data: any, publicKey?: string): string {
+export function rsaEncrypt(data: any, _publicKey?: string): string {
   console.warn('TODO: 实现RSA加密，当前使用简单加密代替')
   return simpleEncrypt(data)
 }
@@ -132,10 +132,10 @@ export function rsaEncrypt(data: any, publicKey?: string): string {
  * TODO: 实际项目中应使用真实的RSA解密库
  * 
  * @param encrypted 加密后的字符串
- * @param privateKey 私钥
+ * @param _privateKey 私钥（未使用，占位参数）
  * @returns 解密后的数据
  */
-export function rsaDecrypt(encrypted: string, privateKey?: string): any {
+export function rsaDecrypt(encrypted: string, _privateKey?: string): any {
   console.warn('TODO: 实现RSA解密，当前使用简单解密代替')
   return simpleDecrypt(encrypted)
 }
