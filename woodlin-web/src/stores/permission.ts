@@ -15,6 +15,11 @@ import { logger } from '@/utils/logger'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 /**
+ * Cache component modules at module level to avoid repeated filesystem scans
+ */
+const componentModules = import.meta.glob('@/views/**/*.vue')
+
+/**
  * 后端路由数据结构
  */
 interface BackendRoute {
@@ -269,16 +274,15 @@ export const usePermissionStore = defineStore('permission', () => {
       ? componentPath.slice(2) 
       : componentPath
     
-    // 动态导入组件
-    const modules = import.meta.glob('@/views/**/*.vue')
+    // 构建组件key
     const componentKey = `/src/views/${path}${path.endsWith('.vue') ? '' : '.vue'}`
     
-    if (modules[componentKey]) {
-      return modules[componentKey]
+    if (componentModules[componentKey]) {
+      return componentModules[componentKey]
     }
     
     // 如果找不到组件，记录警告并返回一个占位组件
-    logger.warn(`⚠️ 找不到组件: ${componentPath}`)
+    logger.warn(`⚠️ 找不到组件: ${componentPath} (查找路径: ${componentKey})`)
     return () => import('@/views/error/404.vue')
   }
   
