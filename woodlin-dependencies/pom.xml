@@ -43,9 +43,6 @@
         <!-- 第三方登录 -->
         <justauth.version>1.16.6</justauth.version>
 
-        <!-- 对象映射 -->
-        <!--        <crane4j.version>2.9.0</crane4j.version>-->
-
         <!-- API文档 -->
         <springdoc.version>2.7.0</springdoc.version>
         <knife4j.version>4.5.0</knife4j.version>
@@ -221,13 +218,6 @@
                 <groupId>me.zhyd.oauth</groupId>
                 <artifactId>JustAuth</artifactId>
                 <version>${justauth.version}</version>
-            </dependency>
-
-            <!-- Crane4j -->
-            <dependency>
-                <groupId>cn.crane4j</groupId>
-                <artifactId>crane4j-spring-boot-starter</artifactId>
-                <version>${crane4j.version}</version>
             </dependency>
 
             <!-- SpringDoc -->
