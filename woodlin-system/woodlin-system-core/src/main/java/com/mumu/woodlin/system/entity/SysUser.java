@@ -2,6 +2,7 @@ package com.mumu.woodlin.system.entity;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -184,5 +185,12 @@ public class SysUser extends BaseEntity {
     @TableField("remark")
     @Schema(description = "备注")
     private String remark;
+    
+    /**
+     * 角色ID列表（非数据库字段，用于前端交互）
+     */
+    @TableField(exist = false)
+    @Schema(description = "角色ID列表")
+    private List<Long> roleIds;
     
 }
