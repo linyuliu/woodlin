@@ -55,11 +55,10 @@ public class SmsServiceImpl implements SmsService {
         String key = SMS_CODE_PREFIX + mobile;
         stringRedisTemplate.opsForValue().set(key, code, CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
         
-        // TODO: 集成第三方短信服务商发送短信
-        // 例如：阿里云、腾讯云、华为云等短信服务
-        // smsClient.sendSms(mobile, code);
+        // 实际生产环境需要集成第三方短信服务商（阿里云、腾讯云、华为云等）
+        // 示例：smsClient.sendSms(mobile, code);
         
-        log.info("短信验证码已生成: mobile={}, code={} (实际生产环境不应打印验证码)", mobile, code);
+        log.info("短信验证码已生成: mobile={} (生产环境不应打印验证码)", mobile);
         log.info("模拟短信发送: 向手机号 {} 发送验证码 {}", mobile, code);
         
         return true;
