@@ -459,6 +459,81 @@ public class PermissionCacheService {
             log.error("清除所有用户路由缓存失败", e);
         }
     }
+    
+    /**
+     * 批量清除用户缓存
+     *
+     * @param userIds 用户ID列表
+     */
+    public void evictUserCacheBatch(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        
+        try {
+            for (Long userId : userIds) {
+                evictUserCache(userId);
+            }
+            log.info("批量清除用户缓存: count={}", userIds.size());
+        } catch (Exception e) {
+            log.error("批量清除用户缓存失败", e);
+        }
+    }
+    
+    /**
+     * 批量清除角色缓存
+     *
+     * @param roleIds 角色ID列表
+     */
+    public void evictRoleCacheBatch(List<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return;
+        }
+        
+        try {
+            for (Long roleId : roleIds) {
+                evictRoleCache(roleId);
+            }
+            log.info("批量清除角色缓存: count={}", roleIds.size());
+        } catch (Exception e) {
+            log.error("批量清除角色缓存失败", e);
+        }
+    }
+    
+    /**
+     * 预热用户权限缓存（批量加载用户权限到缓存）
+     *
+     * @param userId 用户ID
+     * @param permissions 所有权限列表
+     * @param buttonPermissions 按钮权限列表
+     * @param menuPermissions 菜单权限列表
+     * @param roles 角色编码列表
+     */
+    public void warmupUserCache(Long userId, List<String> permissions, 
+                                List<String> buttonPermissions, 
+                                List<String> menuPermissions,
+                                List<String> roles) {
+        if (isEnabled()) {
+            return;
+        }
+        
+        try {
+            // 批量缓存所有权限相关数据
+            cacheUserPermissions(userId, permissions);
+            cacheUserButtonPermissions(userId, buttonPermissions);
+            cacheUserMenuPermissions(userId, menuPermissions);
+            cacheUserRoles(userId, roles);
+            
+            log.info("预热用户缓存成功: userId={}, 权限={}, 按钮={}, 菜单={}, 角色={}", 
+                userId, 
+                permissions != null ? permissions.size() : 0,
+                buttonPermissions != null ? buttonPermissions.size() : 0,
+                menuPermissions != null ? menuPermissions.size() : 0,
+                roles != null ? roles.size() : 0);
+        } catch (Exception e) {
+            log.error("预热用户缓存失败: userId={}", userId, e);
+        }
+    }
 
     /**
      * 判断权限缓存是否未启用（注意：返回true表示缓存未启用）
