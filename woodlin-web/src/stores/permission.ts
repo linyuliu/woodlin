@@ -9,6 +9,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { RouteRecordRaw } from 'vue-router'
+import { RouterView } from 'vue-router'
 import { asyncRoutes, constantRoutes } from '@/router/routes'
 import { getUserRoutes } from '@/api/auth'
 import { logger } from '@/utils/logger'
@@ -256,8 +257,9 @@ export const usePermissionStore = defineStore('permission', () => {
       route.component = loadComponent(backendRoute.component)
       logger.debug(`📦 加载组件: ${backendRoute.component} for route: ${backendRoute.path}`)
     } else {
-      // 没有组件的路由（如目录），不设置component或使用默认值
-      logger.debug(`📁 目录路由（无组件）: ${backendRoute.path}`)
+      // 没有组件的路由（如目录），使用 RouterView 作为容器
+      route.component = RouterView
+      logger.debug(`📁 目录路由（使用RouterView）: ${backendRoute.path}`)
     }
     
     // 递归处理子路由
