@@ -1,3 +1,25 @@
+/**
+ * 菜单配置模块
+ * 
+ * @author mumu
+ * @description 定义应用的菜单结构
+ * 
+ * TODO: 将菜单改为从路由动态生成，参考 utils/menu-generator.ts
+ * 建议在 AdminLayout 中使用：
+ * 
+ * ```typescript
+ * import { usePermissionStore } from '@/stores'
+ * import { generateMenuFromRoutes } from '@/utils/menu-generator'
+ * 
+ * const permissionStore = usePermissionStore()
+ * const menuOptions = computed(() => 
+ *   generateMenuFromRoutes(permissionStore.menuRoutes)
+ * )
+ * ```
+ * 
+ * @since 2025-01-01
+ */
+
 import { h, type Component } from 'vue'
 import { NIcon, type MenuOption } from 'naive-ui'
 import {
