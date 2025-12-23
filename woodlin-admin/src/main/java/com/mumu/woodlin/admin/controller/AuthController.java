@@ -8,6 +8,9 @@ import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.CaptchaService;
 import com.mumu.woodlin.security.service.SmsService;
+import com.mumu.woodlin.security.util.SecurityUtil;
+import com.mumu.woodlin.system.dto.RouteVO;
+import com.mumu.woodlin.system.service.ISysPermissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 认证控制器
@@ -36,6 +41,7 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final CaptchaService captchaService;
     private final SmsService smsService;
+    private final ISysPermissionService permissionService;
 
     /**
      * 统一登录接口 - 支持多种登录方式
@@ -141,6 +147,23 @@ public class AuthController {
         } else {
             return R.fail("短信验证码发送失败");
         }
+    }
+
+    /**
+     * 获取当前用户的路由菜单
+     */
+    @GetMapping("/routes")
+    @Operation(
+        summary = "获取用户路由菜单",
+        description = "获取当前登录用户的路由菜单信息，用于前端动态路由生成"
+    )
+    public R<List<RouteVO>> getUserRoutes() {
+        Long userId = SecurityUtil.getUserId();
+        if (userId == null) {
+            return R.fail("用户未登录");
+        }
+        List<RouteVO> routes = permissionService.selectRoutesByUserId(userId);
+        return R.ok(routes);
     }
 
 }
