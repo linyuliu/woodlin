@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NCard, NForm, NFormItem, NInput, NButton, useMessage } from 'naive-ui'
-import { useRouter } from 'vue-router'
-import { login, type LoginRequest } from '@/api/auth'
+import { NCard, NForm, NFormItem, NInput, NButton, NCheckbox, useMessage } from 'naive-ui'
+import { useRouter, useRoute } from 'vue-router'
+import { type LoginRequest } from '@/api/auth'
+import { useAuthStore } from '@/stores'
 import PasswordChangeDialog from '@/components/PasswordChangeDialog.vue'
 
 const router = useRouter()
+const route = useRoute()
 const message = useMessage()
+const authStore = useAuthStore()
 
 const loginForm = ref({
   username: 'admin',
-  password: 'Passw0rd'
+  password: 'Passw0rd',
+  rememberMe: false
 })
 
 const loading = ref(false)
@@ -31,13 +35,11 @@ const handleLogin = async () => {
     const loginRequest: LoginRequest = {
       loginType: 'password',
       username: loginForm.value.username,
-      password: loginForm.value.password
+      password: loginForm.value.password,
+      rememberMe: loginForm.value.rememberMe
     }
     
-    const data = await login(loginRequest)
-    
-    // 存储token
-    localStorage.setItem('token', data.token)
+    const data = await authStore.doLogin(loginRequest)
     
     // 处理密码策略
     if (data.requirePasswordChange) {
@@ -49,17 +51,25 @@ const handleLogin = async () => {
     } else if (data.passwordExpiringSoon) {
       // 密码即将过期，提醒修改
       message.warning(`${data.message}，建议及时修改密码`)
-      router.push('/')
+      
+      // 跳转到重定向地址或首页
+      const redirect = (route.query.redirect as string) || '/'
+      router.push(redirect)
     } else {
       // 正常登录
       message.success('登录成功')
-      router.push('/')
+      
+      // 跳转到重定向地址或首页
+      const redirect = (route.query.redirect as string) || '/'
+      router.push(redirect)
     }
     
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
+    const err = error as { response?: { data?: { message?: string } }; message?: string }
     if (err.response?.data?.message) {
       message.error(err.response.data.message)
+    } else if (err.message) {
+      message.error(err.message)
     } else {
       message.error('登录失败，请检查用户名和密码')
     }
@@ -72,14 +82,16 @@ const handleLogin = async () => {
 const handlePasswordChangeSuccess = () => {
   message.success('密码修改成功，正在跳转...')
   setTimeout(() => {
-    router.push('/')
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
   }, 1000)
 }
 
 // 如果不是强制修改密码，允许取消
 const handlePasswordChangeCancel = () => {
   if (!passwordChangeRequired.value) {
-    router.push('/')
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
   }
 }
 </script>
@@ -107,6 +119,11 @@ const handlePasswordChangeCancel = () => {
             :maxlength="50"
             @keydown.enter="handleLogin"
           />
+        </NFormItem>
+        <NFormItem>
+          <NCheckbox v-model:checked="loginForm.rememberMe">
+            记住我
+          </NCheckbox>
         </NFormItem>
         <NFormItem>
           <NButton 
