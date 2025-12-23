@@ -100,6 +100,80 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     }
     
     @Override
+    public List<String> selectButtonPermissionCodesByUserId(Long userId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        
+        // 尝试从缓存获取
+        if (permissionCacheService != null) {
+            List<String> cachedPermissions = permissionCacheService.getUserButtonPermissions(userId);
+            if (cachedPermissions != null) {
+                log.debug("从缓存获取用户按钮权限: userId={}, count={}", userId, cachedPermissions.size());
+                return cachedPermissions;
+            }
+        }
+        
+        // 从数据库查询
+        List<SysPermission> permissions = selectPermissionsByUserId(userId);
+        if (CollUtil.isEmpty(permissions)) {
+            return Collections.emptyList();
+        }
+        
+        // 过滤按钮权限
+        List<String> buttonPermissions = permissions.stream()
+            .filter(p -> "F".equals(p.getPermissionType()))
+            .map(SysPermission::getPermissionCode)
+            .filter(StrUtil::isNotBlank)
+            .distinct()
+            .collect(Collectors.toList());
+        
+        // 缓存结果
+        if (permissionCacheService != null) {
+            permissionCacheService.cacheUserButtonPermissions(userId, buttonPermissions);
+        }
+        
+        return buttonPermissions;
+    }
+    
+    @Override
+    public List<String> selectMenuPermissionCodesByUserId(Long userId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        
+        // 尝试从缓存获取
+        if (permissionCacheService != null) {
+            List<String> cachedPermissions = permissionCacheService.getUserMenuPermissions(userId);
+            if (cachedPermissions != null) {
+                log.debug("从缓存获取用户菜单权限: userId={}, count={}", userId, cachedPermissions.size());
+                return cachedPermissions;
+            }
+        }
+        
+        // 从数据库查询
+        List<SysPermission> permissions = selectPermissionsByUserId(userId);
+        if (CollUtil.isEmpty(permissions)) {
+            return Collections.emptyList();
+        }
+        
+        // 过滤菜单权限（目录和菜单）
+        List<String> menuPermissions = permissions.stream()
+            .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
+            .map(SysPermission::getPermissionCode)
+            .filter(StrUtil::isNotBlank)
+            .distinct()
+            .collect(Collectors.toList());
+        
+        // 缓存结果
+        if (permissionCacheService != null) {
+            permissionCacheService.cacheUserMenuPermissions(userId, menuPermissions);
+        }
+        
+        return menuPermissions;
+    }
+    
+    @Override
     public List<RouteVO> selectRoutesByUserId(Long userId) {
         if (userId == null) {
             return Collections.emptyList();

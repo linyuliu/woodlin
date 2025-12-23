@@ -115,10 +115,28 @@ public class LoginUser implements Serializable {
     private List<String> roleCodes;
     
     /**
-     * 权限标识列表
+     * 权限标识列表（所有权限：菜单+按钮）
      */
     @Schema(description = "权限标识列表")
     private List<String> permissions;
+    
+    /**
+     * 菜单权限标识列表（仅菜单和目录）
+     */
+    @Schema(description = "菜单权限标识列表")
+    private List<String> menuPermissions;
+    
+    /**
+     * 按钮权限标识列表（仅按钮）
+     */
+    @Schema(description = "按钮权限标识列表")
+    private List<String> buttonPermissions;
+    
+    /**
+     * 角色名称列表
+     */
+    @Schema(description = "角色名称列表")
+    private List<String> roleNames;
     
     /**
      * 登录时间
@@ -170,6 +188,32 @@ public class LoginUser implements Serializable {
             return true;
         }
         return permissions != null && permissions.contains(permission);
+    }
+    
+    /**
+     * 判断是否有指定按钮权限
+     * 
+     * @param permission 按钮权限标识
+     * @return 是否有按钮权限
+     */
+    public boolean hasButtonPermission(String permission) {
+        if (isSuperAdmin()) {
+            return true;
+        }
+        return buttonPermissions != null && buttonPermissions.contains(permission);
+    }
+    
+    /**
+     * 判断是否有指定菜单权限
+     * 
+     * @param permission 菜单权限标识
+     * @return 是否有菜单权限
+     */
+    public boolean hasMenuPermission(String permission) {
+        if (isSuperAdmin()) {
+            return true;
+        }
+        return menuPermissions != null && menuPermissions.contains(permission);
     }
     
     /**
