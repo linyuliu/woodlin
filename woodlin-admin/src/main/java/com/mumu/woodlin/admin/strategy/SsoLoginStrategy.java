@@ -27,7 +27,8 @@ public class SsoLoginStrategy implements LoginStrategy {
     public LoginResponse login(LoginRequest loginRequest) {
         log.info("执行SSO登录策略: provider={}", loginRequest.getSsoProvider());
         
-        // TODO: 实现SSO登录逻辑
+        // 此功能需要根据实际SSO服务进行配置
+        // 实现步骤：
         // 1. 验证SSO Token的有效性
         // 2. 从SSO服务获取用户信息
         // 3. 在本地系统中查找或创建用户

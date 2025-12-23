@@ -141,8 +141,8 @@ public class DevTokenService {
         banner.append("║   2. 或访问 /auth/dev-token 端点重新生成                                       ║\n");
         banner.append("╚═══════════════════════════════════════════════════════════════════════════════╝\n");
 
-        System.out.println(banner.toString());
-        log.info("开发令牌已生成并打印到控制台");
+        // 使用logger输出banner，保持日志一致性
+        log.info("{}", banner.toString());
     }
 
     /**
