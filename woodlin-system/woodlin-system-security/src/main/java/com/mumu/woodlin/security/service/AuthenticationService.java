@@ -23,14 +23,6 @@ public interface AuthenticationService {
     LoginResponse login(LoginRequest loginRequest);
 
     /**
-     * dev环境用户登录
-     *
-     * @param username 登录请求
-     * @return 登录响应
-     */
-    LoginResponse devLogin(String username);
-
-    /**
      * 用户登出
      */
     void logout();

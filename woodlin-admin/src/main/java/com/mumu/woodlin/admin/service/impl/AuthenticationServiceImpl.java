@@ -106,32 +106,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     /**
-     * dev环境用户登录（开发调试用）
-     *
-     * @param username 用户名
-     * @return 登录响应
-     */
-    @Override
-    public LoginResponse devLogin(String username) {
-        log.info("执行开发环境登录: username={}", username);
-        SysUser user = userService.selectUserByUsername(username);
-        if (user == null) {
-            throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
-        }
-
-        // 使用Sa-Token登录
-        StpUtil.login(user.getUserId(), false);
-        StpUtil.getSession().set(SecurityUtil.USER_KEY, user);
-        String token = StpUtil.getTokenValue();
-
-        // 构建响应
-        return new LoginResponse()
-            .setToken(token)
-            .setExpiresIn(StpUtil.getTokenTimeout())
-            .setMessage("开发环境登录成功");
-    }
-
-    /**
      * 用户登出
      */
     @Override
