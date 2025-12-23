@@ -18,6 +18,7 @@
 import type { Router } from 'vue-router'
 import { getConfig } from '@/config'
 import { useAuthStore, useUserStore, usePermissionStore } from '@/stores'
+import { logger } from '@/utils/logger'
 
 /**
  * 白名单路由路径（允许匿名访问）
@@ -51,7 +52,7 @@ function createAuthGuard(router: Router): void {
 
     // 检查用户是否已认证
     if (!authStore.isAuthenticated) {
-      console.warn('🔐 用户未登录，跳转到登录页')
+      logger.warn('🔐 用户未登录，跳转到登录页')
       next({
         path: config.router.loginPath,
         query: { redirect: to.fullPath } // 保存目标路径，登录后可以跳转回来
@@ -65,12 +66,12 @@ function createAuthGuard(router: Router): void {
     // 如果用户信息未加载，先加载用户信息
     if (!userStore.isUserInfoLoaded) {
       try {
-        console.log('📥 加载用户信息...')
+        logger.log('📥 加载用户信息...')
         await userStore.fetchUserInfo()
         
         // 生成动态路由
         if (!permissionStore.isRoutesGenerated) {
-          console.log('🔄 生成动态路由...')
+          logger.log('🔄 生成动态路由...')
           const accessRoutes = await permissionStore.generateRoutes(userStore.permissions)
           
           // 动态添加路由
@@ -81,7 +82,7 @@ function createAuthGuard(router: Router): void {
           // 添加404 catch-all路由（必须在所有动态路由之后）
           const { notFoundRoute } = await import('./routes')
           router.addRoute(notFoundRoute)
-          console.log('✅ 404路由已添加')
+          logger.log('✅ 404路由已添加')
           
           // 重新导航到目标路由
           next({ ...to, replace: true })
@@ -130,9 +131,9 @@ function createPermissionGuard(router: Router): void {
 
     // 检查用户是否有权限
     if (permissions && permissions.length > 0 && !userStore.hasPermission(permissions)) {
-      console.error('🚫 用户无权限访问该页面:', to.path)
-      console.error('  需要权限:', permissions)
-      console.error('  用户权限:', userStore.permissions)
+      logger.error('🚫 用户无权限访问该页面:', to.path)
+      logger.error('  需要权限:', permissions)
+      logger.error('  用户权限:', userStore.permissions)
       
       // 跳转到403页面
       next({ path: '/403', replace: true })
@@ -219,7 +220,7 @@ function createCacheGuard(router: Router): void {
 function createLogGuard(router: Router): void {
   router.afterEach((to, from) => {
     // 记录路由访问日志
-    console.log(`📍 路由变化: ${from.path} -> ${to.path}`)
+    logger.debug(`📍 路由变化: ${from.path} -> ${to.path}`)
     
     // TODO: 可以将访问日志发送到服务器
     // if (to.meta.logAccess) {
@@ -268,7 +269,7 @@ export function setupRouterGuards(router: Router): void {
   // 路由访问日志守卫
   createLogGuard(router)
   
-  console.log('✅ 路由守卫配置完成')
+  logger.log('✅ 路由守卫配置完成')
 }
 
 /**
