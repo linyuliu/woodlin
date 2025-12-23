@@ -55,6 +55,21 @@ woodlin-security 是 Woodlin 系统的安全认证模块，基于 Sa-Token 实�
 
 ## 使用指南
 
+### Token 格式说明
+
+本系统遵循 OAuth2 标准，使用 Bearer Token 认证。客户端在发送请求时，需要在请求头中添加：
+
+```
+Authorization: Bearer {token}
+```
+
+**示例**：
+```
+Authorization: Bearer 761010b5-cf1a-4ec5-8624-70ffa4c3bb4b
+```
+
+Sa-Token 配置了 `token-prefix: Bearer`，会自动从 Authorization 头中提取 Bearer 之后的 token 值进行验证。
+
 ### 登录认证
 
 ```java
@@ -73,7 +88,7 @@ public class AuthController {
         // 2. 登录成功，创建 Token
         StpUtil.login(user.getId());
         
-        // 3. 返回 Token
+        // 3. 返回 Token（客户端需要添加 Bearer 前缀）
         String token = StpUtil.getTokenValue();
         return Result.success(token);
     }
@@ -177,6 +192,9 @@ public class UserServiceImpl implements UserService {
 sa-token:
   # Token 名称（同时也是 Cookie 名称）
   token-name: Authorization
+  
+  # Token 前缀（符合 OAuth2 标准的 Bearer 前缀）
+  token-prefix: Bearer
   
   # Token 有效期（单位：秒），默认 30 天，-1 代表永不过期
   timeout: 2592000
