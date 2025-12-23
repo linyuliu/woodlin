@@ -137,7 +137,7 @@ public class DevTokenService {
         }
         banner.append("╠═══════════════════════════════════════════════════════════════════════════════╣\n");
         banner.append("║ 使用方法 (Usage):                                                              ║\n");
-        banner.append("║   1. 在请求头中添加: Authorization: Bearer " + tokenInfo.getToken() + "\n");
+        banner.append(String.format("║   1. 在请求头中添加: Authorization: Bearer %s\n", tokenInfo.getToken()));
         banner.append("║   2. 或访问 /auth/dev-token 端点重新生成                                       ║\n");
         banner.append("╚═══════════════════════════════════════════════════════════════════════════════╝\n");
 
