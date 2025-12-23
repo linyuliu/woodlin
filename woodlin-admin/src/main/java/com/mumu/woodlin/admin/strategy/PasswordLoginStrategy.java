@@ -1,10 +1,10 @@
 package com.mumu.woodlin.admin.strategy;
 
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.crypto.digest.BCrypt;
 import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.util.PasswordEncoderUtil;
 import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.enums.LoginType;
@@ -69,7 +69,7 @@ public class PasswordLoginStrategy implements LoginStrategy {
         }
         
         // 验证密码
-        if (!BCrypt.checkpw(loginRequest.getPassword(), user.getPassword())) {
+        if (!PasswordEncoderUtil.matches(loginRequest.getPassword(), user.getPassword())) {
             // 处理密码错误
             handlePasswordError(user);
             log.warn("密码登录失败: 密码错误, username={}", user.getUsername());

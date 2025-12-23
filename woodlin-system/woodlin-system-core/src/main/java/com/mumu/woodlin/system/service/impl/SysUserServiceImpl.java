@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.common.constant.SystemConstant;
+import com.mumu.woodlin.common.util.PasswordEncoderUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -129,6 +131,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw BusinessException.of(ResultCode.EMAIL_ALREADY_EXISTS, "新增用户'" + user.getUsername() + "'失败，邮箱账号已存在");
         }
         
+        // 如果密码为空，设置默认密码
+        if (StrUtil.isBlank(user.getPassword())) {
+            user.setPassword(SystemConstant.DEFAULT_PASSWORD);
+        }
+        
+        // 加密密码
+        if (!PasswordEncoderUtil.isEncoded(user.getPassword())) {
+            user.setPassword(PasswordEncoderUtil.encode(user.getPassword()));
+            log.info("用户 {} 的密码已加密", user.getUsername());
+        }
+        
         return this.save(user);
     }
     
@@ -167,6 +180,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public boolean resetPassword(Long userId, String password) {
         SysUser user = new SysUser();
         user.setUserId(userId);
+        
+        // 加密密码
+        if (!PasswordEncoderUtil.isEncoded(password)) {
+            password = PasswordEncoderUtil.encode(password);
+            log.info("用户 {} 的重置密码已加密", userId);
+        }
+        
         user.setPassword(password);
         return this.updateById(user);
     }

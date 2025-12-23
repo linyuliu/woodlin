@@ -1,6 +1,7 @@
 package com.mumu.woodlin.security.service;
 
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
+import com.mumu.woodlin.security.dto.ForgotPasswordRequest;
 import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 
@@ -35,11 +36,18 @@ public interface AuthenticationService {
     void logout();
 
     /**
-     * 修改密码
+     * 修改密码（需要登录）
      *
      * @param request 修改密码请求
      */
     void changePassword(ChangePasswordRequest request);
+    
+    /**
+     * 忘记密码重置（通过验证码，无需登录）
+     *
+     * @param request 忘记密码重置请求
+     */
+    void resetPasswordByCode(ForgotPasswordRequest request);
 
     /**
      * 获取当前用户信息

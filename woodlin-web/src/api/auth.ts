@@ -75,6 +75,22 @@ export interface ChangePasswordRequest {
 }
 
 /**
+ * 忘记密码重置请求
+ */
+export interface ForgotPasswordRequest {
+  /** 用户名或手机号或邮箱 */
+  username: string
+  /** 验证码 */
+  code: string
+  /** 验证码类型: sms, email */
+  codeType: string
+  /** 新密码 */
+  newPassword: string
+  /** 确认密码 */
+  confirmPassword: string
+}
+
+/**
  * 图形验证码信息
  */
 export interface CaptchaInfo {
@@ -105,6 +121,14 @@ export function logout(): Promise<void> {
  */
 export function changePassword(data: ChangePasswordRequest): Promise<void> {
   return request.post('/auth/change-password', data)
+}
+
+/**
+ * 忘记密码重置（通过验证码）
+ * @param data 忘记密码重置请求
+ */
+export function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
+  return request.post('/auth/forgot-password', data)
 }
 
 /**

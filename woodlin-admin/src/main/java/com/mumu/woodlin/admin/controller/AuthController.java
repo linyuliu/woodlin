@@ -3,6 +3,7 @@ package com.mumu.woodlin.admin.controller;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.security.config.DevTokenProperties;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
+import com.mumu.woodlin.security.dto.ForgotPasswordRequest;
 import com.mumu.woodlin.security.dto.LoginRequest;
 import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.service.AuthenticationService;
@@ -85,11 +86,24 @@ public class AuthController {
     @PostMapping("/change-password")
     @Operation(
         summary = "修改密码",
-        description = "修改当前登录用户的密码，需要提供旧密码和新密码"
+        description = "修改当前登录用户的密码，需要提供旧密码和新密码。修改成功后会强制重新登录。"
     )
     public R<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authenticationService.changePassword(request);
-        return R.ok("密码修改成功");
+        return R.ok("密码修改成功，请重新登录");
+    }
+    
+    /**
+     * 忘记密码重置（通过验证码）
+     */
+    @PostMapping("/forgot-password")
+    @Operation(
+        summary = "忘记密码重置",
+        description = "通过验证码重置密码，无需登录。支持短信验证码和邮件验证码。"
+    )
+    public R<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authenticationService.resetPasswordByCode(request);
+        return R.ok("密码重置成功，请使用新密码登录");
     }
 
     /**
