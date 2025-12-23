@@ -49,6 +49,22 @@ public interface ISysPermissionService extends IService<SysPermission> {
     List<String> selectPermissionCodesByUserId(Long userId);
     
     /**
+     * 根据用户ID查询按钮权限编码列表（包括角色继承的权限）
+     * 
+     * @param userId 用户ID
+     * @return 按钮权限编码列表
+     */
+    List<String> selectButtonPermissionCodesByUserId(Long userId);
+    
+    /**
+     * 根据用户ID查询菜单权限编码列表（包括角色继承的权限）
+     * 
+     * @param userId 用户ID
+     * @return 菜单权限编码列表
+     */
+    List<String> selectMenuPermissionCodesByUserId(Long userId);
+    
+    /**
      * 根据用户ID查询菜单路由列表（包括角色继承的权限）
      * 
      * @param userId 用户ID
