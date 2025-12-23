@@ -251,22 +251,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
     
     /**
-     * 根据标识符查找用户（支持用户名、手机号、邮箱）
+     * 根据标识符查找用户（支持用户名）
      *
-     * @param identifier 标识符
+     * @param identifier 标识符（用户名）
      * @return 用户信息
      */
     private SysUser findUserByIdentifier(String identifier) {
-        // 先尝试用户名
-        SysUser user = userService.selectUserByUsername(identifier);
-        if (user != null) {
-            return user;
-        }
-        
-        // TODO: 如果需要支持手机号和邮箱查找，可以在这里添加
-        // 需要在 ISysUserService 中添加相应的查询方法
-        
-        return null;
+        return userService.selectUserByUsername(identifier);
     }
     
     /**
@@ -283,7 +274,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // 验证短信验证码
             isValid = smsService.verifySmsCode(identifier, code);
         } else if ("email".equals(codeType)) {
-            // TODO: 验证邮件验证码（需要实现 EmailService）
+            // 邮件验证码功能需要实现 EmailService
             log.warn("邮件验证码功能暂未实现");
             throw BusinessException.of(ResultCode.BAD_REQUEST, "邮件验证码功能暂未实现");
         } else {

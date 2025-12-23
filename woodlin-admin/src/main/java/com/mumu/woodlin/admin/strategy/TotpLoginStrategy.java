@@ -28,7 +28,8 @@ public class TotpLoginStrategy implements LoginStrategy {
     public LoginResponse login(LoginRequest loginRequest) {
         log.info("执行TOTP双因素认证策略");
         
-        // TODO: 实现TOTP认证逻辑
+        // 此功能需要集成TOTP库（如google-authenticator）
+        // 实现步骤：
         // 1. 验证用户是否已绑定TOTP
         // 2. 验证TOTP验证码是否正确
         // 3. 检查时间窗口和防重放

@@ -28,7 +28,8 @@ public class PasskeyLoginStrategy implements LoginStrategy {
     public LoginResponse login(LoginRequest loginRequest) {
         log.info("执行Passkey登录策略: credentialId={}", loginRequest.getPasskeyCredentialId());
         
-        // TODO: 实现Passkey登录逻辑
+        // 此功能需要集成WebAuthn服务端库（如webauthn4j）
+        // 实现步骤：
         // 1. 验证WebAuthn认证响应
         // 2. 验证凭证签名
         // 3. 查找关联的用户账号
