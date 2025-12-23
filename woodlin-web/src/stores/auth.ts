@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
   
   /** 是否已认证（有token且未过期） */
   const isAuthenticated = computed(() => {
-    if (!token.value) return false
+    if (!token.value) {return false}
     
     // 检查token是否过期
     if (tokenExpireTime.value && Date.now() >= tokenExpireTime.value) {
@@ -59,14 +59,14 @@ export const useAuthStore = defineStore('auth', () => {
   
   /** Token是否即将过期（小于5分钟） */
   const isTokenExpiringSoon = computed(() => {
-    if (!tokenExpireTime.value) return false
+    if (!tokenExpireTime.value) {return false}
     const remainingTime = tokenExpireTime.value - Date.now()
     return remainingTime > 0 && remainingTime < 5 * 60 * 1000 // 5分钟
   })
   
   /** 完整的授权头 */
   const authorizationHeader = computed(() => {
-    if (!token.value) return null
+    if (!token.value) {return null}
     return `${tokenType.value} ${token.value}`
   })
 
