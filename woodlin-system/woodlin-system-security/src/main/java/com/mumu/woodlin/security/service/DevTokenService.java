@@ -137,7 +137,7 @@ public class DevTokenService {
         }
         banner.append("╠═══════════════════════════════════════════════════════════════════════════════╣\n");
         banner.append("║ 使用方法 (Usage):                                                              ║\n");
-        banner.append("║   1. 在请求头中添加: Authorization: " + tokenInfo.getToken() + "\n");
+        banner.append("║   1. 在请求头中添加: Authorization: Bearer " + tokenInfo.getToken() + "\n");
         banner.append("║   2. 或访问 /auth/dev-token 端点重新生成                                       ║\n");
         banner.append("╚═══════════════════════════════════════════════════════════════════════════════╝\n");
 
@@ -158,7 +158,7 @@ public class DevTokenService {
         } else {
             log.info("过期时间: 永不过期");
         }
-        log.info("使用方法: 在请求头中添加 Authorization: {}", tokenInfo.getToken());
+        log.info("使用方法: 在请求头中添加 Authorization: Bearer {}", tokenInfo.getToken());
         log.info("================================");
     }
 
