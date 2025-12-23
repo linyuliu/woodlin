@@ -213,8 +213,13 @@ export const usePermissionStore = defineStore('permission', () => {
       children: []
     }
     
-    // 转换后端路由为子路由
+    // 转换后端路由为子路由（后端已返回树形结构，直接转换即可）
     rootRoute.children = backendRoutes.map(backendRoute => convertSingleRoute(backendRoute))
+    
+    logger.log('✅ 后端路由已转换为Vue Router格式:', {
+      routeCount: rootRoute.children?.length || 0,
+      routes: rootRoute.children?.map(r => ({ path: r.path, name: r.name }))
+    })
     
     return [rootRoute]
   }
@@ -249,14 +254,16 @@ export const usePermissionStore = defineStore('permission', () => {
     // 动态导入组件
     if (backendRoute.component) {
       route.component = loadComponent(backendRoute.component)
+      logger.debug(`📦 加载组件: ${backendRoute.component} for route: ${backendRoute.path}`)
     } else {
-      // 没有组件的路由，使用默认组件
-      route.component = () => import('@/views/error/404.vue')
+      // 没有组件的路由（如目录），不设置component或使用默认值
+      logger.debug(`📁 目录路由（无组件）: ${backendRoute.path}`)
     }
     
     // 递归处理子路由
     if (backendRoute.children && backendRoute.children.length > 0) {
       route.children = backendRoute.children.map(child => convertSingleRoute(child))
+      logger.debug(`🌳 路由 ${backendRoute.path} 有 ${backendRoute.children.length} 个子路由`)
     }
     
     return route as RouteRecordRaw
@@ -277,12 +284,16 @@ export const usePermissionStore = defineStore('permission', () => {
     // 构建组件key
     const componentKey = `/src/views/${path}${path.endsWith('.vue') ? '' : '.vue'}`
     
+    logger.debug(`🔍 查找组件: ${componentPath} -> ${componentKey}`)
+    
     if (componentModules[componentKey]) {
+      logger.debug(`✅ 找到组件: ${componentKey}`)
       return componentModules[componentKey]
     }
     
     // 如果找不到组件，记录警告并返回一个占位组件
     logger.warn(`⚠️ 找不到组件: ${componentPath} (查找路径: ${componentKey})`)
+    logger.warn(`📋 可用组件列表:`, Object.keys(componentModules).slice(0, 10))
     return () => import('@/views/error/404.vue')
   }
   
