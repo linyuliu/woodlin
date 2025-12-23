@@ -352,9 +352,9 @@ public class PermissionCacheService {
     }
 
     /**
-     * 判断权限缓存是否启用
+     * 判断权限缓存是否未启用（注意：返回true表示缓存未启用）
      *
-     * @return 是否启用
+     * @return true-缓存未启用, false-缓存已启用
      */
     private boolean isEnabled() {
         return Objects.isNull(cacheProperties.getPermission())
