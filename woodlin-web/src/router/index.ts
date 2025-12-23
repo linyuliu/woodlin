@@ -8,142 +8,34 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import AdminLayout from '@/layouts/AdminLayout.vue'
 import { setupRouterGuards } from './guards'
+import { constantRoutes } from './routes'
 
 /**
  * 创建路由实例
  * 使用HTML5 History模式进行路由管理
+ * 
+ * 注意：动态路由会在用户登录后根据权限动态添加
  */
 const router = createRouter({
   // 使用HTML5历史模式，需要服务器配置支持
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      component: AdminLayout,
-      // 默认重定向到仪表板页面
-      redirect: '/dashboard',
-      children: [
-        {
-          path: 'dashboard',
-          name: 'Dashboard',
-          component: () => import('@/views/DashboardView.vue'),
-          meta: {
-            title: '仪表板',
-            icon: 'dashboard-outline',
-            // 路由权限配置（可选）
-            // permissions: ['dashboard:view']
-          }
-        },
-        {
-          path: 'user',
-          name: 'UserManagement',
-          component: () => import('@/views/system/UserView.vue'),
-          meta: {
-            title: '用户管理',
-            icon: 'people-outline',
-            // permissions: ['system:user:view']
-          }
-        },
-        {
-          path: 'role',
-          name: 'RoleManagement',
-          component: () => import('@/views/system/RoleView.vue'),
-          meta: {
-            title: '角色管理',
-            icon: 'shield-outline',
-            // permissions: ['system:role:view']
-          }
-        },
-        {
-          path: 'dept',
-          name: 'DeptManagement',
-          component: () => import('@/views/system/DeptView.vue'),
-          meta: {
-            title: '部门管理',
-            icon: 'business-outline',
-            // permissions: ['system:dept:view']
-          }
-        },
-        {
-          path: 'permission',
-          name: 'PermissionManagement',
-          component: () => import('@/views/system/permission/PermissionManagementView.vue'),
-          meta: {
-            title: '权限管理',
-            icon: 'key-outline',
-            // permissions: ['system:permission:view']
-          }
-        },
-        {
-          path: 'dict',
-          name: 'DictManagement',
-          component: () => import('@/views/system/DictView.vue'),
-          meta: {
-            title: '字典管理',
-            icon: 'book-outline',
-            // permissions: ['system:dict:view']
-          }
-        },
-        {
-          path: 'config',
-          name: 'ConfigManagement',
-          component: () => import('@/views/system/ConfigView.vue'),
-          meta: {
-            title: '配置管理',
-            icon: 'options-outline',
-            // permissions: ['system:config:view']
-          }
-        },
-        {
-          path: 'system-settings',
-          name: 'SystemSettings',
-          component: () => import('@/views/system/SystemSettingsView.vue'),
-          meta: {
-            title: '系统设置',
-            icon: 'settings-outline',
-            // permissions: ['system:settings:view']
-          }
-        },
-        {
-          path: 'tenant-list',
-          name: 'TenantList',
-          component: () => import('@/views/tenant/TenantView.vue'),
-          meta: {
-            title: '租户管理',
-            icon: 'home-outline',
-            // permissions: ['system:tenant:view']
-          }
-        },
-        {
-          path: 'sql2api',
-          name: 'SqlApiEditor',
-          component: () => import('@/views/sql2api/SqlApiEditor.vue'),
-          meta: {
-            title: 'SQL转API',
-            icon: 'code-outline',
-            // permissions: ['system:sql2api:view']
-          }
-        },
-      ],
-    },
-    {
-      path: '/login',
-      name: 'Login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: {
-        title: '登录',
-        hideInMenu: true
-      }
-    },
-  ],
+  // 初始只加载静态路由（登录页、错误页等）
+  routes: constantRoutes,
+  // 滚动行为：切换路由时滚动到顶部
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  }
 })
 
 /**
  * 配置路由守卫
  * 
- * 包括登录验证、权限检查、页面标题设置等
+ * 包括登录验证、权限检查、页面标题设置、动态路由加载等
  */
 setupRouterGuards(router)
 
