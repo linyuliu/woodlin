@@ -70,10 +70,16 @@ public class MyBatisPlusMetaObjectHandler implements MetaObjectHandler {
      */
     private String getCurrentUser() {
         try {
+            // 检查用户是否登录
+            if (!SecurityUtil.isLogin()) {
+                return "system";
+            }
+            
             String username = SecurityUtil.getUsername();
             return ObjectUtil.isNotEmpty(username) ? username : "system";
         } catch (Exception e) {
-            log.debug("获取当前用户失败，使用默认用户: system", e);
+            // 在获取用户失败时（例如登录过程中），使用默认用户
+            log.trace("获取当前用户失败（可能是在登录流程中），使用默认用户: system", e);
             return "system";
         }
     }
