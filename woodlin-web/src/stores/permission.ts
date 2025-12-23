@@ -107,11 +107,17 @@ export const usePermissionStore = defineStore('permission', () => {
   async function generateRoutes(permissions: string[]): Promise<RouteRecordRaw[]> {
     let accessedRoutes: RouteRecordRaw[]
     
-    // 如果权限中包含'*'或'admin'，则拥有所有权限
-    if (permissions.includes('*') || permissions.includes('admin')) {
+    console.log('📋 开始生成路由, 用户权限:', permissions)
+    
+    // 如果权限中包含'*'或'admin'或'super_admin'，则拥有所有权限
+    if (permissions.includes('*') || 
+        permissions.includes('admin') || 
+        permissions.includes('super_admin')) {
+      console.log('🔑 用户拥有全部权限，加载所有路由')
       accessedRoutes = asyncRoutes || []
     } else {
       // 根据权限过滤路由
+      console.log('🔍 根据权限过滤路由...')
       accessedRoutes = filterAsyncRoutes(asyncRoutes || [], permissions)
     }
     
@@ -124,7 +130,8 @@ export const usePermissionStore = defineStore('permission', () => {
     console.log('✅ 路由已生成:', {
       total: routes.value.length,
       added: addedRoutes.value.length,
-      menu: menuRoutes.value.length
+      menu: menuRoutes.value.length,
+      accessedRoutes: accessedRoutes.map(r => r.path)
     })
     
     return accessedRoutes

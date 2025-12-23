@@ -323,19 +323,22 @@ export const asyncRoutes: RouteRecordRaw[] = [
         ]
       }
     ]
-  },
-  
-  // 404 通配符路由（必须放在最后）
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/404',
-    meta: {
-      hideInMenu: true
-    }
   }
 ]
 
 /**
+ * 404 catch-all route
+ * NOTE: This must be added LAST after all dynamic routes are registered
+ */
+export const notFoundRoute: RouteRecordRaw = {
+  path: '/:pathMatch(.*)*',
+  redirect: '/404',
+  meta: {
+    hideInMenu: true
+  }
+}
+
+/**
  * 所有路由（用于调试和测试）
  */
-export const allRoutes = [...constantRoutes, ...asyncRoutes]
+export const allRoutes = [...constantRoutes, ...asyncRoutes, notFoundRoute]
