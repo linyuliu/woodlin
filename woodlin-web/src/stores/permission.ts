@@ -58,6 +58,9 @@ export const usePermissionStore = defineStore('permission', () => {
   /** 是否已生成路由 */
   const isRoutesGenerated = ref(false)
   
+  /** 是否已将路由添加到路由器 */
+  const isRoutesAdded = ref(false)
+  
   /** 菜单列表（用于侧边栏显示） */
   const menuRoutes = ref<RouteRecordRaw[]>([])
 
@@ -139,27 +142,27 @@ export const usePermissionStore = defineStore('permission', () => {
   async function generateRoutes(permissions: string[]): Promise<RouteRecordRaw[]> {
     let accessedRoutes: RouteRecordRaw[]
     
-    logger.log('📋 开始生成路由, 用户权限:', permissions)
+    logger.log('开始生成路由, 用户权限:', permissions)
     
     try {
       // 从后端获取用户路由
-      logger.log('🌐 从后端获取用户路由...')
+      logger.log('从后端获取用户路由...')
       const backendRoutes = await getUserRoutes() as unknown as BackendRoute[]
       
       if (backendRoutes && backendRoutes.length > 0) {
-        logger.log('✅ 成功获取后端路由:', backendRoutes.length, '个')
+        logger.log('成功获取后端路由:', backendRoutes.length, '个')
         
         // 将后端路由转换为Vue Router格式
         accessedRoutes = convertBackendRoutesToVueRouter(backendRoutes)
-        logger.log('✅ 路由转换完成:', accessedRoutes.length, '个')
+        logger.log('路由转换完成:', accessedRoutes.length, '个')
       } else {
         // 如果后端没有返回路由，使用静态路由作为降级方案
-        logger.warn('⚠️ 后端未返回路由，使用静态路由')
+        logger.warn('后端未返回路由，使用静态路由')
         accessedRoutes = useFallbackRoutes(permissions)
       }
     } catch (error) {
       // 如果获取失败，使用静态路由作为降级方案
-      logger.error('❌ 获取后端路由失败，使用静态路由:', error)
+      logger.error('获取后端路由失败，使用静态路由:', error)
       accessedRoutes = useFallbackRoutes(permissions)
     }
     
@@ -169,7 +172,7 @@ export const usePermissionStore = defineStore('permission', () => {
     menuRoutes.value = routes.value.filter(route => !route.meta?.hideInMenu)
     isRoutesGenerated.value = true
     
-    logger.log('✅ 路由已生成:', {
+    logger.log('路由已生成:', {
       total: routes.value.length,
       added: addedRoutes.value.length,
       menu: menuRoutes.value.length,
@@ -190,11 +193,11 @@ export const usePermissionStore = defineStore('permission', () => {
     if (permissions.includes('*') || 
         permissions.includes('admin') || 
         permissions.includes('super_admin')) {
-      logger.log('🔑 用户拥有全部权限，加载所有路由')
+      logger.log('用户拥有全部权限，加载所有路由')
       return asyncRoutes || []
     } else {
       // 根据权限过滤路由
-      logger.log('🔍 根据权限过滤路由...')
+      logger.log('根据权限过滤路由...')
       return filterAsyncRoutes(asyncRoutes || [], permissions)
     }
   }
@@ -217,7 +220,7 @@ export const usePermissionStore = defineStore('permission', () => {
     // 转换后端路由为子路由（后端已返回树形结构，直接转换即可）
     rootRoute.children = backendRoutes.map(backendRoute => convertSingleRoute(backendRoute))
     
-    logger.log('✅ 后端路由已转换为Vue Router格式:', {
+    logger.log('后端路由已转换为Vue Router格式:', {
       routeCount: rootRoute.children?.length || 0,
       routes: rootRoute.children?.map(r => ({ path: r.path, name: r.name }))
     })
@@ -255,17 +258,17 @@ export const usePermissionStore = defineStore('permission', () => {
     // 动态导入组件
     if (backendRoute.component) {
       route.component = loadComponent(backendRoute.component)
-      logger.debug(`📦 加载组件: ${backendRoute.component} for route: ${backendRoute.path}`)
+      logger.debug(`加载组件: ${backendRoute.component} for route: ${backendRoute.path}`)
     } else {
       // 没有组件的路由（如目录），使用 RouterView 作为容器
       route.component = RouterView
-      logger.debug(`📁 目录路由（使用RouterView）: ${backendRoute.path}`)
+      logger.debug(`目录路由（使用RouterView）: ${backendRoute.path}`)
     }
     
     // 递归处理子路由
     if (backendRoute.children && backendRoute.children.length > 0) {
       route.children = backendRoute.children.map(child => convertSingleRoute(child))
-      logger.debug(`🌳 路由 ${backendRoute.path} 有 ${backendRoute.children.length} 个子路由`)
+      logger.debug(`路由 ${backendRoute.path} 有 ${backendRoute.children.length} 个子路由`)
     }
     
     return route as RouteRecordRaw
@@ -286,16 +289,16 @@ export const usePermissionStore = defineStore('permission', () => {
     // 构建组件key
     const componentKey = `/src/views/${path}${path.endsWith('.vue') ? '' : '.vue'}`
     
-    logger.debug(`🔍 查找组件: ${componentPath} -> ${componentKey}`)
+    logger.debug(`查找组件: ${componentPath} -> ${componentKey}`)
     
     if (componentModules[componentKey]) {
-      logger.debug(`✅ 找到组件: ${componentKey}`)
+      logger.debug(`找到组件: ${componentKey}`)
       return componentModules[componentKey]
     }
     
     // 如果找不到组件，记录警告并返回一个占位组件
-    logger.warn(`⚠️ 找不到组件: ${componentPath} (查找路径: ${componentKey})`)
-    logger.warn(`📋 可用组件列表:`, Object.keys(componentModules).slice(0, 10))
+    logger.warn(`找不到组件: ${componentPath} (查找路径: ${componentKey})`)
+    logger.warn(`可用组件列表:`, Object.keys(componentModules).slice(0, 10))
     return () => import('@/views/error/404.vue')
   }
   
@@ -307,8 +310,9 @@ export const usePermissionStore = defineStore('permission', () => {
     addedRoutes.value = []
     menuRoutes.value = []
     isRoutesGenerated.value = false
+    isRoutesAdded.value = false
     
-    logger.log('✅ 路由已清除')
+    logger.log('路由已清除')
   }
   
   /**
@@ -330,12 +334,21 @@ export const usePermissionStore = defineStore('permission', () => {
   function findRouteByName(name: string): RouteRecordRaw | undefined {
     return flatRoutes.value.find(route => route.name === name)
   }
+  
+  /**
+   * 标记路由已添加到路由器
+   */
+  function markRoutesAdded() {
+    isRoutesAdded.value = true
+    logger.log('路由已标记为已添加到路由器')
+  }
 
   return {
     // 状态
     routes,
     addedRoutes,
     isRoutesGenerated,
+    isRoutesAdded,
     menuRoutes,
     
     // 计算属性
@@ -344,6 +357,7 @@ export const usePermissionStore = defineStore('permission', () => {
     // 方法
     generateRoutes,
     clearRoutes,
+    markRoutesAdded,
     filterAsyncRoutes,
     hasRoutePermission,
     findRouteByPath,

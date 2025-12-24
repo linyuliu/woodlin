@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { NLayout } from 'naive-ui'
 import AppSidebar from './components/AppSidebar.vue'

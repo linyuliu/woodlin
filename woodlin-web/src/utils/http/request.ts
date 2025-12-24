@@ -86,7 +86,7 @@ class HttpRequest {
         return config
       },
       (error) => {
-        console.error('❌ 请求配置错误:', error)
+        console.error('请求配置错误:', error)
         return Promise.reject(error)
       }
     )
@@ -180,16 +180,16 @@ class HttpRequest {
           this.handleUnauthorized()
           break
         case 403:
-          console.error('🚫 权限不足')
+          console.error('权限不足')
           break
         case 404:
-          console.error('📭 资源未找到')
+          console.error('资源未找到')
           break
         case 500:
-          console.error('💥 服务器内部错误')
+          console.error('服务器内部错误')
           break
         case 503:
-          console.error('🔧 服务暂时不可用')
+          console.error('服务暂时不可用')
           break
       }
     }
@@ -206,7 +206,7 @@ class HttpRequest {
    * 清除token并跳转到登录页
    */
   private handleUnauthorized(): void {
-    console.warn('🔐 认证失效，请重新登录')
+    console.warn('认证失效，请重新登录')
     this.removeToken()
     const config = getConfig()
     window.location.href = config.router.loginPath
