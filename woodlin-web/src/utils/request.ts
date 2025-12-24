@@ -180,8 +180,8 @@ request.interceptors.response.use(
     
     // 根据后端的响应格式进行统一处理
     // 假设后端返回格式为 { code: number, message: string, data: any }
-    // 使用 != 而非 !== 以处理 code 可能为字符串 "200" 或数字 200 的情况
-    if (data.code && data.code != 200) {
+    // 使用 Number() 转换以处理 code 可能为字符串 "200" 或数字 200 的情况
+    if (data.code && Number(data.code) !== 200) {
       console.error('❌ API业务错误:', data.message)
       
       // 显示错误提示
