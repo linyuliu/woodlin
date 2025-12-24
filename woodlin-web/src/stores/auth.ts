@@ -174,7 +174,8 @@ export const useAuthStore = defineStore('auth', () => {
       // 调用后端登出接口
       await logout()
     } catch (error) {
-      // 即使登出接口失败，也继续清除本地状态
+      // 登出接口调用失败，继续清除本地状态
+      console.warn('登出接口调用失败，继续清除本地状态:', error)
     } finally {
       // 清除本地状态
       clearToken()
