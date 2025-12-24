@@ -94,8 +94,6 @@ export const useAuthStore = defineStore('auth', () => {
     if (expire) {
       localStorage.setItem(`${config.http.tokenKey}_expire`, String(tokenExpireTime.value))
     }
-    
-    console.log('✅ Token已设置:', { token: tokenValue, expire, type })
   }
   
   /**
@@ -113,13 +111,8 @@ export const useAuthStore = defineStore('auth', () => {
         
         // 检查是否过期
         if (Date.now() >= tokenExpireTime.value) {
-          console.warn('⚠️ Token已过期，清除Token')
           clearToken()
-        } else {
-          console.log('✅ Token已恢复:', savedToken)
         }
-      } else {
-        console.log('✅ Token已恢复（无过期时间）:', savedToken)
       }
     }
   }
@@ -137,8 +130,6 @@ export const useAuthStore = defineStore('auth', () => {
     // 从localStorage清除
     localStorage.removeItem(config.http.tokenKey)
     localStorage.removeItem(`${config.http.tokenKey}_expire`)
-    
-    console.log('✅ Token已清除')
   }
   
   /**
@@ -150,7 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await login(loginData)
       
-      // 设置Token
+      // 设置Token - 先设置token，确保后续API请求能够携带认证信息
       setToken(response.token, response.expiresIn, response.tokenType)
       
       // 设置记住我
@@ -159,17 +150,18 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('rememberMe', 'true')
       }
       
-      // 获取用户信息
+      // 获取用户信息 - 必须在生成路由之前完成
       await userStore.fetchUserInfo()
       
-      // 生成动态路由
+      // 生成动态路由 - 路由生成后会在store中标记为已生成
+      // 实际路由添加会在router guard中完成，这样可以确保路由正确加载
       await permissionStore.generateRoutes(userStore.permissions)
       
-      console.log('✅ 登录成功')
+      console.log('登录成功')
       
       return response
     } catch (error) {
-      console.error('❌ 登录失败:', error)
+      console.error('登录失败:', error)
       throw error
     }
   }
@@ -182,7 +174,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 调用后端登出接口
       await logout()
     } catch (error) {
-      console.error('⚠️ 登出接口调用失败（继续清除本地状态）:', error)
+      // 即使登出接口失败，也继续清除本地状态
     } finally {
       // 清除本地状态
       clearToken()
@@ -191,8 +183,6 @@ export const useAuthStore = defineStore('auth', () => {
       
       // 跳转到登录页
       router.push(config.router.loginPath)
-      
-      console.log('✅ 已登出')
     }
   }
   
@@ -213,7 +203,6 @@ export const useAuthStore = defineStore('auth', () => {
    */
   function checkTokenRefresh() {
     if (isTokenExpiringSoon.value) {
-      console.warn('⚠️ Token即将过期，尝试刷新')
       refreshToken()
     }
   }

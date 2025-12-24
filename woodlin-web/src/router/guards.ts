@@ -52,7 +52,7 @@ function createAuthGuard(router: Router): void {
 
     // 检查用户是否已认证
     if (!authStore.isAuthenticated) {
-      logger.warn('🔐 用户未登录，跳转到登录页')
+      logger.warn('用户未登录，跳转到登录页')
       next({
         path: config.router.loginPath,
         query: { redirect: to.fullPath } // 保存目标路径，登录后可以跳转回来
@@ -66,30 +66,16 @@ function createAuthGuard(router: Router): void {
     // 如果用户信息未加载，先加载用户信息
     if (!userStore.isUserInfoLoaded) {
       try {
-        logger.log('📥 加载用户信息...')
+        logger.log('加载用户信息...')
         await userStore.fetchUserInfo()
         
         // 生成动态路由
         if (!permissionStore.isRoutesGenerated) {
-          logger.log('🔄 生成动态路由...')
-          const accessRoutes = await permissionStore.generateRoutes(userStore.permissions)
-          
-          // 动态添加路由
-          accessRoutes.forEach(route => {
-            router.addRoute(route)
-          })
-          
-          // 添加404 catch-all路由（必须在所有动态路由之后）
-          const { notFoundRoute } = await import('./routes')
-          router.addRoute(notFoundRoute)
-          logger.log('✅ 404路由已添加')
-          
-          // 重新导航到目标路由
-          next({ ...to, replace: true })
-          return
+          logger.log('生成动态路由...')
+          await permissionStore.generateRoutes(userStore.permissions)
         }
       } catch (error) {
-        console.error('❌ 加载用户信息失败:', error)
+        console.error('加载用户信息失败:', error)
         
         // 清除认证状态
         authStore.clearToken()
@@ -102,6 +88,28 @@ function createAuthGuard(router: Router): void {
         })
         return
       }
+    }
+    
+    // 如果路由已生成但未添加到路由器，则添加路由
+    if (permissionStore.isRoutesGenerated && !permissionStore.isRoutesAdded) {
+      logger.log('添加动态路由到路由器...')
+      
+      // 动态添加路由
+      permissionStore.addedRoutes.forEach(route => {
+        router.addRoute(route)
+      })
+      
+      // 添加404 catch-all路由（必须在所有动态路由之后）
+      const { notFoundRoute } = await import('./routes')
+      router.addRoute(notFoundRoute)
+      logger.log('404路由已添加')
+      
+      // 标记路由已添加
+      permissionStore.markRoutesAdded()
+      
+      // 重新导航到目标路由（确保使用新添加的路由）
+      next({ ...to, replace: true })
+      return
     }
 
     next()
@@ -131,7 +139,7 @@ function createPermissionGuard(router: Router): void {
 
     // 检查用户是否有权限
     if (permissions && permissions.length > 0 && !userStore.hasPermission(permissions)) {
-      logger.error('🚫 用户无权限访问该页面:', to.path)
+      logger.error('用户无权限访问该页面:', to.path)
       logger.error('  需要权限:', permissions)
       logger.error('  用户权限:', userStore.permissions)
       
@@ -220,7 +228,7 @@ function createCacheGuard(router: Router): void {
 function createLogGuard(router: Router): void {
   router.afterEach((to, from) => {
     // 记录路由访问日志
-    logger.debug(`📍 路由变化: ${from.path} -> ${to.path}`)
+    logger.debug(`路由变化: ${from.path} -> ${to.path}`)
     
     // TODO: 可以将访问日志发送到服务器
     // if (to.meta.logAccess) {
@@ -269,7 +277,7 @@ export function setupRouterGuards(router: Router): void {
   // 路由访问日志守卫
   createLogGuard(router)
   
-  logger.log('✅ 路由守卫配置完成')
+  logger.log('路由守卫配置完成')
 }
 
 /**
