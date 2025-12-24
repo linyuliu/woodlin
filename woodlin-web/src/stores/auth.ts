@@ -13,6 +13,7 @@ import { login, logout, type LoginRequest, type LoginResponse } from '@/api/auth
 import { useUserStore } from './user'
 import { usePermissionStore } from './permission'
 import { getConfig } from '@/config'
+import { logger } from '@/utils/logger'
 
 /**
  * 认证状态管理 Store
@@ -157,11 +158,11 @@ export const useAuthStore = defineStore('auth', () => {
       // 实际路由添加会在router guard中完成，这样可以确保路由正确加载
       await permissionStore.generateRoutes(userStore.permissions)
       
-      console.log('登录成功')
+      logger.log('登录成功')
       
       return response
     } catch (error) {
-      console.error('登录失败:', error)
+      logger.error('登录失败:', error)
       throw error
     }
   }
@@ -175,7 +176,7 @@ export const useAuthStore = defineStore('auth', () => {
       await logout()
     } catch (error) {
       // 登出接口调用失败，继续清除本地状态
-      console.warn('登出接口调用失败，继续清除本地状态:', error)
+      logger.warn('登出接口调用失败，继续清除本地状态:', error)
     } finally {
       // 清除本地状态
       clearToken()
