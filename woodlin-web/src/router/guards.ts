@@ -75,7 +75,7 @@ function createAuthGuard(router: Router): void {
           await permissionStore.generateRoutes(userStore.permissions)
         }
       } catch (error) {
-        console.error('加载用户信息失败:', error)
+        logger.error('加载用户信息失败:', error)
         
         // 清除认证状态
         authStore.clearToken()

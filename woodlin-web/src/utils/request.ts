@@ -10,6 +10,7 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { getConfig } from '@/config'
 import { simpleEncrypt, simpleDecrypt } from './crypto'
+import { logger } from './logger'
 
 /**
  * 后端统一响应格式
@@ -143,7 +144,7 @@ request.interceptors.request.use(
     return config
   },
   (error) => {
-    console.error('请求配置错误:', error)
+    logger.error('请求配置错误:', error)
     return Promise.reject(error)
   }
 )
@@ -177,7 +178,7 @@ request.interceptors.response.use(
     // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
     const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
     if (statusCode != null && statusCode !== 200) {
-      console.error('API业务错误:', data.message)
+      logger.error('API业务错误:', data.message)
       
       // 显示错误提示
       if (extConfig.showError !== false) {
@@ -205,7 +206,7 @@ request.interceptors.response.use(
       // useAppStore().hideLoading()
     }
     
-    console.error('HTTP请求错误:', error)
+    logger.error('HTTP请求错误:', error)
     
     // 处理不同的HTTP状态码
     if (error.response?.status === 401) {
@@ -218,24 +219,25 @@ request.interceptors.response.use(
         window.location.href = getConfig().router.loginPath
       }
     } else if (error.response?.status === 403) {
-      console.error('权限不足')
+      logger.error('权限不足')
       // TODO: 跳转到403页面
       // window.location.href = '/403'
     } else if (error.response?.status === 404) {
-      console.error('资源不存在')
+      logger.error('资源不存在')
     } else if (error.response?.status === 500) {
-      console.error('服务器内部错误')
+      logger.error('服务器内部错误')
     } else if (error.code === 'ECONNABORTED') {
-      console.error('请求超时')
+      logger.error('请求超时')
     } else if (error.code === 'ERR_CANCELED') {
-      console.warn('请求已取消')
+      logger.warn('请求已取消')
       return Promise.reject(error)
     } else if (!error.response) {
-      console.error('网络连接错误')
+      logger.error('网络连接错误')
     }
     
     // 请求重试
     if (extConfig?.retry && extConfig.retryCount && extConfig.retryCount > 0) {
+      logger.log(`重试请求 (剩余次数: ${extConfig.retryCount})`)
       extConfig.retryCount--
       
       // 延迟后重试
