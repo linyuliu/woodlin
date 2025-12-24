@@ -228,6 +228,7 @@ request.interceptors.response.use(
     } else if (error.code === 'ECONNABORTED') {
       console.error('请求超时')
     } else if (error.code === 'ERR_CANCELED') {
+      console.warn('请求已取消')
       return Promise.reject(error)
     } else if (!error.response) {
       console.error('网络连接错误')
