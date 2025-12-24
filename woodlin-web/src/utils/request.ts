@@ -182,7 +182,7 @@ request.interceptors.response.use(
     // 假设后端返回格式为 { code: number, message: string, data: any }
     // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
     const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
-    if (statusCode && statusCode !== 200) {
+    if (statusCode != null && statusCode !== 200) {
       console.error('❌ API业务错误:', data.message)
       
       // 显示错误提示
