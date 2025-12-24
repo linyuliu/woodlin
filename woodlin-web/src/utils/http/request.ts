@@ -25,6 +25,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios'
 import { getConfig } from '@/config'
 import type { ApiResponse, RequestOptions } from './types'
+import { logger } from '@/utils/logger'
 
 /**
  * HTTP请求类
@@ -86,7 +87,7 @@ class HttpRequest {
         return config
       },
       (error) => {
-        console.error('请求配置错误:', error)
+        logger.error('请求配置错误:', error)
         return Promise.reject(error)
       }
     )
@@ -180,16 +181,16 @@ class HttpRequest {
           this.handleUnauthorized()
           break
         case 403:
-          console.error('权限不足')
+          logger.error('权限不足')
           break
         case 404:
-          console.error('资源未找到')
+          logger.error('资源未找到')
           break
         case 500:
-          console.error('服务器内部错误')
+          logger.error('服务器内部错误')
           break
         case 503:
-          console.error('服务暂时不可用')
+          logger.error('服务暂时不可用')
           break
       }
     }
@@ -206,7 +207,7 @@ class HttpRequest {
    * 清除token并跳转到登录页
    */
   private handleUnauthorized(): void {
-    console.warn('认证失效，请重新登录')
+    logger.warn('认证失效，请重新登录')
     this.removeToken()
     const config = getConfig()
     window.location.href = config.router.loginPath
