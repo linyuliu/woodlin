@@ -1,9 +1,11 @@
 /**
- * 节流工具函数
+ * 节流工具函数 (Throttle Utility)
  * 
  * @author mumu
  * @description 实现函数节流，在指定时间内只执行一次，无论触发多少次
  *              适用场景：滚动事件、按钮点击、鼠标移动等高频触发的事件
+ *              Throttle function execution - executes once per time interval, regardless of trigger count.
+ *              Use cases: scroll events, button clicks, mouse movement, and other high-frequency events.
  * @since 2025-01-04
  */
 
@@ -50,10 +52,10 @@ export function throttle<T extends (...args: any[]) => any>(
  * 
  * @example
  * ```typescript
- * // 禁用首次立即执行
+ * // Disable first execution / 禁用首次立即执行
  * const throttledFunc = throttleAdvanced(handler, 1000, { leading: false })
  * 
- * // 禁用尾部执行
+ * // Disable trailing execution / 禁用尾部执行
  * const throttledFunc = throttleAdvanced(handler, 1000, { trailing: false })
  * ```
  */
