@@ -3,7 +3,7 @@
  * 
  * @author mumu
  * @description 基于axios封装的HTTP请求工具，提供统一的请求拦截、响应处理、错误处理、加密解密等功能
- *              参考vue-vben-admin的请求封装设计
+ *              集成全局loading、防抖、节流等功能
  * @since 2025-01-01
  */
 
@@ -48,6 +48,48 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
  * 请求队列，用于管理并发请求
  */
 const requestQueue = new Map<string, AbortController>()
+
+/**
+ * Loading计数器，用于管理多个请求的loading状态
+ */
+let loadingCount = 0
+
+/**
+ * 显示全局Loading
+ */
+function showGlobalLoading() {
+  if (loadingCount === 0) {
+    try {
+      // 延迟导入避免循环依赖
+      import('@/stores/app').then(({ useAppStore }) => {
+        const appStore = useAppStore()
+        appStore.showLoading()
+      })
+    } catch (error) {
+      logger.warn('无法显示全局Loading:', error)
+    }
+  }
+  loadingCount++
+}
+
+/**
+ * 隐藏全局Loading
+ */
+function hideGlobalLoading() {
+  loadingCount--
+  if (loadingCount <= 0) {
+    loadingCount = 0
+    try {
+      // 延迟导入避免循环依赖
+      import('@/stores/app').then(({ useAppStore }) => {
+        const appStore = useAppStore()
+        appStore.hideLoading()
+      })
+    } catch (error) {
+      logger.warn('无法隐藏全局Loading:', error)
+    }
+  }
+}
 
 /**
  * 生成请求唯一标识
@@ -137,8 +179,7 @@ request.interceptors.request.use(
     
     // 显示加载提示
     if (extConfig.showLoading !== false) {
-      // TODO: 显示全局loading
-      // useAppStore().showLoading()
+      showGlobalLoading()
     }
     
     return config
@@ -162,8 +203,7 @@ request.interceptors.response.use(
     
     // 隐藏加载提示
     if (extConfig.showLoading !== false) {
-      // TODO: 隐藏全局loading
-      // useAppStore().hideLoading()
+      hideGlobalLoading()
     }
     
     const { data } = response
@@ -202,8 +242,7 @@ request.interceptors.response.use(
     
     // 隐藏加载提示
     if (extConfig?.showLoading !== false) {
-      // TODO: 隐藏全局loading
-      // useAppStore().hideLoading()
+      hideGlobalLoading()
     }
     
     logger.error('HTTP请求错误:', error)
