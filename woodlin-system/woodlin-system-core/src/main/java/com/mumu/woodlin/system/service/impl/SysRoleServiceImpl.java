@@ -487,8 +487,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             // 清除所有用户权限缓存，因为角色变更会影响所有拥有该角色的用户
             permissionCacheService.evictAllUserPermissions();
             // 清除所有用户路由缓存，因为角色变更会影响所有拥有该角色的用户的路由
-            permissionCacheService.evictAllUserRoutes();
-            log.info("已清除角色缓存并刷新用户权限和路由缓存: roleId={}", roleId);
+            permissionCacheService.evictAllUserPermissions();
+            log.info("已清除角色缓存并刷新用户权限缓存: roleId={}", roleId);
         }
     }
 }

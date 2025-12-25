@@ -1,6 +1,7 @@
 package com.mumu.woodlin.security.service;
 
 import com.mumu.woodlin.common.config.CacheProperties;
+import com.mumu.woodlin.security.dto.UserCacheDto;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBucket;
 import org.redisson.api.RKeys;
@@ -9,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -18,7 +20,8 @@ import java.util.concurrent.TimeUnit;
  * 权限缓存服务
  *
  * @author mumu
- * @description 提供权限相关的缓存管理，支持用户权限和角色权限的缓存
+ * @description 提供权限相关的缓存管理，支持RBAC1模型的用户权限和角色权限缓存
+ *              优化后的缓存结构：用户相关信息合并为一个缓存对象，角色权限单独缓存
  * @since 2025-01-04
  */
 @Service
@@ -31,209 +34,204 @@ public class PermissionCacheService {
     private final CacheProperties cacheProperties;
 
     /**
-     * 用户权限缓存key前缀
+     * 用户缓存key前缀（合并后的用户信息、角色、权限等）
      */
-    private static final String USER_PERMISSION_PREFIX = "auth:user:permissions:";
+    private static final String USER_CACHE_PREFIX = "auth:user:";
 
     /**
-     * 用户角色缓存key前缀
-     */
-    private static final String USER_ROLE_PREFIX = "auth:user:roles:";
-    
-    /**
-     * 用户按钮权限缓存key前缀
-     */
-    private static final String USER_BUTTON_PERMISSION_PREFIX = "auth:user:button_permissions:";
-    
-    /**
-     * 用户菜单权限缓存key前缀
-     */
-    private static final String USER_MENU_PERMISSION_PREFIX = "auth:user:menu_permissions:";
-
-    /**
-     * 角色权限缓存key前缀
+     * 角色权限缓存key前缀（独立缓存）
      */
     private static final String ROLE_PERMISSION_PREFIX = "auth:role:permissions:";
 
     /**
-     * 用户路由缓存key前缀
+     * 获取用户缓存（合并的用户信息、角色、权限等）
+     *
+     * @param userId 用户ID
+     * @return 用户缓存对象，如果未缓存返回null
      */
-    private static final String USER_ROUTE_PREFIX = "auth:user:routes:";
+    public UserCacheDto getUserCache(Long userId) {
+        if (isDisabled()) {
+            return null;
+        }
+
+        try {
+            String key = USER_CACHE_PREFIX + userId;
+            RBucket<UserCacheDto> bucket = redissonClient.getBucket(key);
+            UserCacheDto cache = bucket.get();
+            if (cache != null) {
+                log.debug("从缓存获取用户信息: userId={}", userId);
+            }
+            return cache;
+        } catch (Exception e) {
+            log.error("获取用户缓存失败: userId={}", userId, e);
+            return null;
+        }
+    }
 
     /**
-     * 获取用户权限缓存
+     * 缓存用户信息（合并用户信息、角色、权限等）
+     *
+     * @param userCache 用户缓存对象
+     */
+    public void cacheUser(UserCacheDto userCache) {
+        if (isDisabled() || Objects.isNull(userCache) || Objects.isNull(userCache.getUserId())) {
+            return;
+        }
+
+        try {
+            String key = USER_CACHE_PREFIX + userCache.getUserId();
+            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
+            userCache.setCacheTime(System.currentTimeMillis());
+            
+            RBucket<UserCacheDto> bucket = redissonClient.getBucket(key);
+            bucket.set(userCache, expireSeconds, TimeUnit.SECONDS);
+            
+            log.debug("缓存用户信息成功: userId={}, roles={}, permissions={}", 
+                userCache.getUserId(), 
+                userCache.getRoles() != null ? userCache.getRoles().size() : 0,
+                userCache.getPermissions() != null ? userCache.getPermissions().size() : 0);
+        } catch (Exception e) {
+            log.error("缓存用户信息失败: userId={}", userCache.getUserId(), e);
+        }
+    }
+
+    /**
+     * 获取用户权限列表（从合并缓存中提取）
      *
      * @param userId 用户ID
      * @return 权限列表，如果未缓存返回null
      */
-    @SuppressWarnings("unchecked")
     public List<String> getUserPermissions(Long userId) {
-        if (isEnabled()) {
-            return null;
-        }
-
-        try {
-            String key = USER_PERMISSION_PREFIX + userId;
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            return bucket.get();
-        } catch (Exception e) {
-            log.error("获取用户权限缓存失败: userId={}", userId, e);
-            return null;
-        }
+        UserCacheDto cache = getUserCache(userId);
+        return cache != null ? cache.getPermissions() : null;
     }
 
     /**
-     * 缓存用户权限
-     *
-     * @param userId 用户ID
-     * @param permissions 权限列表
-     */
-    public void cacheUserPermissions(Long userId, List<String> permissions) {
-        if (isEnabled() || Objects.isNull(permissions)) {
-            return;
-        }
-
-        try {
-            String key = USER_PERMISSION_PREFIX + userId;
-            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            bucket.set(permissions, expireSeconds, TimeUnit.SECONDS);
-            log.debug("缓存用户权限成功: userId={}, count={}", userId, permissions.size());
-        } catch (Exception e) {
-            log.error("缓存用户权限失败: userId={}", userId, e);
-        }
-    }
-
-    /**
-     * 获取用户角色缓存
+     * 获取用户角色列表（从合并缓存中提取）
      *
      * @param userId 用户ID
      * @return 角色编码列表，如果未缓存返回null
      */
-    @SuppressWarnings("unchecked")
     public List<String> getUserRoles(Long userId) {
-        if (isEnabled()) {
-            return null;
-        }
-
-        try {
-            String key = USER_ROLE_PREFIX + userId;
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            return bucket.get();
-        } catch (Exception e) {
-            log.error("获取用户角色缓存失败: userId={}", userId, e);
-            return null;
-        }
-    }
-
-    /**
-     * 缓存用户角色
-     *
-     * @param userId 用户ID
-     * @param roleCodes 角色编码列表
-     */
-    public void cacheUserRoles(Long userId, List<String> roleCodes) {
-        if (isEnabled() || Objects.isNull(roleCodes)) {
-            return;
-        }
-
-        try {
-            String key = USER_ROLE_PREFIX + userId;
-            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            bucket.set(roleCodes, expireSeconds, TimeUnit.SECONDS);
-            log.debug("缓存用户角色成功: userId={}, count={}", userId, roleCodes.size());
-        } catch (Exception e) {
-            log.error("缓存用户角色失败: userId={}", userId, e);
-        }
+        UserCacheDto cache = getUserCache(userId);
+        return cache != null ? cache.getRoles() : null;
     }
     
     /**
-     * 获取用户按钮权限缓存
+     * 获取用户按钮权限列表（从合并缓存中提取）
      *
      * @param userId 用户ID
      * @return 按钮权限列表，如果未缓存返回null
      */
-    @SuppressWarnings("unchecked")
     public List<String> getUserButtonPermissions(Long userId) {
-        if (isEnabled()) {
-            return null;
-        }
-
-        try {
-            String key = USER_BUTTON_PERMISSION_PREFIX + userId;
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            return bucket.get();
-        } catch (Exception e) {
-            log.error("获取用户按钮权限缓存失败: userId={}", userId, e);
-            return null;
-        }
-    }
-
-    /**
-     * 缓存用户按钮权限
-     *
-     * @param userId 用户ID
-     * @param buttonPermissions 按钮权限列表
-     */
-    public void cacheUserButtonPermissions(Long userId, List<String> buttonPermissions) {
-        if (isEnabled() || Objects.isNull(buttonPermissions)) {
-            return;
-        }
-
-        try {
-            String key = USER_BUTTON_PERMISSION_PREFIX + userId;
-            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            bucket.set(buttonPermissions, expireSeconds, TimeUnit.SECONDS);
-            log.debug("缓存用户按钮权限成功: userId={}, count={}", userId, buttonPermissions.size());
-        } catch (Exception e) {
-            log.error("缓存用户按钮权限失败: userId={}", userId, e);
-        }
+        UserCacheDto cache = getUserCache(userId);
+        return cache != null ? cache.getButtonPermissions() : null;
     }
     
     /**
-     * 获取用户菜单权限缓存
+     * 获取用户菜单权限列表（从合并缓存中提取）
      *
      * @param userId 用户ID
      * @return 菜单权限列表，如果未缓存返回null
      */
-    @SuppressWarnings("unchecked")
     public List<String> getUserMenuPermissions(Long userId) {
-        if (isEnabled()) {
-            return null;
-        }
-
-        try {
-            String key = USER_MENU_PERMISSION_PREFIX + userId;
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            return bucket.get();
-        } catch (Exception e) {
-            log.error("获取用户菜单权限缓存失败: userId={}", userId, e);
-            return null;
-        }
+        UserCacheDto cache = getUserCache(userId);
+        return cache != null ? cache.getMenuPermissions() : null;
     }
 
     /**
-     * 缓存用户菜单权限
+     * 获取用户路由（从合并缓存中提取）
      *
      * @param userId 用户ID
-     * @param menuPermissions 菜单权限列表
+     * @return 路由列表，如果未缓存返回null
      */
-    public void cacheUserMenuPermissions(Long userId, List<String> menuPermissions) {
-        if (isEnabled() || Objects.isNull(menuPermissions)) {
-            return;
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserRoutes(Long userId) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache != null && cache.getRoutes() != null) {
+            try {
+                return (List<T>) cache.getRoutes();
+            } catch (ClassCastException e) {
+                log.error("用户路由类型转换失败: userId={}", userId, e);
+                return null;
+            }
         }
+        return null;
+    }
 
-        try {
-            String key = USER_MENU_PERMISSION_PREFIX + userId;
-            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            bucket.set(menuPermissions, expireSeconds, TimeUnit.SECONDS);
-            log.debug("缓存用户菜单权限成功: userId={}, count={}", userId, menuPermissions.size());
-        } catch (Exception e) {
-            log.error("缓存用户菜单权限失败: userId={}", userId, e);
+    /**
+     * 缓存用户权限（更新合并缓存中的权限信息）
+     * 
+     * @deprecated 使用 {@link #cacheUser(UserCacheDto)} 代替
+     */
+    @Deprecated
+    public void cacheUserPermissions(Long userId, List<String> permissions) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache == null) {
+            cache = UserCacheDto.builder().userId(userId).build();
         }
+        cache.setPermissions(permissions);
+        cacheUser(cache);
+    }
+
+    /**
+     * 缓存用户角色（更新合并缓存中的角色信息）
+     * 
+     * @deprecated 使用 {@link #cacheUser(UserCacheDto)} 代替
+     */
+    @Deprecated
+    public void cacheUserRoles(Long userId, List<String> roleCodes) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache == null) {
+            cache = UserCacheDto.builder().userId(userId).build();
+        }
+        cache.setRoles(roleCodes);
+        cacheUser(cache);
+    }
+    
+    /**
+     * 缓存用户按钮权限（更新合并缓存中的按钮权限信息）
+     * 
+     * @deprecated 使用 {@link #cacheUser(UserCacheDto)} 代替
+     */
+    @Deprecated
+    public void cacheUserButtonPermissions(Long userId, List<String> buttonPermissions) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache == null) {
+            cache = UserCacheDto.builder().userId(userId).build();
+        }
+        cache.setButtonPermissions(buttonPermissions);
+        cacheUser(cache);
+    }
+    
+    /**
+     * 缓存用户菜单权限（更新合并缓存中的菜单权限信息）
+     * 
+     * @deprecated 使用 {@link #cacheUser(UserCacheDto)} 代替
+     */
+    @Deprecated
+    public void cacheUserMenuPermissions(Long userId, List<String> menuPermissions) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache == null) {
+            cache = UserCacheDto.builder().userId(userId).build();
+        }
+        cache.setMenuPermissions(menuPermissions);
+        cacheUser(cache);
+    }
+
+    /**
+     * 缓存用户路由（更新合并缓存中的路由信息）
+     * 
+     * @deprecated 使用 {@link #cacheUser(UserCacheDto)} 代替
+     */
+    @Deprecated
+    public <T> void cacheUserRoutes(Long userId, List<T> routes) {
+        UserCacheDto cache = getUserCache(userId);
+        if (cache == null) {
+            cache = UserCacheDto.builder().userId(userId).build();
+        }
+        cache.setRoutes(routes);
+        cacheUser(cache);
     }
 
     /**
@@ -244,7 +242,7 @@ public class PermissionCacheService {
      */
     @SuppressWarnings("unchecked")
     public List<String> getRolePermissions(Long roleId) {
-        if (isEnabled()) {
+        if (isDisabled()) {
             return null;
         }
 
@@ -265,7 +263,7 @@ public class PermissionCacheService {
      * @param permissions 权限列表
      */
     public void cacheRolePermissions(Long roleId, List<String> permissions) {
-        if (isEnabled() || Objects.isNull(permissions)) {
+        if (isDisabled() || Objects.isNull(permissions)) {
             return;
         }
 
@@ -281,37 +279,19 @@ public class PermissionCacheService {
     }
 
     /**
-     * 清除用户的权限、角色和路由缓存
+     * 清除用户的所有缓存（权限、角色和路由缓存）
      *
      * @param userId 用户ID
      */
     public void evictUserCache(Long userId) {
         try {
-            String permKey = USER_PERMISSION_PREFIX + userId;
-            String roleKey = USER_ROLE_PREFIX + userId;
-            String routeKey = USER_ROUTE_PREFIX + userId;
-            String buttonPermKey = USER_BUTTON_PERMISSION_PREFIX + userId;
-            String menuPermKey = USER_MENU_PERMISSION_PREFIX + userId;
+            String key = USER_CACHE_PREFIX + userId;
             
             if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
-                // 延迟双删策略
-                deleteWithDelayedDoubleDelete(permKey);
-                deleteWithDelayedDoubleDelete(roleKey);
-                deleteWithDelayedDoubleDelete(routeKey);
-                deleteWithDelayedDoubleDelete(buttonPermKey);
-                deleteWithDelayedDoubleDelete(menuPermKey);
+                deleteWithDelayedDoubleDelete(key);
             } else {
-                // 直接删除
-                RBucket<Object> permBucket = redissonClient.getBucket(permKey);
-                RBucket<Object> roleBucket = redissonClient.getBucket(roleKey);
-                RBucket<Object> routeBucket = redissonClient.getBucket(routeKey);
-                RBucket<Object> buttonPermBucket = redissonClient.getBucket(buttonPermKey);
-                RBucket<Object> menuPermBucket = redissonClient.getBucket(menuPermKey);
-                permBucket.delete();
-                roleBucket.delete();
-                routeBucket.delete();
-                buttonPermBucket.delete();
-                menuPermBucket.delete();
+                RBucket<Object> bucket = redissonClient.getBucket(key);
+                bucket.delete();
             }
             
             log.info("清除用户缓存: userId={}", userId);
@@ -345,19 +325,15 @@ public class PermissionCacheService {
     }
 
     /**
-     * 清除所有用户权限缓存（权限变更时使用）
+     * 清除所有用户缓存（权限变更时使用）
      */
     public void evictAllUserPermissions() {
         try {
-            // 使用Redisson的deleteByPattern清理所有用户权限缓存
             RKeys keys = redissonClient.getKeys();
-            long deleteCount = keys.deleteByPattern(USER_PERMISSION_PREFIX + "*");
-            long buttonCount = keys.deleteByPattern(USER_BUTTON_PERMISSION_PREFIX + "*");
-            long menuCount = keys.deleteByPattern(USER_MENU_PERMISSION_PREFIX + "*");
-            log.info("清除所有用户权限缓存，删除数量: 总权限={}, 按钮={}, 菜单={}", 
-                deleteCount, buttonCount, menuCount);
+            long deleteCount = keys.deleteByPattern(USER_CACHE_PREFIX + "*");
+            log.info("清除所有用户缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
-            log.error("清除所有用户权限缓存失败", e);
+            log.error("清除所有用户缓存失败", e);
         }
     }
 
@@ -372,91 +348,6 @@ public class PermissionCacheService {
             log.info("清除所有角色权限缓存，删除数量: {}", deleteCount);
         } catch (Exception e) {
             log.error("清除所有角色权限缓存失败", e);
-        }
-    }
-
-    /**
-     * 获取用户路由缓存
-     *
-     * @param userId 用户ID
-     * @return 路由列表，如果未缓存返回null
-     */
-    public <T> List<T> getUserRoutes(Long userId) {
-        if (isEnabled()) {
-            return null;
-        }
-
-        try {
-            String key = USER_ROUTE_PREFIX + userId;
-            RBucket<List<T>> bucket = redissonClient.getBucket(key);
-            List<T> routes = bucket.get();
-            if (routes != null) {
-                log.debug("从缓存获取用户路由: userId={}, count={}", userId, routes.size());
-            }
-            return routes;
-        } catch (Exception e) {
-            log.error("获取用户路由缓存失败: userId={}", userId, e);
-            return null;
-        }
-    }
-
-    /**
-     * 缓存用户路由
-     *
-     * @param userId 用户ID
-     * @param routes 路由列表
-     */
-    public <T> void cacheUserRoutes(Long userId, List<T> routes) {
-        if (isEnabled() || Objects.isNull(routes)) {
-            return;
-        }
-
-        try {
-            String key = USER_ROUTE_PREFIX + userId;
-            long expireSeconds = cacheProperties.getPermission().getExpireSeconds();
-            RBucket<List<T>> bucket = redissonClient.getBucket(key);
-            bucket.set(routes, expireSeconds, TimeUnit.SECONDS);
-            log.debug("缓存用户路由成功: userId={}, count={}", userId, routes.size());
-        } catch (Exception e) {
-            log.error("缓存用户路由失败: userId={}", userId, e);
-        }
-    }
-
-    /**
-     * 清除用户的路由缓存
-     *
-     * @param userId 用户ID
-     */
-    public void evictUserRouteCache(Long userId) {
-        try {
-            String key = USER_ROUTE_PREFIX + userId;
-            
-            if (cacheProperties.getDelayedDoubleDelete().getEnabled()) {
-                // 延迟双删策略
-                deleteWithDelayedDoubleDelete(key);
-            } else {
-                // 直接删除
-                RBucket<Object> bucket = redissonClient.getBucket(key);
-                bucket.delete();
-            }
-            
-            log.info("清除用户路由缓存: userId={}", userId);
-        } catch (Exception e) {
-            log.error("清除用户路由缓存失败: userId={}", userId, e);
-        }
-    }
-
-    /**
-     * 清除所有用户路由缓存（权限变更时使用）
-     */
-    public void evictAllUserRoutes() {
-        try {
-            // 使用Redisson的deleteByPattern清理所有用户路由缓存
-            RKeys keys = redissonClient.getKeys();
-            long deleteCount = keys.deleteByPattern(USER_ROUTE_PREFIX + "*");
-            log.info("清除所有用户路由缓存，删除数量: {}", deleteCount);
-        } catch (Exception e) {
-            log.error("清除所有用户路由缓存失败", e);
         }
     }
     
@@ -501,7 +392,7 @@ public class PermissionCacheService {
     }
     
     /**
-     * 预热用户权限缓存（批量加载用户权限到缓存）
+     * 预热用户缓存（批量加载用户权限到缓存）
      *
      * @param userId 用户ID
      * @param permissions 所有权限列表
@@ -513,16 +404,20 @@ public class PermissionCacheService {
                                 List<String> buttonPermissions, 
                                 List<String> menuPermissions,
                                 List<String> roles) {
-        if (isEnabled()) {
+        if (isDisabled()) {
             return;
         }
         
         try {
-            // 批量缓存所有权限相关数据
-            cacheUserPermissions(userId, permissions);
-            cacheUserButtonPermissions(userId, buttonPermissions);
-            cacheUserMenuPermissions(userId, menuPermissions);
-            cacheUserRoles(userId, roles);
+            UserCacheDto userCache = UserCacheDto.builder()
+                    .userId(userId)
+                    .permissions(permissions != null ? permissions : Collections.emptyList())
+                    .buttonPermissions(buttonPermissions != null ? buttonPermissions : Collections.emptyList())
+                    .menuPermissions(menuPermissions != null ? menuPermissions : Collections.emptyList())
+                    .roles(roles != null ? roles : Collections.emptyList())
+                    .build();
+            
+            cacheUser(userCache);
             
             log.info("预热用户缓存成功: userId={}, 权限={}, 按钮={}, 菜单={}, 角色={}", 
                 userId, 
@@ -540,7 +435,7 @@ public class PermissionCacheService {
      *
      * @return true-缓存未启用, false-缓存已启用
      */
-    private boolean isEnabled() {
+    private boolean isDisabled() {
         return Objects.isNull(cacheProperties.getPermission())
             || !Boolean.TRUE.equals(cacheProperties.getPermission().getEnabled());
     }
