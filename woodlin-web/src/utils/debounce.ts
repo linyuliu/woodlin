@@ -1,9 +1,11 @@
 /**
- * 防抖工具函数
+ * 防抖工具函数 (Debounce Utility)
  * 
  * @author mumu
  * @description 实现函数防抖，在事件触发后等待一定时间才执行，如果在等待期间再次触发则重新计时
  *              适用场景：搜索输入框、窗口resize等需要等待用户停止操作后再执行的场景
+ *              Debounce function execution - delays execution until after wait time has elapsed since last invocation.
+ *              Use cases: search input, window resize, and scenarios requiring execution after user stops actions.
  * @since 2025-01-04
  */
 
