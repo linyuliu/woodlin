@@ -55,19 +55,29 @@ const requestQueue = new Map<string, AbortController>()
 let loadingCount = 0
 
 /**
+ * App store 实例缓存（延迟加载）
+ */
+let appStoreInstance: any = null
+
+/**
+ * 获取App Store实例（单例模式）
+ */
+async function getAppStoreInstance() {
+  if (!appStoreInstance) {
+    const { useAppStore } = await import('@/stores/app')
+    appStoreInstance = useAppStore()
+  }
+  return appStoreInstance
+}
+
+/**
  * 显示全局Loading
  */
 function showGlobalLoading() {
   if (loadingCount === 0) {
-    try {
-      // 延迟导入避免循环依赖
-      import('@/stores/app').then(({ useAppStore }) => {
-        const appStore = useAppStore()
-        appStore.showLoading()
-      })
-    } catch (error) {
-      logger.warn('无法显示全局Loading:', error)
-    }
+    getAppStoreInstance()
+      .then(appStore => appStore.showLoading())
+      .catch(error => logger.warn('无法显示全局Loading:', error))
   }
   loadingCount++
 }
@@ -79,15 +89,9 @@ function hideGlobalLoading() {
   loadingCount--
   if (loadingCount <= 0) {
     loadingCount = 0
-    try {
-      // 延迟导入避免循环依赖
-      import('@/stores/app').then(({ useAppStore }) => {
-        const appStore = useAppStore()
-        appStore.hideLoading()
-      })
-    } catch (error) {
-      logger.warn('无法隐藏全局Loading:', error)
-    }
+    getAppStoreInstance()
+      .then(appStore => appStore.hideLoading())
+      .catch(error => logger.warn('无法隐藏全局Loading:', error))
   }
 }
 
