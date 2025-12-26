@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 
 import lombok.extern.slf4j.Slf4j;
@@ -354,22 +355,21 @@ public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
         
         String type = dataType.toUpperCase();
         
+        // 使用Set优化多条件判断 - 避免多次equals调用
         // 数字类型
         if (type.equals("NUMBER")) {
             return "BigDecimal"; // Oracle NUMBER可以表示任意精度的数字
-        } else if (type.equals("INTEGER") || type.equals("INT")) {
+        } else if (Set.of("INTEGER", "INT").contains(type)) {
             return "Integer";
-        } else if (type.equals("FLOAT") || type.equals("BINARY_FLOAT")) {
+        } else if (Set.of("FLOAT", "BINARY_FLOAT").contains(type)) {
             return "Float";
-        } else if (type.equals("DOUBLE") || type.equals("BINARY_DOUBLE")) {
+        } else if (Set.of("DOUBLE", "BINARY_DOUBLE").contains(type)) {
             return "Double";
         }
         
         // 字符串类型
-        else if (type.equals("VARCHAR2") || type.equals("VARCHAR") || 
-                 type.equals("NVARCHAR2") || type.equals("CHAR") || 
-                 type.equals("NCHAR") || type.equals("CLOB") || 
-                 type.equals("NCLOB") || type.equals("LONG")) {
+        else if (Set.of("VARCHAR2", "VARCHAR", "NVARCHAR2", "CHAR", "NCHAR", "CLOB", "NCLOB", "LONG")
+                .contains(type)) {
             return "String";
         }
         
@@ -385,13 +385,12 @@ public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
         }
         
         // 二进制类型
-        else if (type.equals("BLOB") || type.equals("RAW") || 
-                 type.equals("LONG RAW") || type.equals("BFILE")) {
+        else if (Set.of("BLOB", "RAW", "LONG RAW", "BFILE").contains(type)) {
             return "byte[]";
         }
         
         // ROWID类型
-        else if (type.equals("ROWID") || type.equals("UROWID")) {
+        else if (Set.of("ROWID", "UROWID").contains(type)) {
             return "String";
         }
         

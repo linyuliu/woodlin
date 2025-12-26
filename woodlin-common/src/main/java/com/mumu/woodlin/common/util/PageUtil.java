@@ -3,7 +3,6 @@ package com.mumu.woodlin.common.util;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.base.Preconditions;
-import com.google.common.math.IntMath;
 
 import com.mumu.woodlin.common.constant.PageConstant;
 
@@ -67,7 +66,7 @@ public class PageUtil {
     }
     
     /**
-     * 计算总页数（使用Guava的IntMath进行安全除法）
+     * 计算总页数（优化：避免Guava强制转换，直接使用long数学运算）
      * 
      * @param total 总记录数
      * @param pageSize 页面大小
@@ -77,7 +76,9 @@ public class PageUtil {
         if (total <= 0 || pageSize <= 0) {
             return 0L;
         }
-        return IntMath.divide((int) total, (int) pageSize, java.math.RoundingMode.CEILING);
+        // 优化：使用长整型数学运算代替Guava的IntMath，避免类型转换和潜在溢出
+        // 向上取整公式: (total + pageSize - 1) / pageSize
+        return (total + pageSize - 1) / pageSize;
     }
     
     /**
