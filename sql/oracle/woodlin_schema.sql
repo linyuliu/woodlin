@@ -84,7 +84,7 @@ CREATE TABLE sys_user (
     email varchar(50) DEFAULT '' COMMENT '用户邮箱',
     mobile varchar(11) DEFAULT '' COMMENT '手机号码',
     avatar varchar(200) DEFAULT '' COMMENT '头像路径',
-    gender tinyint(1) DEFAULT 0 COMMENT '用户性别（0-未知，1-男，2-女）',
+    gender tinyint(1) DEFAULT 0 COMMENT '用户性别（GB/T 2261.1标准：0-未知的性别，1-男性，2-女性，9-未说明的性别）',
     birthday datetime DEFAULT NULL COMMENT '生日',
     status char(1) DEFAULT '1' COMMENT '帐号状态（1-启用，0-禁用）',
     tenant_id varchar(64) DEFAULT NULL COMMENT '租户ID',
