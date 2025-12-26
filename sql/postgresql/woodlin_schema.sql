@@ -108,7 +108,7 @@ CREATE TABLE sys_user (
     email VARCHAR(50) DEFAULT '',  -- 用户邮箱
     mobile VARCHAR(11) DEFAULT '',  -- 手机号码
     avatar VARCHAR(200) DEFAULT '',  -- 头像图片路径
-    gender SMALLINT DEFAULT 0,  -- 用户性别：0-未知，1-男，2-女
+    gender SMALLINT DEFAULT 0,  -- 用户性别（GB/T 2261.1标准：0-未知的性别，1-男性，2-女性，9-未说明的性别）
     birthday TIMESTAMP,  -- 生日
     status CHAR(1) DEFAULT '1',  -- 账号状态：1-启用，0-禁用
     tenant_id VARCHAR(64),  -- 所属租户ID
