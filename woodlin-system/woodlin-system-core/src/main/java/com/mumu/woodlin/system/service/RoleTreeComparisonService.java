@@ -107,30 +107,24 @@ public class RoleTreeComparisonService {
         // 使用路径快速查找所有需要的角色（包括祖先角色）
         Set<Long> targetRoleIds = expandRolesByPath(assignedRoleIds, roleMap);
         
-        // 计算新增、删除和不变的角色
+        // 计算新增、删除和不变的角色 - 使用Java Set操作优化
         Set<Long> assignedSet = new HashSet<>(targetRoleIds);
         Set<Long> currentSet = new HashSet<>(currentRoleIds);
         
-        // 新增的角色 = 目标角色 - 当前角色
-        for (Long roleId : assignedSet) {
-            if (!currentSet.contains(roleId)) {
-                result.getAddedRoleIds().add(roleId);
-            }
-        }
+        // 新增的角色 = 目标角色 - 当前角色（使用Set差集操作）
+        Set<Long> addedSet = new HashSet<>(assignedSet);
+        addedSet.removeAll(currentSet);
+        result.getAddedRoleIds().addAll(addedSet);
         
-        // 删除的角色 = 当前角色 - 目标角色
-        for (Long roleId : currentSet) {
-            if (!assignedSet.contains(roleId)) {
-                result.getRemovedRoleIds().add(roleId);
-            }
-        }
+        // 删除的角色 = 当前角色 - 目标角色（使用Set差集操作）
+        Set<Long> removedSet = new HashSet<>(currentSet);
+        removedSet.removeAll(assignedSet);
+        result.getRemovedRoleIds().addAll(removedSet);
         
-        // 保持不变的角色 = 当前角色 ∩ 目标角色
-        for (Long roleId : currentSet) {
-            if (assignedSet.contains(roleId)) {
-                result.getUnchangedRoleIds().add(roleId);
-            }
-        }
+        // 保持不变的角色 = 当前角色 ∩ 目标角色（使用Set交集操作）
+        Set<Long> unchangedSet = new HashSet<>(currentSet);
+        unchangedSet.retainAll(assignedSet);
+        result.getUnchangedRoleIds().addAll(unchangedSet);
         
         result.setHasChanges(!result.getAddedRoleIds().isEmpty() 
                           || !result.getRemovedRoleIds().isEmpty());
@@ -178,30 +172,24 @@ public class RoleTreeComparisonService {
         // 递归查找所有需要的角色（包括祖先角色）
         Set<Long> targetRoleIds = expandRolesByRecursion(assignedRoleIds, roleMap);
         
-        // 计算新增、删除和不变的角色
+        // 计算新增、删除和不变的角色 - 使用Java Set操作优化
         Set<Long> assignedSet = new HashSet<>(targetRoleIds);
         Set<Long> currentSet = new HashSet<>(currentRoleIds);
         
-        // 新增的角色 = 目标角色 - 当前角色
-        for (Long roleId : assignedSet) {
-            if (!currentSet.contains(roleId)) {
-                result.getAddedRoleIds().add(roleId);
-            }
-        }
+        // 新增的角色 = 目标角色 - 当前角色（使用Set差集操作）
+        Set<Long> addedSet = new HashSet<>(assignedSet);
+        addedSet.removeAll(currentSet);
+        result.getAddedRoleIds().addAll(addedSet);
         
-        // 删除的角色 = 当前角色 - 目标角色
-        for (Long roleId : currentSet) {
-            if (!assignedSet.contains(roleId)) {
-                result.getRemovedRoleIds().add(roleId);
-            }
-        }
+        // 删除的角色 = 当前角色 - 目标角色（使用Set差集操作）
+        Set<Long> removedSet = new HashSet<>(currentSet);
+        removedSet.removeAll(assignedSet);
+        result.getRemovedRoleIds().addAll(removedSet);
         
-        // 保持不变的角色 = 当前角色 ∩ 目标角色
-        for (Long roleId : currentSet) {
-            if (assignedSet.contains(roleId)) {
-                result.getUnchangedRoleIds().add(roleId);
-            }
-        }
+        // 保持不变的角色 = 当前角色 ∩ 目标角色（使用Set交集操作）
+        Set<Long> unchangedSet = new HashSet<>(currentSet);
+        unchangedSet.retainAll(assignedSet);
+        result.getUnchangedRoleIds().addAll(unchangedSet);
         
         result.setHasChanges(!result.getAddedRoleIds().isEmpty() 
                           || !result.getRemovedRoleIds().isEmpty());

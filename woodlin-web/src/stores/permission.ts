@@ -88,6 +88,7 @@ export const usePermissionStore = defineStore('permission', () => {
   /**
    * 过滤异步路由
    * 根据用户权限过滤路由
+   * 优化：传入权限Set避免重复创建
    * 
    * @param routes 路由配置
    * @param permissions 用户权限列表
@@ -98,15 +99,46 @@ export const usePermissionStore = defineStore('permission', () => {
     permissions: string[]
   ): RouteRecordRaw[] {
     const result: RouteRecordRaw[] = []
+    // 优化：创建一次权限Set用于所有路由检查
+    const permissionSet = new Set(permissions)
     
     routes.forEach(route => {
       const temp = { ...route }
       
       // 检查路由权限
-      if (hasRoutePermission(temp, permissions)) {
+      if (hasRoutePermission(temp, permissionSet)) {
+        // 递归过滤子路由 - 传递permissionSet避免重复创建
+        if (temp.children) {
+          temp.children = filterAsyncRoutesWithSet(temp.children, permissionSet)
+        }
+        result.push(temp)
+      }
+    })
+    
+    return result
+  }
+  
+  /**
+   * 过滤异步路由（内部方法，使用Set）
+   * 
+   * @param routes 路由配置
+   * @param permissionSet 用户权限Set
+   * @returns 过滤后的路由
+   */
+  function filterAsyncRoutesWithSet(
+    routes: RouteRecordRaw[],
+    permissionSet: Set<string>
+  ): RouteRecordRaw[] {
+    const result: RouteRecordRaw[] = []
+    
+    routes.forEach(route => {
+      const temp = { ...route }
+      
+      // 检查路由权限
+      if (hasRoutePermission(temp, permissionSet)) {
         // 递归过滤子路由
         if (temp.children) {
-          temp.children = filterAsyncRoutes(temp.children, permissions)
+          temp.children = filterAsyncRoutesWithSet(temp.children, permissionSet)
         }
         result.push(temp)
       }
@@ -117,12 +149,13 @@ export const usePermissionStore = defineStore('permission', () => {
   
   /**
    * 检查是否有路由权限
+   * 优化：使用Set进行权限查找，从O(n*m)降为O(n)
    * 
    * @param route 路由配置
-   * @param permissions 用户权限列表
+   * @param permissionSet 用户权限Set
    * @returns 是否有权限
    */
-  function hasRoutePermission(route: RouteRecordRaw, permissions: string[]): boolean {
+  function hasRoutePermission(route: RouteRecordRaw, permissionSet: Set<string>): boolean {
     // 如果路由没有设置权限要求，默认可访问
     const routePermissions = route.meta?.permissions as string[] | undefined
     if (!routePermissions || routePermissions.length === 0) {
@@ -130,7 +163,7 @@ export const usePermissionStore = defineStore('permission', () => {
     }
     
     // 检查用户是否拥有路由所需的任一权限
-    return routePermissions.some(permission => permissions.includes(permission))
+    return routePermissions.some(permission => permissionSet.has(permission))
   }
   
   /**

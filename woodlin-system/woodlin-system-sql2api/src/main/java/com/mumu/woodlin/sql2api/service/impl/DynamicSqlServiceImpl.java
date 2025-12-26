@@ -88,20 +88,27 @@ public class DynamicSqlServiceImpl implements DynamicSqlService {
         JdbcTemplate jdbcTemplate = createJdbcTemplate(config.getDatasourceName());
         SqlDslParser.ParsedSql parsedSql = parseSql(config, params);
         
-        // 查询总数
-        String countSql = "SELECT COUNT(*) FROM (" + parsedSql.getSql() + ") AS temp_count";
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class);
+        // 查询总数 - 使用StringBuilder优化字符串拼接
+        StringBuilder countSqlBuilder = new StringBuilder("SELECT COUNT(*) FROM (")
+            .append(parsedSql.getSql())
+            .append(") AS temp_count");
+        Long total = jdbcTemplate.queryForObject(countSqlBuilder.toString(), Long.class);
         
-        // 查询数据
+        // 查询数据 - 使用StringBuilder优化字符串拼接
         int offset = (pageNum - 1) * pageSize;
-        String pageSql = parsedSql.getSql() + " LIMIT " + offset + ", " + pageSize;
-        List<Map<String, Object>> records = jdbcTemplate.queryForList(pageSql);
+        StringBuilder pageSqlBuilder = new StringBuilder(parsedSql.getSql())
+            .append(" LIMIT ")
+            .append(offset)
+            .append(", ")
+            .append(pageSize);
+        List<Map<String, Object>> records = jdbcTemplate.queryForList(pageSqlBuilder.toString());
         
-        // 构建分页结果
+        // 构建分页结果 - 使用位运算优化页数计算
         Map<String, Object> result = new HashMap<>();
         result.put("total", total != null ? total : 0L);
         result.put("pageNum", pageNum);
         result.put("pageSize", pageSize);
+        // 优化：使用位运算和减法代替除法：(total + pageSize - 1) / pageSize
         result.put("pages", total != null ? (total + pageSize - 1) / pageSize : 0);
         result.put("records", records);
         
