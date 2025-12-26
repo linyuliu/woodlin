@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,13 +136,15 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         if (job.getSourceQuery() != null && !job.getSourceQuery().trim().isEmpty()) {
             String query = job.getSourceQuery();
             
-            // 如果配置了过滤条件，添加到WHERE子句
+            // 如果配置了过滤条件，添加到WHERE子句 - 使用StringBuilder优化
             if (job.getFilterCondition() != null && !job.getFilterCondition().trim().isEmpty()) {
+                StringBuilder queryBuilder = new StringBuilder(query);
                 if (query.toUpperCase().contains("WHERE")) {
-                    query += " AND " + job.getFilterCondition();
+                    queryBuilder.append(" AND ").append(job.getFilterCondition());
                 } else {
-                    query += " WHERE " + job.getFilterCondition();
+                    queryBuilder.append(" WHERE ").append(job.getFilterCondition());
                 }
+                return queryBuilder.toString();
             }
             
             return query;
@@ -243,12 +246,10 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                     // 达到批次大小，执行批处理
                     if (batchCount >= batchSize) {
                         int[] results = pstmt.executeBatch();
-                        long batchLoadedRows = 0;
-                        for (int result : results) {
-                            if (result > 0) {
-                                batchLoadedRows += result;
-                            }
-                        }
+                        // 优化：使用Arrays.stream进行更高效的计数
+                        long batchLoadedRows = Arrays.stream(results)
+                            .filter(result -> result > 0)
+                            .count();
                         loadedRows += batchLoadedRows;
                         conn.commit();
                         batchCount = 0;
@@ -259,12 +260,10 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                 // 执行剩余的批处理
                 if (batchCount > 0) {
                     int[] results = pstmt.executeBatch();
-                    long batchLoadedRows = 0;
-                    for (int result : results) {
-                        if (result > 0) {
-                            batchLoadedRows += result;
-                        }
-                    }
+                    // 优化：使用Arrays.stream进行更高效的计数
+                    long batchLoadedRows = Arrays.stream(results)
+                        .filter(result -> result > 0)
+                        .count();
                     loadedRows += batchLoadedRows;
                     conn.commit();
                     log.debug("批量插入 {} 条记录", batchLoadedRows);
