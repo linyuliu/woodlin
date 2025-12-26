@@ -246,10 +246,11 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                     // 达到批次大小，执行批处理
                     if (batchCount >= batchSize) {
                         int[] results = pstmt.executeBatch();
-                        // 优化：使用Arrays.stream进行更高效的计数
+                        // 优化：使用Arrays.stream进行更高效的汇总 - 修复：sum而非count
                         long batchLoadedRows = Arrays.stream(results)
                             .filter(result -> result > 0)
-                            .count();
+                            .mapToLong(Integer::longValue)
+                            .sum();
                         loadedRows += batchLoadedRows;
                         conn.commit();
                         batchCount = 0;
@@ -260,10 +261,11 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                 // 执行剩余的批处理
                 if (batchCount > 0) {
                     int[] results = pstmt.executeBatch();
-                    // 优化：使用Arrays.stream进行更高效的计数
+                    // 优化：使用Arrays.stream进行更高效的汇总 - 修复：sum而非count
                     long batchLoadedRows = Arrays.stream(results)
                         .filter(result -> result > 0)
-                        .count();
+                        .mapToLong(Integer::longValue)
+                        .sum();
                     loadedRows += batchLoadedRows;
                     conn.commit();
                     log.debug("批量插入 {} 条记录", batchLoadedRows);

@@ -41,6 +41,16 @@ import com.mumu.woodlin.common.datasource.spi.DatabaseMetadataExtractor;
 @Slf4j
 public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
     
+    // 静态常量：数据类型集合，避免重复创建
+    private static final Set<String> INTEGER_TYPES = Set.of("INTEGER", "INT");
+    private static final Set<String> FLOAT_TYPES = Set.of("FLOAT", "BINARY_FLOAT");
+    private static final Set<String> DOUBLE_TYPES = Set.of("DOUBLE", "BINARY_DOUBLE");
+    private static final Set<String> STRING_TYPES = Set.of(
+        "VARCHAR2", "VARCHAR", "NVARCHAR2", "CHAR", "NCHAR", "CLOB", "NCLOB", "LONG"
+    );
+    private static final Set<String> BINARY_TYPES = Set.of("BLOB", "RAW", "LONG RAW", "BFILE");
+    private static final Set<String> ROWID_TYPES = Set.of("ROWID", "UROWID");
+    
     @Override
     public DatabaseType getDatabaseType() {
         return DatabaseType.ORACLE;
@@ -355,21 +365,20 @@ public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
         
         String type = dataType.toUpperCase();
         
-        // 使用Set优化多条件判断 - 避免多次equals调用
+        // 使用静态常量Set优化多条件判断 - 避免多次equals调用和重复创建Set
         // 数字类型
         if (type.equals("NUMBER")) {
             return "BigDecimal"; // Oracle NUMBER可以表示任意精度的数字
-        } else if (Set.of("INTEGER", "INT").contains(type)) {
+        } else if (INTEGER_TYPES.contains(type)) {
             return "Integer";
-        } else if (Set.of("FLOAT", "BINARY_FLOAT").contains(type)) {
+        } else if (FLOAT_TYPES.contains(type)) {
             return "Float";
-        } else if (Set.of("DOUBLE", "BINARY_DOUBLE").contains(type)) {
+        } else if (DOUBLE_TYPES.contains(type)) {
             return "Double";
         }
         
         // 字符串类型
-        else if (Set.of("VARCHAR2", "VARCHAR", "NVARCHAR2", "CHAR", "NCHAR", "CLOB", "NCLOB", "LONG")
-                .contains(type)) {
+        else if (STRING_TYPES.contains(type)) {
             return "String";
         }
         
@@ -385,12 +394,12 @@ public class OracleMetadataExtractor implements DatabaseMetadataExtractor {
         }
         
         // 二进制类型
-        else if (Set.of("BLOB", "RAW", "LONG RAW", "BFILE").contains(type)) {
+        else if (BINARY_TYPES.contains(type)) {
             return "byte[]";
         }
         
         // ROWID类型
-        else if (Set.of("ROWID", "UROWID").contains(type)) {
+        else if (ROWID_TYPES.contains(type)) {
             return "String";
         }
         
