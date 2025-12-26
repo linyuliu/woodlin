@@ -1,5 +1,8 @@
 package com.mumu.woodlin.security.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RMap;
@@ -8,7 +11,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class OnlineUserService {
 
     private final RedissonClient redissonClient;
+    private final ObjectMapper objectMapper;
 
     // Redis Key定义
     private static final String ONLINE_USERS_HASH = "online:users:info";        // Hash: userId -> 用户信息JSON
@@ -38,16 +41,19 @@ public class OnlineUserService {
     private static final String DAILY_DURATION_PREFIX = "stats:daily:";          // String: userId:date -> 当日在线时长
 
     /**
-     * 用户在线信息
+     * 用户在线信息（使用Lombok提供getter/setter）
      */
+    @Data
     public static class OnlineUserInfo {
-        public String userId;           // 用户ID
-        public String username;         // 用户名
-        public String ip;               // IP地址
-        public Long loginTime;          // 登录时间戳（毫秒）
-        public Long lastActivityTime;   // 最后活动时间戳（毫秒）
-        public String browser;          // 浏览器
-        public String os;               // 操作系统
+        private String userId;           // 用户ID
+        private String username;         // 用户名
+        private String ip;               // IP地址
+        private Long loginTime;          // 登录时间戳（毫秒）
+        private Long lastActivityTime;   // 最后活动时间戳（毫秒）
+        private String browser;          // 浏览器
+        private String os;               // 操作系统
+
+        public OnlineUserInfo() {}
 
         public OnlineUserInfo(String userId, String username, String ip, Long loginTime, String browser, String os) {
             this.userId = userId;
@@ -74,11 +80,13 @@ public class OnlineUserService {
         try {
             long loginTime = System.currentTimeMillis();
             
-            // 1. 在Hash中存储用户详细信息（使用JSON格式便于扩展）
+            // 创建用户信息对象
+            OnlineUserInfo userInfo = new OnlineUserInfo(userId, username, ip, loginTime, browser, os);
+            
+            // 1. 在Hash中存储用户详细信息（使用Jackson序列化）
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
-            String userInfo = String.format("{\"userId\":\"%s\",\"username\":\"%s\",\"ip\":\"%s\",\"loginTime\":%d,\"lastActivityTime\":%d,\"browser\":\"%s\",\"os\":\"%s\"}",
-                    userId, username, ip, loginTime, loginTime, browser, os);
-            onlineUsersMap.put(userId, userInfo);
+            String userInfoJson = objectMapper.writeValueAsString(userInfo);
+            onlineUsersMap.put(userId, userInfoJson);
             
             // 2. 在ZSet中记录登录时间（用于按时间排序查询）
             RScoredSortedSet<String> loginTimeZSet = redissonClient.getScoredSortedSet(ONLINE_USERS_ZSET);
@@ -96,7 +104,7 @@ public class OnlineUserService {
 
     /**
      * 更新用户活动时间
-     * 性能优化：只更新Hash中的lastActivityTime字段，不需要更新整个对象
+     * 性能优化：只更新JSON中的lastActivityTime字段
      *
      * @param userId 用户ID
      */
@@ -109,19 +117,13 @@ public class OnlineUserService {
             String userInfoJson = onlineUsersMap.get(userId);
             
             if (userInfoJson != null) {
-                // 解析并更新lastActivityTime（简单字符串替换避免完整JSON解析）
-                int lastActivityIndex = userInfoJson.indexOf("\"lastActivityTime\":");
-                if (lastActivityIndex != -1) {
-                    int valueStart = lastActivityIndex + 19; // "lastActivityTime": 后面
-                    int valueEnd = userInfoJson.indexOf(",", valueStart);
-                    if (valueEnd == -1) {
-                        valueEnd = userInfoJson.indexOf("}", valueStart);
-                    }
-                    String updatedJson = userInfoJson.substring(0, valueStart) + currentTime + userInfoJson.substring(valueEnd);
-                    onlineUsersMap.put(userId, updatedJson);
-                    
-                    log.debug("更新用户活动时间: userId={}, time={}", userId, currentTime);
-                }
+                // 使用Jackson解析和更新
+                OnlineUserInfo userInfo = objectMapper.readValue(userInfoJson, OnlineUserInfo.class);
+                userInfo.setLastActivityTime(currentTime);
+                String updatedJson = objectMapper.writeValueAsString(userInfo);
+                onlineUsersMap.put(userId, updatedJson);
+                
+                log.debug("更新用户活动时间: userId={}, time={}", userId, currentTime);
             }
         } catch (Exception e) {
             log.error("更新用户活动时间失败: userId={}", userId, e);
@@ -298,16 +300,10 @@ public class OnlineUserService {
                 String userId = entry.getKey();
                 String userInfoJson = entry.getValue();
                 
-                // 解析lastActivityTime
-                int lastActivityIndex = userInfoJson.indexOf("\"lastActivityTime\":");
-                if (lastActivityIndex != -1) {
-                    int valueStart = lastActivityIndex + 19;
-                    int valueEnd = userInfoJson.indexOf(",", valueStart);
-                    if (valueEnd == -1) {
-                        valueEnd = userInfoJson.indexOf("}", valueStart);
-                    }
-                    String lastActivityStr = userInfoJson.substring(valueStart, valueEnd);
-                    long lastActivityTime = Long.parseLong(lastActivityStr);
+                try {
+                    // 使用Jackson解析JSON
+                    OnlineUserInfo userInfo = objectMapper.readValue(userInfoJson, OnlineUserInfo.class);
+                    long lastActivityTime = userInfo.getLastActivityTime();
                     
                     // 检查是否超时
                     if (currentTime - lastActivityTime > timeoutMillis) {
@@ -315,6 +311,8 @@ public class OnlineUserService {
                         cleanedCount++;
                         log.info("清理超时在线用户: userId={}, 最后活动时间={}", userId, lastActivityTime);
                     }
+                } catch (JsonProcessingException e) {
+                    log.warn("解析用户信息失败，跳过: userId={}", userId, e);
                 }
             }
             
@@ -326,50 +324,23 @@ public class OnlineUserService {
     }
 
     /**
-     * 解析用户信息JSON（简单解析避免引入JSON库）
+     * 解析用户信息JSON为Map（使用Jackson）
      */
     private Map<String, Object> parseUserInfo(String json) {
-        Map<String, Object> result = new HashMap<>();
         try {
-            // 简单JSON解析（生产环境建议使用Jackson）
-            result.put("userId", extractValue(json, "userId"));
-            result.put("username", extractValue(json, "username"));
-            result.put("ip", extractValue(json, "ip"));
-            result.put("loginTime", Long.parseLong(extractValue(json, "loginTime")));
-            result.put("lastActivityTime", Long.parseLong(extractValue(json, "lastActivityTime")));
-            result.put("browser", extractValue(json, "browser"));
-            result.put("os", extractValue(json, "os"));
-        } catch (Exception e) {
+            OnlineUserInfo userInfo = objectMapper.readValue(json, OnlineUserInfo.class);
+            Map<String, Object> result = new HashMap<>();
+            result.put("userId", userInfo.getUserId());
+            result.put("username", userInfo.getUsername());
+            result.put("ip", userInfo.getIp());
+            result.put("loginTime", userInfo.getLoginTime());
+            result.put("lastActivityTime", userInfo.getLastActivityTime());
+            result.put("browser", userInfo.getBrowser());
+            result.put("os", userInfo.getOs());
+            return result;
+        } catch (JsonProcessingException e) {
             log.warn("解析用户信息失败: {}", json, e);
+            return new HashMap<>();
         }
-        return result;
-    }
-
-    /**
-     * 从JSON字符串中提取字段值
-     */
-    private String extractValue(String json, String key) {
-        String searchKey = "\"" + key + "\":";
-        int start = json.indexOf(searchKey);
-        if (start == -1) {
-            return "";
-        }
-        start += searchKey.length();
-        
-        // 跳过空格和引号
-        while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == '"')) {
-            start++;
-        }
-        
-        int end = json.indexOf(",", start);
-        if (end == -1) {
-            end = json.indexOf("}", start);
-        }
-        
-        String value = json.substring(start, end).trim();
-        if (value.endsWith("\"")) {
-            value = value.substring(0, value.length() - 1);
-        }
-        return value;
     }
 }
