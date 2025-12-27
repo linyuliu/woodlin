@@ -234,16 +234,16 @@ export interface DemoUser {
 }
 
 /**
- * 获取用户状态字典（旧接口，已废弃）
- * @deprecated 请使用 getDictData('user_status')
+ * Get user status dictionary (deprecated)
+ * @deprecated Use getDictData('user_status') instead
  */
 export function getUserStatusDict(): Promise<DictItem[]> {
   return getDictData('user_status')
 }
 
 /**
- * 获取演示用户对象
- * 展示字典枚举在对象中的序列化效果
+ * Get demo user object
+ * Demonstrates dictionary enum serialization in objects
  */
 export function getDemoUser(): Promise<DemoUser> {
   return request.get('/dict/demo-user')

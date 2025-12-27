@@ -120,6 +120,16 @@ const handleDictTypeSelect = (row: DictType) => {
   loadDictData(row.dictType, true)
 }
 
+/**
+ * Handle keyboard navigation for row selection
+ */
+const handleRowKeydown = (event: KeyboardEvent, row: DictType) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    handleDictTypeSelect(row)
+  }
+}
+
 onMounted(() => {
   loadDictTypes(true)
 })
@@ -162,7 +172,9 @@ onMounted(() => {
                 size="small"
                 :row-props="(row: DictType) => ({
                   style: 'cursor: pointer;',
-                  onClick: () => handleDictTypeSelect(row)
+                  tabindex: 0,
+                  onClick: () => handleDictTypeSelect(row),
+                  onKeydown: (e: KeyboardEvent) => handleRowKeydown(e, row)
                 })"
               />
             </NCard>

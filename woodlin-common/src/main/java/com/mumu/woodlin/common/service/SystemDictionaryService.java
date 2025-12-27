@@ -1,6 +1,7 @@
 package com.mumu.woodlin.common.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.entity.SysDictData;
 import com.mumu.woodlin.common.entity.SysDictType;
 import com.mumu.woodlin.common.entity.SysRegion;
@@ -47,8 +48,8 @@ public class SystemDictionaryService {
     @Cacheable(value = "dict:types", unless = "#result == null || #result.isEmpty()")
     public List<SysDictType> getAllDictTypes() {
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysDictType::getStatus, "1")
-               .eq(SysDictType::getDeleted, "0")
+        wrapper.eq(SysDictType::getStatus, CommonConstant.STATUS_ENABLE)
+               .eq(SysDictType::getDeleted, CommonConstant.DELETED_NO)
                .orderByAsc(SysDictType::getDictId);
         return dictTypeMapper.selectList(wrapper);
     }
@@ -63,8 +64,8 @@ public class SystemDictionaryService {
     public List<Map<String, Object>> getDictDataByType(String dictType) {
         LambdaQueryWrapper<SysDictData> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysDictData::getDictType, dictType)
-               .eq(SysDictData::getStatus, "1")
-               .eq(SysDictData::getDeleted, "0")
+               .eq(SysDictData::getStatus, CommonConstant.STATUS_ENABLE)
+               .eq(SysDictData::getDeleted, CommonConstant.DELETED_NO)
                .orderByAsc(SysDictData::getDictSort);
         
         List<SysDictData> dataList = dictDataMapper.selectList(wrapper);
@@ -120,8 +121,8 @@ public class SystemDictionaryService {
             // 查询子区划
             LambdaQueryWrapper<SysRegion> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysRegion::getParentCode, parentCode)
-                   .eq(SysRegion::getStatus, "1")
-                   .eq(SysRegion::getDeleted, "0")
+                   .eq(SysRegion::getStatus, CommonConstant.STATUS_ENABLE)
+                   .eq(SysRegion::getDeleted, CommonConstant.DELETED_NO)
                    .orderByAsc(SysRegion::getSortOrder);
             regions = regionMapper.selectList(wrapper);
         }
@@ -192,8 +193,8 @@ public class SystemDictionaryService {
         // 查询子节点
         LambdaQueryWrapper<SysRegion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRegion::getParentCode, region.getRegionCode())
-               .eq(SysRegion::getStatus, "1")
-               .eq(SysRegion::getDeleted, "0")
+               .eq(SysRegion::getStatus, CommonConstant.STATUS_ENABLE)
+               .eq(SysRegion::getDeleted, CommonConstant.DELETED_NO)
                .orderByAsc(SysRegion::getSortOrder);
         List<SysRegion> children = regionMapper.selectList(wrapper);
         

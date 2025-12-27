@@ -125,9 +125,19 @@ class DictCache {
 const dictCache = new DictCache()
 
 // 定期清理过期缓存（每分钟执行一次）
-setInterval(() => {
-  dictCache.cleanup()
-}, 60 * 1000)
+// 只在浏览器环境中启用自动清理
+if (typeof window !== 'undefined') {
+  const cleanupIntervalId = setInterval(() => {
+    dictCache.cleanup()
+  }, 60 * 1000)
+
+  // 页面卸载时清理定时器
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('beforeunload', () => {
+      clearInterval(cleanupIntervalId)
+    })
+  }
+}
 
 export default dictCache
 
