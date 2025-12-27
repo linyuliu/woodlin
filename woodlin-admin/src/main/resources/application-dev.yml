@@ -7,9 +7,12 @@ woodlin:
   cors:
     # 启用CORS
     enabled: true
-    # 允许所有源（开发环境使用通配符）
-    allowed-origins:
-      - "*"
+    # 开发环境使用allowedOriginPatterns支持通配符且允许credentials
+    # 不使用allowed-origins以避免CORS credentials限制
+    allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - http://[::1]:*
     # 允许的HTTP方法
     allowed-methods:
       - GET
@@ -26,8 +29,9 @@ woodlin:
       - Authorization
       - Content-Type
       - X-Total-Count
-    # 使用通配符时，allowCredentials必须为false
-    allow-credentials: false
+      - X-Request-Id
+    # 使用allowedOriginPatterns时可以设置为true
+    allow-credentials: true
     # 预检请求缓存时间（秒）
     max-age: 3600
     # 应用的路径模式
