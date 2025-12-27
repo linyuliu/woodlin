@@ -131,10 +131,18 @@ if (typeof window !== 'undefined') {
     dictCache.cleanup()
   }, 60 * 1000)
 
-  // 页面卸载时清理定时器
+  // 页面卸载时清理定时器 - 使用多个事件以确保跨浏览器兼容
+  const cleanup = () => {
+    clearInterval(cleanupIntervalId)
+  }
+
   if (typeof window.addEventListener === 'function') {
-    window.addEventListener('beforeunload', () => {
-      clearInterval(cleanupIntervalId)
+    window.addEventListener('beforeunload', cleanup)
+    window.addEventListener('pagehide', cleanup)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        cleanup()
+      }
     })
   }
 }
