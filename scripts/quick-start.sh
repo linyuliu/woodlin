@@ -101,14 +101,15 @@ case "$COMMAND" in
     
     # 检查数据库是否已初始化
     log_info "检查数据库..."
-    if docker compose exec -T mysql mysql -uroot -p123456 -e "USE woodlin; SELECT COUNT(*) FROM sys_user;" &> /dev/null; then
+    DB_PASSWORD="${DATABASE_PASSWORD:-123456}"
+    if docker compose exec -T mysql mysql -uroot -p"$DB_PASSWORD" -e "USE woodlin; SELECT COUNT(*) FROM sys_user;" &> /dev/null; then
       log_success "数据库已初始化"
     else
       log_warning "数据库未初始化，正在初始化..."
       
       # 初始化数据库
-      docker compose exec -T mysql mysql -uroot -p123456 woodlin < sql/mysql/woodlin_complete_schema.sql
-      docker compose exec -T mysql mysql -uroot -p123456 woodlin < sql/mysql/woodlin_complete_data.sql
+      docker compose exec -T mysql mysql -uroot -p"$DB_PASSWORD" woodlin < sql/mysql/woodlin_complete_schema.sql
+      docker compose exec -T mysql mysql -uroot -p"$DB_PASSWORD" woodlin < sql/mysql/woodlin_complete_data.sql
       
       log_success "数据库初始化完成"
     fi

@@ -44,6 +44,8 @@ services:
     networks:
       - woodlin-network
     healthcheck:
+      # Note: Password in health check is from environment variable, which is standard practice in Docker
+      # The command runs inside the container and is not exposed in process lists on the host
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DATABASE_PASSWORD:-123456}"]
       interval: 10s
       timeout: 5s

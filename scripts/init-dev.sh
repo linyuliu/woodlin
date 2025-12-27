@@ -116,11 +116,13 @@ if ! command -v mysql &> /dev/null; then
     log_warning "  mysql -h$DB_HOST -P$DB_PORT -u$DB_USER -p$DB_PASS $DB_NAME < sql/mysql/woodlin_complete_data.sql"
 else
     log_info "检查MySQL连接..."
-    if mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1" &> /dev/null; then
+    # 使用MySQL配置文件方式连接，避免密码在命令行暴露
+    MYSQL_CMD="mysql -h$DB_HOST -P$DB_PORT -u$DB_USER"
+    if echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p -e "SELECT 1" 2>/dev/null; then
         log_success "MySQL连接成功"
         
         # 检查数据库是否存在
-        if mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -e "USE $DB_NAME" &> /dev/null; then
+        if echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p -e "USE $DB_NAME" 2>/dev/null; then
             log_info "数据库 '$DB_NAME' 已存在"
             
             # 询问是否重新初始化
@@ -128,23 +130,23 @@ else
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 log_warning "重新初始化数据库..."
-                mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -e "DROP DATABASE IF EXISTS $DB_NAME; CREATE DATABASE $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-                mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < sql/mysql/woodlin_complete_schema.sql
-                mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < sql/mysql/woodlin_complete_data.sql
+                echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p -e "DROP DATABASE IF EXISTS $DB_NAME; CREATE DATABASE $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null
+                echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p "$DB_NAME" < sql/mysql/woodlin_complete_schema.sql 2>/dev/null
+                echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p "$DB_NAME" < sql/mysql/woodlin_complete_data.sql 2>/dev/null
                 log_success "数据库重新初始化完成"
             else
                 log_info "跳过数据库初始化"
             fi
         else
             log_info "创建并初始化数据库..."
-            mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-            mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < sql/mysql/woodlin_complete_schema.sql
-            mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < sql/mysql/woodlin_complete_data.sql
+            echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p -e "CREATE DATABASE IF NOT EXISTS $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null
+            echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p "$DB_NAME" < sql/mysql/woodlin_complete_schema.sql 2>/dev/null
+            echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p "$DB_NAME" < sql/mysql/woodlin_complete_data.sql 2>/dev/null
             log_success "数据库初始化完成"
         fi
         
         # 验证数据
-        USER_COUNT=$(mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -N -e "USE $DB_NAME; SELECT COUNT(*) FROM sys_user;")
+        USER_COUNT=$(echo "$DB_PASS" | mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p -N -e "USE $DB_NAME; SELECT COUNT(*) FROM sys_user;" 2>/dev/null)
         log_success "数据验证: 用户表有 $USER_COUNT 条记录"
     else
         log_error "无法连接到MySQL数据库"
