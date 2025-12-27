@@ -6,8 +6,6 @@
  * @since 2025-12-27
  */
 
-import type { DictItem } from './dict'
-
 /**
  * 缓存项接口
  */
