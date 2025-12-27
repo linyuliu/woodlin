@@ -1,6 +1,8 @@
 package com.mumu.woodlin.common.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.entity.SysRegion;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -46,5 +48,12 @@ public interface SysRegionMapper extends BaseMapper<SysRegion> {
      *
      * @return 省级行政区划列表
      */
-    List<SysRegion> selectProvinces();
+    default List<SysRegion> selectProvinces() {
+        LambdaQueryWrapper<SysRegion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRegion::getRegionLevel, 1)
+               .eq(SysRegion::getStatus, CommonConstant.STATUS_ENABLE)
+               .eq(SysRegion::getDeleted, CommonConstant.DELETED_NO)
+               .orderByAsc(SysRegion::getSortOrder);
+        return selectList(wrapper);
+    }
 }
