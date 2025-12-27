@@ -249,25 +249,3 @@ export function getDemoUser(): Promise<DemoUser> {
   return request.get('/dict/demo-user')
 }
 
-
-/**
- * 获取用户状态字典
- */
-export function getUserStatusDict(): Promise<DictItem[]> {
-  return request.get('/dict/user-status')
-}
-
-/**
- * 获取性别字典
- */
-export function getGenderDict(): Promise<DictItem[]> {
-  return request.get('/dict/gender')
-}
-
-/**
- * 获取演示用户对象
- * 展示字典枚举在对象中的序列化效果
- */
-export function getDemoUser(): Promise<DemoUser> {
-  return request.get('/dict/demo-user')
-}
