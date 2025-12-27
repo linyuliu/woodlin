@@ -127,6 +127,9 @@ const handleRowKeydown = (event: KeyboardEvent, row: DictType) => {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     handleDictTypeSelect(row)
+  } else if (event.key === 'Escape') {
+    // Allow users to exit focus mode
+    ;(event.target as HTMLElement)?.blur()
   }
 }
 
@@ -257,5 +260,15 @@ onMounted(() => {
 <style scoped>
 .dict-view {
   padding: 16px;
+}
+
+/* Add visual focus indicators for keyboard navigation */
+:deep(.n-data-table-tr:focus) {
+  outline: 2px solid var(--n-border-color-focus, #18a058);
+  outline-offset: -2px;
+}
+
+:deep(.n-data-table-tr:focus-visible) {
+  box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.2);
 }
 </style>
