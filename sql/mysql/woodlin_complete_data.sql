@@ -58,10 +58,10 @@ INSERT INTO `sys_role_hierarchy` (`ancestor_role_id`, `descendant_role_id`, `dis
 -- 初始化权限数据
 INSERT INTO `sys_permission` VALUES 
 (1, 0, '系统管理', 'system', 'M', 'system', NULL, 'system', 1, '1', '0', '0', '1', '系统管理目录', 'system', NOW(), 'system', NOW(), '0'),
-(2, 1, '用户管理', 'system:user', 'C', 'user', 'system/user/index', 'user', 1, '1', '0', '0', '1', '用户管理菜单', 'system', NOW(), 'system', NOW(), '0'),
-(3, 1, '角色管理', 'system:role', 'C', 'role', 'system/role/index', 'peoples', 2, '1', '0', '0', '1', '角色管理菜单', 'system', NOW(), 'system', NOW(), '0'),
-(4, 1, '菜单管理', 'system:menu', 'C', 'menu', 'system/menu/index', 'tree-table', 3, '1', '0', '0', '1', '菜单管理菜单', 'system', NOW(), 'system', NOW(), '0'),
-(5, 1, '部门管理', 'system:dept', 'C', 'dept', 'system/dept/index', 'tree', 4, '1', '0', '0', '1', '部门管理菜单', 'system', NOW(), 'system', NOW(), '0'),
+(2, 1, '用户管理', 'system:user', 'C', 'user', 'system/UserView', 'user', 1, '1', '0', '0', '1', '用户管理菜单', 'system', NOW(), 'system', NOW(), '0'),
+(3, 1, '角色管理', 'system:role', 'C', 'role', 'system/RoleView', 'peoples', 2, '1', '0', '0', '1', '角色管理菜单', 'system', NOW(), 'system', NOW(), '0'),
+(4, 1, '菜单管理', 'system:menu', 'C', 'menu', 'system/permission/PermissionManagementView', 'tree-table', 3, '1', '0', '0', '1', '菜单管理菜单', 'system', NOW(), 'system', NOW(), '0'),
+(5, 1, '部门管理', 'system:dept', 'C', 'dept', 'system/DeptView', 'tree', 4, '1', '0', '0', '1', '部门管理菜单', 'system', NOW(), 'system', NOW(), '0'),
 
 -- 用户管理权限
 (100, 2, '用户查询', 'system:user:list', 'F', '', '', '#', 1, '1', '0', '0', '1', '', 'system', NOW(), 'system', NOW(), '0'),
