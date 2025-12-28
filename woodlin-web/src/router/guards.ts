@@ -171,8 +171,16 @@ function createPermissionGuard(router: Router): void {
       logger.warn('  用户角色:', userStore.roles)
       
       // 如果是管理员但权限检查失败，可能是权限数据问题，仍然放行
+      // 但记录详细日志用于安全审计
       if (userStore.isAdmin || userStore.isSuperAdmin) {
-        logger.warn('用户是管理员，放行访问')
+        logger.warn('⚠️ 管理员权限绕过：用户是管理员，放行访问')
+        logger.warn('  用户名:', userStore.userInfo?.username)
+        logger.warn('  目标路由:', to.path)
+        logger.warn('  需要权限:', permissions)
+        logger.warn('  实际权限:', userStore.permissions)
+        logger.warn('  角色:', userStore.roles)
+        // TODO: 可以在此处将管理员绕过事件发送到服务器进行审计
+        // await logSecurityEvent({ type: 'admin_bypass', user: userStore.userInfo, route: to.path })
         next()
         return
       }
