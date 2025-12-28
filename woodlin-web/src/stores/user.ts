@@ -152,12 +152,21 @@ export const useUserStore = defineStore('user', () => {
    */
   function hasPermission(permission: string | string[]): boolean {
     // 超级管理员拥有所有权限
-    if (isSuperAdmin.value) {
+    if (isSuperAdmin.value || isAdmin.value) {
+      return true
+    }
+    
+    // 检查是否有通配符权限
+    if (permissions.value.includes('*')) {
       return true
     }
     
     if (Array.isArray(permission)) {
       // 数组：检查是否拥有其中任意一个权限
+      // 如果数组为空，返回true（无权限要求）
+      if (permission.length === 0) {
+        return true
+      }
       return permission.some(p => permissions.value.includes(p))
     } else {
       // 字符串：检查是否拥有该权限
