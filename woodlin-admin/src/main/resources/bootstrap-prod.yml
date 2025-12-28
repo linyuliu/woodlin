@@ -1,0 +1,16 @@
+# Bootstrap 生产环境配置
+# 作者: mumu
+# 描述: 生产环境 Nacos 配置中心连接信息
+
+spring:
+  cloud:
+    nacos:
+      # 生产环境 Nacos 服务器地址（支持集群，多个地址用逗号分隔）
+      server-addr: ${NACOS_SERVER_ADDR:nacos-prod.example.com:8848}
+      # 生产环境命名空间（强烈建议使用专用命名空间隔离）
+      namespace: ${NACOS_NAMESPACE:production}
+      # 生产环境分组
+      group: ${NACOS_GROUP:PROD_GROUP}
+      # 生产环境建议开启鉴权
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}

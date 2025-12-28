@@ -1,0 +1,13 @@
+# Bootstrap 开发环境配置
+# 作者: mumu
+# 描述: 开发环境 Nacos 配置中心连接信息
+
+spring:
+  cloud:
+    nacos:
+      # 开发环境 Nacos 服务器地址
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      # 开发环境命名空间
+      namespace: ${NACOS_NAMESPACE:}
+      # 开发环境分组
+      group: ${NACOS_GROUP:DEFAULT_GROUP}

@@ -1,0 +1,22 @@
+# Woodlin Redis 配置
+# Data ID: woodlin-redis.yml
+# Group: DEFAULT_GROUP
+# 描述: Redis 连接和连接池配置
+
+spring:
+  # Redis配置
+  # 注意：Redisson会自动使用此配置，无需单独配置Redisson
+  # 如需自定义Redisson高级配置，可添加redisson.single-server-config配置项
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:10s}
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:200}
+          max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:0}
