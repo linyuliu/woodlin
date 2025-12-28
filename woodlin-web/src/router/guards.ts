@@ -72,7 +72,13 @@ function createAuthGuard(router: Router): void {
         // 生成动态路由
         if (!permissionStore.isRoutesGenerated) {
           logger.log('路由未生成，开始生成动态路由...')
-          await permissionStore.generateRoutes(userStore.permissions)
+          try {
+            await permissionStore.generateRoutes(userStore.permissions)
+          } catch (routeError) {
+            // 路由生成失败不应该阻止用户访问
+            logger.error('生成路由失败，将使用降级方案:', routeError)
+            // 继续执行，允许使用静态路由
+          }
         }
       } catch (error) {
         logger.error('加载用户信息失败:', error)
@@ -96,18 +102,11 @@ function createAuthGuard(router: Router): void {
       } catch (error) {
         logger.error('生成路由失败:', error)
         
-        // 仅清除路由状态，保留用户信息，允许用户继续使用静态路由
-        permissionStore.clearRoutes()
+        // 路由生成失败不应该强制退出登录
+        // 用户仍然可以访问静态路由
+        logger.warn('动态路由生成失败，继续使用静态路由')
         
-        // 提示用户路由加载失败，但不强制退出登录
-        // 用户仍然可以访问静态路由（如设置页面）
-        logger.warn('动态路由生成失败，使用静态路由')
-        
-        // 如果目标路由不是静态路由，跳转到首页
-        if (!WHITE_LIST.includes(to.path) && to.path !== config.router.homePath) {
-          next({ path: config.router.homePath, replace: true })
-          return
-        }
+        // 不阻止用户访问，继续导航
       }
     }
     
@@ -158,11 +157,25 @@ function createPermissionGuard(router: Router): void {
     // 获取路由需要的权限
     const permissions = to.meta.permissions as string[] | undefined
 
+    // 如果路由没有权限要求，直接放行
+    if (!permissions || permissions.length === 0) {
+      next()
+      return
+    }
+
     // 检查用户是否有权限
-    if (permissions && permissions.length > 0 && !userStore.hasPermission(permissions)) {
-      logger.error('用户无权限访问该页面:', to.path)
-      logger.error('  需要权限:', permissions)
-      logger.error('  用户权限:', userStore.permissions)
+    if (!userStore.hasPermission(permissions)) {
+      logger.warn('用户无权限访问该页面:', to.path)
+      logger.warn('  需要权限:', permissions)
+      logger.warn('  用户权限:', userStore.permissions)
+      logger.warn('  用户角色:', userStore.roles)
+      
+      // 如果是管理员但权限检查失败，可能是权限数据问题，仍然放行
+      if (userStore.isAdmin || userStore.isSuperAdmin) {
+        logger.warn('用户是管理员，放行访问')
+        next()
+        return
+      }
       
       // 跳转到403页面
       next({ path: '/403', replace: true })
