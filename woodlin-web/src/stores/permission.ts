@@ -6,12 +6,13 @@
  * @since 2025-01-01
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 import { RouterView, type RouteRecordRaw } from 'vue-router'
 import { asyncRoutes, constantRoutes } from '@/router/routes'
 import { getUserRoutes } from '@/api/auth'
 import { logger } from '@/utils/logger'
+import { getConfig } from '@/config'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 /**
@@ -353,10 +354,11 @@ export const usePermissionStore = defineStore('permission', () => {
       if (routesGenerated === 'true' && routesGeneratedTime) {
         const generatedTime = Number(routesGeneratedTime)
         const now = Date.now()
-        // 如果路由生成时间在1小时内，则认为有效
-        const oneHour = 60 * 60 * 1000
+        // 从配置获取路由缓存过期时间
+        const config = getConfig()
+        const expirationTime = config.router.routeCacheExpiration
         
-        if (now - generatedTime < oneHour) {
+        if (now - generatedTime < expirationTime) {
           isRoutesGenerated.value = true
           logger.log('从localStorage恢复路由状态成功')
           return true
@@ -419,8 +421,10 @@ export const usePermissionStore = defineStore('permission', () => {
     logger.log('路由已标记为已添加到路由器')
   }
 
-  // 初始化：从localStorage恢复路由状态
-  restoreRoutesState()
+  // 初始化：从localStorage恢复路由状态（延迟执行，避免阻塞主线程）
+  nextTick(() => {
+    restoreRoutesState()
+  })
 
   return {
     // 状态

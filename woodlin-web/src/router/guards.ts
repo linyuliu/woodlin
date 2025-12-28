@@ -96,17 +96,18 @@ function createAuthGuard(router: Router): void {
       } catch (error) {
         logger.error('生成路由失败:', error)
         
-        // 清除认证状态
-        authStore.clearToken()
-        userStore.clearUserInfo()
+        // 仅清除路由状态，保留用户信息，允许用户继续使用静态路由
         permissionStore.clearRoutes()
         
-        // 跳转到登录页
-        next({
-          path: config.router.loginPath,
-          query: { redirect: to.fullPath }
-        })
-        return
+        // 提示用户路由加载失败，但不强制退出登录
+        // 用户仍然可以访问静态路由（如设置页面）
+        logger.warn('动态路由生成失败，使用静态路由')
+        
+        // 如果目标路由不是静态路由，跳转到首页
+        if (!WHITE_LIST.includes(to.path) && to.path !== config.router.homePath) {
+          next({ path: config.router.homePath, replace: true })
+          return
+        }
       }
     }
     
