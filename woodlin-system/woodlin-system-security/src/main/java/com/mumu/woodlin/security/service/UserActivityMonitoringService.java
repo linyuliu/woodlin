@@ -1,17 +1,20 @@
 package com.mumu.woodlin.security.service;
 
-import cn.dev33.satoken.stp.StpUtil;
-import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import com.mumu.woodlin.security.config.ActivityMonitoringProperties;
+
+import cn.dev33.satoken.stp.StpUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 用户活动监控服务
@@ -57,7 +60,7 @@ public class UserActivityMonitoringService {
 
             // 记录最后活动时间，设置过期时间为超时时间的2倍（防止过早清理）
             RBucket<String> bucket = redissonClient.getBucket(activityKey);
-            bucket.set(currentTime, activityProperties.getTimeoutSeconds() * 2, TimeUnit.SECONDS);
+            bucket.set(currentTime, Duration.ofSeconds(activityProperties.getTimeoutSeconds() * 2));
 
             log.debug("记录用户活动: userId={}, activityType={}, time={}", userId, activityType, currentTime);
         } catch (Exception e) {
@@ -129,7 +132,7 @@ public class UserActivityMonitoringService {
                 String warningTime = warningBucket.get();
                 if (Objects.isNull(warningTime)) {
                     // 记录警告时间，避免重复警告
-                    warningBucket.set(now.toString(), activityProperties.getWarningBeforeTimeoutSeconds(), TimeUnit.SECONDS);
+                    warningBucket.set(now.toString(), Duration.ofSeconds(activityProperties.getWarningBeforeTimeoutSeconds()));
                     return true;
                 }
             }

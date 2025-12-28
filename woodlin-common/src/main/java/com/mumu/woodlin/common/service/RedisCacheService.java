@@ -1,5 +1,6 @@
 package com.mumu.woodlin.common.service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -64,7 +65,7 @@ public class RedisCacheService {
             String lockKey = CACHE_LOCK_PREFIX + dictType;
             RBucket<String> lockBucket = redissonClient.getBucket(lockKey);
             
-            if (lockBucket.trySet("1", 10, TimeUnit.SECONDS)) {
+            if (lockBucket.setIfAbsent("1", Duration.ofSeconds(10))) {
                 try {
                     // 再次检查缓存（双重检查）
                     cachedData = bucket.get();
@@ -77,7 +78,7 @@ public class RedisCacheService {
                     
                     // 存入缓存
                     if (Objects.nonNull(data)) {
-                        bucket.set(data, cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
+                        bucket.set(data, Duration.ofSeconds(cacheProperties.getDictionary().getExpireSeconds()));
                         log.info("字典数据已缓存: {}, 大小: {}", dictType, data.size());
                     }
                     
@@ -165,7 +166,7 @@ public class RedisCacheService {
             if (Objects.nonNull(data) && !data.isEmpty()) {
                 String cacheKey = DICTIONARY_CACHE_PREFIX + dictType;
                 RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
-                bucket.set(data, cacheProperties.getDictionary().getExpireSeconds(), TimeUnit.SECONDS);
+                bucket.set(data, Duration.ofSeconds(cacheProperties.getDictionary().getExpireSeconds()));
                 log.info("预热字典缓存完成: {}, 大小: {}", dictType, data.size());
             }
         } catch (Exception e) {
@@ -211,7 +212,7 @@ public class RedisCacheService {
             String lockKey = CACHE_LOCK_PREFIX + configType;
             RBucket<String> lockBucket = redissonClient.getBucket(lockKey);
             
-            if (lockBucket.trySet("1", 10, TimeUnit.SECONDS)) {
+            if (lockBucket.setIfAbsent("1", Duration.ofSeconds(10))) {
                 try {
                     // 再次检查缓存（双重检查）
                     cachedData = bucket.get();
@@ -224,7 +225,7 @@ public class RedisCacheService {
                     
                     // 存入缓存
                     if (Objects.nonNull(data)) {
-                        bucket.set(data, cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
+                        bucket.set(data, Duration.ofSeconds(cacheProperties.getConfig().getExpireSeconds()));
                         log.info("配置数据已缓存: {}, 大小: {}", configType, data.size());
                     }
                     
@@ -312,7 +313,7 @@ public class RedisCacheService {
             if (Objects.nonNull(data) && !data.isEmpty()) {
                 String cacheKey = CONFIG_CACHE_PREFIX + configType;
                 RBucket<List<T>> bucket = redissonClient.getBucket(cacheKey);
-                bucket.set(data, cacheProperties.getConfig().getExpireSeconds(), TimeUnit.SECONDS);
+                bucket.set(data, Duration.ofSeconds(cacheProperties.getConfig().getExpireSeconds()));
                 log.info("预热配置缓存完成: {}, 大小: {}", configType, data.size());
             }
         } catch (Exception e) {
