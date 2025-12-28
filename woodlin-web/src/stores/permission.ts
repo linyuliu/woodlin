@@ -241,14 +241,13 @@ export const usePermissionStore = defineStore('permission', () => {
   function useFallbackRoutes(permissions: string[]): RouteRecordRaw[] {
     logger.log('使用降级路由（静态路由）, 用户权限:', permissions)
     
-    // 如果权限中包含'*'或'admin'或'super_admin'或角色码，则拥有所有权限
+    // 如果权限中包含'*'或admin相关角色，则拥有所有权限
     const hasAllPermissions = permissions.some(p => 
       p === '*' || 
       p === 'admin' || 
       p === 'super_admin' ||
       p === 'ROLE_ADMIN' ||
-      p === 'ROLE_SUPER_ADMIN' ||
-      p.toLowerCase().includes('admin')
+      p === 'ROLE_SUPER_ADMIN'
     )
     
     if (hasAllPermissions) {
@@ -256,20 +255,37 @@ export const usePermissionStore = defineStore('permission', () => {
       return asyncRoutes || []
     }
     
-    // 如果用户权限列表为空或很少，也加载所有路由（开发模式友好）
+    // 如果用户权限列表为空，只加载基础路由（开发模式友好）
+    // 生产环境应确保用户有适当的权限分配
     if (!permissions || permissions.length === 0) {
-      logger.warn('用户权限为空，加载所有路由（开发模式）')
-      return asyncRoutes || []
+      logger.warn('用户权限为空，仅加载基础路由（请确认是否为开发环境）')
+      const config = getConfig()
+      
+      // 在开发环境下，返回所有路由；生产环境下，仅返回仪表板
+      if (import.meta.env.DEV || !config.router.enablePermission) {
+        logger.warn('开发模式：加载所有路由')
+        return asyncRoutes || []
+      } else {
+        // 生产环境：仅返回仪表板和用户设置等基础路由
+        logger.warn('生产模式：仅加载基础路由')
+        return asyncRoutes?.filter(route => {
+          // 保留没有权限要求的路由
+          return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
+        }) || []
+      }
     }
     
     // 根据权限过滤路由
     logger.log('根据权限过滤路由...')
     const filtered = filterAsyncRoutes(asyncRoutes || [], permissions)
     
-    // 如果过滤后没有路由，返回所有路由（避免用户完全无法访问）
+    // 如果过滤后没有路由，返回基础路由（避免用户完全无法访问）
     if (!filtered || filtered.length === 0) {
-      logger.warn('过滤后没有可用路由，返回所有路由作为降级方案')
-      return asyncRoutes || []
+      logger.warn('过滤后没有可用路由，返回基础路由作为降级方案')
+      // 返回不需要权限的路由（如用户设置、个人中心等）
+      return asyncRoutes?.filter(route => {
+        return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
+      }) || []
     }
     
     return filtered
