@@ -1,8 +1,12 @@
 package com.mumu.woodlin.security.service;
 
-import com.mumu.woodlin.common.config.CacheProperties;
-import com.mumu.woodlin.security.dto.UserCacheDto;
-import lombok.RequiredArgsConstructor;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.redisson.api.RBucket;
 import org.redisson.api.RKeys;
 import org.redisson.api.RedissonClient;
@@ -10,11 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import com.mumu.woodlin.common.config.CacheProperties;
+import com.mumu.woodlin.security.dto.UserCacheDto;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * 权限缓存服务
@@ -84,7 +87,7 @@ public class PermissionCacheService {
             userCache.setCacheTime(System.currentTimeMillis());
             
             RBucket<UserCacheDto> bucket = redissonClient.getBucket(key);
-            bucket.set(userCache, expireSeconds, TimeUnit.SECONDS);
+            bucket.set(userCache, Duration.ofSeconds(expireSeconds));
             
             log.debug("缓存用户信息成功: userId={}, roles={}, permissions={}", 
                 userCache.getUserId(), 
@@ -271,7 +274,7 @@ public class PermissionCacheService {
             String key = ROLE_PERMISSION_PREFIX + roleId;
             long expireSeconds = cacheProperties.getPermission().getRoleExpireSeconds();
             RBucket<List<String>> bucket = redissonClient.getBucket(key);
-            bucket.set(permissions, expireSeconds, TimeUnit.SECONDS);
+            bucket.set(permissions, Duration.ofSeconds(expireSeconds));
             log.debug("缓存角色权限成功: roleId={}, count={}", roleId, permissions.size());
         } catch (Exception e) {
             log.error("缓存角色权限失败: roleId={}", roleId, e);

@@ -1,5 +1,7 @@
 package com.mumu.woodlin.common.config;
 
+import java.time.Duration;
+
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
@@ -84,9 +86,7 @@ public class RedissonAutoConfiguration {
         if (customConfig.getRetryAttempts() != null) {
             config.setRetryAttempts(customConfig.getRetryAttempts());
         }
-        if (customConfig.getRetryInterval() != null) {
-            config.setRetryInterval(customConfig.getRetryInterval());
-        }
+        // Note: setRetryInterval is deprecated and removed - using default retry interval
     }
 
     /**
