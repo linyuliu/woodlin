@@ -255,7 +255,14 @@ request.interceptors.response.use(
     if (error.response?.status === 401) {
       // 未授权，清除token并跳转到登录页
       localStorage.removeItem(getConfig().http.tokenKey)
+      localStorage.removeItem(`${getConfig().http.tokenKey}_expire`)
       localStorage.removeItem('tenantId')
+      // 清除用户信息和路由状态
+      localStorage.removeItem('userInfo')
+      localStorage.removeItem('userPermissions')
+      localStorage.removeItem('userRoles')
+      localStorage.removeItem('routesGenerated')
+      localStorage.removeItem('routesGeneratedTime')
       
       // 避免在登录页重复跳转
       if (window.location.pathname !== getConfig().router.loginPath) {
