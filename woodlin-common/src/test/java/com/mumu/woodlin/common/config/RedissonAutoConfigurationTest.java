@@ -12,6 +12,7 @@ import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.redisson.spring.data.connection.RedissonConnectionFactory;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 
 class RedissonAutoConfigurationTest {
 
@@ -19,8 +20,9 @@ class RedissonAutoConfigurationTest {
     void shouldThrowExceptionWhenAddressMissing() {
         RedissonProperties properties = new RedissonProperties();
         properties.getSingleServerConfig().setAddress(null);
+        RedisProperties redisProperties = new RedisProperties();
 
-        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(properties);
+        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(properties, redisProperties);
 
         assertThatThrownBy(configuration::redissonClient)
             .isInstanceOf(IllegalStateException.class)
@@ -31,8 +33,9 @@ class RedissonAutoConfigurationTest {
     void shouldCreateRedissonClientWithValidConfig() {
         RedissonProperties properties = new RedissonProperties();
         properties.getSingleServerConfig().setAddress("redis://127.0.0.1:6379");
+        RedisProperties redisProperties = new RedisProperties();
 
-        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(properties);
+        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(properties, redisProperties);
         RedissonClient redissonClient = mock(RedissonClient.class);
 
         try (MockedStatic<Redisson> mockedRedisson = mockStatic(Redisson.class)) {
@@ -46,7 +49,8 @@ class RedissonAutoConfigurationTest {
     @Test
     void shouldCreateRedissonConnectionFactory() {
         RedissonClient client = mock(RedissonClient.class);
-        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(new RedissonProperties());
+        RedisProperties redisProperties = new RedisProperties();
+        RedissonAutoConfiguration configuration = new RedissonAutoConfiguration(new RedissonProperties(), redisProperties);
 
         RedissonConnectionFactory connectionFactory = configuration.redissonConnectionFactory(client);
         assertThat(connectionFactory).isNotNull();
