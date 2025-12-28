@@ -114,7 +114,6 @@ public class RedisConfig {
                 String str = new String(bytes, DEFAULT_CHARSET);
                 if (clazz == Object.class) {
                     return (T) JSON.parseObject(str, Object.class, 
-                        JSONReader.Feature.SupportAutoType,
                         JSONReader.Feature.UseNativeObject,
                         JSONReader.Feature.FieldBased);
                 } else {

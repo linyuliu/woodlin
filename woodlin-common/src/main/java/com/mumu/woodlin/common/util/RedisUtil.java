@@ -62,7 +62,7 @@ public class RedisUtil {
      */
     public void set(String key, Object value, long timeout, TimeUnit unit) {
         RBucket<Object> bucket = redissonClient.getBucket(key);
-        bucket.set(value, timeout, unit);
+        bucket.set(value, Duration.ofMillis(unit.toMillis(timeout)));
     }
     
     /**
@@ -86,7 +86,7 @@ public class RedisUtil {
      */
     public boolean setIfAbsent(String key, Object value) {
         RBucket<Object> bucket = redissonClient.getBucket(key);
-        return bucket.trySet(value);
+        return bucket.setIfAbsent(value);
     }
     
     /**
@@ -100,7 +100,7 @@ public class RedisUtil {
      */
     public boolean setIfAbsent(String key, Object value, long timeout, TimeUnit unit) {
         RBucket<Object> bucket = redissonClient.getBucket(key);
-        return bucket.trySet(value, timeout, unit);
+        return bucket.setIfAbsent(value, Duration.ofMillis(unit.toMillis(timeout)));
     }
     
     /**
@@ -189,7 +189,7 @@ public class RedisUtil {
      * @return 是否设置成功
      */
     public boolean expire(String key, long timeout, TimeUnit unit) {
-        return redissonClient.getBucket(key).expire(timeout, unit);
+        return redissonClient.getBucket(key).expire(Duration.ofMillis(unit.toMillis(timeout)));
     }
     
     /**
@@ -454,10 +454,8 @@ public class RedisUtil {
      */
     public Set<String> keys(String pattern) {
         RKeys keys = redissonClient.getKeys();
-        Iterable<String> keysByPattern = keys.getKeysByPattern(pattern);
-        Set<String> keySet = new HashSet<>();
-        keysByPattern.forEach(keySet::add);
-        return keySet;
+        return keys.getKeysStreamByPattern(pattern)
+            .collect(java.util.stream.Collectors.toSet());
     }
     
     /**

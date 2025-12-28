@@ -94,7 +94,7 @@ public class OnlineUserService {
             
             // 3. 创建Session记录（记录本次会话开始时间）
             String sessionKey = USER_SESSION_PREFIX + userId;
-            redissonClient.getBucket(sessionKey).set(String.valueOf(loginTime), 24, TimeUnit.HOURS);
+            redissonClient.getBucket(sessionKey).set(String.valueOf(loginTime), Duration.ofHours(24));
             
             log.info("用户上线: userId={}, username={}, ip={}, loginTime={}", userId, username, ip, loginTime);
         } catch (Exception e) {

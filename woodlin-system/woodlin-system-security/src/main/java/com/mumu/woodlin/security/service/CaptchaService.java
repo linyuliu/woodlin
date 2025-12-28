@@ -1,5 +1,6 @@
 package com.mumu.woodlin.security.service;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import org.redisson.api.RBucket;
@@ -72,7 +73,7 @@ public class CaptchaService {
         // 存储到Redis，设置过期时间
         String redisKey = CAPTCHA_KEY_PREFIX + captchaId;
         RBucket<String> bucket = redissonClient.getBucket(redisKey);
-        bucket.set(captchaText, CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        bucket.set(captchaText, Duration.ofMinutes(CAPTCHA_EXPIRE_MINUTES));
         
         // 获取Base64图片
         String captchaImage = captcha.toBase64();
