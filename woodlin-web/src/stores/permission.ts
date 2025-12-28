@@ -156,6 +156,15 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns 是否有权限
    */
   function hasRoutePermission(route: RouteRecordRaw, permissionSet: Set<string>): boolean {
+    // 如果用户拥有超级权限，允许访问所有路由
+    if (permissionSet.has('*') || 
+        permissionSet.has('admin') || 
+        permissionSet.has('super_admin') ||
+        permissionSet.has('ROLE_ADMIN') ||
+        permissionSet.has('ROLE_SUPER_ADMIN')) {
+      return true
+    }
+    
     // 如果路由没有设置权限要求，默认可访问
     const routePermissions = route.meta?.permissions as string[] | undefined
     if (!routePermissions || routePermissions.length === 0) {
@@ -230,17 +239,40 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns 过滤后的路由
    */
   function useFallbackRoutes(permissions: string[]): RouteRecordRaw[] {
-    // 如果权限中包含'*'或'admin'或'super_admin'，则拥有所有权限
-    if (permissions.includes('*') || 
-        permissions.includes('admin') || 
-        permissions.includes('super_admin')) {
+    logger.log('使用降级路由（静态路由）, 用户权限:', permissions)
+    
+    // 如果权限中包含'*'或'admin'或'super_admin'或角色码，则拥有所有权限
+    const hasAllPermissions = permissions.some(p => 
+      p === '*' || 
+      p === 'admin' || 
+      p === 'super_admin' ||
+      p === 'ROLE_ADMIN' ||
+      p === 'ROLE_SUPER_ADMIN' ||
+      p.toLowerCase().includes('admin')
+    )
+    
+    if (hasAllPermissions) {
       logger.log('用户拥有全部权限，加载所有路由')
       return asyncRoutes || []
-    } else {
-      // 根据权限过滤路由
-      logger.log('根据权限过滤路由...')
-      return filterAsyncRoutes(asyncRoutes || [], permissions)
     }
+    
+    // 如果用户权限列表为空或很少，也加载所有路由（开发模式友好）
+    if (!permissions || permissions.length === 0) {
+      logger.warn('用户权限为空，加载所有路由（开发模式）')
+      return asyncRoutes || []
+    }
+    
+    // 根据权限过滤路由
+    logger.log('根据权限过滤路由...')
+    const filtered = filterAsyncRoutes(asyncRoutes || [], permissions)
+    
+    // 如果过滤后没有路由，返回所有路由（避免用户完全无法访问）
+    if (!filtered || filtered.length === 0) {
+      logger.warn('过滤后没有可用路由，返回所有路由作为降级方案')
+      return asyncRoutes || []
+    }
+    
+    return filtered
   }
   
   /**
