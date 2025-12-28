@@ -205,6 +205,14 @@ export const usePermissionStore = defineStore('permission', () => {
     menuRoutes.value = routes.value.filter(route => !route.meta?.hideInMenu)
     isRoutesGenerated.value = true
     
+    // 持久化路由生成状态到localStorage
+    try {
+      localStorage.setItem('routesGenerated', 'true')
+      localStorage.setItem('routesGeneratedTime', String(Date.now()))
+    } catch (error) {
+      logger.error('保存路由状态到localStorage失败:', error)
+    }
+    
     logger.log('路由已生成:', {
       total: routes.value.length,
       added: addedRoutes.value.length,
@@ -336,6 +344,34 @@ export const usePermissionStore = defineStore('permission', () => {
   }
   
   /**
+   * 从localStorage恢复路由生成状态
+   */
+  function restoreRoutesState(): boolean {
+    try {
+      const routesGenerated = localStorage.getItem('routesGenerated')
+      const routesGeneratedTime = localStorage.getItem('routesGeneratedTime')
+      
+      if (routesGenerated === 'true' && routesGeneratedTime) {
+        const generatedTime = Number(routesGeneratedTime)
+        const now = Date.now()
+        // 如果路由生成时间在1小时内，则认为有效
+        const oneHour = 60 * 60 * 1000
+        
+        if (now - generatedTime < oneHour) {
+          isRoutesGenerated.value = true
+          logger.log('从localStorage恢复路由状态成功')
+          return true
+        } else {
+          logger.log('路由状态已过期，需要重新生成')
+        }
+      }
+    } catch (error) {
+      logger.error('从localStorage恢复路由状态失败:', error)
+    }
+    return false
+  }
+  
+  /**
    * 清除动态路由
    */
   function clearRoutes() {
@@ -344,6 +380,14 @@ export const usePermissionStore = defineStore('permission', () => {
     menuRoutes.value = []
     isRoutesGenerated.value = false
     isRoutesAdded.value = false
+    
+    // 从localStorage清除路由状态
+    try {
+      localStorage.removeItem('routesGenerated')
+      localStorage.removeItem('routesGeneratedTime')
+    } catch (error) {
+      logger.error('清除localStorage路由状态失败:', error)
+    }
     
     logger.log('路由已清除')
   }
@@ -376,6 +420,9 @@ export const usePermissionStore = defineStore('permission', () => {
     logger.log('路由已标记为已添加到路由器')
   }
 
+  // 初始化：从localStorage恢复路由状态
+  restoreRoutesState()
+
   return {
     // 状态
     routes,
@@ -390,6 +437,7 @@ export const usePermissionStore = defineStore('permission', () => {
     // 方法
     generateRoutes,
     clearRoutes,
+    restoreRoutesState,
     markRoutesAdded,
     filterAsyncRoutes,
     hasRoutePermission,
