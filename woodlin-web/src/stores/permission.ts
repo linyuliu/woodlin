@@ -119,6 +119,19 @@ export const usePermissionStore = defineStore('permission', () => {
   }
   
   /**
+   * 获取无权限要求的基础路由
+   * 用于安全降级，返回所有不需要特定权限的路由
+   * 
+   * @param routes 路由列表
+   * @returns 无权限要求的路由
+   */
+  function getPermissionFreeRoutes(routes: RouteRecordRaw[]): RouteRecordRaw[] {
+    return routes.filter(route => {
+      return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
+    })
+  }
+  
+  /**
    * 过滤异步路由（内部方法，使用Set）
    * 
    * @param routes 路由配置
@@ -261,17 +274,14 @@ export const usePermissionStore = defineStore('permission', () => {
       logger.warn('用户权限为空，仅加载基础路由（请确认是否为开发环境）')
       const config = getConfig()
       
-      // 在开发环境下，返回所有路由；生产环境下，仅返回仪表板
+      // 在开发环境下，返回所有路由；生产环境下，仅返回无权限要求的基础路由
       if (import.meta.env.DEV || !config.router.enablePermission) {
         logger.warn('开发模式：加载所有路由')
         return asyncRoutes || []
       } else {
-        // 生产环境：仅返回仪表板和用户设置等基础路由
-        logger.warn('生产模式：仅加载基础路由')
-        return asyncRoutes?.filter(route => {
-          // 保留没有权限要求的路由
-          return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
-        }) || []
+        // 生产环境：仅返回无权限要求的路由（如用户设置、个人中心等）
+        logger.warn('生产模式：仅加载无权限要求的基础路由')
+        return getPermissionFreeRoutes(asyncRoutes || [])
       }
     }
     
@@ -279,13 +289,11 @@ export const usePermissionStore = defineStore('permission', () => {
     logger.log('根据权限过滤路由...')
     const filtered = filterAsyncRoutes(asyncRoutes || [], permissions)
     
-    // 如果过滤后没有路由，返回基础路由（避免用户完全无法访问）
+    // 如果过滤后没有路由，返回无权限要求的基础路由（避免用户完全无法访问）
     if (!filtered || filtered.length === 0) {
-      logger.warn('过滤后没有可用路由，返回基础路由作为降级方案')
+      logger.warn('过滤后没有可用路由，返回无权限要求的基础路由作为降级方案')
       // 返回不需要权限的路由（如用户设置、个人中心等）
-      return asyncRoutes?.filter(route => {
-        return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
-      }) || []
+      return getPermissionFreeRoutes(asyncRoutes || [])
     }
     
     return filtered
