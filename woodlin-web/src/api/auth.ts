@@ -132,9 +132,55 @@ export function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
 }
 
 /**
+ * 用户信息响应接口
+ */
+export interface UserInfoResponse {
+  /** 用户ID */
+  userId?: string | number
+  /** 用户ID (备用字段) */
+  id?: string | number
+  /** 用户名 */
+  username?: string
+  /** 昵称 */
+  nickname?: string
+  /** 真实姓名 */
+  realName?: string
+  /** 邮箱 */
+  email?: string
+  /** 手机号 */
+  mobile?: string
+  /** 头像 */
+  avatar?: string
+  /** 性别 */
+  gender?: string
+  /** 部门ID */
+  deptId?: string | number
+  /** 部门名称 */
+  deptName?: string
+  /** 租户ID */
+  tenantId?: string | number
+  /** 租户名称 */
+  tenantName?: string
+  /** 角色代码列表 */
+  roleCodes?: string[]
+  /** 角色列表 (备用字段) */
+  roles?: string[]
+  /** 权限列表 */
+  permissions?: string[]
+  /** 用户状态 */
+  status?: string
+  /** 创建时间 */
+  createTime?: string
+  /** 最后登录时间 */
+  lastLoginTime?: string
+  /** 登录时间 (备用字段) */
+  loginTime?: string
+}
+
+/**
  * 获取当前用户信息
  */
-export function getUserInfo(): Promise<Record<string, unknown>> {
+export function getUserInfo(): Promise<UserInfoResponse> {
   return request.get('/auth/userinfo')
 }
 
