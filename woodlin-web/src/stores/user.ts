@@ -163,7 +163,8 @@ export const useUserStore = defineStore('user', () => {
     
     if (Array.isArray(permission)) {
       // 数组：检查是否拥有其中任意一个权限
-      // 如果数组为空，返回true（无权限要求）
+      // 如果数组为空，表示路由无权限要求（如公共页面、用户设置等）
+      // 这种设计允许某些路由对所有登录用户开放
       if (permission.length === 0) {
         return true
       }
