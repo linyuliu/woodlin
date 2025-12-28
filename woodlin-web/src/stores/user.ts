@@ -6,7 +6,7 @@
  * @since 2025-01-01
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 import { getUserInfo } from '@/api/auth'
 
@@ -250,8 +250,10 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // 初始化：从localStorage恢复用户信息
-  restoreUserInfo()
+  // 初始化：从localStorage恢复用户信息（延迟执行，避免阻塞主线程）
+  nextTick(() => {
+    restoreUserInfo()
+  })
 
   return {
     // 状态

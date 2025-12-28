@@ -123,6 +123,8 @@ export interface RouterConfig {
   enableCache: boolean
   /** 路由切换动画 */
   transitionName: string
+  /** 路由缓存过期时间（毫秒），默认1小时 */
+  routeCacheExpiration: number
 }
 
 /**
@@ -185,7 +187,8 @@ const defaultConfig: ProjectConfig = {
     homePath: '/dashboard',
     notFoundPath: '/404',
     enableCache: true,
-    transitionName: 'fade-slide'
+    transitionName: 'fade-slide',
+    routeCacheExpiration: 60 * 60 * 1000 // 1小时（毫秒）
   }
 }
 
