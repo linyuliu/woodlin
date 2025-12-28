@@ -8,8 +8,7 @@
 
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { RouteRecordRaw } from 'vue-router'
-import { RouterView } from 'vue-router'
+import { RouterView, type RouteRecordRaw } from 'vue-router'
 import { asyncRoutes, constantRoutes } from '@/router/routes'
 import { getUserRoutes } from '@/api/auth'
 import { logger } from '@/utils/logger'
