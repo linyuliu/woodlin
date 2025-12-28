@@ -18,7 +18,8 @@ import * as Icons from '@vicons/ionicons5'
 function renderIcon(icon: Component | string) {
   if (typeof icon === 'string') {
     // 根据图标名称动态加载图标
-    const IconComponent = (Icons as any)[toPascalCase(icon)]
+    const iconName = toPascalCase(icon)
+    const IconComponent = Icons[iconName as keyof typeof Icons] as Component | undefined
     if (IconComponent) {
       return () => h(NIcon, null, { default: () => h(IconComponent) })
     }

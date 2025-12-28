@@ -214,9 +214,9 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
       typeof targetValue === 'object' &&
       !Array.isArray(targetValue)
     ) {
-      result[key] = deepMerge(targetValue, sourceValue) as any
+      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<keyof T, string>]
     } else if (sourceValue !== undefined) {
-      result[key] = sourceValue as any
+      result[key] = sourceValue as T[Extract<keyof T, string>]
     }
   }
   
