@@ -29,26 +29,42 @@ When backend routes failed to load or returned empty results, the fallback mecha
 // Before: Only checked for exact permission strings
 if (permissions.includes('*') || permissions.includes('admin') || permissions.includes('super_admin'))
 
-// After: Comprehensive admin detection
+// After: Exact matching for admin roles (secure)
 const hasAllPermissions = permissions.some(p => 
   p === '*' || 
   p === 'admin' || 
   p === 'super_admin' ||
   p === 'ROLE_ADMIN' ||
-  p === 'ROLE_SUPER_ADMIN' ||
-  p.toLowerCase().includes('admin')
+  p === 'ROLE_SUPER_ADMIN'
+  // No longer uses .toLowerCase().includes('admin') to prevent false positives
 )
 
-// Added: Development mode support
+// Added: Environment-aware fallbacks for security
 if (!permissions || permissions.length === 0) {
-  logger.warn('用户权限为空，加载所有路由（开发模式）')
-  return asyncRoutes || []
+  logger.warn('用户权限为空，仅加载基础路由（请确认是否为开发环境）')
+  const config = getConfig()
+  
+  // Development: All routes for testing convenience
+  // Production: Only permission-free routes for security
+  if (import.meta.env.DEV || !config.router.enablePermission) {
+    logger.warn('开发模式：加载所有路由')
+    return asyncRoutes || []
+  } else {
+    logger.warn('生产模式：仅加载基础路由')
+    return asyncRoutes?.filter(route => {
+      // Only return routes without permission requirements
+      return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
+    }) || []
+  }
 }
 
-// Added: Prevent complete lockout
+// Changed: Secure fallback returns minimal routes, not all routes
 if (!filtered || filtered.length === 0) {
-  logger.warn('过滤后没有可用路由，返回所有路由作为降级方案')
-  return asyncRoutes || []
+  logger.warn('过滤后没有可用路由，返回基础路由作为降级方案')
+  // Return only permission-free routes (like user settings, profile)
+  return asyncRoutes?.filter(route => {
+    return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
+  }) || []
 }
 ```
 
