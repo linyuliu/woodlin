@@ -8,7 +8,7 @@
 
 import { ref, computed, nextTick } from 'vue'
 import { defineStore } from 'pinia'
-import { getUserInfo } from '@/api/auth'
+import { getUserInfo, type UserInfoResponse } from '@/api/auth'
 
 /**
  * 用户信息接口
@@ -116,26 +116,26 @@ export const useUserStore = defineStore('user', () => {
    */
   async function fetchUserInfo(): Promise<UserInfo> {
     try {
-      const data = await getUserInfo()
+      const data: UserInfoResponse = await getUserInfo()
       // 将返回的数据转换为UserInfo类型，添加必要的字段处理
       const info: UserInfo = {
-        id: (data as any).userId || (data as any).id,
-        username: (data as any).username || '',
-        nickname: (data as any).nickname,
-        realName: (data as any).realName,
-        email: (data as any).email,
-        mobile: (data as any).mobile,
-        avatar: (data as any).avatar,
-        gender: (data as any).gender,
-        deptId: (data as any).deptId,
-        deptName: (data as any).deptName,
-        tenantId: (data as any).tenantId,
-        tenantName: (data as any).tenantName,
-        roles: (data as any).roleCodes || (data as any).roles || [],
-        permissions: (data as any).permissions || [],
-        status: (data as any).status,
-        createTime: (data as any).createTime,
-        lastLoginTime: (data as any).lastLoginTime || (data as any).loginTime
+        id: data.userId || data.id || '',
+        username: data.username || '',
+        nickname: data.nickname,
+        realName: data.realName,
+        email: data.email,
+        mobile: data.mobile,
+        avatar: data.avatar,
+        gender: data.gender,
+        deptId: data.deptId,
+        deptName: data.deptName,
+        tenantId: data.tenantId,
+        tenantName: data.tenantName,
+        roles: data.roleCodes || data.roles || [],
+        permissions: data.permissions || [],
+        status: data.status,
+        createTime: data.createTime,
+        lastLoginTime: data.lastLoginTime || data.loginTime
       }
       setUserInfo(info)
       return info

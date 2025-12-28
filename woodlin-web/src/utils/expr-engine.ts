@@ -198,7 +198,9 @@ const makeParser = (tokens: Token[]) => {
                     if (!(tokens[cur].type === 'punc' && tokens[cur].value === ')'))
                         {throw new ParseError('期望 )', tokens[cur].pos);}
                     cur++;
-                    node = {type: 'call', name: (node as any).value ?? 'unknown', args};
+                    // Extract name from ref node
+                    const name: string = node.type === 'ref' ? node.value : 'unknown';
+                    node = {type: 'call', name, args};
                     continue;
                 }
                 // 属性访问
@@ -206,7 +208,10 @@ const makeParser = (tokens: Token[]) => {
                     if (!(tokens[cur + 1] && tokens[cur + 1].type === 'ident'))
                         {throw new ParseError('期望标识符作为属性名', tokens[cur].pos);}
                     const prop = tokens[cur + 1].value;
-                    (node as any).value = (node as any).value + '.' + prop;
+                    // Only ref nodes have mutable value property
+                    if (node.type === 'ref') {
+                        node.value = node.value + '.' + prop;
+                    }
                     cur += 2;
                     continue;
                 }
@@ -219,7 +224,10 @@ const makeParser = (tokens: Token[]) => {
                         {throw new ParseError('期望 ]', tokens[cur].pos);}
                     cur++;
                     // 将索引表达式序列化内嵌到 ref 字符串（evaluate 时会解析）
-                    (node as any).value = (node as any).value + '[' + stringifyExpr(idxExpr) + ']';
+                    // Only ref nodes have mutable value property
+                    if (node.type === 'ref') {
+                        node.value = node.value + '[' + stringifyExpr(idxExpr) + ']';
+                    }
                     continue;
                 }
                 break;
@@ -443,8 +451,11 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
                 return evaluate(expr.body, newContext);
             };
             
-        default:
-            throw new Error(`未知的表达式类型: ${(expr as any).type}`);
+        default: {
+            // Use exhaustive check to ensure all Expr types are handled
+            const _exhaustiveCheck: never = expr;
+            throw new Error(`未知的表达式类型: ${(_exhaustiveCheck as Expr).type}`);
+        }
     }
 }
 
