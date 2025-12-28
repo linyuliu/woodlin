@@ -22,6 +22,12 @@
 
     <!-- 第三方依赖版本定义 -->
     <properties>
+        <!-- Spring Cloud -->
+        <spring-cloud.version>2023.0.5</spring-cloud.version>
+        
+        <!-- Spring Cloud Alibaba -->
+        <spring-cloud-alibaba.version>2023.0.3.3</spring-cloud-alibaba.version>
+        
         <!-- 安全认证框架 -->
         <sa-token.version>1.39.0</sa-token.version>
 
@@ -152,6 +158,24 @@
                 <groupId>com.mumu</groupId>
                 <artifactId>woodlin-system-sql2api</artifactId>
                 <version>${woodlin.version}</version>
+            </dependency>
+
+            <!-- Spring Cloud BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud Alibaba BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <!-- Sa-Token 安全框架 -->

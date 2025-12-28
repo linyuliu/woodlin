@@ -1,0 +1,36 @@
+# Woodlin MyBatis Plus 配置
+# Data ID: woodlin-mybatis.yml
+# Group: DEFAULT_GROUP
+# 描述: MyBatis Plus 全局配置
+
+mybatis-plus:
+  # mapper文件位置
+  mapper-locations: classpath*:mapper/**/*.xml
+  # 实体类别名包路径
+  type-aliases-package: com.mumu.woodlin.*.entity
+  # 全局配置
+  global-config:
+    # 数据库字段映射配置
+    db-config:
+      # 主键类型
+      id-type: ASSIGN_ID
+      # 逻辑删除字段
+      logic-delete-field: deleted
+      # 逻辑删除值
+      logic-delete-value: 1
+      # 逻辑未删除值
+      logic-not-delete-value: 0
+    # 是否控制台打印MyBatis Plus启动banner
+    banner: false
+  # 配置
+  configuration:
+    # 是否开启自动驼峰命名规则映射
+    map-underscore-to-camel-case: true
+    # 缓存配置
+    cache-enabled: false
+    # 调用setters时是否调用
+    call-setters-on-nulls: true
+    # JDBC类型为空时的处理方式
+    jdbc-type-for-null: null
+    # 日志实现
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
