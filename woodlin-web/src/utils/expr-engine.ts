@@ -450,13 +450,10 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
                 const newContext = {...context, [expr.param]: param};
                 return evaluate(expr.body, newContext);
             };
-            
-        default: {
-            // Use exhaustive check to ensure all Expr types are handled
-            const _exhaustiveCheck: never = expr;
-            throw new Error(`未知的表达式类型: ${(_exhaustiveCheck as Expr).type}`);
-        }
     }
+    
+    // This line should never be reached due to exhaustive switch above
+    throw new Error(`未知的表达式类型: ${(expr as {type: string}).type}`);
 }
 
 // 便捷函数：解析并评估表达式
