@@ -66,12 +66,12 @@ function createAuthGuard(router: Router): void {
     // 如果用户信息未加载，先加载用户信息
     if (!userStore.isUserInfoLoaded) {
       try {
-        logger.log('加载用户信息...')
+        logger.log('用户信息未加载，开始获取用户信息...')
         await userStore.fetchUserInfo()
         
         // 生成动态路由
         if (!permissionStore.isRoutesGenerated) {
-          logger.log('生成动态路由...')
+          logger.log('路由未生成，开始生成动态路由...')
           await permissionStore.generateRoutes(userStore.permissions)
         }
       } catch (error) {
@@ -80,6 +80,26 @@ function createAuthGuard(router: Router): void {
         // 清除认证状态
         authStore.clearToken()
         userStore.clearUserInfo()
+        
+        // 跳转到登录页
+        next({
+          path: config.router.loginPath,
+          query: { redirect: to.fullPath }
+        })
+        return
+      }
+    } else if (!permissionStore.isRoutesGenerated) {
+      // 用户信息已加载，但路由未生成（可能是刷新后从缓存恢复的情况）
+      try {
+        logger.log('用户信息已存在，但路由未生成，开始生成动态路由...')
+        await permissionStore.generateRoutes(userStore.permissions)
+      } catch (error) {
+        logger.error('生成路由失败:', error)
+        
+        // 清除认证状态
+        authStore.clearToken()
+        userStore.clearUserInfo()
+        permissionStore.clearRoutes()
         
         // 跳转到登录页
         next({

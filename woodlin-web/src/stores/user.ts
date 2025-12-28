@@ -100,6 +100,15 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = info.permissions || []
     roles.value = info.roles || []
     isUserInfoLoaded.value = true
+    
+    // 持久化用户信息到localStorage
+    try {
+      localStorage.setItem('userInfo', JSON.stringify(info))
+      localStorage.setItem('userPermissions', JSON.stringify(info.permissions || []))
+      localStorage.setItem('userRoles', JSON.stringify(info.roles || []))
+    } catch (error) {
+      console.error('保存用户信息到localStorage失败:', error)
+    }
   }
   
   /**
@@ -191,6 +200,28 @@ export const useUserStore = defineStore('user', () => {
   }
   
   /**
+   * 从localStorage恢复用户信息
+   */
+  function restoreUserInfo(): boolean {
+    try {
+      const savedUserInfo = localStorage.getItem('userInfo')
+      const savedPermissions = localStorage.getItem('userPermissions')
+      const savedRoles = localStorage.getItem('userRoles')
+      
+      if (savedUserInfo) {
+        userInfo.value = JSON.parse(savedUserInfo)
+        permissions.value = savedPermissions ? JSON.parse(savedPermissions) : []
+        roles.value = savedRoles ? JSON.parse(savedRoles) : []
+        isUserInfoLoaded.value = true
+        return true
+      }
+    } catch (error) {
+      console.error('从localStorage恢复用户信息失败:', error)
+    }
+    return false
+  }
+  
+  /**
    * 清除用户信息（登出时调用）
    */
   function clearUserInfo() {
@@ -198,6 +229,15 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = []
     roles.value = []
     isUserInfoLoaded.value = false
+    
+    // 从localStorage清除用户信息
+    try {
+      localStorage.removeItem('userInfo')
+      localStorage.removeItem('userPermissions')
+      localStorage.removeItem('userRoles')
+    } catch (error) {
+      console.error('清除localStorage用户信息失败:', error)
+    }
   }
   
   /**
@@ -209,6 +249,9 @@ export const useUserStore = defineStore('user', () => {
       userInfo.value = { ...userInfo.value, ...info }
     }
   }
+
+  // 初始化：从localStorage恢复用户信息
+  restoreUserInfo()
 
   return {
     // 状态
@@ -226,6 +269,7 @@ export const useUserStore = defineStore('user', () => {
     // 方法
     setUserInfo,
     fetchUserInfo,
+    restoreUserInfo,
     hasPermission,
     hasAllPermissions,
     hasRole,
