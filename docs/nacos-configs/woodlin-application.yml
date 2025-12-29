@@ -1,9 +1,96 @@
-# Woodlin 业务配置
-# Data ID: woodlin-business.yml
+# Woodlin 应用配置
+# Data ID: woodlin-application.yml
 # Group: DEFAULT_GROUP
-# 描述: Woodlin 业务功能配置（安全、缓存、加密等）
+# 描述: 应用特定配置，包含认证、文档、业务功能等
+#       这些配置是本应用独有的，不同微服务可能有不同的配置
 
-# SnailJob 分布式任务调度配置
+# ==================== Sa-Token 认证配置 ====================
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: ${SA_TOKEN_NAME:Authorization}
+  # token前缀 (符合OAuth2标准的Bearer前缀)
+  token-prefix: ${SA_TOKEN_PREFIX:Bearer}
+  # token有效期，单位s 默认30天, -1代表永不过期
+  timeout: ${SA_TOKEN_TIMEOUT:2592000}
+  # token临时有效期 (指定时间内无操作就视为token过期) 单位: 秒
+  activeTimeout: ${SA_TOKEN_ACTIVITY_TIMEOUT:3600}
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: ${SA_TOKEN_IS_CONCURRENT:true}
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: ${SA_TOKEN_IS_SHARE:false}
+  # token风格
+  token-style: ${SA_TOKEN_STYLE:uuid}
+  # 是否输出操作日志
+  is-log: ${SA_TOKEN_IS_LOG:false}
+
+# ==================== SpringDoc & Knife4j API 文档配置 ====================
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: Woodlin 管理后台系统 API
+    description: 高质量多租户中后台管理系统框架 - 注重设计与代码细节
+    version: '@project.version@'
+    contact:
+      name: mumu
+    license:
+      name: MIT License
+      url: https://opensource.org/licenses/MIT
+  # 分组排序
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: 'com.mumu.woodlin'
+
+knife4j:
+  # 是否启用Knife4j增强模式
+  enable: ${KNIFE4J_ENABLE:true}
+  # 是否启用Knife4j的Basic认证功能
+  basic:
+    enable: ${KNIFE4J_BASIC_ENABLE:false}
+    username: ${KNIFE4J_BASIC_USERNAME:admin}
+    password: ${KNIFE4J_BASIC_PASSWORD:123456}
+  # 是否启用生产环境屏蔽
+  production: ${KNIFE4J_PRODUCTION:false}
+  # 前端Ui的个性化配置属性
+  setting:
+    # 自定义页脚
+    enable-footer: true
+    enable-footer-custom: true
+    footer-custom-content: 'Copyright © 2025 Woodlin | Powered by Knife4j'
+    # 是否启用动态参数调试功能
+    enable-dynamic-parameter: true
+    # 是否启用过滤功能
+    enable-filter-multipart-apis: false
+    # 是否开启请求参数缓存
+    enable-request-cache: true
+    # 是否启用Host
+    enable-host: false
+    # 是否显示SwaggerModel
+    enable-swagger-models: true
+    # 是否显示对应的请求类型
+    enable-reload-cache-parameter: true
+    # 主页自定义Markdown文档
+    enable-home-custom: true
+    home-custom-path: 'classpath:markdown/home.md'
+    # 是否启用搜索框
+    enable-search: true
+    # 是否启用调试
+    enable-debug: true
+    # 是否开启动态请求参数
+    enable-open-api: true
+    # 是否启用界面中SwaggerModel展示
+    enable-response-code: true
+  # CORS跨域配置
+  cors: false
+
+# ==================== SnailJob 分布式任务调度配置 ====================
 snail-job:
   # 是否启用SnailJob
   enabled: ${SNAIL_JOB_ENABLED:true}
@@ -22,12 +109,14 @@ snail-job:
       # 重试间隔(秒)
       retry-interval: ${SNAIL_JOB_RETRY_INTERVAL:30}
 
-# Woodlin 安全配置
+# ==================== Woodlin 业务配置 ====================
 woodlin:
   # 构建信息配置
   build-info:
     # 是否在API响应中包含远程仓库URL（生产环境建议设置为false）
     include-remote-url: ${BUILD_INFO_INCLUDE_REMOTE_URL:false}
+  
+  # 安全配置
   security:
     # 用户活动监控配置
     activity-monitoring:
@@ -43,6 +132,8 @@ woodlin:
       monitor-user-interactions: ${ACTIVITY_MONITORING_INTERACTIONS:true}
       # 活动监控警告提前时间（秒）
       warning-before-timeout-seconds: ${ACTIVITY_MONITORING_WARNING:300}
+    
+    # 密码策略配置
     password:
       # 是否启用密码策略
       enabled: ${PASSWORD_POLICY_ENABLED:true}
@@ -70,6 +161,7 @@ woodlin:
       require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:false}
       # 是否要求包含特殊字符
       require-special-chars: ${PASSWORD_REQUIRE_SPECIAL_CHARS:false}
+  
   # API加密配置
   api:
     encryption:
@@ -118,6 +210,7 @@ woodlin:
       add-encryption-header: ${API_ENCRYPTION_HEADER:true}
       # 加密标识响应头名称
       encryption-header-name: ${API_ENCRYPTION_HEADER_NAME:X-Encrypted}
+  
   # 缓存配置
   cache:
     # 是否启用Redis二级缓存
@@ -138,13 +231,12 @@ woodlin:
       expire-seconds: ${CACHE_CONFIG_EXPIRE:7200}
       # 缓存刷新间隔（秒）
       refresh-interval-seconds: ${CACHE_CONFIG_REFRESH:3600}
+  
   # 可搜索加密配置
   searchable-encryption:
     # 是否启用可搜索加密功能
     enabled: ${SEARCHABLE_ENCRYPTION_ENABLED:false}
     # 加密密钥（Base64编码，256位）
-    # 生成方法：SearchableEncryptionUtil.generateKey(256)
-    # 或使用命令：openssl rand -base64 32
     encryption-key: ${SEARCHABLE_ENCRYPTION_KEY:}
     # N-gram的大小，用于模糊搜索（默认2）
     ngram-size: ${SEARCHABLE_ENCRYPTION_NGRAM_SIZE:2}
@@ -160,14 +252,11 @@ woodlin:
     cache-expire-seconds: ${SEARCHABLE_ENCRYPTION_CACHE_EXPIRE:3600}
     # 最大缓存条目数
     max-cache-size: ${SEARCHABLE_ENCRYPTION_MAX_CACHE:10000}
+  
   # 响应配置
   response:
     # 响应字段过滤模式（全局默认配置）
-    # - NONE: 不过滤，包含所有字段（默认）
-    # - MINIMAL: 最小模式，仅包含 code 和 data
-    # - CUSTOM: 自定义模式，根据下面的 include* 配置决定
     filter-mode: ${RESPONSE_FILTER_MODE:NONE}
-    # 以下配置仅在 filter-mode=CUSTOM 时生效（全局默认配置）
     # 是否包含时间戳字段
     include-timestamp: ${RESPONSE_INCLUDE_TIMESTAMP:true}
     # 是否包含请求ID字段
@@ -177,20 +266,15 @@ woodlin:
     # 是否包含状态码字段
     include-code: ${RESPONSE_INCLUDE_CODE:true}
     # 是否启用请求级别的动态控制
-    # 启用后，可以通过请求头动态控制每个请求的响应字段
     enable-request-control: ${RESPONSE_ENABLE_REQUEST_CONTROL:true}
     # 请求头名称，用于控制响应字段
-    # 示例: X-Response-Fields: code,data,message
-    # 示例: X-Response-Fields: -timestamp,-requestId (排除字段)
     request-header-name: ${RESPONSE_REQUEST_HEADER_NAME:X-Response-Fields}
+  
   # CORS跨域配置
   cors:
     # 是否启用CORS（默认启用）
     enabled: ${CORS_ENABLED:true}
     # 允许的源配置
-    # 注意：此处为默认配置，具体环境的配置请在 application-{profile}.yml 中覆盖
-    # dev/test环境：使用通配符 "*" 方便开发调试
-    # prod环境：配置具体域名保证安全性
     allowed-origin-patterns:
       - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
     # 允许的HTTP方法

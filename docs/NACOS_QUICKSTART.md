@@ -36,54 +36,21 @@ docker run -d \
 3. 点击右上角 **+** 按钮
 4. 依次创建以下配置：
 
-#### 配置 1: woodlin-datasource.yml
+#### 配置 1: woodlin-basic.yml（基础配置）
 
-- **Data ID**: `woodlin-datasource.yml`
+- **Data ID**: `woodlin-basic.yml`
 - **Group**: `DEFAULT_GROUP`
 - **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-datasource.yml` 的内容
+- **配置内容**: 复制 `docs/nacos-configs/woodlin-basic.yml` 的内容
+- **说明**: 包含数据库、Redis、MyBatis 等基础设施配置
 
-#### 配置 2: woodlin-redis.yml
+#### 配置 2: woodlin-application.yml（应用配置）
 
-- **Data ID**: `woodlin-redis.yml`
+- **Data ID**: `woodlin-application.yml`
 - **Group**: `DEFAULT_GROUP`
 - **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-redis.yml` 的内容
-
-#### 配置 3: woodlin-mybatis.yml
-
-- **Data ID**: `woodlin-mybatis.yml`
-- **Group**: `DEFAULT_GROUP`
-- **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-mybatis.yml` 的内容
-
-#### 配置 4: woodlin-sa-token.yml
-
-- **Data ID**: `woodlin-sa-token.yml`
-- **Group**: `DEFAULT_GROUP`
-- **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-sa-token.yml` 的内容
-
-#### 配置 5: woodlin-knife4j.yml
-
-- **Data ID**: `woodlin-knife4j.yml`
-- **Group**: `DEFAULT_GROUP`
-- **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-knife4j.yml` 的内容
-
-#### 配置 6: woodlin-business.yml
-
-- **Data ID**: `woodlin-business.yml`
-- **Group**: `DEFAULT_GROUP`
-- **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-business.yml` 的内容
-
-#### 配置 7: woodlin-admin-dev.yml
-
-- **Data ID**: `woodlin-admin-dev.yml`
-- **Group**: `DEFAULT_GROUP`
-- **配置格式**: `YAML`
-- **配置内容**: 复制 `docs/nacos-configs/woodlin-admin-dev.yml` 的内容
+- **配置内容**: 复制 `docs/nacos-configs/woodlin-application.yml` 的内容
+- **说明**: 包含 Sa-Token、Knife4j、业务功能等应用特定配置
 
 ### 方法二：使用脚本批量导入
 
@@ -98,13 +65,12 @@ NACOS_SERVER="http://localhost:8848"
 NACOS_GROUP="DEFAULT_GROUP"
 
 configs=(
-  "woodlin-datasource.yml"
-  "woodlin-redis.yml"
-  "woodlin-mybatis.yml"
-  "woodlin-sa-token.yml"
-  "woodlin-knife4j.yml"
-  "woodlin-business.yml"
-  "woodlin-admin-dev.yml"
+  "woodlin-basic.yml"
+  "woodlin-application.yml"
+)
+configs=(
+  "woodlin-basic.yml"
+  "woodlin-application.yml"
 )
 
 for config in "${configs[@]}"; do
@@ -166,8 +132,8 @@ mvn spring-boot:run -pl woodlin-admin
 1. 查看应用启动日志，确认从 Nacos 加载配置成功：
 
 ```
-INFO  c.a.c.n.c.NacosConfigService - [fixed-localhost_8848] [subscribe] woodlin-datasource.yml+DEFAULT_GROUP
-INFO  c.a.c.n.c.NacosConfigService - [fixed-localhost_8848] [subscribe] woodlin-redis.yml+DEFAULT_GROUP
+INFO  c.a.c.n.c.NacosConfigService - [fixed-localhost_8848] [subscribe] woodlin-basic.yml+DEFAULT_GROUP
+INFO  c.a.c.n.c.NacosConfigService - [fixed-localhost_8848] [subscribe] woodlin-application.yml+DEFAULT_GROUP
 ...
 ```
 
