@@ -30,36 +30,14 @@ spring:
         enabled: ${NACOS_CONFIG_ENABLED:true}
         # 配置文件格式
         file-extension: yml
-        # 共享配置（所有环境共享的配置）
+        # 共享配置（所有环境和微服务共享的配置）
         shared-configs:
-          # 数据库配置
-          - data-id: woodlin-datasource.yml
+          # 基础配置：数据库、Redis、MyBatis 等基础设施配置
+          - data-id: woodlin-basic.yml
             group: ${NACOS_GROUP:DEFAULT_GROUP}
             refresh: true
-          # Redis配置
-          - data-id: woodlin-redis.yml
-            group: ${NACOS_GROUP:DEFAULT_GROUP}
-            refresh: true
-          # MyBatis Plus配置
-          - data-id: woodlin-mybatis.yml
-            group: ${NACOS_GROUP:DEFAULT_GROUP}
-            refresh: true
-          # Sa-Token配置
-          - data-id: woodlin-sa-token.yml
-            group: ${NACOS_GROUP:DEFAULT_GROUP}
-            refresh: true
-          # Knife4j文档配置
-          - data-id: woodlin-knife4j.yml
-            group: ${NACOS_GROUP:DEFAULT_GROUP}
-            refresh: true
-          # Woodlin业务配置
-          - data-id: woodlin-business.yml
-            group: ${NACOS_GROUP:DEFAULT_GROUP}
-            refresh: true
-        # 扩展配置（环境特定配置）
-        extension-configs:
-          # 环境特定配置，例如：woodlin-admin-dev.yml
-          - data-id: ${spring.application.name}-${spring.profiles.active}.yml
+          # 应用配置：认证、文档、业务功能等应用特定配置
+          - data-id: woodlin-application.yml
             group: ${NACOS_GROUP:DEFAULT_GROUP}
             refresh: true
         # 配置刷新超时时间（毫秒）

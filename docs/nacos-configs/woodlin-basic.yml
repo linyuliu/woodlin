@@ -1,0 +1,85 @@
+# Woodlin 基础配置
+# Data ID: woodlin-basic.yml
+# Group: DEFAULT_GROUP
+# 描述: 基础设施配置，包含数据库、Redis、MyBatis等
+#       这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+
+# ==================== 数据库配置 ====================
+spring:
+  # 数据库配置
+  datasource:
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        master:
+          url: ${DATABASE_URL:jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
+          username: ${DATABASE_USERNAME:root}
+          password: ${DATABASE_PASSWORD:Passw0rd}
+          driver-class-name: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
+          type: com.alibaba.druid.pool.DruidDataSource
+          druid:
+            initial-size: ${DATABASE_DRUID_INITIAL_SIZE:5}
+            min-idle: ${DATABASE_DRUID_MIN_IDLE:5}
+            max-active: ${DATABASE_DRUID_MAX_ACTIVE:20}
+            max-wait: ${DATABASE_DRUID_MAX_WAIT:60000}
+            time-between-eviction-runs-millis: 60000
+            min-evictable-idle-time-millis: 300000
+            validation-query: ${DATABASE_DRUID_VALIDATION_QUERY:SELECT 1}
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+            pool-prepared-statements: true
+            max-pool-prepared-statement-per-connection-size: 20
+            filters: stat,wall,slf4j
+            connection-properties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
+
+  # ==================== Redis 配置 ====================
+  # Redis配置
+  # 注意：Redisson会自动使用此配置，无需单独配置Redisson
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:10s}
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:200}
+          max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:0}
+
+# ==================== MyBatis Plus 配置 ====================
+mybatis-plus:
+  # mapper文件位置
+  mapper-locations: classpath*:mapper/**/*.xml
+  # 实体类别名包路径
+  type-aliases-package: com.mumu.woodlin.*.entity
+  # 全局配置
+  global-config:
+    # 数据库字段映射配置
+    db-config:
+      # 主键类型
+      id-type: ASSIGN_ID
+      # 逻辑删除字段
+      logic-delete-field: deleted
+      # 逻辑删除值
+      logic-delete-value: 1
+      # 逻辑未删除值
+      logic-not-delete-value: 0
+    # 是否控制台打印MyBatis Plus启动banner
+    banner: false
+  # 配置
+  configuration:
+    # 是否开启自动驼峰命名规则映射
+    map-underscore-to-camel-case: true
+    # 缓存配置
+    cache-enabled: false
+    # 调用setters时是否调用
+    call-setters-on-nulls: true
+    # JDBC类型为空时的处理方式
+    jdbc-type-for-null: null
+    # 日志实现
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl

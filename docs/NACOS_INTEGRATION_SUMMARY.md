@@ -21,8 +21,7 @@
 #### Bootstrap 配置文件（启动配置）：
 - **bootstrap.yml** - 主配置文件
   - Nacos 服务器连接信息
-  - 共享配置列表（7个配置文件）
-  - 扩展配置（环境特定配置）
+  - 共享配置列表（2个配置文件）
   
 - **bootstrap-dev.yml** - 开发环境配置
 - **bootstrap-test.yml** - 测试环境配置
@@ -30,41 +29,20 @@
 
 #### Nacos 配置中心文件（docs/nacos-configs/）：
 
-1. **woodlin-datasource.yml** - 数据库配置
-   - 数据源配置
-   - Druid 连接池配置
-   - 动态数据源配置
+配置已简化为 2 个文件，便于维护：
 
-2. **woodlin-redis.yml** - Redis 配置
-   - Redis 连接信息
-   - Lettuce 连接池配置
+1. **woodlin-basic.yml** - 基础配置
+   - 数据库配置（数据源、Druid 连接池、动态数据源）
+   - Redis 配置（连接信息、Lettuce 连接池）
+   - MyBatis Plus 配置（Mapper 文件位置、全局配置、逻辑删除）
+   - 说明：这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
 
-3. **woodlin-mybatis.yml** - MyBatis Plus 配置
-   - Mapper 文件位置
-   - 全局配置
-   - 逻辑删除配置
-
-4. **woodlin-sa-token.yml** - Sa-Token 认证配置
-   - Token 策略配置
-   - 超时时间配置
-   - 并发登录配置
-
-5. **woodlin-knife4j.yml** - API 文档配置
-   - SpringDoc 配置
-   - Knife4j 增强配置
-   - UI 个性化配置
-
-6. **woodlin-business.yml** - 业务配置
-   - 安全策略（密码策略、活动监控）
-   - API 加密配置
-   - 缓存配置
-   - 可搜索加密配置
-   - 响应配置
-   - CORS 配置
+2. **woodlin-application.yml** - 应用配置
+   - Sa-Token 认证配置（Token 策略、超时时间、并发登录）
+   - Knife4j API 文档配置（SpringDoc、Knife4j 增强、UI 个性化）
    - SnailJob 任务调度配置
-
-7. **woodlin-admin-dev.yml** - 开发环境特定配置
-   - 开发环境 CORS 配置
+   - Woodlin 业务配置（安全策略、API 加密、缓存、可搜索加密、响应配置、CORS）
+   - 说明：这些配置是本应用独有的，不同微服务可能有不同的配置
 
 ### 3. 本地配置保留
 
@@ -119,21 +97,15 @@ bootstrap.yml 加载
 连接 Nacos 服务器
     ↓
 加载共享配置
-    ├─ woodlin-datasource.yml
-    ├─ woodlin-redis.yml
-    ├─ woodlin-mybatis.yml
-    ├─ woodlin-sa-token.yml
-    ├─ woodlin-knife4j.yml
-    └─ woodlin-business.yml
-    ↓
-加载扩展配置
-    └─ woodlin-admin-{profile}.yml
+加载共享配置
+    ├─ woodlin-basic.yml
+    └─ woodlin-application.yml
     ↓
 加载本地配置
     ├─ application.yml
     └─ application-{profile}.yml
     ↓
-配置合并（优先级：扩展配置 > 共享配置 > 本地配置）
+配置合并（优先级：Nacos 配置 > 本地配置）
     ↓
 应用启动完成
 ```
@@ -142,8 +114,8 @@ bootstrap.yml 加载
 
 1. 命令行参数
 2. 环境变量
-3. Nacos 扩展配置（环境特定）
-4. Nacos 共享配置
+3. Nacos 共享配置（woodlin-application.yml）
+4. Nacos 共享配置（woodlin-basic.yml）
 5. 本地 application-{profile}.yml
 6. 本地 application.yml
 7. bootstrap-{profile}.yml
