@@ -1,122 +1,10 @@
-# Woodlin 管理后台系统配置
-# 作者: mumu
-# 描述: 应用程序的核心配置文件
-# 注意: 大部分配置已迁移到 Nacos 配置中心，此文件仅保留启动必需的基础配置
-#      详细配置说明请参考: docs/NACOS_CONFIGURATION.md
+# Woodlin 应用配置
+# Data ID: woodlin-application.yml
+# Group: DEFAULT_GROUP
+# 描述: 应用特定配置，包含认证、文档、业务功能等
+#       这些配置是本应用独有的，不同微服务可能有不同的配置
 
-# 服务器配置
-server:
-  port: ${SERVER_PORT:8080}
-  servlet:
-    context-path: ${SERVER_CONTEXT_PATH:/api}
-    encoding:
-      charset: UTF-8
-      enabled: true
-      force: true
-
-# Spring Boot 配置
-spring:
-  application:
-    name: ${SPRING_APPLICATION_NAME:woodlin-admin}
-
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
-
-  # Spring Boot Banner 配置
-  main:
-    banner-mode: off
-
-  # 数据库配置（当 Nacos 不可用时的备用配置）
-  datasource:
-    dynamic:
-      primary: master
-      strict: false
-      datasource:
-        master:
-          url: ${DATABASE_URL:jdbc:mysql://localhost:3306/woodlin?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
-          username: ${DATABASE_USERNAME:root}
-          password: ${DATABASE_PASSWORD:Passw0rd}
-          driver-class-name: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
-          type: com.alibaba.druid.pool.DruidDataSource
-          druid:
-            initial-size: ${DATABASE_DRUID_INITIAL_SIZE:5}
-            min-idle: ${DATABASE_DRUID_MIN_IDLE:5}
-            max-active: ${DATABASE_DRUID_MAX_ACTIVE:20}
-            max-wait: ${DATABASE_DRUID_MAX_WAIT:60000}
-            time-between-eviction-runs-millis: 60000
-            min-evictable-idle-time-millis: 300000
-            validation-query: ${DATABASE_DRUID_VALIDATION_QUERY:SELECT 1}
-            test-while-idle: true
-            test-on-borrow: false
-            test-on-return: false
-            pool-prepared-statements: true
-            max-pool-prepared-statement-per-connection-size: 20
-            filters: stat,wall,slf4j
-            connection-properties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
-
-  # Redis配置（当 Nacos 不可用时的备用配置）
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      database: ${REDIS_DATABASE:0}
-      password: ${REDIS_PASSWORD:}
-      timeout: ${REDIS_TIMEOUT:10s}
-      lettuce:
-        pool:
-          max-active: ${REDIS_POOL_MAX_ACTIVE:200}
-          max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
-          max-idle: ${REDIS_POOL_MAX_IDLE:10}
-          min-idle: ${REDIS_POOL_MIN_IDLE:0}
-
-  # Jackson配置
-  jackson:
-    time-zone: GMT+8
-    date-format: yyyy-MM-dd HH:mm:ss
-    serialization:
-      write-dates-as-timestamps: false
-      fail-on-empty-beans: false
-    deserialization:
-      fail-on-unknown-properties: false
-    default-property-inclusion: NON_NULL
-    # Long类型序列化为String，避免JavaScript精度丢失
-    generator:
-      write-numbers-as-strings: false
-
-# MyBatis Plus配置（当 Nacos 不可用时的备用配置）
-mybatis-plus:
-  # mapper文件位置
-  mapper-locations: classpath*:mapper/**/*.xml
-  # 实体类别名包路径
-  type-aliases-package: com.mumu.woodlin.*.entity
-  # 全局配置
-  global-config:
-    # 数据库字段映射配置
-    db-config:
-      # 主键类型
-      id-type: ASSIGN_ID
-      # 逻辑删除字段
-      logic-delete-field: deleted
-      # 逻辑删除值
-      logic-delete-value: 1
-      # 逻辑未删除值
-      logic-not-delete-value: 0
-    # 是否控制台打印MyBatis Plus启动banner
-    banner: false
-  # 配置
-  configuration:
-    # 是否开启自动驼峰命名规则映射
-    map-underscore-to-camel-case: true
-    # 缓存配置
-    cache-enabled: false
-    # 调用setters时是否调用
-    call-setters-on-nulls: true
-    # JDBC类型为空时的处理方式
-    jdbc-type-for-null: null
-    # 日志实现
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
-
-# Sa-Token配置（当 Nacos 不可用时的备用配置）
+# ==================== Sa-Token 认证配置 ====================
 sa-token:
   # token名称 (同时也是cookie名称)
   token-name: ${SA_TOKEN_NAME:Authorization}
@@ -135,7 +23,7 @@ sa-token:
   # 是否输出操作日志
   is-log: ${SA_TOKEN_IS_LOG:false}
 
-# SpringDoc配置（当 Nacos 不可用时的备用配置）
+# ==================== SpringDoc & Knife4j API 文档配置 ====================
 springdoc:
   api-docs:
     enabled: true
@@ -160,7 +48,6 @@ springdoc:
       paths-to-match: '/**'
       packages-to-scan: 'com.mumu.woodlin'
 
-# Knife4j配置（当 Nacos 不可用时的备用配置）
 knife4j:
   # 是否启用Knife4j增强模式
   enable: ${KNIFE4J_ENABLE:true}
@@ -203,17 +90,7 @@ knife4j:
   # CORS跨域配置
   cors: false
 
-# 管理端点配置
-management:
-  endpoints:
-    web:
-      exposure:
-        include: '*'
-  endpoint:
-    health:
-      show-details: always
-
-# SnailJob 分布式任务调度配置（当 Nacos 不可用时的备用配置）
+# ==================== SnailJob 分布式任务调度配置 ====================
 snail-job:
   # 是否启用SnailJob
   enabled: ${SNAIL_JOB_ENABLED:true}
@@ -232,23 +109,14 @@ snail-job:
       # 重试间隔(秒)
       retry-interval: ${SNAIL_JOB_RETRY_INTERVAL:30}
 
-# 分页配置
-page:
-  # 默认页码
-  default-page-num: 1
-  # 默认页面大小
-  default-page-size: 20
-  # 最大页面大小 (防止大量数据查询)
-  max-page-size: 500
-  # 最大页码 (防止页码溢出)
-  max-page-num: 10000
-
-# Woodlin 安全配置（当 Nacos 不可用时的备用配置）
+# ==================== Woodlin 业务配置 ====================
 woodlin:
   # 构建信息配置
   build-info:
     # 是否在API响应中包含远程仓库URL（生产环境建议设置为false）
     include-remote-url: ${BUILD_INFO_INCLUDE_REMOTE_URL:false}
+  
+  # 安全配置
   security:
     # 用户活动监控配置
     activity-monitoring:
@@ -264,6 +132,8 @@ woodlin:
       monitor-user-interactions: ${ACTIVITY_MONITORING_INTERACTIONS:true}
       # 活动监控警告提前时间（秒）
       warning-before-timeout-seconds: ${ACTIVITY_MONITORING_WARNING:300}
+    
+    # 密码策略配置
     password:
       # 是否启用密码策略
       enabled: ${PASSWORD_POLICY_ENABLED:true}
@@ -291,6 +161,7 @@ woodlin:
       require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:false}
       # 是否要求包含特殊字符
       require-special-chars: ${PASSWORD_REQUIRE_SPECIAL_CHARS:false}
+  
   # API加密配置
   api:
     encryption:
@@ -339,6 +210,7 @@ woodlin:
       add-encryption-header: ${API_ENCRYPTION_HEADER:true}
       # 加密标识响应头名称
       encryption-header-name: ${API_ENCRYPTION_HEADER_NAME:X-Encrypted}
+  
   # 缓存配置
   cache:
     # 是否启用Redis二级缓存
@@ -359,13 +231,12 @@ woodlin:
       expire-seconds: ${CACHE_CONFIG_EXPIRE:7200}
       # 缓存刷新间隔（秒）
       refresh-interval-seconds: ${CACHE_CONFIG_REFRESH:3600}
+  
   # 可搜索加密配置
   searchable-encryption:
     # 是否启用可搜索加密功能
     enabled: ${SEARCHABLE_ENCRYPTION_ENABLED:false}
     # 加密密钥（Base64编码，256位）
-    # 生成方法：SearchableEncryptionUtil.generateKey(256)
-    # 或使用命令：openssl rand -base64 32
     encryption-key: ${SEARCHABLE_ENCRYPTION_KEY:}
     # N-gram的大小，用于模糊搜索（默认2）
     ngram-size: ${SEARCHABLE_ENCRYPTION_NGRAM_SIZE:2}
@@ -381,14 +252,11 @@ woodlin:
     cache-expire-seconds: ${SEARCHABLE_ENCRYPTION_CACHE_EXPIRE:3600}
     # 最大缓存条目数
     max-cache-size: ${SEARCHABLE_ENCRYPTION_MAX_CACHE:10000}
+  
   # 响应配置
   response:
     # 响应字段过滤模式（全局默认配置）
-    # - NONE: 不过滤，包含所有字段（默认）
-    # - MINIMAL: 最小模式，仅包含 code 和 data
-    # - CUSTOM: 自定义模式，根据下面的 include* 配置决定
     filter-mode: ${RESPONSE_FILTER_MODE:NONE}
-    # 以下配置仅在 filter-mode=CUSTOM 时生效（全局默认配置）
     # 是否包含时间戳字段
     include-timestamp: ${RESPONSE_INCLUDE_TIMESTAMP:true}
     # 是否包含请求ID字段
@@ -398,20 +266,15 @@ woodlin:
     # 是否包含状态码字段
     include-code: ${RESPONSE_INCLUDE_CODE:true}
     # 是否启用请求级别的动态控制
-    # 启用后，可以通过请求头动态控制每个请求的响应字段
     enable-request-control: ${RESPONSE_ENABLE_REQUEST_CONTROL:true}
     # 请求头名称，用于控制响应字段
-    # 示例: X-Response-Fields: code,data,message
-    # 示例: X-Response-Fields: -timestamp,-requestId (排除字段)
     request-header-name: ${RESPONSE_REQUEST_HEADER_NAME:X-Response-Fields}
+  
   # CORS跨域配置
   cors:
     # 是否启用CORS（默认启用）
     enabled: ${CORS_ENABLED:true}
     # 允许的源配置
-    # 注意：此处为默认配置，具体环境的配置请在 application-{profile}.yml 中覆盖
-    # dev/test环境：使用通配符 "*" 方便开发调试
-    # prod环境：配置具体域名保证安全性
     allowed-origin-patterns:
       - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
     # 允许的HTTP方法
@@ -436,4 +299,3 @@ woodlin:
     max-age: ${CORS_MAX_AGE:3600}
     # 应用的路径模式
     path-pattern: "/**"
-

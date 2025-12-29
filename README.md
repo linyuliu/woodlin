@@ -31,6 +31,7 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 - 🔑 **密码策略**: 灵活的密码安全策略配置
 - 👁️ **活动监控**: 用户活动监控和会话管理
 - ⚙️ **系统设置**: 统一的前端配置管理界面
+- ☁️ **Nacos 配置中心**: 支持配置集中管理和动态刷新（新增）
 
 ## 🏗️ 技术架构
 
@@ -40,6 +41,8 @@ Woodlin 是一个基于 Spring Boot 3.4.x 的现代化多租户中后台管理�
 |------|------|------|
 | Java | 17+ | 编程语言 |
 | Spring Boot | 3.4.1 | 基础框架 |
+| Spring Cloud Alibaba | 2023.0.3.3 | 微服务框架 |
+| Nacos | 2.x | 配置中心和服务注册 |
 | MyBatis Plus | 3.5.9 | ORM 框架 |
 | Sa-Token | 1.39.0 | 认证授权框架 |
 | Dynamic DataSource | 4.3.1 | 动态数据源 |
@@ -138,6 +141,51 @@ woodlin
    - API 文档: http://localhost:8080/api/doc.html
    - 默认账号: admin / Passw0rd
 
+### 使用 Nacos 配置中心（可选）
+
+Woodlin 支持使用 Nacos 作为配置中心，实现配置的集中管理和动态刷新。
+
+#### 快速启动 Nacos
+
+```bash
+# 使用 Docker 启动 Nacos 服务器
+docker run -d \
+  --name nacos-server \
+  -e MODE=standalone \
+  -p 8848:8848 \
+  nacos/nacos-server:v2.4.3
+
+# 访问 Nacos 控制台: http://localhost:8848/nacos
+# 默认账号: nacos / nacos
+```
+
+#### 导入配置到 Nacos
+
+1. 登录 Nacos 控制台
+2. 进入 **配置管理 > 配置列表**
+3. 导入 `docs/nacos-configs/` 目录下的所有配置文件
+
+详细步骤请参考：
+- **快速开始**: [docs/NACOS_QUICKSTART.md](docs/NACOS_QUICKSTART.md)
+- **完整文档**: [docs/NACOS_CONFIGURATION.md](docs/NACOS_CONFIGURATION.md)
+
+#### 启动应用（使用 Nacos）
+
+```bash
+# 配置 Nacos 地址
+export NACOS_SERVER_ADDR=localhost:8848
+
+# 启动应用
+mvn spring-boot:run -pl woodlin-admin
+```
+
+#### 禁用 Nacos（使用本地配置）
+
+```bash
+export NACOS_CONFIG_ENABLED=false
+mvn spring-boot:run -pl woodlin-admin
+```
+
 ### 环境变量配置
 
 系统支持通过环境变量配置各项参数，便于容器化部署：
@@ -183,6 +231,20 @@ export REDIS_DATABASE=0                         # Redis 数据库索引（0-15�
 export REDIS_PASSWORD=                          # Redis 密码（可选）
 export REDIS_TIMEOUT=10s                        # 连接超时时间
 ```
+
+@tab Nacos 配置
+
+```bash
+# ========== Nacos 配置中心 ==========
+export NACOS_SERVER_ADDR=localhost:8848         # Nacos 服务器地址
+export NACOS_USERNAME=nacos                     # Nacos 用户名（开启鉴权时）
+export NACOS_PASSWORD=nacos                     # Nacos 密码（开启鉴权时）
+export NACOS_NAMESPACE=                         # Nacos 命名空间（用于环境隔离）
+export NACOS_GROUP=DEFAULT_GROUP                # Nacos 分组
+export NACOS_CONFIG_ENABLED=true                # 是否启用 Nacos 配置中心
+```
+
+:::
 
 #### 🔐 Sa-Token 安全配置
 ```bash
