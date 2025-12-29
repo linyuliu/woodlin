@@ -27,15 +27,20 @@ bootstrap.yml 文件包含 Nacos 连接信息和应用启动的基础配置，�
 
 ### Nacos 配置中心配置
 
-将大部分业务配置迁移到 Nacos 配置中心，按功能模块划分为多个配置文件：
+配置已简化为 2 个文件，便于维护：
 
-1. **woodlin-datasource.yml** - 数据库配置
-2. **woodlin-redis.yml** - Redis 配置
-3. **woodlin-mybatis.yml** - MyBatis Plus 配置
-4. **woodlin-sa-token.yml** - Sa-Token 认证配置
-5. **woodlin-knife4j.yml** - API 文档配置
-6. **woodlin-business.yml** - 业务配置（安全、缓存、加密等）
-7. **woodlin-admin-{profile}.yml** - 环境特定配置
+1. **woodlin-basic.yml** - 基础配置
+   - 数据库配置（连接池、数据源）
+   - Redis 配置（连接信息、连接池）
+   - MyBatis Plus 配置（mapper 路径、全局配置）
+   - 说明：这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+
+2. **woodlin-application.yml** - 应用配置
+   - Sa-Token 认证配置（token 策略、超时时间）
+   - Knife4j API 文档配置
+   - SnailJob 任务调度配置
+   - Woodlin 业务配置（安全策略、缓存配置、加密配置、CORS 等）
+   - 说明：这些配置是本应用独有的，不同微服务可能有不同的配置
 
 ## 环境配置
 
@@ -91,26 +96,25 @@ export NACOS_PASSWORD=your_secure_password
 
 ### 迁移到 Nacos 的配置
 
-以下配置迁移到 Nacos 配置中心：
+配置已整合到 2 个文件：
 
+**woodlin-basic.yml（基础配置）**:
 1. **数据库配置** - 连接池、数据源
 2. **Redis 配置** - 连接信息、连接池
 3. **MyBatis Plus 配置** - mapper 路径、全局配置
-4. **Sa-Token 配置** - token 策略、超时时间
-5. **Knife4j 配置** - API 文档、认证配置
-6. **Woodlin 业务配置** - 安全策略、缓存配置、加密配置等
+
+**woodlin-application.yml（应用配置）**:
+1. **Sa-Token 配置** - token 策略、超时时间
+2. **Knife4j 配置** - API 文档、认证配置
+3. **SnailJob 配置** - 任务调度配置
+4. **Woodlin 业务配置** - 安全策略、缓存配置、加密配置等
 
 ## Nacos 配置示例
 
 详细的配置示例请参见：
 
-- `docs/nacos-configs/woodlin-datasource.yml` - 数据库配置示例
-- `docs/nacos-configs/woodlin-redis.yml` - Redis 配置示例
-- `docs/nacos-configs/woodlin-mybatis.yml` - MyBatis Plus 配置示例
-- `docs/nacos-configs/woodlin-sa-token.yml` - Sa-Token 配置示例
-- `docs/nacos-configs/woodlin-knife4j.yml` - Knife4j 配置示例
-- `docs/nacos-configs/woodlin-business.yml` - 业务配置示例
-- `docs/nacos-configs/woodlin-admin-dev.yml` - 开发环境特定配置示例
+- `docs/nacos-configs/woodlin-basic.yml` - 基础配置示例（数据库、Redis、MyBatis）
+- `docs/nacos-configs/woodlin-application.yml` - 应用配置示例（认证、文档、业务功能）
 
 ## 快速开始
 

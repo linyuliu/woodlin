@@ -4,44 +4,21 @@
 
 ## 配置文件说明
 
-此目录包含了 Woodlin 项目在 Nacos 配置中心需要的所有配置文件示例。
+此目录包含了 Woodlin 项目在 Nacos 配置中心需要的配置文件。配置已简化为 2 个文件，便于维护。
 
 ### 配置文件列表
 
-1. **woodlin-datasource.yml** - 数据库配置
-   - Data ID: woodlin-datasource.yml
+1. **woodlin-basic.yml** - 基础配置
+   - Data ID: woodlin-basic.yml
    - Group: DEFAULT_GROUP
    - 格式: YAML
+   - 说明: 包含数据库、Redis、MyBatis 等基础设施配置，这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
 
-2. **woodlin-redis.yml** - Redis 配置
-   - Data ID: woodlin-redis.yml
+2. **woodlin-application.yml** - 应用配置
+   - Data ID: woodlin-application.yml
    - Group: DEFAULT_GROUP
    - 格式: YAML
-
-3. **woodlin-mybatis.yml** - MyBatis Plus 配置
-   - Data ID: woodlin-mybatis.yml
-   - Group: DEFAULT_GROUP
-   - 格式: YAML
-
-4. **woodlin-sa-token.yml** - Sa-Token 认证配置
-   - Data ID: woodlin-sa-token.yml
-   - Group: DEFAULT_GROUP
-   - 格式: YAML
-
-5. **woodlin-knife4j.yml** - Knife4j API 文档配置
-   - Data ID: woodlin-knife4j.yml
-   - Group: DEFAULT_GROUP
-   - 格式: YAML
-
-6. **woodlin-business.yml** - Woodlin 业务配置
-   - Data ID: woodlin-business.yml
-   - Group: DEFAULT_GROUP
-   - 格式: YAML
-
-7. **woodlin-admin-dev.yml** - 开发环境特定配置
-   - Data ID: woodlin-admin-dev.yml
-   - Group: DEFAULT_GROUP
-   - 格式: YAML
+   - 说明: 包含 Sa-Token、Knife4j、业务功能等应用特定配置，每个应用独有的配置
 
 ## 导入步骤
 
@@ -68,7 +45,7 @@ docker run -d \
 2. 点击左侧菜单 **配置管理 > 配置列表**
 3. 点击右上角 **+** 按钮创建配置
 4. 填写表单：
-   - **Data ID**: 对应文件名（如 woodlin-datasource.yml）
+   - **Data ID**: 对应文件名（如 woodlin-basic.yml）
    - **Group**: DEFAULT_GROUP
    - **配置格式**: YAML
    - **配置内容**: 复制对应文件的内容
@@ -91,13 +68,8 @@ NACOS_PASSWORD="nacos"
 
 # 配置文件列表
 configs=(
-  "woodlin-datasource.yml"
-  "woodlin-redis.yml"
-  "woodlin-mybatis.yml"
-  "woodlin-sa-token.yml"
-  "woodlin-knife4j.yml"
-  "woodlin-business.yml"
-  "woodlin-admin-dev.yml"
+  "woodlin-basic.yml"
+  "woodlin-application.yml"
 )
 
 for config in "${configs[@]}"; do
