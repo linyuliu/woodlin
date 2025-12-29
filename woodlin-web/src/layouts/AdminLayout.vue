@@ -23,12 +23,21 @@ const collapsed = computed({
 // Generate menu from dynamic routes
 const menuOptions = computed(() => {
   // Use addedRoutes which only contains the AdminLayout wrapper with its children
-  // addedRoutes[0] is the AdminLayout route with path '/'
+  // addedRoutes[0] is typically the AdminLayout route with path '/'
   const addedRoutes = permissionStore.addedRoutes
-  if (addedRoutes.length > 0 && addedRoutes[0].children) {
-    return generateMenuFromRoutes(addedRoutes[0].children)
+  
+  // Safety check: ensure we have routes and the first route has children
+  if (!addedRoutes.length) {
+    return []
   }
-  return []
+  
+  // Find the root layout route (path '/' or has children)
+  const rootRoute = addedRoutes.find(route => route.path === '/' || route.children)
+  if (!rootRoute || !rootRoute.children) {
+    return []
+  }
+  
+  return generateMenuFromRoutes(rootRoute.children)
 })
 
 const activeKey = computed(() => route.path)
