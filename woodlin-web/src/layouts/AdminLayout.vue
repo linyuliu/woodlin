@@ -5,13 +5,14 @@ import { NLayout } from 'naive-ui'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 import AppContent from './components/AppContent.vue'
-import { appMenuItems, toNaiveMenuOptions } from './menu-options'
-import { useAuthStore, useAppStore } from '@/stores'
+import { generateMenuFromRoutes } from '@/utils/menu-generator'
+import { useAuthStore, useAppStore, usePermissionStore } from '@/stores'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const permissionStore = usePermissionStore()
 
 // Use app store for collapsed state
 const collapsed = computed({
@@ -19,7 +20,15 @@ const collapsed = computed({
   set: (value) => appStore.setSidebarCollapsed(value)
 })
 
-const menuOptions = toNaiveMenuOptions(appMenuItems)
+// Generate menu from dynamic routes
+const menuOptions = computed(() => {
+  // Get the first route (the AdminLayout wrapper route) and use its children
+  const routes = permissionStore.routes
+  if (routes.length > 0 && routes[0].children) {
+    return generateMenuFromRoutes(routes[0].children)
+  }
+  return []
+})
 
 const activeKey = computed(() => route.path)
 
