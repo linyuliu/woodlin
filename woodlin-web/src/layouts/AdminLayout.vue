@@ -22,10 +22,11 @@ const collapsed = computed({
 
 // Generate menu from dynamic routes
 const menuOptions = computed(() => {
-  // Get the first route (the AdminLayout wrapper route) and use its children
-  const routes = permissionStore.routes
-  if (routes.length > 0 && routes[0].children) {
-    return generateMenuFromRoutes(routes[0].children)
+  // Use addedRoutes which only contains the AdminLayout wrapper with its children
+  // addedRoutes[0] is the AdminLayout route with path '/'
+  const addedRoutes = permissionStore.addedRoutes
+  if (addedRoutes.length > 0 && addedRoutes[0].children) {
+    return generateMenuFromRoutes(addedRoutes[0].children)
   }
   return []
 })
