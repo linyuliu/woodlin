@@ -8,17 +8,17 @@
 
 ### 配置文件列表
 
-1. **woodlin-basic.yml** - 基础配置
-   - Data ID: woodlin-basic.yml
+1. **woodlin-dev.yml** - 环境配置（开发环境示例）
+   - Data ID: woodlin-{env}.yml（根据环境自动加载，如 woodlin-dev.yml, woodlin-test.yml, woodlin-prod.yml）
    - Group: DEFAULT_GROUP
    - 格式: YAML
-   - 说明: 包含数据库、Redis、MyBatis 等基础设施配置，这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+   - 说明: 包含数据库、Redis、MyBatis 等基础设施配置，这些配置在不同环境可能需要修改
 
-2. **woodlin-application.yml** - 应用配置
-   - Data ID: woodlin-application.yml
+2. **woodlin-woodlin-admin.yml** - 应用配置
+   - Data ID: woodlin-woodlin-admin.yml
    - Group: DEFAULT_GROUP
    - 格式: YAML
-   - 说明: 包含 Sa-Token、Knife4j、业务功能等应用特定配置，每个应用独有的配置
+   - 说明: 包含 Sa-Token、Knife4j、业务功能等 woodlin-admin 应用特定配置
 
 ## 导入步骤
 
@@ -45,7 +45,7 @@ docker run -d \
 2. 点击左侧菜单 **配置管理 > 配置列表**
 3. 点击右上角 **+** 按钮创建配置
 4. 填写表单：
-   - **Data ID**: 对应文件名（如 woodlin-basic.yml）
+   - **Data ID**: 对应文件名（如 woodlin-dev.yml, woodlin-woodlin-admin.yml）
    - **Group**: DEFAULT_GROUP
    - **配置格式**: YAML
    - **配置内容**: 复制对应文件的内容
@@ -68,8 +68,8 @@ NACOS_PASSWORD="nacos"
 
 # 配置文件列表
 configs=(
-  "woodlin-basic.yml"
-  "woodlin-application.yml"
+  "woodlin-dev.yml"
+  "woodlin-woodlin-admin.yml"
 )
 
 for config in "${configs[@]}"; do

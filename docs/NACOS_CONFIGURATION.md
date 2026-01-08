@@ -29,18 +29,16 @@ bootstrap.yml 文件包含 Nacos 连接信息和应用启动的基础配置，�
 
 配置已简化为 2 个文件，便于维护：
 
-1. **woodlin-basic.yml** - 基础配置
-   - 数据库配置（连接池、数据源）
-   - Redis 配置（连接信息、连接池）
-   - MyBatis Plus 配置（mapper 路径、全局配置）
-   - 说明：这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+1. **woodlin-{env}.yml** - 环境配置（根据环境自动加载）
+   - 开发环境：woodlin-dev.yml
+   - 测试环境：woodlin-test.yml
+   - 生产环境：woodlin-prod.yml
+   - 内容：数据库配置（连接池、数据源）、Redis 配置（连接信息、连接池）、MyBatis Plus 配置（mapper 路径、全局配置）
+   - 说明：这些配置在不同环境可能需要修改
 
-2. **woodlin-application.yml** - 应用配置
-   - Sa-Token 认证配置（token 策略、超时时间）
-   - Knife4j API 文档配置
-   - SnailJob 任务调度配置
-   - Woodlin 业务配置（安全策略、缓存配置、加密配置、CORS 等）
-   - 说明：这些配置是本应用独有的，不同微服务可能有不同的配置
+2. **woodlin-woodlin-admin.yml** - 应用配置
+   - 内容：Sa-Token 认证配置（token 策略、超时时间）、Knife4j API 文档配置、SnailJob 任务调度配置、Woodlin 业务配置（安全策略、缓存配置、加密配置、CORS 等）
+   - 说明：这些配置是 woodlin-admin 应用独有的，不同应用有不同的配置
 
 ## 环境配置
 
@@ -98,12 +96,12 @@ export NACOS_PASSWORD=your_secure_password
 
 配置已整合到 2 个文件：
 
-**woodlin-basic.yml（基础配置）**:
+**woodlin-{env}.yml（环境配置）**:
 1. **数据库配置** - 连接池、数据源
 2. **Redis 配置** - 连接信息、连接池
 3. **MyBatis Plus 配置** - mapper 路径、全局配置
 
-**woodlin-application.yml（应用配置）**:
+**woodlin-woodlin-admin.yml（应用配置）**:
 1. **Sa-Token 配置** - token 策略、超时时间
 2. **Knife4j 配置** - API 文档、认证配置
 3. **SnailJob 配置** - 任务调度配置
@@ -113,8 +111,13 @@ export NACOS_PASSWORD=your_secure_password
 
 详细的配置示例请参见：
 
-- `docs/nacos-configs/woodlin-basic.yml` - 基础配置示例（数据库、Redis、MyBatis）
-- `docs/nacos-configs/woodlin-application.yml` - 应用配置示例（认证、文档、业务功能）
+- `docs/nacos-configs/woodlin-dev.yml` - 环境配置示例（数据库、Redis、MyBatis）
+- `docs/nacos-configs/woodlin-woodlin-admin.yml` - 应用配置示例（认证、文档、业务功能）
+
+**注意**: 环境配置文件会根据 `spring.profiles.active` 自动加载，如：
+- 开发环境：woodlin-dev.yml
+- 测试环境：woodlin-test.yml  
+- 生产环境：woodlin-prod.yml
 
 ## 快速开始
 
