@@ -29,20 +29,18 @@
 
 #### Nacos 配置中心文件（docs/nacos-configs/）：
 
-配置已简化为 2 个文件，便于维护：
+配置已简化为 2 个文件，便于维护，支持单体应用和微服务架构：
 
-1. **woodlin-basic.yml** - 基础配置
-   - 数据库配置（数据源、Druid 连接池、动态数据源）
-   - Redis 配置（连接信息、Lettuce 连接池）
-   - MyBatis Plus 配置（Mapper 文件位置、全局配置、逻辑删除）
-   - 说明：这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+1. **woodlin-{env}.yml** - 环境配置（根据环境自动加载）
+   - 开发环境：woodlin-dev.yml
+   - 测试环境：woodlin-test.yml
+   - 生产环境：woodlin-prod.yml
+   - 内容：数据库配置（数据源、Druid 连接池、动态数据源）、Redis 配置（连接信息、Lettuce 连接池）、MyBatis Plus 配置（Mapper 文件位置、全局配置、逻辑删除）
+   - 说明：这些配置在不同环境可能需要修改，切换环境时会自动加载对应的配置文件
 
-2. **woodlin-application.yml** - 应用配置
-   - Sa-Token 认证配置（Token 策略、超时时间、并发登录）
-   - Knife4j API 文档配置（SpringDoc、Knife4j 增强、UI 个性化）
-   - SnailJob 任务调度配置
-   - Woodlin 业务配置（安全策略、API 加密、缓存、可搜索加密、响应配置、CORS）
-   - 说明：这些配置是本应用独有的，不同微服务可能有不同的配置
+2. **woodlin-woodlin-admin.yml** - 应用配置
+   - 内容：Sa-Token 认证配置（Token 策略、超时时间、并发登录）、Knife4j API 文档配置（SpringDoc、Knife4j 增强、UI 个性化）、SnailJob 任务调度配置、Woodlin 业务配置（安全策略、API 加密、缓存、可搜索加密、响应配置、CORS）
+   - 说明：这些配置是 woodlin-admin 应用独有的，切换到微服务时，每个服务有自己的配置（如 woodlin-user-service.yml）
 
 ### 3. 本地配置保留
 
@@ -98,8 +96,8 @@ bootstrap.yml 加载
     ↓
 加载共享配置
 加载共享配置
-    ├─ woodlin-basic.yml
-    └─ woodlin-application.yml
+    ├─ woodlin-{env}.yml (根据环境加载，如 woodlin-dev.yml)
+    └─ woodlin-woodlin-admin.yml
     ↓
 加载本地配置
     ├─ application.yml
@@ -114,12 +112,22 @@ bootstrap.yml 加载
 
 1. 命令行参数
 2. 环境变量
-3. Nacos 共享配置（woodlin-application.yml）
-4. Nacos 共享配置（woodlin-basic.yml）
+3. Nacos 共享配置（woodlin-woodlin-admin.yml）
+4. Nacos 共享配置（woodlin-{env}.yml）
 5. 本地 application-{profile}.yml
 6. 本地 application.yml
 7. bootstrap-{profile}.yml
 8. bootstrap.yml
+
+### 动态刷新支持
+
+配置已启用动态刷新（`refresh: true`），支持以下场景：
+- ✅ 业务配置（安全策略、缓存配置等）可以动态刷新
+- ✅ API 文档配置可以动态刷新
+- ✅ CORS 配置可以动态刷新
+- ⚠️ 数据源配置需要重启应用
+- ⚠️ Redis 连接配置需要重启应用
+- ⚠️ MyBatis Plus 配置需要重启应用
 
 ### 环境隔离方案
 
