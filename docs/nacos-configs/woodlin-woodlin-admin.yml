@@ -1,8 +1,8 @@
-# Woodlin 应用配置
-# Data ID: woodlin-application.yml
+# Woodlin Admin 应用配置
+# Data ID: woodlin-woodlin-admin.yml
 # Group: DEFAULT_GROUP
-# 描述: 应用特定配置，包含认证、文档、业务功能等
-#       这些配置是本应用独有的，不同微服务可能有不同的配置
+# 描述: woodlin-admin 应用特定配置，包含认证、文档、业务功能等
+#       这些配置是本应用独有的，不同应用有不同的配置（如切换到微服务时，每个服务有自己的配置）
 
 # ==================== Sa-Token 认证配置 ====================
 sa-token:

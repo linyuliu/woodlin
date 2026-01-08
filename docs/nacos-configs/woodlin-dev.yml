@@ -1,8 +1,8 @@
-# Woodlin 基础配置
-# Data ID: woodlin-basic.yml
+# Woodlin 环境配置
+# Data ID: woodlin-dev.yml
 # Group: DEFAULT_GROUP
-# 描述: 基础设施配置，包含数据库、Redis、MyBatis等
-#       这些配置在不同环境可能需要修改，或者在多个微服务中应该保持一致
+# 描述: 开发环境配置，包含数据库、Redis、MyBatis等基础设施配置
+#       这些配置在不同环境可能需要修改，切换环境时只需修改此文件的Data ID（如woodlin-test.yml, woodlin-prod.yml）
 
 # ==================== 数据库配置 ====================
 spring:

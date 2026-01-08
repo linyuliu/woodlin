@@ -2,6 +2,12 @@
 # 作者: mumu
 # 描述: 用于配置 Nacos 配置中心连接信息，在应用启动时优先加载
 #       此文件只包含启动所需的最基础配置，其他配置从 Nacos 配置中心获取
+#
+# 微服务支持说明：
+#   本配置支持单体应用和微服务架构无缝切换
+#   - Spring Cloud 仅用于配置管理，不强制微服务架构
+#   - 配置文件按环境(woodlin-{env}.yml)和应用(woodlin-{app}.yml)分离
+#   - 切换到微服务时，每个服务有独立的应用配置文件
 
 spring:
   application:
@@ -30,14 +36,16 @@ spring:
         enabled: ${NACOS_CONFIG_ENABLED:true}
         # 配置文件格式
         file-extension: yml
-        # 共享配置（所有环境和微服务共享的配置）
+        # 共享配置（按优先级加载，后面的会覆盖前面的）
         shared-configs:
-          # 基础配置：数据库、Redis、MyBatis 等基础设施配置
-          - data-id: woodlin-basic.yml
+          # 环境配置：根据环境变量加载，如 woodlin-dev.yml, woodlin-test.yml, woodlin-prod.yml
+          # 包含数据库、Redis、MyBatis 等基础设施配置
+          - data-id: woodlin-${spring.profiles.active}.yml
             group: ${NACOS_GROUP:DEFAULT_GROUP}
             refresh: true
-          # 应用配置：认证、文档、业务功能等应用特定配置
-          - data-id: woodlin-application.yml
+          # 应用配置：woodlin-admin 应用特定配置
+          # 包含认证、文档、业务功能等应用特定配置
+          - data-id: woodlin-${spring.application.name}.yml
             group: ${NACOS_GROUP:DEFAULT_GROUP}
             refresh: true
         # 配置刷新超时时间（毫秒）
