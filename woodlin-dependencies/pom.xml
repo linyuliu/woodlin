@@ -23,11 +23,11 @@
     <!-- 第三方依赖版本定义 -->
     <properties>
         <!-- Spring Cloud -->
-        <spring-cloud.version>2023.0.5</spring-cloud.version>
-        
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+
         <!-- Spring Cloud Alibaba -->
         <spring-cloud-alibaba.version>2023.0.3.3</spring-cloud-alibaba.version>
-        
+
         <!-- 安全认证框架 -->
         <sa-token.version>1.39.0</sa-token.version>
 
@@ -78,7 +78,7 @@
         <aliyun-oss.version>3.18.1</aliyun-oss.version>
         <cos_api.version>5.6.240</cos_api.version>
         <obs.version>3.24.3</obs.version>
-        
+
         <!-- 文件类型检测 -->
         <tika.version>2.9.2</tika.version>
 
@@ -311,28 +311,28 @@
                 <artifactId>aws-java-sdk-s3</artifactId>
                 <version>${aws-java-sdk-s3.version}</version>
             </dependency>
-            
+
             <!-- Aliyun OSS -->
             <dependency>
                 <groupId>com.aliyun.oss</groupId>
                 <artifactId>aliyun-sdk-oss</artifactId>
                 <version>${aliyun-oss.version}</version>
             </dependency>
-            
+
             <!-- Tencent COS -->
             <dependency>
                 <groupId>com.qcloud</groupId>
                 <artifactId>cos_api</artifactId>
                 <version>${cos_api.version}</version>
             </dependency>
-            
+
             <!-- Huawei OBS -->
             <dependency>
                 <groupId>com.huaweicloud</groupId>
                 <artifactId>esdk-obs-java-bundle</artifactId>
                 <version>${obs.version}</version>
             </dependency>
-            
+
             <!-- Apache Tika for file type detection -->
             <dependency>
                 <groupId>org.apache.tika</groupId>
