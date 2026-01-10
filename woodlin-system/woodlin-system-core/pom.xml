@@ -96,12 +96,6 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
 
-        <!-- CosId ID生成器 -->
-        <dependency>
-            <groupId>me.ahoo.cosid</groupId>
-            <artifactId>cosid-spring-boot-starter</artifactId>
-        </dependency>
-
         <!-- EasyExcel -->
         <dependency>
             <groupId>com.alibaba</groupId>

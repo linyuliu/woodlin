@@ -38,16 +38,9 @@
 
         <!-- 缓存框架 -->
         <redisson.version>3.52.0</redisson.version>
-        <jetcache.version>2.7.8</jetcache.version>
 
         <!-- Excel处理 -->
         <easyexcel.version>4.0.3</easyexcel.version>
-
-        <!-- ID生成器 -->
-        <cosid.version>2.9.8</cosid.version>
-
-        <!-- 第三方登录 -->
-        <justauth.version>1.16.6</justauth.version>
 
         <!-- API文档 -->
         <springdoc.version>2.7.0</springdoc.version>
@@ -70,7 +63,6 @@
 
         <!-- 任务调度 -->
         <quartz.version>2.5.0</quartz.version>
-        <snail-job.version>1.1.0</snail-job.version>
 
         <!-- 对象存储 -->
         <minio.version>8.5.14</minio.version>
@@ -90,9 +82,6 @@
 
         <!-- 验证码 -->
         <easy-captcha.version>1.6.2</easy-captcha.version>
-
-        <!-- IP地址解析 -->
-        <ip2region.version>3.1.12</ip2region.version>
 
         <!-- 模板引擎 -->
         <velocity.version>2.4.1</velocity.version>
@@ -216,32 +205,11 @@
                 <version>${redisson.version}</version>
             </dependency>
 
-            <!-- JetCache -->
-            <dependency>
-                <groupId>com.alicp.jetcache</groupId>
-                <artifactId>jetcache-starter-redis</artifactId>
-                <version>${jetcache.version}</version>
-            </dependency>
-
             <!-- EasyExcel -->
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>easyexcel</artifactId>
                 <version>${easyexcel.version}</version>
-            </dependency>
-
-            <!-- CosId -->
-            <dependency>
-                <groupId>me.ahoo.cosid</groupId>
-                <artifactId>cosid-spring-boot-starter</artifactId>
-                <version>${cosid.version}</version>
-            </dependency>
-
-            <!-- JustAuth -->
-            <dependency>
-                <groupId>me.zhyd.oauth</groupId>
-                <artifactId>JustAuth</artifactId>
-                <version>${justauth.version}</version>
             </dependency>
 
             <!-- SpringDoc -->
@@ -289,13 +257,6 @@
                 <groupId>org.quartz-scheduler</groupId>
                 <artifactId>quartz</artifactId>
                 <version>${quartz.version}</version>
-            </dependency>
-
-            <!-- SnailJob 分布式任务调度 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-job-client-starter</artifactId>
-                <version>${snail-job.version}</version>
             </dependency>
 
             <!-- MinIO 对象存储 -->
@@ -350,13 +311,6 @@
                 <groupId>com.github.whvcse</groupId>
                 <artifactId>easy-captcha</artifactId>
                 <version>${easy-captcha.version}</version>
-            </dependency>
-
-            <!-- IP地址解析 -->
-            <dependency>
-                <groupId>net.dreamlu</groupId>
-                <artifactId>mica-ip2region</artifactId>
-                <version>${ip2region.version}</version>
             </dependency>
 
             <!-- 阿里云短信 -->
