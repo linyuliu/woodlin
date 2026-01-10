@@ -52,12 +52,6 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- SnailJob 分布式任务调度 -->
-        <dependency>
-            <groupId>com.aizuda</groupId>
-            <artifactId>snail-job-client-starter</artifactId>
-        </dependency>
-
         <!-- Quartz （保留用于兼容） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
