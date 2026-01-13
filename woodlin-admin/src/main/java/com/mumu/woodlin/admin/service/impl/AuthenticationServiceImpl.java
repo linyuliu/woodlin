@@ -3,7 +3,6 @@ package com.mumu.woodlin.admin.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mumu.woodlin.admin.strategy.LoginStrategy;
-import com.mumu.woodlin.common.constant.SystemConstant;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.util.PasswordEncoderUtil;
@@ -14,10 +13,12 @@ import com.mumu.woodlin.security.dto.LoginResponse;
 import com.mumu.woodlin.security.enums.LoginType;
 import com.mumu.woodlin.security.service.AuthenticationService;
 import com.mumu.woodlin.security.service.PasswordPolicyService;
+import com.mumu.woodlin.security.service.PermissionCacheService;
 import com.mumu.woodlin.security.service.SmsService;
 import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.service.ISysUserService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +54,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      * 权限缓存服务（可选依赖）
      */
     @Autowired(required = false)
-    private com.mumu.woodlin.security.service.PermissionCacheService permissionCacheService;
+    private PermissionCacheService permissionCacheService;
 
     /**
      * 登录策略映射表（按登录类型索引）
@@ -63,7 +64,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     /**
      * 初始化策略映射表
      */
-    @jakarta.annotation.PostConstruct
+    @PostConstruct
     public void init() {
         strategyMap = loginStrategies.stream()
             .collect(Collectors.toMap(LoginStrategy::getLoginType, Function.identity()));
@@ -163,18 +164,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setPwdChangeTime(LocalDateTime.now());
         user.setIsFirstLogin(false);
         userService.updateById(user);
-        
+
         // 清除用户相关缓存（包括权限缓存、用户信息缓存、会话缓存等）
         if (permissionCacheService != null) {
             permissionCacheService.evictUserCache(userId);
             log.info("已清除用户 {} 的权限缓存", userId);
         }
-        
+
         // 强制用户重新登录（清除当前会话）
         StpUtil.logout(userId);
         log.info("用户 {} 修改密码成功，已强制重新登录", user.getUsername());
     }
-    
+
     /**
      * 忘记密码重置（通过验证码，无需登录）
      *
@@ -187,24 +188,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (!StrUtil.equals(request.getNewPassword(), request.getConfirmPassword())) {
             throw BusinessException.of(ResultCode.PASSWORD_MISMATCH, "新密码和确认密码不一致");
         }
-        
+
         // 查找用户（支持用户名、手机号、邮箱）
         SysUser user = findUserByIdentifier(request.getUsername());
         if (user == null) {
             throw BusinessException.of(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
-        
+
         // 验证验证码
         validateVerificationCode(request.getCodeType(), request.getUsername(), request.getCode());
-        
+
         // 验证新密码策略
         PasswordPolicyService.PasswordValidationResult validationResult =
             passwordPolicyService.validatePassword(request.getNewPassword());
-        
+
         if (!validationResult.isValid()) {
             throw BusinessException.of(ResultCode.PASSWORD_POLICY_VIOLATION, validationResult.getMessage());
         }
-        
+
         // 更新密码
         user.setPassword(PasswordEncoderUtil.encode(request.getNewPassword()));
         user.setPwdChangeTime(LocalDateTime.now());
@@ -212,18 +213,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setPwdErrorCount(0);  // 重置错误次数
         user.setLockTime(null);     // 解除锁定
         userService.updateById(user);
-        
+
         // 清除用户相关缓存
         if (permissionCacheService != null) {
             permissionCacheService.evictUserCache(user.getUserId());
             log.info("已清除用户 {} 的权限缓存", user.getUserId());
         }
-        
+
         // 强制用户重新登录（清除所有会话）
         StpUtil.logout(user.getUserId());
         log.info("用户 {} 通过验证码重置密码成功", user.getUsername());
     }
-    
+
     /**
      * 根据标识符查找用户（支持用户名）
      *
@@ -233,7 +234,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private SysUser findUserByIdentifier(String identifier) {
         return userService.selectUserByUsername(identifier);
     }
-    
+
     /**
      * 验证验证码
      *
@@ -243,7 +244,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      */
     private void validateVerificationCode(String codeType, String identifier, String code) {
         boolean isValid = false;
-        
+
         if ("sms".equals(codeType)) {
             // 验证短信验证码
             isValid = smsService.verifySmsCode(identifier, code);
@@ -254,7 +255,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         } else {
             throw BusinessException.of(ResultCode.BAD_REQUEST, "不支持的验证码类型");
         }
-        
+
         if (!isValid) {
             throw BusinessException.of(ResultCode.BAD_REQUEST, "验证码错误或已过期");
         }

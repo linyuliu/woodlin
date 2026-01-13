@@ -178,9 +178,9 @@
     <!-- Sa-Token日志 -->
     <logger name="cn.dev33.satoken" level="INFO"/>
 
-    <!-- Swagger日志 -->
-    <logger name="springfox" level="WARN"/>
-    <logger name="io.swagger" level="WARN"/>
+    <!-- Swagger/OpenAPI日志 -->
+    <logger name="org.springdoc" level="WARN"/>
+    <logger name="io.swagger.v3" level="WARN"/>
 
     <!-- 开发环境配置 -->
     <springProfile name="dev">
