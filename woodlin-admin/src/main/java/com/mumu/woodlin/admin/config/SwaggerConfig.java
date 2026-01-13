@@ -7,6 +7,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,11 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class SwaggerConfig {
+    
+    /**
+     * 安全方案名称常量
+     */
+    private static final String SECURITY_SCHEME_NAME = "Bearer认证";
     
     /**
      * 创建 OpenAPI 配置
@@ -41,14 +47,28 @@ public class SwaggerConfig {
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT")))
                 .components(new Components()
-                        .addSecuritySchemes("Authorization", new SecurityScheme()
+                        .addSecuritySchemes(SECURITY_SCHEME_NAME, new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .in(SecurityScheme.In.HEADER)
                                 .name("Authorization")
-                                .description("请在此处输入 Token，格式为：Bearer {token}")))
-                .addSecurityItem(new SecurityRequirement().addList("Authorization"));
+                                .description("JWT认证: 点击右侧【Authorize】按钮，在弹出框中输入登录接口返回的token值（仅输入token字符串，系统会自动添加Bearer前缀）")))
+                .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME));
+    }
+
+    /**
+     * 为所有接口添加安全认证要求的定制器
+     * 确保每个接口都显示需要认证的锁图标
+     * 
+     * @return OperationCustomizer
+     */
+    @Bean
+    public OperationCustomizer operationCustomizer() {
+        return (operation, handlerMethod) -> {
+            operation.addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME));
+            return operation;
+        };
     }
 
     /**
