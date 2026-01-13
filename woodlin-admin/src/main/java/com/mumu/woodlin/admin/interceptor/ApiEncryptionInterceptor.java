@@ -1,12 +1,11 @@
 package com.mumu.woodlin.admin.interceptor;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mumu.woodlin.common.config.ApiEncryptionProperties;
+import com.mumu.woodlin.common.util.ApiEncryptionUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,8 +15,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
-import com.mumu.woodlin.common.config.ApiEncryptionProperties;
-import com.mumu.woodlin.common.util.ApiEncryptionUtil;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /**
  * API 加密拦截器
@@ -101,12 +100,11 @@ public class ApiEncryptionInterceptor implements HandlerInterceptor {
      * @param request 请求对象
      */
     private void decryptRequest(HttpServletRequest request) throws Exception {
-        if (!(request instanceof ContentCachingRequestWrapper)) {
+        if (!(request instanceof ContentCachingRequestWrapper wrappedRequest)) {
             log.warn("请求未被 ContentCachingRequestWrapper 包装，无法解密");
             return;
         }
 
-        ContentCachingRequestWrapper wrappedRequest = (ContentCachingRequestWrapper) request;
         byte[] content = wrappedRequest.getContentAsByteArray();
 
         if (content.length == 0) {
@@ -145,12 +143,11 @@ public class ApiEncryptionInterceptor implements HandlerInterceptor {
      * @param response 响应对象
      */
     private void encryptResponse(HttpServletResponse response) throws Exception {
-        if (!(response instanceof ContentCachingResponseWrapper)) {
+        if (!(response instanceof ContentCachingResponseWrapper wrappedResponse)) {
             log.warn("响应未被 ContentCachingResponseWrapper 包装，无法加密");
             return;
         }
 
-        ContentCachingResponseWrapper wrappedResponse = (ContentCachingResponseWrapper) response;
         byte[] content = wrappedResponse.getContentAsByteArray();
 
         if (content.length == 0) {
