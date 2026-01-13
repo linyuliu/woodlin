@@ -188,7 +188,10 @@ Nacos 自动保存配置的历史版本：
 3. **配置备份**: 重要配置修改前应备份或记录历史版本
 4. **权限控制**: 生产环境应开启 Nacos 的鉴权功能，并严格控制配置的访问权限
 5. **配置格式**: 确保配置格式为 YAML，避免格式错误导致配置加载失败
-6. **Token超时配置**: Sa-Token的 `activeTimeout` 默认设置为 `-1`（禁用活动超时），token只在 `timeout`（30天）后过期。如需启用活动超时，建议设置为86400秒（24小时）或更长，避免用户频繁需要重新登录
+6. **Token配置**: 
+   - `token-name` 应设置为 `satoken`（默认值），不要设置为 `Authorization`。Sa-Token会自动从 `Authorization` 头读取Bearer token
+   - `token-prefix` 设置为 `Bearer`，Sa-Token会自动提取Bearer之后的token值
+   - `activeTimeout` 默认设置为 `-1`（禁用活动超时），token只在 `timeout`（30天）后过期。如需启用活动超时，建议设置为86400秒（24小时）或更长
 
 ## 故障排查
 
