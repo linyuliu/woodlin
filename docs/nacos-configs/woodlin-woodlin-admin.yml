@@ -7,8 +7,10 @@
 # ==================== Sa-Token 认证配置 ====================
 sa-token:
   # token名称 (同时也是cookie名称)
-  token-name: ${SA_TOKEN_NAME:Authorization}
+  # 使用默认的satoken，Sa-Token会自动从Authorization头读取Bearer token
+  token-name: ${SA_TOKEN_NAME:satoken}
   # token前缀 (符合OAuth2标准的Bearer前缀)
+  # Sa-Token会自动从Authorization头中提取Bearer之后的token值
   token-prefix: ${SA_TOKEN_PREFIX:Bearer}
   # token有效期，单位s 默认30天, -1代表永不过期
   timeout: ${SA_TOKEN_TIMEOUT:2592000}
