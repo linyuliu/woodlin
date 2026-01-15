@@ -1,24 +1,33 @@
 <script setup lang="ts">
 /**
  * 用户管理视图
- * 
+ *
  * @author mumu
  * @description 用户管理页面，包含用户列表、搜索、添加、编辑、删除等功能
  * @since 2025-01-01
  */
-import { ref, h } from 'vue'
-import { 
-  NCard, NButton, NDataTable, NSpace, NInput, NForm, NFormItem,
-  NTag, NIcon, NPopconfirm,
-  type DataTableColumns
+import {h, ref} from 'vue'
+import {
+  type DataTableColumns,
+  NButton,
+  NDataTable,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NPopconfirm,
+  NSpace,
+  NTag,
+  NTooltip
 } from 'naive-ui'
-import { 
-  AddOutline, 
-  SearchOutline, 
-  RefreshOutline,
+import {
+  AddOutline,
   CreateOutline,
+  RefreshOutline,
+  SearchOutline,
   TrashOutline
 } from '@vicons/ionicons5'
+import PageContainer from '@/components/PageContainer.vue'
 
 /**
  * 用户数据接口
@@ -86,73 +95,82 @@ const renderStatus = (status: string) => {
     locked: { type: 'error', text: '锁定' }
   }
   const config = statusMap[status] || { type: 'warning', text: '未知' }
-  return h(NTag, { type: config.type, size: 'small' }, { default: () => config.text })
+  return h(NTag, {
+    type: config.type,
+    size: 'small',
+    round: true,
+  }, {default: () => config.text})
 }
 
 /**
  * 表格列配置
  */
 const columns: DataTableColumns<User> = [
-  { 
-    title: 'ID', 
-    key: 'id', 
+  {
+    title: 'ID',
+    key: 'id',
     width: 80,
     align: 'center'
   },
-  { 
-    title: '用户名', 
+  {
+    title: '用户名',
     key: 'username',
     width: 150,
     ellipsis: {
       tooltip: true
     }
   },
-  { 
-    title: '昵称', 
+  {
+    title: '昵称',
     key: 'nickname',
     width: 150,
     ellipsis: {
       tooltip: true
     }
   },
-  { 
-    title: '邮箱', 
+  {
+    title: '邮箱',
     key: 'email',
     ellipsis: {
       tooltip: true
     }
   },
-  { 
-    title: '状态', 
-    key: 'status', 
+  {
+    title: '状态',
+    key: 'status',
     width: 100,
     align: 'center',
     render: (row) => renderStatus(row.status)
   },
-  { 
-    title: '创建时间', 
-    key: 'createTime', 
-    width: 180 
+  {
+    title: '创建时间',
+    key: 'createTime',
+    width: 180
   },
   {
     title: '操作',
     key: 'actions',
-    width: 180,
+    width: 160,
     align: 'center',
     render: (row) => {
-      return h(NSpace, { size: 4 }, {
+      return h(NSpace, {size: 8, justify: 'center'}, {
         default: () => [
           h(
-            NButton,
+            NTooltip,
+            {trigger: 'hover'},
             {
-              text: true,
-              type: 'primary',
-              size: 'small',
-              onClick: () => handleEdit(row)
-            },
-            {
-              default: () => '编辑',
-              icon: () => h(NIcon, null, { default: () => h(CreateOutline) })
+              trigger: () => h(
+                NButton,
+                {
+                  text: true,
+                  type: 'primary',
+                  onClick: () => handleEdit(row)
+                },
+                {
+                  icon: () => h(NIcon, {size: 18}, {default: () => h(CreateOutline)})
+                }
+              ),
+              default: () => '编辑'
             }
           ),
           h(
@@ -163,15 +181,20 @@ const columns: DataTableColumns<User> = [
             {
               default: () => '确定要删除该用户吗？',
               trigger: () => h(
-                NButton,
+                NTooltip,
+                {trigger: 'hover'},
                 {
-                  text: true,
-                  type: 'error',
-                  size: 'small'
-                },
-                {
-                  default: () => '删除',
-                  icon: () => h(NIcon, null, { default: () => h(TrashOutline) })
+                  trigger: () => h(
+                    NButton,
+                    {
+                      text: true,
+                      type: 'error'
+                    },
+                    {
+                      icon: () => h(NIcon, {size: 18}, {default: () => h(TrashOutline)})
+                    }
+                  ),
+                  default: () => '删除'
                 }
               )
             }
@@ -230,109 +253,94 @@ const handleDelete = (id: number) => {
 </script>
 
 <template>
-  <div class="user-management-container">
-    <NSpace vertical :size="16">
-      <!-- 搜索区域 -->
-      <NCard :bordered="false" class="search-card">
-        <NForm inline :model="searchForm" label-placement="left">
-          <NFormItem label="用户名">
-            <NInput 
-              v-model:value="searchForm.username" 
-              placeholder="请输入用户名"
-              clearable
-              style="width: 200px"
-            />
-          </NFormItem>
-          <NFormItem label="昵称">
-            <NInput 
-              v-model:value="searchForm.nickname" 
-              placeholder="请输入昵称"
-              clearable
-              style="width: 200px"
-            />
-          </NFormItem>
-          <NFormItem>
-            <NSpace>
-              <NButton type="primary" @click="handleSearch" :loading="loading">
-                <template #icon>
-                  <NIcon>
-                    <SearchOutline />
-                  </NIcon>
-                </template>
-                搜索
-              </NButton>
-              <NButton @click="handleReset">
-                <template #icon>
-                  <NIcon>
-                    <RefreshOutline />
-                  </NIcon>
-                </template>
-                重置
-              </NButton>
-            </NSpace>
-          </NFormItem>
-        </NForm>
-      </NCard>
+  <PageContainer title="用户列表">
+    <template #search>
+      <NForm :model="searchForm" inline label-placement="left">
+        <NFormItem label="用户名">
+          <NInput
+            v-model:value="searchForm.username"
+            clearable
+            placeholder="请输入用户名"
+            style="width: 180px"
+          />
+        </NFormItem>
+        <NFormItem label="昵称">
+          <NInput
+            v-model:value="searchForm.nickname"
+            clearable
+            placeholder="请输入昵称"
+            style="width: 180px"
+          />
+        </NFormItem>
+        <NFormItem>
+          <NSpace :size="12">
+            <NButton :loading="loading" type="primary" @click="handleSearch">
+              <template #icon>
+                <NIcon>
+                  <SearchOutline/>
+                </NIcon>
+              </template>
+              搜索
+            </NButton>
+            <NButton @click="handleReset">
+              <template #icon>
+                <NIcon>
+                  <RefreshOutline/>
+                </NIcon>
+              </template>
+              重置
+            </NButton>
+          </NSpace>
+        </NFormItem>
+      </NForm>
+    </template>
 
-      <!-- 用户列表 -->
-      <NCard 
-        title="用户列表" 
-        :bordered="false" 
-        :segmented="{ content: true }"
-        class="table-card"
-      >
-        <template #header-extra>
-          <NButton type="primary" @click="handleAdd">
-            <template #icon>
-              <NIcon>
-                <AddOutline />
-              </NIcon>
-            </template>
-            添加用户
-          </NButton>
+    <template #header-extra>
+      <NButton type="primary" @click="handleAdd">
+        <template #icon>
+          <NIcon>
+            <AddOutline/>
+          </NIcon>
         </template>
-        
-        <NDataTable 
-          :columns="columns" 
-          :data="users" 
-          :loading="loading"
-          :pagination="{ 
-            pageSize: 10,
-            showSizePicker: true,
-            pageSizes: [10, 20, 50]
-          }"
-          :bordered="false"
-          :single-line="false"
-          striped
-          class="user-table"
-        />
-      </NCard>
-    </NSpace>
-  </div>
+        添加用户
+      </NButton>
+    </template>
+
+    <NDataTable
+      :bordered="false"
+      :columns="columns"
+      :data="users"
+      :loading="loading"
+      :pagination="{
+        pageSize: 10,
+        showSizePicker: true,
+        pageSizes: [10, 20, 50],
+        showQuickJumper: true
+      }"
+      :single-line="false"
+      class="data-table"
+      striped
+    />
+  </PageContainer>
 </template>
 
 <style scoped>
-.user-management-container {
-  width: 100%;
-  height: 100%;
-}
-
-.search-card {
-  background: #fff;
-}
-
-.table-card {
-  background: #fff;
-}
-
-.user-table {
+.data-table {
   margin-top: 8px;
+}
+
+.data-table :deep(.n-data-table-th) {
+  font-weight: 600;
+}
+
+.data-table :deep(.n-data-table-td) {
+  padding: 12px 16px;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .user-table :deep(.n-data-table-th),
-  .user-table :deep(.n-data-table-td) {
+  .data-table :deep(.n-data-table-th),
+  .data-table :deep(.n-data-table-td) {
     padding: 8px 4px;
     font-size: 12px;
   }

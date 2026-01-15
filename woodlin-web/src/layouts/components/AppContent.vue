@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NLayoutContent } from 'naive-ui'
+import {NLayoutContent} from 'naive-ui'
 </script>
 
 <template>
@@ -16,18 +16,18 @@ import { NLayoutContent } from 'naive-ui'
 
 <style scoped>
 .app-content {
-  height: calc(100vh - 64px);
+  height: calc(100vh - var(--header-height));
   overflow: auto;
-  background-color: #f7f9fc;
+  background-color: var(--bg-color-secondary);
 }
 
 .content-wrapper {
-  padding: 24px;
+  padding: var(--spacing-xl);
   min-height: 100%;
 }
 
 .fade-slide-enter-active {
-  transition: all 0.25s ease-out;
+  transition: all var(--transition-normal);
 }
 
 .fade-slide-leave-active {
@@ -36,17 +36,17 @@ import { NLayoutContent } from 'naive-ui'
 
 .fade-slide-enter-from {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-8px);
 }
 
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(8px);
 }
 
 @media (max-width: 768px) {
   .content-wrapper {
-    padding: 16px;
+    padding: var(--spacing-lg);
   }
 }
 </style>

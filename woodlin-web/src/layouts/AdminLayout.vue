@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { NLayout } from 'naive-ui'
+import {computed} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {NLayout} from 'naive-ui'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 import AppContent from './components/AppContent.vue'
-import { generateMenuFromRoutes } from '@/utils/menu-generator'
-import { useAuthStore, useAppStore, usePermissionStore } from '@/stores'
+import {generateMenuFromRoutes} from '@/utils/menu-generator'
+import {useAppStore, useAuthStore, usePermissionStore} from '@/stores'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,18 +25,18 @@ const menuOptions = computed(() => {
   // Use addedRoutes which only contains the AdminLayout wrapper with its children
   // addedRoutes[0] is typically the AdminLayout route with path '/'
   const addedRoutes = permissionStore.addedRoutes
-  
+
   // Safety check: ensure we have routes and the first route has children
   if (!addedRoutes.length) {
     return []
   }
-  
+
   // Find the root layout route (path '/' or has children)
   const rootRoute = addedRoutes.find(route => route.path === '/' || route.children)
   if (!rootRoute || !rootRoute.children) {
     return []
   }
-  
+
   return generateMenuFromRoutes(rootRoute.children)
 })
 
@@ -90,6 +90,7 @@ const handleLogout = async () => {
 }
 
 .content-layout {
-  background-color: #f7f9fc;
+  background-color: var(--bg-color-secondary);
+  transition: background-color var(--transition-normal);
 }
 </style>

@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import {computed} from 'vue'
+import {useRouter} from 'vue-router'
 import {
-  NLayoutHeader,
-  NButton,
-  NIcon,
+  NAvatar,
   NBreadcrumb,
   NBreadcrumbItem,
-  NSpace,
-  NTag,
+  NButton,
   NDropdown,
-  NAvatar
+  NIcon,
+  NLayoutHeader,
+  NTag,
+  NTooltip
 } from 'naive-ui'
-import { MenuOutline } from '@vicons/ionicons5'
+import {
+  MenuOutline,
+  NotificationsOutline,
+  PersonCircleOutline,
+  SettingsOutline
+} from '@vicons/ionicons5'
+import {useAuthStore} from '@/stores'
 
 const props = defineProps<{
   envLabel: string
@@ -22,10 +28,17 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'toggle-collapse'): void; (e: 'logout'): void }>()
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+const userInfo = computed(() => authStore.user)
+const userInitial = computed(() => {
+  const name = userInfo.value?.username || 'U'
+  return name.charAt(0).toUpperCase()
+})
 
 const dropdownOptions = [
-  { label: '个人中心', key: 'profile' },
-  { label: '修改密码', key: 'change-password' },
+  {label: '个人中心', key: 'profile', icon: PersonCircleOutline},
+  {label: '修改密码', key: 'change-password', icon: SettingsOutline},
   { type: 'divider', key: 'divider' },
   { label: '退出登录', key: 'logout' }
 ]
@@ -45,45 +58,99 @@ const breadcrumbItems = computed(() => props.breadcrumbs)
 </script>
 
 <template>
-  <NLayoutHeader bordered class="app-header">
+  <NLayoutHeader class="app-header">
     <div class="header-left">
-      <NButton text class="collapse-btn" @click="emit('toggle-collapse')">
-        <template #icon>
-          <NIcon size="20">
-            <MenuOutline />
-          </NIcon>
+      <NTooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <NButton class="collapse-btn" text @click="emit('toggle-collapse')">
+            <template #icon>
+              <NIcon color="var(--text-color-secondary)" size="20">
+                <MenuOutline/>
+              </NIcon>
+            </template>
+          </NButton>
         </template>
-      </NButton>
+        切换侧边栏
+      </NTooltip>
 
-      <NBreadcrumb>
-        <NBreadcrumbItem v-for="item in breadcrumbItems" :key="item.title">
-          <span class="breadcrumb-text">{{ item.title }}</span>
+      <NBreadcrumb class="breadcrumb">
+        <NBreadcrumbItem v-for="(item, index) in breadcrumbItems" :key="item.title">
+          <span :class="{ 'is-last': index === breadcrumbItems.length - 1 }"
+                class="breadcrumb-text">
+            {{ item.title }}
+          </span>
         </NBreadcrumbItem>
       </NBreadcrumb>
     </div>
 
-    <NSpace :size="16" align="center">
-      <NTag size="small" type="success" :bordered="false">{{ envLabel }}</NTag>
+    <div class="header-right">
+      <!-- 环境标签 -->
+      <NTag
+        :bordered="false"
+        :type="envLabel === '生产环境' ? 'error' : 'success'"
+        class="env-tag"
+        size="small"
+      >
+        {{ envLabel }}
+      </NTag>
 
-      <NDropdown :options="dropdownOptions" trigger="hover" @select="handleDropdownSelect">
+      <!-- 通知图标 -->
+      <NTooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <NButton class="icon-btn" text>
+            <template #icon>
+              <NIcon color="var(--text-color-secondary)" size="20">
+                <NotificationsOutline/>
+              </NIcon>
+            </template>
+          </NButton>
+        </template>
+        通知
+      </NTooltip>
+
+      <!-- 用户下拉菜单 -->
+      <NDropdown
+        :options="dropdownOptions"
+        placement="bottom-end"
+        trigger="hover"
+        @select="handleDropdownSelect"
+      >
         <div class="user-info">
-          <NAvatar size="small" round :style="{ backgroundColor: '#18a058' }">A</NAvatar>
-          <span class="user-name">管理员</span>
+          <NAvatar
+            :style="{
+              backgroundColor: 'var(--primary-color)',
+              fontSize: '14px',
+              fontWeight: '600'
+            }"
+            round
+            size="small"
+          >
+            {{ userInitial }}
+          </NAvatar>
+          <div class="user-detail">
+            <span class="user-name">{{ userInfo?.username || '管理员' }}</span>
+            <span class="user-role">{{ userInfo?.email || '' }}</span>
+          </div>
+          <NIcon class="arrow-icon" color="var(--text-color-tertiary)" size="14">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+            </svg>
+          </NIcon>
         </div>
       </NDropdown>
-    </NSpace>
+    </div>
   </NLayoutHeader>
 </template>
 
 <style scoped>
 .app-header {
-  height: 64px;
+  height: var(--header-height);
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #fff;
-  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--border-color-light);
   position: sticky;
   top: 0;
   z-index: 9;
@@ -92,38 +159,104 @@ const breadcrumbItems = computed(() => props.breadcrumbs)
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
 }
 
 .collapse-btn {
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.collapse-btn:hover {
+  background: var(--bg-color-tertiary);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
 }
 
 .breadcrumb-text {
-  font-size: 14px;
+  font-size: var(--font-size-base);
+  color: var(--text-color-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.breadcrumb-text.is-last {
+  color: var(--text-color-primary);
   font-weight: 500;
-  color: #1f2937;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.env-tag {
+  font-size: 11px;
+  padding: 0 8px;
+  height: 22px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.icon-btn:hover {
+  background: var(--bg-color-tertiary);
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background var(--transition-fast);
+  background: var(--bg-color-tertiary);
 }
 
 .user-info:hover {
-  background-color: rgba(24, 160, 88, 0.08);
+  background: var(--primary-color-light);
+}
+
+.user-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-color-primary);
+  line-height: 1.2;
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--text-color-tertiary);
+  line-height: 1.2;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow-icon {
+  transition: transform var(--transition-fast);
+}
+
+.user-info:hover .arrow-icon {
+  transform: rotate(180deg);
 }
 
 @media (max-width: 768px) {
@@ -131,7 +264,19 @@ const breadcrumbItems = computed(() => props.breadcrumbs)
     padding: 0 16px;
   }
 
-  .user-name {
+  .user-detail {
+    display: none;
+  }
+
+  .user-info {
+    padding: 4px;
+  }
+
+  .arrow-icon {
+    display: none;
+  }
+
+  .env-tag {
     display: none;
   }
 }
