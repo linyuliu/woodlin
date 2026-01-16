@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * 在线用户服务
@@ -79,23 +77,23 @@ public class OnlineUserService {
     public void userOnline(String userId, String username, String ip, String browser, String os) {
         try {
             long loginTime = System.currentTimeMillis();
-            
+
             // 创建用户信息对象
             OnlineUserInfo userInfo = new OnlineUserInfo(userId, username, ip, loginTime, browser, os);
-            
+
             // 1. 在Hash中存储用户详细信息（使用Jackson序列化）
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
             String userInfoJson = objectMapper.writeValueAsString(userInfo);
             onlineUsersMap.put(userId, userInfoJson);
-            
+
             // 2. 在ZSet中记录登录时间（用于按时间排序查询）
             RScoredSortedSet<String> loginTimeZSet = redissonClient.getScoredSortedSet(ONLINE_USERS_ZSET);
             loginTimeZSet.add(loginTime, userId);
-            
+
             // 3. 创建Session记录（记录本次会话开始时间）
             String sessionKey = USER_SESSION_PREFIX + userId;
             redissonClient.getBucket(sessionKey).set(String.valueOf(loginTime), Duration.ofHours(24));
-            
+
             log.info("用户上线: userId={}, username={}, ip={}, loginTime={}", userId, username, ip, loginTime);
         } catch (Exception e) {
             log.error("记录用户上线失败: userId={}", userId, e);
@@ -111,18 +109,18 @@ public class OnlineUserService {
     public void updateUserActivity(String userId) {
         try {
             long currentTime = System.currentTimeMillis();
-            
+
             // 更新Hash中的lastActivityTime
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
             String userInfoJson = onlineUsersMap.get(userId);
-            
+
             if (userInfoJson != null) {
                 // 使用Jackson解析和更新
                 OnlineUserInfo userInfo = objectMapper.readValue(userInfoJson, OnlineUserInfo.class);
                 userInfo.setLastActivityTime(currentTime);
                 String updatedJson = objectMapper.writeValueAsString(userInfo);
                 onlineUsersMap.put(userId, updatedJson);
-                
+
                 log.debug("更新用户活动时间: userId={}, time={}", userId, currentTime);
             }
         } catch (Exception e) {
@@ -141,35 +139,35 @@ public class OnlineUserService {
             // 1. 获取session开始时间
             String sessionKey = USER_SESSION_PREFIX + userId;
             String sessionStartStr = (String) redissonClient.getBucket(sessionKey).get();
-            
+
             if (sessionStartStr != null) {
                 long sessionStart = Long.parseLong(sessionStartStr);
                 long sessionEnd = System.currentTimeMillis();
                 long sessionDuration = (sessionEnd - sessionStart) / 1000; // 转换为秒
-                
+
                 // 2. 累加到总在线时长
                 String durationKey = USER_DURATION_PREFIX + userId;
                 redissonClient.getAtomicLong(durationKey).addAndGet(sessionDuration);
-                
+
                 // 3. 累加到当日在线时长
                 String today = java.time.LocalDate.now().toString();
                 String dailyKey = DAILY_DURATION_PREFIX + userId + ":" + today;
                 redissonClient.getAtomicLong(dailyKey).addAndGet(sessionDuration);
                 redissonClient.getBucket(dailyKey).expire(Duration.ofDays(90)); // 保留90天
-                
+
                 log.info("用户下线: userId={}, 本次在线时长={}秒", userId, sessionDuration);
             }
-            
+
             // 4. 从Hash和ZSet中删除
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
             onlineUsersMap.remove(userId);
-            
+
             RScoredSortedSet<String> loginTimeZSet = redissonClient.getScoredSortedSet(ONLINE_USERS_ZSET);
             loginTimeZSet.remove(userId);
-            
+
             // 5. 删除session记录
             redissonClient.getBucket(sessionKey).delete();
-            
+
         } catch (Exception e) {
             log.error("记录用户下线失败: userId={}", userId, e);
         }
@@ -202,16 +200,16 @@ public class OnlineUserService {
     public List<Map<String, Object>> getOnlineUsers(int page, int pageSize) {
         try {
             RScoredSortedSet<String> loginTimeZSet = redissonClient.getScoredSortedSet(ONLINE_USERS_ZSET);
-            
+
             // ZSet按登录时间倒序获取（最近登录的排在前面）
             int start = (page - 1) * pageSize;
             int end = start + pageSize - 1;
             Collection<String> userIds = loginTimeZSet.valueRangeReversed(start, end);
-            
+
             // 批量获取用户信息
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
             Map<String, String> usersInfo = onlineUsersMap.getAll(new HashSet<>(userIds));
-            
+
             // 构建返回结果
             return userIds.stream()
                     .map(userId -> {
@@ -222,8 +220,8 @@ public class OnlineUserService {
                         return null;
                     })
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-                    
+                .toList();
+
         } catch (Exception e) {
             log.error("获取在线用户列表失败", e);
             return Collections.emptyList();
@@ -292,19 +290,19 @@ public class OnlineUserService {
             int cleanedCount = 0;
             long currentTime = System.currentTimeMillis();
             long timeoutMillis = timeoutSeconds * 1000;
-            
+
             RMap<String, String> onlineUsersMap = redissonClient.getMap(ONLINE_USERS_HASH);
-            
+
             // 遍历所有在线用户检查活动时间
             for (Map.Entry<String, String> entry : onlineUsersMap.entrySet()) {
                 String userId = entry.getKey();
                 String userInfoJson = entry.getValue();
-                
+
                 try {
                     // 使用Jackson解析JSON
                     OnlineUserInfo userInfo = objectMapper.readValue(userInfoJson, OnlineUserInfo.class);
                     long lastActivityTime = userInfo.getLastActivityTime();
-                    
+
                     // 检查是否超时
                     if (currentTime - lastActivityTime > timeoutMillis) {
                         userOffline(userId);
@@ -315,7 +313,7 @@ public class OnlineUserService {
                     log.warn("解析用户信息失败，跳过: userId={}", userId, e);
                 }
             }
-            
+
             return cleanedCount;
         } catch (Exception e) {
             log.error("清理过期在线用户失败", e);

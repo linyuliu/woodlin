@@ -13,8 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 系统字典服务（重构版）
@@ -67,9 +68,9 @@ public class SystemDictionaryService {
                .eq(SysDictData::getStatus, CommonConstant.STATUS_ENABLE)
                .eq(SysDictData::getDeleted, CommonConstant.DELETED_NO)
                .orderByAsc(SysDictData::getDictSort);
-        
+
         List<SysDictData> dataList = dictDataMapper.selectList(wrapper);
-        
+
         return dataList.stream()
                 .map(data -> {
                     Map<String, Object> map = new HashMap<>();
@@ -85,7 +86,7 @@ public class SystemDictionaryService {
                     }
                     return map;
                 })
-                .collect(Collectors.toList());
+            .toList();
     }
 
     /**
@@ -97,10 +98,10 @@ public class SystemDictionaryService {
     public List<Map<String, Object>> getRegionTree() {
         // 查询所有省级行政区划
         List<SysRegion> provinces = regionMapper.selectProvinces();
-        
+
         return provinces.stream()
                 .map(this::buildRegionNode)
-                .collect(Collectors.toList());
+            .toList();
     }
 
     /**
@@ -109,11 +110,11 @@ public class SystemDictionaryService {
      * @param parentCode 父区划代码（为空则查询省级）
      * @return 子区划列表
      */
-    @Cacheable(value = "dict:region:children", key = "#parentCode == null ? 'root' : #parentCode", 
+    @Cacheable(value = "dict:region:children", key = "#parentCode == null ? 'root' : #parentCode",
                unless = "#result == null || #result.isEmpty()")
     public List<Map<String, Object>> getRegionChildren(String parentCode) {
         List<SysRegion> regions;
-        
+
         if (parentCode == null || parentCode.isEmpty()) {
             // 查询省级行政区划
             regions = regionMapper.selectProvinces();
@@ -126,10 +127,10 @@ public class SystemDictionaryService {
                    .orderByAsc(SysRegion::getSortOrder);
             regions = regionMapper.selectList(wrapper);
         }
-        
+
         return regions.stream()
                 .map(this::regionToMap)
-                .collect(Collectors.toList());
+            .toList();
     }
 
     /**
@@ -172,7 +173,7 @@ public class SystemDictionaryService {
     @Cacheable(value = "dict:type:list", unless = "#result == null || #result.isEmpty()")
     public List<Map<String, Object>> getDictTypeList() {
         List<SysDictType> types = getAllDictTypes();
-        
+
         return types.stream()
                 .map(type -> {
                     Map<String, Object> map = new HashMap<>();
@@ -181,7 +182,7 @@ public class SystemDictionaryService {
                     map.put("dictCategory", type.getDictCategory());
                     return map;
                 })
-                .collect(Collectors.toList());
+            .toList();
     }
 
     /**
@@ -189,7 +190,7 @@ public class SystemDictionaryService {
      */
     private Map<String, Object> buildRegionNode(SysRegion region) {
         Map<String, Object> node = regionToMap(region);
-        
+
         // 查询子节点
         LambdaQueryWrapper<SysRegion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRegion::getParentCode, region.getRegionCode())
@@ -197,13 +198,13 @@ public class SystemDictionaryService {
                .eq(SysRegion::getDeleted, CommonConstant.DELETED_NO)
                .orderByAsc(SysRegion::getSortOrder);
         List<SysRegion> children = regionMapper.selectList(wrapper);
-        
+
         if (!children.isEmpty()) {
             node.put("children", children.stream()
                     .map(this::buildRegionNode)
-                    .collect(Collectors.toList()));
+                .toList());
         }
-        
+
         return node;
     }
 

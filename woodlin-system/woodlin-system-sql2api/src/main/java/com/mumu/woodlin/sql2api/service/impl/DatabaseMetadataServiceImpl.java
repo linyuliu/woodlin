@@ -3,11 +3,9 @@ package com.mumu.woodlin.sql2api.service.impl;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
@@ -158,7 +156,7 @@ public class DatabaseMetadataServiceImpl implements DatabaseMetadataService {
         return metadataExtractors.stream()
                 .map(e -> e.getDatabaseType().name())
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
     }
     
     @Override
