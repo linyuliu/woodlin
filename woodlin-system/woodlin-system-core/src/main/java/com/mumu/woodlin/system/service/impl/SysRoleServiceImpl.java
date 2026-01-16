@@ -1,27 +1,13 @@
 package com.mumu.woodlin.system.service.impl;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.mumu.woodlin.security.service.PermissionCacheService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.security.service.PermissionCacheService;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysRoleHierarchy;
@@ -31,6 +17,13 @@ import com.mumu.woodlin.system.mapper.SysRoleInheritedPermissionMapper;
 import com.mumu.woodlin.system.mapper.SysRoleMapper;
 import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.util.RoleHierarchyUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
 
 /**
  * 角色信息服务实现
@@ -307,7 +300,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         List<Long> permissionIds = permissions.stream()
             .map(SysRoleInheritedPermission::getPermissionId)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
 
         if (CollUtil.isEmpty(permissionIds)) {
             return Collections.emptyList();
@@ -317,7 +310,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 简化处理，返回权限ID列表的字符串形式
         return permissionIds.stream()
             .map(String::valueOf)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Override
@@ -399,7 +392,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             List<SysRoleHierarchy> hierarchies = hierarchyMapper.selectList(wrapper);
             ancestorIds = hierarchies.stream()
                 .map(SysRoleHierarchy::getAncestorRoleId)
-                .collect(Collectors.toList());
+                .toList();
         }
 
         return RoleHierarchyUtil.buildHierarchies(role.getRoleId(), ancestorIds, role.getTenantId());

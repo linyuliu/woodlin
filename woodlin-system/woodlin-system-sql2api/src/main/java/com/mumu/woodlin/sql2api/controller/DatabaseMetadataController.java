@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -91,7 +89,7 @@ public class DatabaseMetadataController {
         if (CollUtil.isNotEmpty(request.getTables())) {
             tables = tables.stream()
                     .filter(t -> request.getTables().contains(t.getTableName()))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         byte[] content = documentExportService.export(metadata, tables, request.getFormat());

@@ -1,56 +1,48 @@
 package com.mumu.woodlin.system.util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.mumu.woodlin.system.entity.SysRole;
+import com.mumu.woodlin.system.entity.SysRoleHierarchy;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.StrUtil;
-import com.mumu.woodlin.system.entity.SysRole;
-import com.mumu.woodlin.system.entity.SysRoleHierarchy;
+import java.util.*;
 
 /**
  * 角色层次结构工具类
- * 
+ *
  * @author mumu
  * @description 提供角色继承层次相关的工具方法，支持RBAC1，使用Guava优化字符串和集合操作
  * @since 2025-10-31
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class RoleHierarchyUtil {
-    
+
     /**
      * 最大角色层级深度（防止无限递归）
      */
     public static final int MAX_ROLE_DEPTH = 10;
-    
+
     /**
      * 路径分隔符
      */
     public static final String PATH_SEPARATOR = "/";
-    
+
     /**
      * Guava Splitter for path parsing (reusable and efficient)
      */
     private static final Splitter PATH_SPLITTER = Splitter.on(PATH_SEPARATOR)
             .omitEmptyStrings()
             .trimResults();
-    
+
     /**
      * 构建角色路径
-     * 
+     *
      * @param parentPath 父角色路径
      * @param roleId 当前角色ID
      * @return 角色路径
@@ -60,14 +52,14 @@ public final class RoleHierarchyUtil {
             return PATH_SEPARATOR + roleId + PATH_SEPARATOR;
         }
         // 移除尾部斜杠（如果有）
-        String normalizedPath = parentPath.endsWith(PATH_SEPARATOR) ? 
+        String normalizedPath = parentPath.endsWith(PATH_SEPARATOR) ?
             parentPath.substring(0, parentPath.length() - 1) : parentPath;
         return normalizedPath + PATH_SEPARATOR + roleId + PATH_SEPARATOR;
     }
-    
+
     /**
      * 从路径中提取角色ID列表（使用Guava Splitter提升性能）
-     * 
+     *
      * @param rolePath 角色路径
      * @return 不可变的角色ID列表
      */
@@ -75,15 +67,15 @@ public final class RoleHierarchyUtil {
         if (Strings.isNullOrEmpty(rolePath)) {
             return ImmutableList.of();
         }
-        
+
         return PATH_SPLITTER.splitToStream(rolePath)
                 .map(Long::parseLong)
                 .collect(ImmutableList.toImmutableList());
     }
-    
+
     /**
      * 计算角色层级
-     * 
+     *
      * @param rolePath 角色路径
      * @return 角色层级（0为顶级）
      */
@@ -91,14 +83,14 @@ public final class RoleHierarchyUtil {
         if (Strings.isNullOrEmpty(rolePath)) {
             return 0;
         }
-        
+
         ImmutableList<Long> roleIds = extractRoleIdsFromPath(rolePath);
         return Math.max(0, roleIds.size() - 1);
     }
-    
+
     /**
      * 构建角色层次关系（闭包表记录）
-     * 
+     *
      * @param roleId 当前角色ID
      * @param ancestorRoleIds 祖先角色ID列表
      * @param tenantId 租户ID
@@ -106,14 +98,14 @@ public final class RoleHierarchyUtil {
      */
     public static List<SysRoleHierarchy> buildHierarchies(Long roleId, List<Long> ancestorRoleIds, String tenantId) {
         List<SysRoleHierarchy> hierarchies = Lists.newArrayListWithCapacity(ancestorRoleIds.size() + 1);
-        
+
         // 添加自己到自己的关系（距离为0）
         hierarchies.add(new SysRoleHierarchy()
             .setAncestorRoleId(roleId)
             .setDescendantRoleId(roleId)
             .setDistance(0)
             .setTenantId(tenantId));
-        
+
         // 添加祖先关系
         if (CollUtil.isNotEmpty(ancestorRoleIds)) {
             for (int i = 0; i < ancestorRoleIds.size(); i++) {
@@ -124,41 +116,37 @@ public final class RoleHierarchyUtil {
                     .setTenantId(tenantId));
             }
         }
-        
+
         return hierarchies;
     }
-    
+
     /**
      * 检查是否存在循环依赖
-     * 
+     *
      * @param roleId 当前角色ID
      * @param parentRoleId 父角色ID
      * @param hierarchyMap 角色层次关系映射（key: 后代角色ID, value: 祖先角色ID列表）
      * @return 是否存在循环依赖
      */
-    public static boolean hasCircularDependency(Long roleId, Long parentRoleId, 
+    public static boolean hasCircularDependency(Long roleId, Long parentRoleId,
                                                 Map<Long, List<Long>> hierarchyMap) {
         if (roleId == null || parentRoleId == null) {
             return false;
         }
-        
+
         // 如果父角色就是自己，直接返回true
         if (roleId.equals(parentRoleId)) {
             return true;
         }
-        
+
         // 检查父角色是否在当前角色的后代中
         List<Long> descendants = hierarchyMap.get(roleId);
-        if (descendants != null && descendants.contains(parentRoleId)) {
-            return true;
-        }
-        
-        return false;
+        return descendants != null && descendants.contains(parentRoleId);
     }
-    
+
     /**
      * 构建角色树
-     * 
+     *
      * @param roles 角色列表
      * @param parentId 父角色ID（null表示顶级）
      * @return 角色树
@@ -167,7 +155,7 @@ public final class RoleHierarchyUtil {
         if (CollUtil.isEmpty(roles)) {
             return Collections.emptyList();
         }
-        
+
         return roles.stream()
             .filter(role -> {
                 if (parentId == null) {
@@ -180,12 +168,12 @@ public final class RoleHierarchyUtil {
                 List<SysRole> children = buildRoleTree(roles, role.getRoleId());
                 // 这里可以通过扩展SysRole添加children字段，或者使用DTO
             })
-            .collect(Collectors.toList());
+            .toList();
     }
-    
+
     /**
      * 扁平化角色树
-     * 
+     *
      * @param role 角色节点
      * @param result 结果列表
      */
@@ -197,20 +185,20 @@ public final class RoleHierarchyUtil {
         // 如果有子角色字段，继续递归
         // 这里需要SysRole扩展支持children字段
     }
-    
+
     /**
      * 验证角色层级深度
-     * 
+     *
      * @param roleLevel 角色层级
      * @return 是否有效
      */
     public static boolean isValidRoleLevel(int roleLevel) {
         return roleLevel >= 0 && roleLevel < MAX_ROLE_DEPTH;
     }
-    
+
     /**
      * 合并角色ID列表（去重）
-     * 
+     *
      * @param roleLists 多个角色ID列表
      * @return 合并后的角色ID列表
      */
@@ -224,10 +212,10 @@ public final class RoleHierarchyUtil {
         }
         return new ArrayList<>(mergedSet);
     }
-    
+
     /**
      * 获取角色的根角色ID（路径中的第一个角色）
-     * 
+     *
      * @param rolePath 角色路径
      * @return 根角色ID
      */
@@ -235,10 +223,10 @@ public final class RoleHierarchyUtil {
         List<Long> roleIds = extractRoleIdsFromPath(rolePath);
         return CollUtil.isEmpty(roleIds) ? null : roleIds.get(0);
     }
-    
+
     /**
      * 判断角色A是否是角色B的祖先
-     * 
+     *
      * @param ancestorPath 角色A的路径
      * @param descendantPath 角色B的路径
      * @return 是否是祖先关系

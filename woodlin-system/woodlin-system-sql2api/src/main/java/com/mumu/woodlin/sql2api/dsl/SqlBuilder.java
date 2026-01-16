@@ -37,7 +37,7 @@ public class SqlBuilder {
             // 使用所有列
             List<String> columnNames = table.getColumns().stream()
                     .map(ColumnMetadata::getColumnName)
-                    .collect(Collectors.toList());
+                    .toList();
             sql.append(String.join(", ", columnNames));
         }
         
@@ -92,7 +92,7 @@ public class SqlBuilder {
                 : table.getColumns().stream()
                     .filter(col -> !Boolean.TRUE.equals(col.getAutoIncrement())) // 排除自增列
                     .map(ColumnMetadata::getColumnName)
-                    .collect(Collectors.toList());
+                    .toList();
         
         sql.append(" (");
         sql.append(String.join(", ", columns));

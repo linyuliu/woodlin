@@ -22,7 +22,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 密码登录策略
@@ -178,15 +177,15 @@ public class PasswordLoginStrategy implements LoginStrategy {
         // 提取角色ID、角色编码和角色名称
         List<Long> roleIds = roles.stream()
             .map(SysRole::getRoleId)
-            .collect(Collectors.toList());
+            .toList();
         
         List<String> roleCodes = roles.stream()
             .map(SysRole::getRoleCode)
-            .collect(Collectors.toList());
+            .toList();
         
         List<String> roleNames = roles.stream()
             .map(SysRole::getRoleName)
-            .collect(Collectors.toList());
+            .toList();
         
         // 查询用户的所有权限（包括角色继承的权限，支持RBAC1）
         // 获取完整的权限对象以便分类
