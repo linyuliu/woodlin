@@ -1,18 +1,18 @@
 /**
  * 路由配置模块
- * 
+ *
  * @author mumu
  * @description 定义应用的所有路由，包括静态路由和动态路由
  *              参考vue-vben-admin的路由设计，支持权限控制和动态路由
  * @since 2025-01-01
  */
 
-import type { RouteRecordRaw } from 'vue-router'
-import AdminLayout from '@/layouts/AdminLayout.vue'
+import type {RouteRecordRaw} from 'vue-router'
+import {LAYOUT} from './route-constants'
 
 /**
  * 静态路由（不需要权限的基础路由）
- * 
+ *
  * 这些路由对所有用户可见，不需要权限验证
  */
 export const constantRoutes: RouteRecordRaw[] = [
@@ -57,13 +57,13 @@ export const constantRoutes: RouteRecordRaw[] = [
 
 /**
  * 动态路由（需要根据权限动态加载的路由）
- * 
+ *
  * 这些路由会根据用户权限进行过滤，只有有权限的用户才能访问
  */
 export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: AdminLayout,
+    component: LAYOUT,
     redirect: '/dashboard',
     children: [
       // ===== 仪表板 =====
@@ -78,7 +78,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           permissions: ['dashboard:view']
         }
       },
-      
+
       // ===== 系统管理 =====
       {
         path: 'system',
@@ -162,7 +162,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           }
         ]
       },
-      
+
       // ===== 数据源管理 =====
       {
         path: 'datasource',
@@ -196,7 +196,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           }
         ]
       },
-      
+
       // ===== 租户管理 =====
       {
         path: 'tenant',
@@ -220,7 +220,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           }
         ]
       },
-      
+
       // ===== 文件管理 =====
       {
         path: 'file',
@@ -254,7 +254,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           }
         ]
       },
-      
+
       // ===== 任务管理 =====
       {
         path: 'task',
@@ -288,7 +288,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           }
         ]
       },
-      
+
       // ===== 开发工具 =====
       {
         path: 'dev',
