@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 import {type MenuOption, NLayoutSider, NMenu} from 'naive-ui'
-import logoSvg from '@/assets/logo-tree.svg'
+import logoSvg from '@/assets/logo.svg'
 
 const props = defineProps<{
   collapsed: boolean

@@ -36,6 +36,18 @@ export interface DictType {
 }
 
 /**
+ * 管理端字典类型实体
+ */
+export interface DictTypeRecord extends DictType {
+  dictId?: number
+  status?: string
+  remark?: string
+  tenantId?: string
+  createTime?: string
+  updateTime?: string
+}
+
+/**
  * 区划节点
  */
 export interface RegionNode {
@@ -51,6 +63,27 @@ export interface RegionNode {
   latitude?: number
   isMunicipality: boolean
   children?: RegionNode[]
+}
+
+/**
+ * 管理端字典数据实体
+ */
+export interface DictDataRecord {
+  dataId?: number
+  dictType: string
+  dictLabel: string
+  dictValue: string
+  dictDesc?: string
+  dictSort?: number
+  status?: string
+  isDefault?: string
+  cssClass?: string
+  listClass?: string
+  extraData?: string
+  tenantId?: string
+  createTime?: string
+  updateTime?: string
+  deleted?: string
 }
 
 // ==================== 新版动态字典API ====================
@@ -127,6 +160,72 @@ export function getRegionChildren(parentCode?: string, useCache: boolean = true)
     () => request.get('/common/dict/region/children', { params: { parentCode } }),
     TTL.LONG
   )
+}
+
+// ==================== 管理端 CRUD 接口 ====================
+
+/**
+ * 管理端：查询字典类型列表
+ */
+export function listDictTypesAdmin(params?: Partial<DictTypeRecord>) {
+  return request.get<DictTypeRecord[], DictTypeRecord[]>('/system/dict/types', { params })
+}
+
+/**
+ * 管理端：新增字典类型
+ */
+export function createDictTypeAdmin(data: DictTypeRecord) {
+  return request.post<DictTypeRecord, DictTypeRecord>('/system/dict/types', data)
+}
+
+/**
+ * 管理端：更新字典类型
+ */
+export function updateDictTypeAdmin(data: DictTypeRecord) {
+  if (!data.dictId) {
+    throw new Error('dictId is required for updateDictTypeAdmin')
+  }
+  return request.put<DictTypeRecord, DictTypeRecord>(`/system/dict/types/${data.dictId}`, data)
+}
+
+/**
+ * 管理端：删除字典类型
+ */
+export function deleteDictTypeAdmin(dictId: number) {
+  return request.delete<void, void>(`/system/dict/types/${dictId}`)
+}
+
+/**
+ * 管理端：查询字典项列表
+ */
+export function listDictDataAdmin(dictType: string) {
+  return request.get<DictDataRecord[], DictDataRecord[]>('/system/dict/data', {
+    params: { dictType }
+  })
+}
+
+/**
+ * 管理端：新增字典项
+ */
+export function createDictDataAdmin(data: DictDataRecord) {
+  return request.post<DictDataRecord, DictDataRecord>('/system/dict/data', data)
+}
+
+/**
+ * 管理端：更新字典项
+ */
+export function updateDictDataAdmin(data: DictDataRecord) {
+  if (!data.dataId) {
+    throw new Error('dataId is required for updateDictDataAdmin')
+  }
+  return request.put<DictDataRecord, DictDataRecord>(`/system/dict/data/${data.dataId}`, data)
+}
+
+/**
+ * 管理端：删除字典项
+ */
+export function deleteDictDataAdmin(dataId: number) {
+  return request.delete<void, void>(`/system/dict/data/${dataId}`)
 }
 
 // ==================== 便捷方法 ====================
@@ -248,4 +347,3 @@ export function getUserStatusDict(): Promise<DictItem[]> {
 export function getDemoUser(): Promise<DemoUser> {
   return request.get('/dict/demo-user')
 }
-

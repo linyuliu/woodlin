@@ -20,27 +20,17 @@ const collapsed = computed({
   set: (value) => appStore.setSidebarCollapsed(value)
 })
 
-// Generate menu from dynamic routes
 const menuOptions = computed(() => {
-  // Use addedRoutes which only contains the AdminLayout wrapper with its children
-  // addedRoutes[0] is typically the AdminLayout route with path '/'
-  const addedRoutes = permissionStore.addedRoutes
+  // 优先使用 store 中的 menuRoutes（已过滤 hideInMenu），否则回退到 addedRoutes
+  const menuSource =
+    (permissionStore.menuRoutes?.length && permissionStore.menuRoutes) ||
+    permissionStore.addedRoutes[0]?.children ||
+    []
 
-  // Safety check: ensure we have routes and the first route has children
-  if (!addedRoutes.length) {
-    return []
-  }
-
-  // Find the root layout route (path '/' or has children)
-  const rootRoute = addedRoutes.find(route => route.path === '/' || route.children)
-  if (!rootRoute || !rootRoute.children) {
-    return []
-  }
-
-  return generateMenuFromRoutes(rootRoute.children)
+  return generateMenuFromRoutes(menuSource)
 })
 
-const activeKey = computed(() => route.path)
+const activeKey = computed(() => (route.meta?.activeMenu as string) || route.fullPath || route.path)
 
 const breadcrumbs = computed(() => {
   const items = route.matched

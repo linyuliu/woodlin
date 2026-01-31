@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed} from 'vue'
+import {computed, h} from 'vue'
 import {useRouter} from 'vue-router'
 import {
   NAvatar,
@@ -10,7 +10,8 @@ import {
   NIcon,
   NLayoutHeader,
   NTag,
-  NTooltip
+  NTooltip,
+  type DropdownOption
 } from 'naive-ui'
 import {
   MenuOutline,
@@ -18,7 +19,7 @@ import {
   PersonCircleOutline,
   SettingsOutline
 } from '@vicons/ionicons5'
-import {useAuthStore} from '@/stores'
+import {useUserStore} from '@/stores'
 
 const props = defineProps<{
   envLabel: string
@@ -28,19 +29,19 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'toggle-collapse'): void; (e: 'logout'): void }>()
 
 const router = useRouter()
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
-const userInfo = computed(() => authStore.user)
+const userInfo = computed(() => userStore.userInfo)
 const userInitial = computed(() => {
   const name = userInfo.value?.username || 'U'
   return name.charAt(0).toUpperCase()
 })
 
-const dropdownOptions = [
-  {label: '个人中心', key: 'profile', icon: PersonCircleOutline},
-  {label: '修改密码', key: 'change-password', icon: SettingsOutline},
+const dropdownOptions: DropdownOption[] = [
+  {label: '个人中心', key: 'profile', icon: () => h(NIcon, null, { default: () => h(PersonCircleOutline) })},
+  {label: '修改密码', key: 'change-password', icon: () => h(NIcon, null, { default: () => h(SettingsOutline) })},
   { type: 'divider', key: 'divider' },
-  { label: '退出登录', key: 'logout' }
+  { label: '退出登录', key: 'logout', icon: () => h(NIcon, null, { default: () => h(MenuOutline) }) }
 ]
 
 const handleDropdownSelect = (key: string) => {
