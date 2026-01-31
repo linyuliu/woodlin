@@ -1,16 +1,15 @@
 <script setup lang="ts">
 /**
- * 角色管理视图
+ * 角色管理视图（前端 mock，RBAC1）
  * 
  * @author mumu
- * @description 角色管理页面，包含角色列表、添加、编辑、权限分配等功能
- * @since 2025-01-01
+ * @since 2025-01-01 (rev 2026-01-31)
  */
-import { ref, h } from 'vue'
+import { ref, h, computed } from 'vue'
 import { 
   NCard, NButton, NDataTable, NSpace, NInput, NForm, NFormItem,
-  NTag, NIcon, NPopconfirm,
-  type DataTableColumns
+  NTag, NIcon, NPopconfirm, NModal, NSelect, NInputNumber, NTree,
+  useMessage, type DataTableColumns, type FormInst
 } from 'naive-ui'
 import { 
   AddOutline, 
@@ -20,18 +19,15 @@ import {
   TrashOutline,
   ShieldCheckmarkOutline
 } from '@vicons/ionicons5'
+import {
+  fetchRoleTree,
+  createRole,
+  updateRole as updateRoleMock,
+  deleteRole as deleteRoleMock,
+  type RoleNode
+} from '@/api/mock/rbac'
 
-/**
- * 角色数据接口
- */
-interface Role {
-  id: number
-  name: string
-  code: string
-  description: string
-  status: string
-  createTime: string
-}
+type Role = RoleNode
 
 /**
  * 搜索表单数据
@@ -41,48 +37,45 @@ const searchForm = ref({
   code: ''
 })
 
-/**
- * 加载状态
- */
 const loading = ref(false)
+const message = useMessage()
 
-/**
- * 角色列表数据
- */
-const roles = ref<Role[]>([
-  {
-    id: 1,
-    name: '超级管理员',
-    code: 'SUPER_ADMIN',
-    description: '拥有系统所有权限',
-    status: 'active',
-    createTime: '2025-01-01 10:00:00'
-  },
-  {
-    id: 2,
-    name: '管理员',
-    code: 'ADMIN',
-    description: '拥有系统管理权限',
-    status: 'active',
-    createTime: '2025-01-01 10:00:00'
-  },
-  {
-    id: 3,
-    name: '普通用户',
-    code: 'USER',
-    description: '基本使用权限',
-    status: 'active',
-    createTime: '2025-01-01 10:00:00'
+const roleTree = ref<RoleNode[]>([])
+const flatRoles = computed<Role[]>(() => {
+  const list: Role[] = []
+  const walk = (nodes: RoleNode[], parentName = '') => {
+    nodes.forEach(n => {
+      list.push({ ...n, parentName } as Role)
+      if (n.children) walk(n.children, n.roleName)
+    })
   }
-])
+  walk(roleTree.value)
+  return list
+})
+
+const roleModalShow = ref(false)
+const roleFormRef = ref<FormInst | null>(null)
+const roleForm = ref<Partial<Role>>({
+  roleId: undefined,
+  parentRoleId: null,
+  roleName: '',
+  roleCode: '',
+  sortOrder: 1,
+  status: '1'
+})
+
+const roleRules = {
+  roleName: { required: true, message: '请输入角色名称', trigger: 'blur' },
+  roleCode: { required: true, message: '请输入角色编码', trigger: 'blur' }
+}
 
 /**
  * 渲染状态标签
  */
 const renderStatus = (status: string) => {
-  const statusMap: Record<string, { type: 'success' | 'warning' | 'error', text: string }> = {
-    active: { type: 'success', text: '启用' },
-    inactive: { type: 'warning', text: '禁用' }
+  const statusMap: Record<string, { type: 'success' | 'warning'; text: string }> = {
+    '1': { type: 'success', text: '启用' },
+    '0': { type: 'warning', text: '禁用' }
   }
   const config = statusMap[status] || { type: 'warning', text: '未知' }
   return h(NTag, { type: config.type, size: 'small' }, { default: () => config.text })
@@ -93,39 +86,33 @@ const renderStatus = (status: string) => {
  */
 const columns: DataTableColumns<Role> = [
   { 
-    title: 'ID', 
-    key: 'id', 
-    width: 80,
-    align: 'center'
-  },
-  { 
     title: '角色名称', 
-    key: 'name',
-    width: 150
+    key: 'roleName',
+    width: 160
   },
   { 
     title: '角色编码', 
-    key: 'code',
-    width: 150
+    key: 'roleCode',
+    width: 140
   },
   { 
-    title: '描述', 
-    key: 'description',
-    ellipsis: {
-      tooltip: true
-    }
+    title: '父角色', 
+    key: 'parentRoleId',
+    width: 140,
+    render: row => row.parentRoleId ? (row as any).parentName || `#${row.parentRoleId}` : '—'
   },
   { 
     title: '状态', 
     key: 'status', 
-    width: 100,
+    width: 90,
     align: 'center',
     render: (row) => renderStatus(row.status)
   },
   { 
-    title: '创建时间', 
-    key: 'createTime', 
-    width: 180 
+    title: '排序', 
+    key: 'sortOrder', 
+    width: 90,
+    align: 'center'
   },
   {
     title: '操作',
@@ -164,7 +151,7 @@ const columns: DataTableColumns<Role> = [
           h(
             NPopconfirm,
             {
-              onPositiveClick: () => handleDelete(row.id)
+              onPositiveClick: () => handleDelete(row.roleId!)
             },
             {
               default: () => '确定要删除该角色吗？',
@@ -192,11 +179,7 @@ const columns: DataTableColumns<Role> = [
  * 搜索角色
  */
 const handleSearch = () => {
-  loading.value = true
-  console.log('搜索角色:', searchForm.value)
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  // 纯前端过滤，见 filteredRoles
 }
 
 /**
@@ -207,37 +190,85 @@ const handleReset = () => {
     name: '',
     code: ''
   }
-  handleSearch()
 }
 
 /**
  * 添加角色
  */
 const handleAdd = () => {
-  console.log('添加角色')
+  roleForm.value = {
+    roleId: undefined,
+    parentRoleId: null,
+    roleName: '',
+    roleCode: '',
+    sortOrder: 1,
+    status: '1'
+  }
+  roleModalShow.value = true
 }
 
 /**
  * 编辑角色
  */
 const handleEdit = (row: Role) => {
-  console.log('编辑角色:', row)
+  roleForm.value = { ...row }
+  roleModalShow.value = true
 }
 
 /**
  * 权限配置
  */
 const handlePermission = (row: Role) => {
-  console.log('配置权限:', row)
+  message.info(`后端接入后为 ${row.roleName} 分配菜单/数据权限`)
 }
 
 /**
  * 删除角色
  */
 const handleDelete = (id: number) => {
-  console.log('删除角色:', id)
-  roles.value = roles.value.filter(r => r.id !== id)
+  deleteRoleMock(id).then(() => {
+    message.success('删除成功')
+    loadRoles()
+  })
 }
+
+const submitRole = async () => {
+  await roleFormRef.value?.validate()
+  const payload = { ...roleForm.value }
+  loading.value = true
+  try {
+    if (payload.roleId) {
+      await updateRoleMock(payload as RoleNode)
+      message.success('更新成功')
+    } else {
+      await createRole(payload as RoleNode)
+      message.success('新增成功')
+    }
+    roleModalShow.value = false
+    await loadRoles()
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadRoles = async () => {
+  loading.value = true
+  try {
+    roleTree.value = await fetchRoleTree()
+  } finally {
+    loading.value = false
+  }
+}
+
+const filteredRoles = computed(() =>
+  flatRoles.value.filter(r => {
+    const byName = searchForm.value.name ? r.roleName.includes(searchForm.value.name) : true
+    const byCode = searchForm.value.code ? r.roleCode.includes(searchForm.value.code) : true
+    return byName && byCode
+  })
+)
+
+loadRoles()
 </script>
 
 <template>
@@ -293,19 +324,29 @@ const handleDelete = (id: number) => {
         class="table-card"
       >
         <template #header-extra>
-          <NButton type="primary" @click="handleAdd">
-            <template #icon>
-              <NIcon>
-                <AddOutline />
-              </NIcon>
-            </template>
-            添加角色
-          </NButton>
+          <NSpace>
+            <NButton type="primary" @click="handleAdd">
+              <template #icon>
+                <NIcon>
+                  <AddOutline />
+                </NIcon>
+              </template>
+              添加角色
+            </NButton>
+            <NButton @click="loadRoles" :loading="loading">
+              <template #icon>
+                <NIcon>
+                  <RefreshOutline />
+                </NIcon>
+              </template>
+              刷新
+            </NButton>
+          </NSpace>
         </template>
         
         <NDataTable 
           :columns="columns" 
-          :data="roles" 
+          :data="filteredRoles" 
           :loading="loading"
           :pagination="{ 
             pageSize: 10,
@@ -318,7 +359,65 @@ const handleDelete = (id: number) => {
           class="role-table"
         />
       </NCard>
+
+      <NCard title="角色树" :bordered="false">
+        <NTree
+          :data="roleTree"
+          :key-field="'roleId'"
+          :label-field="'roleName'"
+          block-line
+          expand-on-click
+          :default-expanded-keys="[1,2]"
+        />
+      </NCard>
     </NSpace>
+
+    <NModal
+      v-model:show="roleModalShow"
+      preset="card"
+      :title="roleForm.roleId ? '编辑角色' : '新增角色'"
+      style="width: 520px"
+      :bordered="false"
+      :segmented="{ content: true, footer: true }"
+    >
+      <NForm ref="roleFormRef" :model="roleForm" :rules="roleRules" label-placement="left" label-width="90">
+        <NFormItem label="角色名称" path="roleName">
+          <NInput v-model:value="roleForm.roleName" placeholder="请输入角色名称" />
+        </NFormItem>
+        <NFormItem label="角色编码" path="roleCode">
+          <NInput v-model:value="roleForm.roleCode" placeholder="唯一标识，如 system_admin" />
+        </NFormItem>
+        <NFormItem label="父角色">
+          <NSelect
+            v-model:value="roleForm.parentRoleId"
+            :options="flatRoles.map(r => ({ label: r.roleName, value: r.roleId }))"
+            clearable
+            placeholder="根角色留空"
+          />
+        </NFormItem>
+        <NFormItem label="排序">
+          <NInputNumber v-model:value="roleForm.sortOrder" :min="0" />
+        </NFormItem>
+        <NFormItem label="状态">
+          <NSelect
+            v-model:value="roleForm.status"
+            :options="[
+              { label: '启用', value: '1' },
+              { label: '禁用', value: '0' }
+            ]"
+          />
+        </NFormItem>
+        <NFormItem label="备注">
+          <NInput v-model:value="roleForm.remark" type="textarea" placeholder="可填写职责说明" />
+        </NFormItem>
+      </NForm>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="roleModalShow = false">取消</NButton>
+          <NButton type="primary" :loading="loading" @click="submitRole">保存</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
 

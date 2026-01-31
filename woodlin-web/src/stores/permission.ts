@@ -193,7 +193,10 @@ export const usePermissionStore = defineStore('permission', () => {
     // 合并静态路由和动态路由
     routes.value = constantRoutes.concat(accessedRoutes)
     addedRoutes.value = accessedRoutes
-    menuRoutes.value = routes.value.filter(route => !route.meta?.hideInMenu)
+
+    // 仅保留布局下的子路由用于菜单（避免把登录等基础路由展示在侧边栏）
+    const rootLayout = accessedRoutes.find(r => r.path === '/' || r.children?.length)
+    menuRoutes.value = (rootLayout?.children || accessedRoutes).filter(route => !route.meta?.hideInMenu)
     isRoutesGenerated.value = true
 
     // 持久化路由生成状态到localStorage

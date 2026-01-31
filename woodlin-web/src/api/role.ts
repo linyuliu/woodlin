@@ -15,7 +15,11 @@ export interface SysRole {
   roleId?: number
   roleName: string
   roleCode: string
-  roleSort?: number
+  roleSort?: number // 兼容旧字段
+  sortOrder?: number
+  parentRoleId?: number | null
+  roleLevel?: number
+  rolePath?: string
   status?: string
   remark?: string
   createTime?: string
@@ -38,11 +42,7 @@ export interface RoleListParams {
  * @param params 查询参数
  */
 export function getRoleList(params: RoleListParams) {
-  return request({
-    url: '/system/role/list',
-    method: 'get',
-    params
-  })
+  return request.get('/system/role/list', { params })
 }
 
 /**
@@ -50,10 +50,7 @@ export function getRoleList(params: RoleListParams) {
  * @param roleId 角色ID
  */
 export function getRoleById(roleId: number) {
-  return request({
-    url: `/system/role/${roleId}`,
-    method: 'get'
-  })
+  return request.get<SysRole, SysRole>(`/system/role/${roleId}`)
 }
 
 /**
@@ -61,11 +58,7 @@ export function getRoleById(roleId: number) {
  * @param data 角色数据
  */
 export function addRole(data: SysRole) {
-  return request({
-    url: '/system/role',
-    method: 'post',
-    data
-  })
+  return request.post<SysRole, void>('/system/role', data)
 }
 
 /**
@@ -73,11 +66,7 @@ export function addRole(data: SysRole) {
  * @param data 角色数据
  */
 export function updateRole(data: SysRole) {
-  return request({
-    url: '/system/role',
-    method: 'put',
-    data
-  })
+  return request.put<SysRole, void>('/system/role', data)
 }
 
 /**
@@ -85,10 +74,7 @@ export function updateRole(data: SysRole) {
  * @param roleIds 角色ID，多个用逗号分隔
  */
 export function deleteRole(roleIds: string) {
-  return request({
-    url: `/system/role/${roleIds}`,
-    method: 'delete'
-  })
+  return request.delete<void, void>(`/system/role/${roleIds}`)
 }
 
 /**
@@ -96,10 +82,7 @@ export function deleteRole(roleIds: string) {
  * @param roleId 角色ID
  */
 export function getRoleMenus(roleId: number) {
-  return request({
-    url: `/system/role/menu/${roleId}`,
-    method: 'get'
-  })
+  return request.get(`/system/role/menu/${roleId}`)
 }
 
 /**
@@ -108,9 +91,36 @@ export function getRoleMenus(roleId: number) {
  * @param menuIds 菜单ID数组
  */
 export function assignRoleMenus(roleId: number, menuIds: number[]) {
-  return request({
-    url: `/system/role/menu/${roleId}`,
-    method: 'put',
-    data: menuIds
-  })
+  return request.put(`/system/role/menu/${roleId}`, menuIds)
+}
+
+/**
+ * 角色树节点
+ */
+export interface RoleTreeNode {
+  roleId: number
+  parentRoleId?: number | null
+  roleName: string
+  roleCode: string
+  roleLevel?: number
+  rolePath?: string
+  isInheritable?: string
+  status?: string
+  sortOrder?: number
+  children?: RoleTreeNode[]
+  hasChildren?: boolean
+}
+
+/**
+ * 获取角色树（RBAC1）
+ */
+export function getRoleTree(params?: { tenantId?: string }) {
+  return request.get<RoleTreeNode[], RoleTreeNode[]>('/system/role/tree', { params })
+}
+
+/**
+ * 获取角色所有权限（包含继承）
+ */
+export function getRoleAllPermissions(roleId: number) {
+  return request.get<string[], string[]>(`/system/role/${roleId}/all-permissions`)
 }

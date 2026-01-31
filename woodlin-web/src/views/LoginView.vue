@@ -120,7 +120,7 @@ const handlePasswordChangeCancel = () => {
       <!-- 左侧品牌展示 -->
       <div class="brand-section">
         <div class="brand-content">
-          <img alt="Woodlin" class="brand-logo" src="@/assets/logo-tree.svg"/>
+          <img alt="Woodlin" class="brand-logo" src="@/assets/logo.svg"/>
           <h1 class="brand-title">Woodlin</h1>
           <p class="brand-subtitle">多租户中后台管理系统</p>
           <div class="brand-features">

@@ -73,7 +73,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/DashboardView.vue'),
         meta: {
           title: '仪表板',
-          icon: 'dashboard-outline',
+          icon: 'speedometer-outline',
           affix: true, // 固定在标签页
           permissions: ['dashboard:view']
         }
@@ -106,7 +106,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             component: () => import('@/views/system/RoleView.vue'),
             meta: {
               title: '角色管理',
-              icon: 'shield-outline',
+              icon: 'shield-checkmark-outline',
               permissions: ['system:role:view']
             }
           },
@@ -118,6 +118,16 @@ export const asyncRoutes: RouteRecordRaw[] = [
               title: '部门管理',
               icon: 'business-outline',
               permissions: ['system:dept:view']
+            }
+          },
+          {
+            path: 'menu',
+            name: 'SystemMenu',
+            component: () => import('@/views/system/MenuView.vue'),
+            meta: {
+              title: '菜单管理',
+              icon: 'list-outline',
+              permissions: ['system:menu:view']
             }
           },
           {
