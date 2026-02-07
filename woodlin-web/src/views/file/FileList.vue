@@ -1,29 +1,18 @@
-<template>
-  <div class="page-container">
-    <n-card title="文件列表">
-      <n-alert type="info" title="TODO" :bordered="false">
-        此页面待实现，需要对接后端文件管理API
-      </n-alert>
-      <div style="margin-top: 20px;">
-        <n-text>功能包括：</n-text>
-        <ul>
-          <li>文件上传</li>
-          <li>文件列表展示</li>
-          <li>文件预览/下载</li>
-          <li>文件删除</li>
-          <li>文件搜索和过滤</li>
-        </ul>
-      </div>
-    </n-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { NCard, NAlert, NText } from 'naive-ui'
+import ModulePlaceholder from '@/components/ModulePlaceholder.vue'
 </script>
 
-<style scoped>
-.page-container {
-  padding: 20px;
-}
-</style>
+<template>
+  <ModulePlaceholder
+    title="文件资产库"
+    subtitle="管理上传文件、访问权限和生命周期，服务业务附件与数据产物沉淀。"
+    tag="File Assets"
+    :features="[
+      '文件上传、分片续传与版本管理',
+      '文件预览、下载审计与权限校验',
+      '按类型/标签/业务线检索过滤',
+      '批量删除、回收站与恢复能力',
+      '生命周期策略与冷热分层管理'
+    ]"
+  />
+</template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed, h} from 'vue'
 import {useRouter} from 'vue-router'
+import {storeToRefs} from 'pinia'
 import {
   NAvatar,
   NBreadcrumb,
@@ -15,11 +16,13 @@ import {
 } from 'naive-ui'
 import {
   MenuOutline,
+  MoonOutline,
   NotificationsOutline,
   PersonCircleOutline,
-  SettingsOutline
+  SettingsOutline,
+  SunnyOutline
 } from '@vicons/ionicons5'
-import {useUserStore} from '@/stores'
+import {useAppStore, useUserStore} from '@/stores'
 
 const props = defineProps<{
   envLabel: string
@@ -30,6 +33,8 @@ const emit = defineEmits<{ (e: 'toggle-collapse'): void; (e: 'logout'): void }>(
 
 const router = useRouter()
 const userStore = useUserStore()
+const appStore = useAppStore()
+const {isDarkMode} = storeToRefs(appStore)
 
 const userInfo = computed(() => userStore.userInfo)
 const userInitial = computed(() => {
@@ -56,6 +61,10 @@ const handleDropdownSelect = (key: string) => {
 }
 
 const breadcrumbItems = computed(() => props.breadcrumbs)
+
+const handleToggleTheme = () => {
+  appStore.toggleThemeMode()
+}
 </script>
 
 <template>
@@ -85,6 +94,20 @@ const breadcrumbItems = computed(() => props.breadcrumbs)
     </div>
 
     <div class="header-right">
+      <NTooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <NButton class="icon-btn" text @click="handleToggleTheme">
+            <template #icon>
+              <NIcon color="var(--text-color-secondary)" size="20">
+                <SunnyOutline v-if="isDarkMode"/>
+                <MoonOutline v-else/>
+              </NIcon>
+            </template>
+          </NButton>
+        </template>
+        {{ isDarkMode ? '切换浅色模式' : '切换深色模式' }}
+      </NTooltip>
+
       <!-- 环境标签 -->
       <NTag
         :bordered="false"

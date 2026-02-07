@@ -1,29 +1,18 @@
-<template>
-  <div class="page-container">
-    <n-card title="任务列表">
-      <n-alert type="info" title="TODO" :bordered="false">
-        此页面待实现，需要对接后端任务调度API
-      </n-alert>
-      <div style="margin-top: 20px;">
-        <n-text>功能包括：</n-text>
-        <ul>
-          <li>定时任务列表</li>
-          <li>添加/编辑/删除任务</li>
-          <li>启动/停止任务</li>
-          <li>任务执行状态监控</li>
-          <li>Cron表达式配置</li>
-        </ul>
-      </div>
-    </n-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { NCard, NAlert, NText } from 'naive-ui'
+import ModulePlaceholder from '@/components/ModulePlaceholder.vue'
 </script>
 
-<style scoped>
-.page-container {
-  padding: 20px;
-}
-</style>
+<template>
+  <ModulePlaceholder
+    title="任务调度中心"
+    subtitle="统一管理定时任务、执行状态和调度策略，支持后续编排与告警联动。"
+    tag="Task Scheduler"
+    :features="[
+      '任务列表与状态筛选（运行/暂停/异常）',
+      'Cron 表达式可视化配置与校验',
+      '任务启停、手动触发、并发控制',
+      '失败重试策略与告警通知配置',
+      '多租户任务隔离与权限控制'
+    ]"
+  />
+</template>

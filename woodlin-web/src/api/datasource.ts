@@ -1,154 +1,180 @@
 /**
- * 数据源管理API服务
- * 
+ * 数据源管理 API
+ *
  * @author mumu
- * @description 基础设施数据源管理相关的API接口调用
  * @since 2025-01-01
  */
 
 import request from '@/utils/request'
 
-/**
- * 数据源配置
- */
 export interface DatasourceConfig {
   id?: number
-  code: string
-  name: string
-  dbType: string
+  datasourceCode: string
+  datasourceName: string
+  datasourceType: string
+  driverClass?: string
   jdbcUrl: string
   username: string
   password: string
-  driverClass?: string
-  description?: string
+  testSql?: string
+  status?: number
+  owner?: string
+  bizTags?: string
+  remark?: string
+  extConfig?: string
   createTime?: string
   updateTime?: string
 }
 
-/**
- * 数据源测试结果
- */
-export interface DatasourceTestResult {
-  success: boolean
-  message: string
-  connectionTime?: number
-}
-
-/**
- * 数据库元数据
- */
 export interface DatabaseMetadata {
-  schemas?: string[]
-  tables?: TableMetadata[]
-  columns?: ColumnMetadata[]
+  databaseName?: string
+  databaseProductName?: string
+  databaseProductVersion?: string
+  majorVersion?: number
+  minorVersion?: number
+  driverName?: string
+  driverVersion?: string
+  supportsSchemas?: boolean
+  schemas?: SchemaMetadata[]
+  charset?: string
+  collation?: string
 }
 
-/**
- * 表元数据
- */
+export interface SchemaMetadata {
+  schemaName: string
+  databaseName?: string
+  comment?: string
+}
+
 export interface TableMetadata {
   tableName: string
-  tableComment?: string
+  schemaName?: string
+  databaseName?: string
+  comment?: string
   tableType?: string
+  primaryKey?: string
+  createTime?: string
+  updateTime?: string
+  engine?: string
+  charset?: string
+  collation?: string
 }
 
-/**
- * 列元数据
- */
 export interface ColumnMetadata {
   columnName: string
-  columnType: string
-  columnComment?: string
+  tableName?: string
+  schemaName?: string
+  databaseName?: string
+  comment?: string
+  dataType?: string
+  jdbcType?: number
+  columnSize?: number
+  decimalDigits?: number
   nullable?: boolean
+  defaultValue?: string
   primaryKey?: boolean
+  autoIncrement?: boolean
+  ordinalPosition?: number
+  javaType?: string
 }
 
-/**
- * 获取数据源列表
- */
-export function getDatasourceList() {
-  return request.get('/admin/infra/datasource')
+export interface MetadataCacheInfo {
+  cacheKey: string
+  scope: string
+  updatedAt: number
+  expiresAt: number
+  expired: boolean
 }
 
-/**
- * 根据code获取数据源配置
- * @param code 数据源编码
- */
+export function getDatasourceList(): Promise<DatasourceConfig[]> {
+  return request({
+    url: '/admin/infra/datasource',
+    method: 'get'
+  }) as Promise<DatasourceConfig[]>
+}
+
 export function getDatasourceByCode(code: string): Promise<DatasourceConfig> {
-  return request.get(`/admin/infra/datasource/${code}`)
+  return request({
+    url: `/admin/infra/datasource/${code}`,
+    method: 'get'
+  }) as Promise<DatasourceConfig>
 }
 
-/**
- * 新增数据源
- * @param data 数据源配置
- */
 export function addDatasource(data: DatasourceConfig): Promise<void> {
-  return request.post('/admin/infra/datasource', data)
+  return request({
+    url: '/admin/infra/datasource',
+    method: 'post',
+    data
+  }) as Promise<void>
 }
 
-/**
- * 更新数据源
- * @param data 数据源配置
- */
 export function updateDatasource(data: DatasourceConfig): Promise<void> {
-  return request.put('/admin/infra/datasource', data)
+  return request({
+    url: '/admin/infra/datasource',
+    method: 'put',
+    data
+  }) as Promise<void>
 }
 
-/**
- * 删除数据源
- * @param code 数据源编码
- */
 export function deleteDatasource(code: string): Promise<void> {
-  return request.delete(`/admin/infra/datasource/${code}`)
+  return request({
+    url: `/admin/infra/datasource/${code}`,
+    method: 'delete'
+  }) as Promise<void>
 }
 
-/**
- * 测试数据源连接
- * @param data 数据源配置
- */
-export function testDatasource(data: DatasourceConfig): Promise<DatasourceTestResult> {
-  return request.post('/admin/infra/datasource/test', data)
+export function testDatasource(data: DatasourceConfig): Promise<void> {
+  return request({
+    url: '/admin/infra/datasource/test',
+    method: 'post',
+    data
+  }) as Promise<void>
 }
 
-/**
- * 获取数据源元数据
- * @param code 数据源编码
- */
-export function getDatasourceMetadata(code: string): Promise<DatabaseMetadata> {
-  return request.get('/admin/infra/datasource/metadata', {
+export function getDatasourceMetadata(code: string, refresh = false): Promise<DatabaseMetadata> {
+  return request({
+    url: '/admin/infra/datasource/metadata',
+    method: 'get',
+    params: { code, refresh }
+  })
+}
+
+export function getDatasourceSchemas(code: string, refresh = false): Promise<SchemaMetadata[]> {
+  return request({
+    url: '/admin/infra/datasource/schemas',
+    method: 'get',
+    params: { code, refresh }
+  })
+}
+
+export function getDatasourceTables(code: string, schemaName?: string, refresh = false): Promise<TableMetadata[]> {
+  return request({
+    url: '/admin/infra/datasource/tables',
+    method: 'get',
+    params: { code, schemaName, refresh }
+  })
+}
+
+export function getTableColumns(code: string, table: string, schemaName?: string, refresh = false): Promise<ColumnMetadata[]> {
+  return request({
+    url: '/admin/infra/datasource/columns',
+    method: 'get',
+    params: { code, table, schemaName, refresh }
+  })
+}
+
+export function refreshDatasourceCache(code: string): Promise<void> {
+  return request({
+    url: '/admin/infra/datasource/cache/refresh',
+    method: 'post',
     params: { code }
-  })
+  }) as Promise<void>
 }
 
-/**
- * 获取数据源schemas
- * @param code 数据源编码
- */
-export function getDatasourceSchemas(code: string): Promise<string[]> {
-  return request.get('/admin/infra/datasource/schemas', {
+export function getDatasourceCacheInfo(code: string): Promise<MetadataCacheInfo[]> {
+  return request({
+    url: '/admin/infra/datasource/cache/info',
+    method: 'get',
     params: { code }
-  })
-}
-
-/**
- * 获取数据源表列表
- * @param code 数据源编码
- * @param schema schema名称
- */
-export function getDatasourceTables(code: string, schema?: string): Promise<TableMetadata[]> {
-  return request.get('/admin/infra/datasource/tables', {
-    params: { code, schema }
-  })
-}
-
-/**
- * 获取表列信息
- * @param code 数据源编码
- * @param tableName 表名
- * @param schema schema名称
- */
-export function getTableColumns(code: string, tableName: string, schema?: string): Promise<ColumnMetadata[]> {
-  return request.get('/admin/infra/datasource/columns', {
-    params: { code, tableName, schema }
-  })
+  }) as Promise<MetadataCacheInfo[]>
 }

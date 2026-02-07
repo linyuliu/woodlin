@@ -1,7 +1,6 @@
 @import './variables.css';
 @import './base.css';
 
-/* ===== 全局应用样式 ===== */
 #app {
   width: 100%;
   height: 100vh;
@@ -9,12 +8,11 @@
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   color: var(--text-color-primary);
-  background: var(--bg-color-secondary);
+  background: var(--app-bg-gradient);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===== 链接样式 ===== */
 a {
   text-decoration: none;
   color: var(--primary-color);
@@ -25,13 +23,11 @@ a:hover {
   color: var(--primary-color-hover);
 }
 
-/* ===== 选中文本样式 ===== */
 ::selection {
   background: var(--primary-color-light);
   color: var(--primary-color);
 }
 
-/* ===== 全局滚动条样式 ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -43,19 +39,21 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--border-color-strong);
   border-radius: var(--radius-full);
   transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--text-color-tertiary);
 }
 
-/* ===== Naive UI 卡片增强样式 ===== */
 .n-card {
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-sm) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color-light) 72%, transparent) !important;
+  background: var(--panel-bg-elevated) !important;
+  backdrop-filter: blur(5px);
   transition: box-shadow var(--transition-normal), transform var(--transition-normal) !important;
 }
 
@@ -63,12 +61,10 @@ a:hover {
   box-shadow: var(--shadow-md) !important;
 }
 
-/* 可点击的卡片 */
 .n-card.clickable:hover {
   transform: translateY(-2px);
 }
 
-/* ===== Naive UI 表格增强样式 ===== */
 .n-data-table {
   --n-th-padding: 12px 16px;
   --n-td-padding: 12px 16px;
@@ -77,14 +73,13 @@ a:hover {
 .n-data-table .n-data-table-th {
   font-weight: 600;
   color: var(--text-color-primary);
-  background: var(--bg-color-tertiary) !important;
+  background: color-mix(in srgb, var(--bg-color-tertiary) 80%, transparent) !important;
 }
 
 .n-data-table-tr:hover .n-data-table-td {
-  background: var(--bg-color-hover) !important;
+  background: color-mix(in srgb, var(--bg-color-hover) 80%, transparent) !important;
 }
 
-/* ===== Naive UI 按钮增强 ===== */
 .n-button {
   border-radius: var(--radius-sm) !important;
   transition: all var(--transition-fast) !important;
@@ -92,10 +87,9 @@ a:hover {
 
 .n-button--primary-type:not(.n-button--disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(24, 160, 88, 0.3);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
-/* ===== Naive UI 输入框增强 ===== */
 .n-input {
   border-radius: var(--radius-sm) !important;
 }
@@ -104,12 +98,10 @@ a:hover {
   box-shadow: 0 0 0 2px var(--primary-color-light) !important;
 }
 
-/* ===== Naive UI 标签增强 ===== */
 .n-tag {
   border-radius: var(--radius-xs) !important;
 }
 
-/* ===== 工具类 ===== */
 .flex {
   display: flex;
 }
@@ -174,7 +166,6 @@ a:hover {
   border-radius: var(--radius-lg);
 }
 
-/* ===== 页面过渡动画增强 ===== */
 .page-enter-active,
 .page-leave-active {
   transition: all var(--transition-normal);
@@ -188,4 +179,85 @@ a:hover {
 .page-leave-to {
   opacity: 0;
   transform: translateX(-20px);
+}
+
+/* Module-level layout unification for admin pages */
+:is(
+    .user-page,
+    .role-management-container,
+    .dept-management-container,
+    .tenant-management-container,
+    .permission-management-container,
+    .dict-view,
+    .config-view,
+    .system-settings,
+    .menu-page,
+    .sql-editor-container,
+    .page-container,
+    .monitor-page,
+    .datasource-page
+  ) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: module-enter 0.24s ease;
+}
+
+:is(
+    .user-page,
+    .role-management-container,
+    .dept-management-container,
+    .tenant-management-container,
+    .permission-management-container,
+    .dict-view,
+    .config-view,
+    .system-settings,
+    .menu-page
+  )
+  :where(.toolbar, .search-card) {
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border-color-light) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-color) 84%, transparent);
+  backdrop-filter: blur(5px);
+}
+
+:is(
+    .role-management-container,
+    .dept-management-container,
+    .tenant-management-container,
+    .permission-management-container
+  )
+  :where(.search-card, .table-card, .tree-card) {
+  border: 1px solid color-mix(in srgb, var(--border-color-light) 70%, transparent);
+}
+
+:is(.dict-view, .config-view, .permission-management-container, .system-settings, .menu-page)
+  :where(.empty-hint, .placeholder) {
+  color: var(--text-color-tertiary);
+}
+
+.todo-feature-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.todo-feature-item {
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-color-light) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-color-tertiary) 56%, transparent);
+  color: var(--text-color-secondary);
+}
+
+@keyframes module-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

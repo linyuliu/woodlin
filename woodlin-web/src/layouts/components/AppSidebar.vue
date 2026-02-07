@@ -62,7 +62,7 @@ const handleSelect = (key: string) => {
 
 <style scoped>
 .app-sider {
-  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+  background: linear-gradient(180deg, var(--bg-color) 0%, var(--bg-color-secondary) 100%);
   box-shadow: var(--shadow-md);
   position: relative;
   z-index: 10;
@@ -115,7 +115,7 @@ const handleSelect = (key: string) => {
 .logo-text h1 {
   font-size: 18px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary-color) 0%, #36ad6a 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, #22d3ee 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

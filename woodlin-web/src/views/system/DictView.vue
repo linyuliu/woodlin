@@ -3,6 +3,8 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
+  NGrid,
+  NGridItem,
   NDataTable,
   NDivider,
   NForm,
@@ -18,6 +20,7 @@ import {
   NTabs,
   NTag,
   NTree,
+  NStatistic,
   useDialog,
   useMessage,
   type DataTableColumns,
@@ -42,8 +45,13 @@ import {
 const message = useMessage()
 const dialog = useDialog()
 
-const loading = ref(false)
+const typeLoading = ref(false)
+const dataLoading = ref(false)
+const submitTypeLoading = ref(false)
+const submitDataLoading = ref(false)
 const regionLoading = ref(false)
+const activeTab = ref('dict')
+const regionLoaded = ref(false)
 
 const dictTypes = ref<DictTypeRecord[]>([])
 const dictData = ref<DictDataRecord[]>([])
@@ -95,6 +103,21 @@ const dataRules = {
   dictValue: { required: true, message: '请输入字典值', trigger: 'blur' }
 }
 const isEditData = computed(() => !!dataForm.dataId)
+const dictTypeCount = computed(() => dictTypes.value.length)
+const enabledTypeCount = computed(() => dictTypes.value.filter(item => item.status === '1').length)
+const dictDataCount = computed(() => dictData.value.length)
+const typePagination = reactive({
+  page: 1,
+  pageSize: 20,
+  showSizePicker: true,
+  pageSizes: [20, 50, 100]
+})
+const dataPagination = reactive({
+  page: 1,
+  pageSize: 20,
+  showSizePicker: true,
+  pageSizes: [20, 50, 100]
+})
 
 const dictTypeColumns: DataTableColumns<DictTypeRecord> = [
   { title: '名称', key: 'dictName', width: 180 },
@@ -190,7 +213,7 @@ const convertToTreeData = (nodes: RegionNode[]): any[] =>
   }))
 
 const loadDictTypes = async () => {
-  loading.value = true
+  typeLoading.value = true
   try {
     const list = await listDictTypesAdmin()
     dictTypes.value = list
@@ -201,7 +224,9 @@ const loadDictTypes = async () => {
     }
 
     if (!selectedType.value && list.length > 0) {
-      handleSelectType(list[0])
+      selectedType.value = list[0]
+      dataPagination.page = 1
+      await loadDictData(list[0].dictType)
     } else if (selectedType.value) {
       await loadDictData(selectedType.value.dictType)
     }
@@ -209,31 +234,38 @@ const loadDictTypes = async () => {
     console.error(error)
     message.error('加载字典类型失败')
   } finally {
-    loading.value = false
+    typeLoading.value = false
   }
 }
 
 const loadDictData = async (dictType: string) => {
-  if (!dictType) return
-  loading.value = true
+  if (!dictType) {
+    return
+  }
+  dataLoading.value = true
   try {
     dictData.value = await listDictDataAdmin(dictType)
   } catch (error) {
     console.error(error)
     message.error('加载字典项失败')
   } finally {
-    loading.value = false
+    dataLoading.value = false
   }
 }
 
-const loadRegionTree = async () => {
+const loadRegionTree = async (force = false) => {
+  if (regionLoaded.value && !force) {
+    return
+  }
   regionLoading.value = true
   try {
     regionTree.value = await getRegionTree(true)
     regionTreeData.value = convertToTreeData(regionTree.value)
+    regionLoaded.value = true
   } catch (error) {
     console.error(error)
     message.error('加载行政区划树失败')
+    regionLoaded.value = false
   } finally {
     regionLoading.value = false
   }
@@ -246,7 +278,14 @@ const handleClearCache = () => {
 
 const handleSelectType = (row: DictTypeRecord) => {
   selectedType.value = row
+  dataPagination.page = 1
   loadDictData(row.dictType)
+}
+
+const handleTabChange = (value: string) => {
+  if (value === 'region') {
+    loadRegionTree()
+  }
 }
 
 const openCreateType = () => {
@@ -268,7 +307,7 @@ const openEditType = (row: DictTypeRecord) => {
 
 const submitType = async () => {
   await typeFormRef.value?.validate()
-  loading.value = true
+  submitTypeLoading.value = true
   try {
     if (isEditType.value) {
       await updateDictTypeAdmin({ ...typeForm })
@@ -283,7 +322,7 @@ const submitType = async () => {
     console.error(error)
     message.error('保存字典类型失败')
   } finally {
-    loading.value = false
+    submitTypeLoading.value = false
   }
 }
 
@@ -342,7 +381,7 @@ const submitData = async () => {
     return
   }
   await dataFormRef.value?.validate()
-  loading.value = true
+  submitDataLoading.value = true
   try {
     const payload = { ...dataForm, dictType: selectedType.value.dictType }
     if (isEditData.value) {
@@ -358,7 +397,7 @@ const submitData = async () => {
     console.error(error)
     message.error('保存字典项失败')
   } finally {
-    loading.value = false
+    submitDataLoading.value = false
   }
 }
 
@@ -385,13 +424,40 @@ const handleDeleteData = (row: DictDataRecord) => {
 
 onMounted(() => {
   loadDictTypes()
-  loadRegionTree()
 })
 </script>
 
 <template>
   <div class="dict-view">
     <NSpace vertical :size="16">
+      <NCard :bordered="false" class="hero-card">
+        <div class="hero-content">
+          <div>
+            <h2>字典与区划管理</h2>
+            <p>统一维护字典类型、字典项和行政区划，保障配置语义一致与前后端回显标准化。</p>
+          </div>
+          <NTag type="info" size="small">字典标准中心</NTag>
+        </div>
+      </NCard>
+
+      <NGrid :x-gap="12" :y-gap="12" cols="1 s:3" responsive="screen">
+        <NGridItem>
+          <NCard :bordered="false" class="stat-card">
+            <NStatistic label="字典类型" :value="dictTypeCount" />
+          </NCard>
+        </NGridItem>
+        <NGridItem>
+          <NCard :bordered="false" class="stat-card">
+            <NStatistic label="启用类型" :value="enabledTypeCount" />
+          </NCard>
+        </NGridItem>
+        <NGridItem>
+          <NCard :bordered="false" class="stat-card">
+            <NStatistic label="当前字典项" :value="dictDataCount" />
+          </NCard>
+        </NGridItem>
+      </NGrid>
+
       <NCard :bordered="false">
         <NSpace wrap>
           <NButton type="primary" @click="openCreateType">
@@ -400,7 +466,7 @@ onMounted(() => {
           <NButton @click="openCreateData" :disabled="!selectedType">
             新增字典项
           </NButton>
-          <NButton :loading="loading" @click="loadDictTypes">
+          <NButton :loading="typeLoading" @click="loadDictTypes">
             刷新类型
           </NButton>
           <NButton type="warning" @click="handleClearCache">
@@ -412,17 +478,22 @@ onMounted(() => {
         </NSpace>
       </NCard>
 
-      <NTabs type="line" animated>
+      <NTabs v-model:value="activeTab" type="line" animated @update:value="handleTabChange">
         <NTabPane name="dict" tab="字典数据">
           <NSpace vertical :size="16">
             <NCard title="字典类型" :bordered="false">
               <NDataTable
                 :columns="dictTypeColumns"
                 :data="dictTypes"
-                :loading="loading"
+                :loading="typeLoading"
                 :bordered="false"
                 :single-line="false"
+                :pagination="typePagination"
+                :max-height="520"
+                :virtual-scroll="true"
                 size="small"
+                :row-key="(row: DictTypeRecord) => row.dictId || row.dictType"
+                :row-class-name="(row: DictTypeRecord) => (row.dictType === selectedType?.dictType ? 'active-row' : '')"
                 :row-props="(row: DictTypeRecord) => ({
                   style: 'cursor: pointer;',
                   onClick: () => handleSelectType(row)
@@ -434,16 +505,20 @@ onMounted(() => {
               <template #header-extra>
                 <NSpace>
                   <NButton size="small" type="primary" @click="openCreateData">新增字典项</NButton>
-                  <NButton size="small" :loading="loading" @click="loadDictData(selectedType.dictType)">刷新</NButton>
+                  <NButton size="small" :loading="dataLoading" @click="loadDictData(selectedType.dictType)">刷新</NButton>
                 </NSpace>
               </template>
               <NDataTable
                 :columns="dictDataColumns"
                 :data="dictData"
-                :loading="loading"
+                :loading="dataLoading"
                 :bordered="false"
                 :single-line="false"
+                :pagination="dataPagination"
+                :max-height="520"
+                :virtual-scroll="true"
                 size="small"
+                :row-key="(row: DictDataRecord) => row.dataId || `${row.dictType}_${row.dictValue}`"
               />
             </NCard>
             <NCard v-else :bordered="false">
@@ -455,7 +530,7 @@ onMounted(() => {
         <NTabPane name="region" tab="行政区划">
           <NCard title="行政区划树" :bordered="false">
             <template #header-extra>
-              <NButton size="small" :loading="regionLoading" @click="loadRegionTree">
+              <NButton size="small" :loading="regionLoading" @click="loadRegionTree(true)">
                 重新加载
               </NButton>
             </template>
@@ -504,7 +579,7 @@ onMounted(() => {
       <template #footer>
         <NSpace justify="end">
           <NButton @click="typeModalVisible = false">取消</NButton>
-          <NButton type="primary" :loading="loading" @click="submitType">保存</NButton>
+          <NButton type="primary" :loading="submitTypeLoading" @click="submitType">保存</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -553,7 +628,7 @@ onMounted(() => {
       <template #footer>
         <NSpace justify="end">
           <NButton @click="dataModalVisible = false">取消</NButton>
-          <NButton type="primary" :loading="loading" @click="submitData">保存</NButton>
+          <NButton type="primary" :loading="submitDataLoading" @click="submitData">保存</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -562,12 +637,42 @@ onMounted(() => {
 
 <style scoped>
 .dict-view {
-  padding: 16px;
+  padding: 8px 0;
+}
+
+.hero-card {
+  background: linear-gradient(120deg, #0a4d68 0%, #088395 52%, #05bfdb 100%);
+}
+
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content h2 {
+  margin: 0 0 6px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color-inverse) 82%, transparent);
+}
+
+.stat-card {
+  background: radial-gradient(circle at top right, rgba(5, 191, 219, 0.24), transparent 48%), var(--bg-color);
 }
 
 .empty-hint {
   padding: 20px;
-  color: #999;
+  color: var(--text-color-tertiary);
   text-align: center;
+}
+
+:deep(.active-row .n-data-table-td) {
+  background: var(--primary-color-light) !important;
 }
 </style>

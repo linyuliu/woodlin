@@ -156,8 +156,10 @@ public class InfraDatasourceController {
     @Operation(summary = "获取数据库元数据", description = "获取数据源的完整元数据信息，包括数据库版本、字符集、支持的Schema等")
     public R<DatabaseMetadata> metadata(
             @Parameter(description = "数据源唯一编码", required = true)
-            @RequestParam("code") String code) {
-        return R.ok(metadataService.getDatabaseMetadata(code));
+            @RequestParam("code") String code,
+            @Parameter(description = "是否强制刷新缓存（true/false）")
+            @RequestParam(name = "refresh", required = false, defaultValue = "false") boolean refresh) {
+        return R.ok(metadataService.getDatabaseMetadata(code, refresh));
     }
 
     /**
@@ -173,8 +175,10 @@ public class InfraDatasourceController {
     @Operation(summary = "获取Schema列表", description = "获取数据源中所有的Schema（模式）列表。注意：MySQL等数据库不支持Schema概念")
     public R<List<SchemaMetadata>> schemas(
             @Parameter(description = "数据源唯一编码", required = true)
-            @RequestParam("code") String code) {
-        return R.ok(metadataService.getSchemas(code));
+            @RequestParam("code") String code,
+            @Parameter(description = "是否强制刷新缓存（true/false）")
+            @RequestParam(name = "refresh", required = false, defaultValue = "false") boolean refresh) {
+        return R.ok(metadataService.getSchemas(code, refresh));
     }
 
     /**
@@ -189,8 +193,13 @@ public class InfraDatasourceController {
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam(name ="code") String code,
             @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
-            @RequestParam(name = "schemaName", required = false) String schemaName) {
-        return R.ok(metadataService.getTables(code,schemaName));
+            @RequestParam(name = "schemaName", required = false) String schemaName,
+            @Parameter(description = "兼容旧版参数：schema")
+            @RequestParam(name = "schema", required = false) String schema,
+            @Parameter(description = "是否强制刷新缓存（true/false）")
+            @RequestParam(name = "refresh", required = false, defaultValue = "false") boolean refresh) {
+        String targetSchema = StrUtil.emptyToDefault(schemaName, schema);
+        return R.ok(metadataService.getTables(code, targetSchema, refresh));
     }
 
     /**
@@ -206,10 +215,35 @@ public class InfraDatasourceController {
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code,
             @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
-            @RequestParam("schemaName") String schemaName,
-            @Parameter(description = "表名", required = false)
-            @RequestParam("table") String table) {
-        return R.ok(metadataService.getColumns(code,schemaName, table));
+            @RequestParam(name = "schemaName", required = false) String schemaName,
+            @Parameter(description = "表名（推荐参数：table）", required = false)
+            @RequestParam(name = "table", required = false) String table,
+            @Parameter(description = "兼容旧版参数：tableName")
+            @RequestParam(name = "tableName", required = false) String tableName,
+            @Parameter(description = "是否强制刷新缓存（true/false）")
+            @RequestParam(name = "refresh", required = false, defaultValue = "false") boolean refresh) {
+        String targetTable = StrUtil.emptyToDefault(table, tableName);
+        if (StrUtil.isBlank(targetTable)) {
+            throw new BusinessException("表名不能为空");
+        }
+        return R.ok(metadataService.getColumns(code, schemaName, targetTable, refresh));
+    }
+
+    @PostMapping("/cache/refresh")
+    @Operation(summary = "手动刷新元数据缓存", description = "清空指定数据源的元数据缓存与元数据连接池，下一次查询将重建")
+    public R<Void> refreshCache(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @RequestParam("code") String code) {
+        metadataService.refreshMetadataCache(code);
+        return R.ok();
+    }
+
+    @GetMapping("/cache/info")
+    @Operation(summary = "查询元数据缓存信息", description = "返回缓存更新时间、过期时间与过期状态")
+    public R<List<DatabaseMetadataService.MetadataCacheInfo>> cacheInfo(
+            @Parameter(description = "数据源唯一编码", required = true)
+            @RequestParam("code") String code) {
+        return R.ok(metadataService.getMetadataCacheInfo(code));
     }
 
     /**

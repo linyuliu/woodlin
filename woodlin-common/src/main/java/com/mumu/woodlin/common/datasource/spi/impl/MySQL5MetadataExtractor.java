@@ -1,15 +1,12 @@
 package com.mumu.woodlin.common.datasource.spi.impl;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtractor;
 
@@ -81,20 +78,6 @@ public class MySQL5MetadataExtractor extends AbstractMySQLCompatibleExtractor {
         Map<String, String> mysql57Mappings = new HashMap<>();
         mysql57Mappings.put("json", "String");
         versionSpecificTypeMappings.put("5.7", mysql57Mappings);
-    }
-    
-    @Override
-    protected void extractCharsetInfo(Connection connection, String databaseName, DatabaseMetadata dbMetadata) throws SQLException {
-        // MySQL 5.x 使用相同的查询
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME " +
-                     "FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '" + databaseName + "'")) {
-            if (rs.next()) {
-                dbMetadata.setCharset(rs.getString("DEFAULT_CHARACTER_SET_NAME"));
-                dbMetadata.setCollation(rs.getString("DEFAULT_COLLATION_NAME"));
-            }
-        }
     }
     
     @Override

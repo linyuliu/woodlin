@@ -3,16 +3,21 @@ package com.mumu.woodlin.common.datasource.spi;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.sql.DataSource;
 
+import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.impl.ClickHouseMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.DmMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.DorisMetadataExtractor;
@@ -42,7 +47,6 @@ import com.mumu.woodlin.common.datasource.spi.impl.TiDbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.UxdbMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.VastbaseMetadataExtractor;
 import com.mumu.woodlin.common.datasource.spi.impl.VitessMetadataExtractor;
-import org.springframework.context.annotation.ComponentScan;
 
 /**
  * 数据库元数据提取器工厂
@@ -63,10 +67,11 @@ import org.springframework.context.annotation.ComponentScan;
  * @since 2025-01-04
  */
 @Slf4j
-@ComponentScan(basePackages = "com.mumu.woodlin.sql2api")
 public class DatabaseMetadataExtractorFactory {
 
     private static final DatabaseMetadataExtractorFactory INSTANCE = new DatabaseMetadataExtractorFactory();
+    private static final Map<String, DatabaseType> JDBC_PREFIX_TO_TYPE = createJdbcPrefixMapping();
+    private static final Map<String, DatabaseType> TYPE_ALIAS_TO_DATABASE_TYPE = createTypeAliasMapping();
 
     private final List<DatabaseMetadataExtractor> extractors = new CopyOnWriteArrayList<>();
 
@@ -243,14 +248,24 @@ public class DatabaseMetadataExtractorFactory {
      * @return 匹配的提取器
      */
     public Optional<DatabaseMetadataExtractor> getExtractorByType(String databaseType) {
-        if (databaseType == null || databaseType.isEmpty()) {
+        if (StrUtil.isBlank(databaseType)) {
             return Optional.empty();
         }
 
-        String type = databaseType.toLowerCase();
+        String normalized = normalizeTypeToken(databaseType);
+        DatabaseType exactType = TYPE_ALIAS_TO_DATABASE_TYPE.get(normalized);
+
+        if (exactType != null) {
+            return extractors.stream()
+                    .filter(e -> e.getDatabaseType() == exactType)
+                    .min(Comparator.comparingInt(DatabaseMetadataExtractor::getPriority));
+        }
 
         return extractors.stream()
-                .filter(e -> e.getDatabaseType().name().toLowerCase().contains(type))
+                .filter(e -> {
+                    String normalizedEnum = normalizeTypeToken(e.getDatabaseType().name());
+                    return normalizedEnum.contains(normalized) || normalized.contains(normalizedEnum);
+                })
                 .min(Comparator.comparingInt(DatabaseMetadataExtractor::getPriority));
     }
 
@@ -285,32 +300,66 @@ public class DatabaseMetadataExtractorFactory {
      * @return 数据库类型
      */
     public String inferDatabaseType(String jdbcUrl) {
-        if (jdbcUrl == null || jdbcUrl.isEmpty()) {
+        if (StrUtil.isBlank(jdbcUrl)) {
             return null;
         }
 
         String url = jdbcUrl.toLowerCase();
 
-        if (url.startsWith("jdbc:mysql")) {
-            return "MySQL";
-        } else if (url.startsWith("jdbc:mariadb")) {
-            return "MariaDB";
-        } else if (url.startsWith("jdbc:postgresql")) {
-            return "PostgreSQL";
-        } else if (url.startsWith("jdbc:oracle")) {
-            return "Oracle";
-        } else if (url.startsWith("jdbc:sqlserver") || url.startsWith("jdbc:microsoft:sqlserver")) {
-            return "SQLServer";
-        } else if (url.startsWith("jdbc:dm")) {
-            return "DM";
-        } else if (url.startsWith("jdbc:kingbase") || url.startsWith("jdbc:kingbase8")) {
-            return "KingbaseES";
-        } else if (url.startsWith("jdbc:h2")) {
-            return "H2";
-        } else if (url.startsWith("jdbc:sqlite")) {
-            return "SQLite";
+        for (Map.Entry<String, DatabaseType> entry : JDBC_PREFIX_TO_TYPE.entrySet()) {
+            if (url.startsWith(entry.getKey())) {
+                return entry.getValue().name();
+            }
         }
 
         return null;
+    }
+
+    private static Map<String, DatabaseType> createJdbcPrefixMapping() {
+        Map<String, DatabaseType> mapping = new LinkedHashMap<>();
+        mapping.put("jdbc:mysql", DatabaseType.MYSQL);
+        mapping.put("jdbc:mariadb", DatabaseType.MARIADB);
+        mapping.put("jdbc:tidb", DatabaseType.TIDB);
+        mapping.put("jdbc:oceanbase", DatabaseType.OCEANBASE);
+        mapping.put("jdbc:postgresql", DatabaseType.POSTGRESQL);
+        mapping.put("jdbc:opengauss", DatabaseType.OPENGAUSS);
+        mapping.put("jdbc:gaussdb", DatabaseType.GAUSSDB);
+        mapping.put("jdbc:vastbase", DatabaseType.VASTBASE);
+        mapping.put("jdbc:uxdb", DatabaseType.UXDB);
+        mapping.put("jdbc:oracle", DatabaseType.ORACLE);
+        mapping.put("jdbc:sqlserver", DatabaseType.SQLSERVER);
+        mapping.put("jdbc:microsoft:sqlserver", DatabaseType.SQLSERVER);
+        mapping.put("jdbc:dm", DatabaseType.DM);
+        mapping.put("jdbc:gbase", DatabaseType.GBASE);
+        mapping.put("jdbc:oscar", DatabaseType.OSCAR);
+        mapping.put("jdbc:kingbase", DatabaseType.KINGBASE);
+        mapping.put("jdbc:kingbase8", DatabaseType.KINGBASE);
+        mapping.put("jdbc:clickhouse", DatabaseType.CLICKHOUSE);
+        mapping.put("jdbc:doris", DatabaseType.DORIS);
+        mapping.put("jdbc:starrocks", DatabaseType.STARROCKS);
+        mapping.put("jdbc:h2", DatabaseType.H2);
+        mapping.put("jdbc:sqlite", DatabaseType.SQLITE);
+        return Collections.unmodifiableMap(mapping);
+    }
+
+    private static Map<String, DatabaseType> createTypeAliasMapping() {
+        Map<String, DatabaseType> mapping = new LinkedHashMap<>();
+        for (DatabaseType type : DatabaseType.values()) {
+            mapping.put(normalizeTypeToken(type.name()), type);
+        }
+
+        mapping.put(normalizeTypeToken("kingbasees"), DatabaseType.KINGBASE);
+        mapping.put(normalizeTypeToken("postgres"), DatabaseType.POSTGRESQL);
+        mapping.put(normalizeTypeToken("mssql"), DatabaseType.SQLSERVER);
+        mapping.put(normalizeTypeToken("dameng"), DatabaseType.DM);
+
+        return Collections.unmodifiableMap(mapping);
+    }
+
+    private static String normalizeTypeToken(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 }

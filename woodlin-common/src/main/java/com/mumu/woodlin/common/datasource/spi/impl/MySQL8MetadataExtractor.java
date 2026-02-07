@@ -1,15 +1,12 @@
 package com.mumu.woodlin.common.datasource.spi.impl;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import com.mumu.woodlin.common.datasource.spi.base.AbstractMySQLCompatibleExtractor;
 
@@ -75,20 +72,6 @@ public class MySQL8MetadataExtractor extends AbstractMySQLCompatibleExtractor {
         Map<String, String> mysql80Mappings = new HashMap<>();
         mysql80Mappings.put("json", "String");
         versionSpecificTypeMappings.put("8.0", mysql80Mappings);
-    }
-    
-    @Override
-    protected void extractCharsetInfo(Connection connection, String databaseName, DatabaseMetadata dbMetadata) throws SQLException {
-        // MySQL 8.x 默认使用 utf8mb4
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME " +
-                     "FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '" + databaseName + "'")) {
-            if (rs.next()) {
-                dbMetadata.setCharset(rs.getString("DEFAULT_CHARACTER_SET_NAME"));
-                dbMetadata.setCollation(rs.getString("DEFAULT_COLLATION_NAME"));
-            }
-        }
     }
     
     @Override

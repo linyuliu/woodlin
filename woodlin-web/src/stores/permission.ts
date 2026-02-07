@@ -190,6 +190,8 @@ export const usePermissionStore = defineStore('permission', () => {
       accessedRoutes = useFallbackRoutes(permissions)
     }
 
+    accessedRoutes = injectLocalExtensionRoutes(accessedRoutes)
+
     // 合并静态路由和动态路由
     routes.value = constantRoutes.concat(accessedRoutes)
     addedRoutes.value = accessedRoutes
@@ -269,6 +271,62 @@ export const usePermissionStore = defineStore('permission', () => {
     }
 
     return filtered
+  }
+
+  /**
+   * 注入本地扩展路由（后端未下发但前端必须可用的页面）
+   */
+  function injectLocalExtensionRoutes(accessedRoutes: RouteRecordRaw[]): RouteRecordRaw[] {
+    const rootRoute = accessedRoutes.find(route => route.path === '/' || Array.isArray(route.children))
+    if (!rootRoute || !Array.isArray(rootRoute.children) || rootRoute.children.length === 0) {
+      return accessedRoutes
+    }
+
+    const datasourceRoute = rootRoute.children.find(route => {
+      const normalized = normalizePath(route.path)
+      return normalized === 'datasource' || normalized.endsWith('/datasource')
+    })
+
+    if (!datasourceRoute) {
+      return accessedRoutes
+    }
+
+    if (!Array.isArray(datasourceRoute.children)) {
+      datasourceRoute.children = []
+    }
+
+    const exists = datasourceRoute.children.some(route => {
+      const normalized = normalizePath(route.path)
+      return route.name === 'DatasourceWorkspace' ||
+        normalized === 'workspace/:code' ||
+        normalized.endsWith('/workspace/:code')
+    })
+
+    if (exists) {
+      return accessedRoutes
+    }
+
+    datasourceRoute.children.push({
+      path: 'workspace/:code',
+      name: 'DatasourceWorkspace',
+      component: () => import('@/views/datasource/DatasourceWorkspace.vue'),
+      meta: {
+        title: '元数据工作台',
+        hideInMenu: true,
+        activeMenu: '/datasource/list',
+        permissions: ['datasource:list:view']
+      }
+    })
+
+    logger.log('已注入本地扩展路由: DatasourceWorkspace')
+    return accessedRoutes
+  }
+
+  function normalizePath(path?: string): string {
+    if (!path) {
+      return ''
+    }
+    return String(path).replace(/^\//, '')
   }
 
   /**
