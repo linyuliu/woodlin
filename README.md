@@ -314,9 +314,8 @@ cd woodlin
 chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 
-# 或使用Docker Compose
-cp .env.example .env  # 修改环境变量
-docker-compose up -d
+# 或使用完整 Docker 编排
+docker compose up -d
 ```
 
 #### 开发环境启动
@@ -328,7 +327,12 @@ mvn spring-boot:run -pl woodlin-admin
 cd woodlin-web
 npm install
 npm run dev
+
+# 使用 Spring Boot Docker Compose（自动拉起 MySQL + Redis）
+mvn spring-boot:run -pl woodlin-admin -Dspring-boot.run.profiles=compose
 ```
+
+> Docker Compose 简化模式说明见：`docs/DOCKER_COMPOSE_DEV.md`
 
 ### 📦 项目结构
 

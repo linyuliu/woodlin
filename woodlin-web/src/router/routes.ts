@@ -203,6 +203,17 @@ export const asyncRoutes: RouteRecordRaw[] = [
               icon: 'stats-chart-outline',
               permissions: ['datasource:monitor:view']
             }
+          },
+          {
+            path: 'workspace/:code',
+            name: 'DatasourceWorkspace',
+            component: () => import('@/views/datasource/DatasourceWorkspace.vue'),
+            meta: {
+              title: '元数据工作台',
+              hideInMenu: true,
+              activeMenu: '/datasource/list',
+              permissions: ['datasource:list:view']
+            }
           }
         ]
       },

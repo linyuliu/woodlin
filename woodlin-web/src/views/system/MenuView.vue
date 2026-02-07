@@ -15,7 +15,6 @@ import {
   NPopconfirm,
   NSelect,
   NSpace,
-  NTag,
   NTree,
   useMessage,
   type FormInst,
@@ -26,8 +25,7 @@ import {
   CreateOutline,
   RefreshOutline,
   TrashOutline,
-  ListOutline,
-  EyeOutline
+  ListOutline
 } from '@vicons/ionicons5'
 import {
   fetchMenuTree,
@@ -100,7 +98,9 @@ const buildTree = (nodes: MenuNode[]): TreeOption[] =>
 const flattenOptions = (nodes: MenuNode[], list: { label: string; value: number }[] = []) => {
   nodes.forEach(n => {
     list.push({ label: n.menuName, value: n.menuId })
-    if (n.children) flattenOptions(n.children, list)
+    if (n.children) {
+      flattenOptions(n.children, list)
+    }
   })
   return list
 }
@@ -223,7 +223,6 @@ onMounted(load)
           :selected-keys="selectedKeys"
           block-line
           expand-on-click
-          :default-expanded-keys="[1,11,12]"
           @update:selected-keys="(keys) => selectedKeys = keys"
         />
       </NCard>

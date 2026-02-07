@@ -5,7 +5,9 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
@@ -109,25 +111,30 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
     @Override
     public List<TableMetadata> extractTables(Connection conn, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-        
+
         String catalog = supportsCatalog() ? databaseName : null;
         String schema = supportsSchema() ? schemaName : null;
-        
+        if (schema == null && supportsSchema()) {
+            schema = safeSchema(conn);
+        }
+
         try (ResultSet rs = conn.getMetaData().getTables(
-                catalog, schema, "%", new String[]{"TABLE"})) {
-            
+                catalog, schema, "%", new String[]{"TABLE", "VIEW"})) {
+
             while (rs.next()) {
                 TableMetadata table = new TableMetadata();
                 table.setTableName(rs.getString("TABLE_NAME"));
                 table.setSchemaName(rs.getString("TABLE_SCHEM"));
+                table.setDatabaseName(databaseName);
                 table.setTableType(rs.getString("TABLE_TYPE"));
-                
+
                 // 尝试获取表注释（某些数据库在REMARKS字段提供）
                 String remarks = rs.getString("REMARKS");
-                if (remarks != null && !remarks.isEmpty()) {
-                    table.setComment(remarks);
+                if (remarks == null || remarks.isBlank()) {
+                    remarks = getTableComment(conn, databaseName, table.getSchemaName(), table.getTableName());
                 }
-                
+                table.setComment(remarks);
+
                 tables.add(table);
             }
         }
@@ -142,16 +149,31 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
         
         String catalog = supportsCatalog() ? databaseName : null;
         String schema = supportsSchema() ? schemaName : null;
-        
+        if (schema == null && supportsSchema()) {
+            schema = safeSchema(conn);
+        }
+
+        Set<String> primaryKeys = findPrimaryKeys(conn, catalog, schema, tableName);
+
         try (ResultSet rs = conn.getMetaData().getColumns(catalog, schema, tableName, "%")) {
             while (rs.next()) {
                 ColumnMetadata col = new ColumnMetadata();
-                col.setColumnName(rs.getString("COLUMN_NAME"));
+                String columnName = rs.getString("COLUMN_NAME");
+                col.setColumnName(columnName);
+                col.setTableName(tableName);
+                col.setSchemaName(schema);
+                col.setDatabaseName(databaseName);
                 col.setDataType(rs.getString("TYPE_NAME"));
                 col.setJdbcType(rs.getInt("DATA_TYPE"));
-                col.setColumnSize(rs.getInt("COLUMN_SIZE"));
+                col.setColumnSize(getOptionalInteger(rs, "COLUMN_SIZE"));
+                col.setDecimalDigits(getOptionalInteger(rs, "DECIMAL_DIGITS"));
                 col.setNullable(rs.getInt("NULLABLE") == DatabaseMetaData.columnNullable);
-                
+                col.setDefaultValue(getOptionalString(rs, "COLUMN_DEF"));
+                col.setOrdinalPosition(getOptionalInteger(rs, "ORDINAL_POSITION"));
+                col.setAutoIncrement("YES".equalsIgnoreCase(getOptionalString(rs, "IS_AUTOINCREMENT")));
+                col.setPrimaryKey(primaryKeys.contains(columnName));
+                col.setJavaType(mapJdbcTypeToJavaType(col.getJdbcType(), col.getDataType()));
+
                 // 尝试获取列注释（某些数据库在REMARKS字段提供）
                 String remarks = rs.getString("REMARKS");
                 if (remarks != null && !remarks.isEmpty()) {
@@ -168,6 +190,74 @@ public abstract class BaseJdbcMetadataExtractor implements DatabaseMetadataExtra
     public String getTableComment(Connection conn, String db, String schema, String table) throws SQLException {
         // 默认实现返回null，子类可覆盖以提供特定数据库的表注释获取逻辑
         return null;
+    }
+
+    protected Set<String> findPrimaryKeys(Connection conn, String catalog, String schema, String tableName) {
+        Set<String> primaryKeys = new HashSet<>();
+        try (ResultSet pkRs = conn.getMetaData().getPrimaryKeys(catalog, schema, tableName)) {
+            while (pkRs.next()) {
+                String column = pkRs.getString("COLUMN_NAME");
+                if (column != null && !column.isBlank()) {
+                    primaryKeys.add(column);
+                }
+            }
+        } catch (SQLException ignore) {
+            // 部分驱动可能不支持，忽略后按非主键处理
+        }
+        return primaryKeys;
+    }
+
+    protected String safeSchema(Connection conn) {
+        try {
+            return conn.getSchema();
+        } catch (Exception ignore) {
+            return null;
+        }
+    }
+
+    protected String getOptionalString(ResultSet rs, String column) {
+        try {
+            return rs.getString(column);
+        } catch (SQLException ignore) {
+            return null;
+        }
+    }
+
+    protected Integer getOptionalInteger(ResultSet rs, String column) {
+        try {
+            int value = rs.getInt(column);
+            return rs.wasNull() ? null : value;
+        } catch (SQLException ignore) {
+            return null;
+        }
+    }
+
+    protected String mapJdbcTypeToJavaType(Integer jdbcType, String sqlTypeName) {
+        if (jdbcType == null) {
+            return "Object";
+        }
+        return switch (jdbcType) {
+            case java.sql.Types.TINYINT -> "Byte";
+            case java.sql.Types.SMALLINT -> "Short";
+            case java.sql.Types.INTEGER -> "Integer";
+            case java.sql.Types.BIGINT -> "Long";
+            case java.sql.Types.FLOAT, java.sql.Types.REAL -> "Float";
+            case java.sql.Types.DOUBLE -> "Double";
+            case java.sql.Types.NUMERIC, java.sql.Types.DECIMAL -> "BigDecimal";
+            case java.sql.Types.BIT, java.sql.Types.BOOLEAN -> "Boolean";
+            case java.sql.Types.CHAR, java.sql.Types.VARCHAR, java.sql.Types.LONGVARCHAR -> "String";
+            case java.sql.Types.NCHAR, java.sql.Types.NVARCHAR, java.sql.Types.LONGNVARCHAR -> "String";
+            case java.sql.Types.DATE -> "LocalDate";
+            case java.sql.Types.TIME -> "LocalTime";
+            case java.sql.Types.TIMESTAMP, java.sql.Types.TIMESTAMP_WITH_TIMEZONE -> "LocalDateTime";
+            case java.sql.Types.BINARY, java.sql.Types.VARBINARY, java.sql.Types.LONGVARBINARY, java.sql.Types.BLOB -> "byte[]";
+            default -> {
+                if (sqlTypeName != null && sqlTypeName.toLowerCase().contains("json")) {
+                    yield "String";
+                }
+                yield "Object";
+            }
+        };
     }
     
     @Override

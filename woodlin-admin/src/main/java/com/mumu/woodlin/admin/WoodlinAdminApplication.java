@@ -11,8 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 2025-01-01
  */
 @SpringBootApplication(scanBasePackages = {
-        "com.mumu.woodlin.*",           // 管理后台模块
-
+        "com.mumu.woodlin.*",
 })
 @MapperScan("com.mumu.woodlin.**.mapper")
 public class WoodlinAdminApplication {

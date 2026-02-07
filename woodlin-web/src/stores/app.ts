@@ -6,13 +6,19 @@
  * @since 2025-01-01
  */
 
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+
+type DeviceType = 'mobile' | 'tablet' | 'desktop'
+type ThemeMode = 'light' | 'dark'
 
 /**
  * 应用全局状态管理 Store
  */
 export const useAppStore = defineStore('app', () => {
+  const SIDEBAR_STORAGE_KEY = 'sidebarCollapsed'
+  const THEME_STORAGE_KEY = 'themeMode'
+
   // ===== 状态 =====
   
   /** 侧边栏是否折叠 */
@@ -28,10 +34,13 @@ export const useAppStore = defineStore('app', () => {
   const showSettings = ref(false)
   
   /** 设备类型 */
-  const device = ref<'mobile' | 'tablet' | 'desktop'>('desktop')
+  const device = ref<DeviceType>('desktop')
   
   /** 侧边栏是否固定（移动端） */
   const sidebarFixed = ref(false)
+
+  /** 全局主题模式 */
+  const themeMode = ref<ThemeMode>('light')
 
   // ===== 计算属性 =====
   
@@ -44,18 +53,16 @@ export const useAppStore = defineStore('app', () => {
   /** 是否是桌面设备 */
   const isDesktop = computed(() => device.value === 'desktop')
 
+  /** 是否为深色主题 */
+  const isDarkMode = computed(() => themeMode.value === 'dark')
+
   // ===== 方法 =====
   
   /**
    * 切换侧边栏折叠状态
    */
   function toggleSidebar() {
-    sidebarCollapsed.value = !sidebarCollapsed.value
-    
-    // 持久化到localStorage
-    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed.value))
-    
-    console.log('侧边栏状态:', sidebarCollapsed.value ? '折叠' : '展开')
+    setSidebarCollapsed(!sidebarCollapsed.value)
   }
   
   /**
@@ -64,17 +71,53 @@ export const useAppStore = defineStore('app', () => {
    */
   function setSidebarCollapsed(collapsed: boolean) {
     sidebarCollapsed.value = collapsed
-    localStorage.setItem('sidebarCollapsed', String(collapsed))
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
   }
   
   /**
    * 恢复侧边栏状态
    */
   function restoreSidebarState() {
-    const saved = localStorage.getItem('sidebarCollapsed')
+    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
     if (saved !== null) {
       sidebarCollapsed.value = saved === 'true'
     }
+  }
+
+  /**
+   * 应用主题到根节点
+   */
+  function applyTheme() {
+    const root = document.documentElement
+    root.setAttribute('data-theme', themeMode.value)
+    root.style.colorScheme = themeMode.value
+  }
+
+  /**
+   * 设置主题模式
+   */
+  function setThemeMode(mode: ThemeMode) {
+    themeMode.value = mode
+    localStorage.setItem(THEME_STORAGE_KEY, mode)
+    applyTheme()
+  }
+
+  /**
+   * 切换浅色/深色主题
+   */
+  function toggleThemeMode() {
+    setThemeMode(themeMode.value === 'light' ? 'dark' : 'light')
+  }
+
+  /**
+   * 恢复主题模式
+   */
+  function restoreThemeMode() {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY)
+    if (saved === 'light' || saved === 'dark') {
+      themeMode.value = saved
+    }
+    applyTheme()
   }
   
   /**
@@ -119,7 +162,7 @@ export const useAppStore = defineStore('app', () => {
    * 设置设备类型
    * @param type 设备类型
    */
-  function setDevice(type: 'mobile' | 'tablet' | 'desktop') {
+  function setDevice(type: DeviceType) {
     device.value = type
     
     // 移动设备自动折叠侧边栏
@@ -146,6 +189,7 @@ export const useAppStore = defineStore('app', () => {
 
   // 初始化：恢复侧边栏状态和检测设备类型
   restoreSidebarState()
+  restoreThemeMode()
   detectDevice()
 
   return {
@@ -156,11 +200,13 @@ export const useAppStore = defineStore('app', () => {
     showSettings,
     device,
     sidebarFixed,
+    themeMode,
     
     // 计算属性
     isMobile,
     isTablet,
     isDesktop,
+    isDarkMode,
     
     // 方法
     toggleSidebar,
@@ -172,6 +218,10 @@ export const useAppStore = defineStore('app', () => {
     openSettings,
     closeSettings,
     setDevice,
-    detectDevice
+    detectDevice,
+    setThemeMode,
+    toggleThemeMode,
+    applyTheme,
+    restoreThemeMode
   }
 })

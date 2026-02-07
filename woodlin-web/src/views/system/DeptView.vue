@@ -71,7 +71,9 @@ const buildTree = (nodes: DeptNode[]): TreeOption[] =>
 const rebuildFlat = (nodes: DeptNode[], list: { label: string; value: number }[] = []) => {
   nodes.forEach(n => {
     list.push({ label: n.deptName, value: n.deptId })
-    if (n.children) rebuildFlat(n.children, list)
+    if (n.children) {
+      rebuildFlat(n.children, list)
+    }
   })
   return list
 }
@@ -119,12 +121,17 @@ const handleEdit = () => {
   // 从树中取出
   const find = (list: any[]): DeptNode | undefined => {
     for (const n of list) {
-      if (n.deptId === Number(id)) return n
+      if (n.deptId === Number(id)) {
+        return n
+      }
       if (n.children) {
         const hit = find(n.children)
-        if (hit) return hit
+        if (hit) {
+          return hit
+        }
       }
     }
+    return undefined
   }
   const current = find((deptTree.value as any[]).map(x => ({
     deptId: x.key,
@@ -286,7 +293,6 @@ loadDept()
             selectable
             expand-on-click
             :data="deptTree"
-            :default-expanded-keys="[1,10,11]"
             v-model:selected-keys="selectedKeys"
             :render-prefix="renderPrefix"
           />

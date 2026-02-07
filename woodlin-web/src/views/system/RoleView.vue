@@ -46,7 +46,9 @@ const flatRoles = computed<Role[]>(() => {
   const walk = (nodes: RoleNode[], parentName = '') => {
     nodes.forEach(n => {
       list.push({ ...n, parentName } as Role)
-      if (n.children) walk(n.children, n.roleName)
+      if (n.children) {
+        walk(n.children, n.roleName)
+      }
     })
   }
   walk(roleTree.value)
@@ -367,7 +369,6 @@ loadRoles()
           :label-field="'roleName'"
           block-line
           expand-on-click
-          :default-expanded-keys="[1,2]"
         />
       </NCard>
     </NSpace>

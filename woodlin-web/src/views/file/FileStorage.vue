@@ -1,28 +1,18 @@
-<template>
-  <div class="page-container">
-    <n-card title="存储配置">
-      <n-alert type="info" title="TODO" :bordered="false">
-        此页面待实现，需要对接后端文件存储配置API
-      </n-alert>
-      <div style="margin-top: 20px;">
-        <n-text>功能包括：</n-text>
-        <ul>
-          <li>存储类型配置（本地/OSS/MinIO等）</li>
-          <li>存储空间管理</li>
-          <li>存储配额设置</li>
-          <li>存储清理策略</li>
-        </ul>
-      </div>
-    </n-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { NCard, NAlert, NText } from 'naive-ui'
+import ModulePlaceholder from '@/components/ModulePlaceholder.vue'
 </script>
 
-<style scoped>
-.page-container {
-  padding: 20px;
-}
-</style>
+<template>
+  <ModulePlaceholder
+    title="存储策略配置"
+    subtitle="统一管理本地与对象存储策略，支持容量配额与多环境切换。"
+    tag="Storage Strategy"
+    :features="[
+      '本地/MinIO/OSS/S3 等存储源配置',
+      '存储桶、目录策略与访问密钥管理',
+      '租户配额、阈值告警与扩容建议',
+      '自动清理策略与归档转储任务',
+      '链路健康检测与可用性报表'
+    ]"
+  />
+</template>

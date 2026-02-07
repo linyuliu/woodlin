@@ -17,7 +17,7 @@
 
 import type {Router} from 'vue-router'
 import {getConfig} from '@/config'
-import {useAuthStore, usePermissionStore, useUserStore} from '@/stores'
+import {useAppStore, useAuthStore, usePermissionStore, useUserStore} from '@/stores'
 import {logger} from '@/utils/logger'
 
 /**
@@ -222,17 +222,35 @@ function createTitleGuard(router: Router): void {
  * @param router Vue Router实例
  */
 function createProgressGuard(router: Router): void {
+  let timer: number | null = null
+
+  const stopLoading = () => {
+    if (timer !== null) {
+      window.clearTimeout(timer)
+      timer = null
+    }
+    const appStore = useAppStore()
+    appStore.hideLoading()
+  }
+
   router.beforeEach((to, from, next) => {
-    // TODO: 启动进度条
-    // 可以使用nprogress或naive-ui的加载条
-    // import NProgress from 'nprogress'
-    // NProgress.start()
+    if (timer !== null) {
+      window.clearTimeout(timer)
+    }
+    // 延迟展示避免短路由切换闪烁
+    timer = window.setTimeout(() => {
+      const appStore = useAppStore()
+      appStore.showLoading('页面加载中...')
+    }, 120)
     next()
   })
 
   router.afterEach(() => {
-    // TODO: 完成进度条
-    // NProgress.done()
+    stopLoading()
+  })
+
+  router.onError(() => {
+    stopLoading()
   })
 }
 

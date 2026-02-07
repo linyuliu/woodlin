@@ -199,7 +199,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
     public DatabaseMetadata extractDatabaseMetadata(DataSource dataSource) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
-            String databaseName = connection.getCatalog();
+            String databaseName = resolveDatabaseName(connection);
             String version = getDatabaseVersion(connection);
 
             DatabaseMetadata dbMetadata = DatabaseMetadata.builder()
@@ -260,19 +260,21 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
     public List<TableMetadata> extractTables(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
         String targetSchema = (schemaName != null && !schemaName.isEmpty()) ? schemaName : "public";
-        String sql = getTablesQuery();
+        boolean hasCatalog = databaseName != null && !databaseName.isEmpty();
+        String sql = hasCatalog ? getTablesQuery() : getTablesQueryWithoutCatalog();
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);  // 30秒查询超时
-            pstmt.setString(1, databaseName);
-            pstmt.setString(2, targetSchema);
+            if (hasCatalog) {
+                pstmt.setString(1, databaseName);
+                pstmt.setString(2, targetSchema);
+            } else {
+                pstmt.setString(1, targetSchema);
+            }
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    TableMetadata table = buildTableMetadata(rs, databaseName, targetSchema);
-                    table.setColumns(extractColumns(connection, databaseName, targetSchema, table.getTableName()));
-                    table.setPrimaryKey(findPrimaryKey(connection, targetSchema, table.getTableName()));
-                    tables.add(table);
+                    tables.add(buildTableMetadata(rs, databaseName, targetSchema));
                 }
             }
         }
@@ -283,10 +285,39 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
      * 获取查询表列表的SQL
      */
     protected String getTablesQuery() {
-        return "SELECT t.table_name, pg_catalog.obj_description(pgc.oid, 'pg_class') as comment " +
+        return "SELECT t.table_name, t.table_type, " +
+               "pg_catalog.obj_description(cls.oid, 'pg_class') AS comment, " +
+               "pk.primary_key " +
                "FROM information_schema.tables t " +
-               "LEFT JOIN pg_catalog.pg_class pgc ON pgc.relname = t.table_name " +
-               "WHERE t.table_catalog = ? AND t.table_schema = ?";
+               "JOIN pg_catalog.pg_namespace ns ON ns.nspname = t.table_schema " +
+               "JOIN pg_catalog.pg_class cls ON cls.relname = t.table_name AND cls.relnamespace = ns.oid " +
+               "LEFT JOIN LATERAL (" +
+               "  SELECT string_agg(att.attname, ',' ORDER BY att.attnum) AS primary_key " +
+               "  FROM pg_catalog.pg_index idx " +
+               "  JOIN pg_catalog.pg_attribute att ON att.attrelid = idx.indrelid AND att.attnum = ANY(idx.indkey) " +
+               "  WHERE idx.indrelid = cls.oid AND idx.indisprimary" +
+               ") pk ON true " +
+               "WHERE t.table_catalog = ? AND t.table_schema = ? " +
+               "AND t.table_type IN ('BASE TABLE', 'VIEW') " +
+               "ORDER BY t.table_name";
+    }
+
+    protected String getTablesQueryWithoutCatalog() {
+        return "SELECT t.table_name, t.table_type, " +
+               "pg_catalog.obj_description(cls.oid, 'pg_class') AS comment, " +
+               "pk.primary_key " +
+               "FROM information_schema.tables t " +
+               "JOIN pg_catalog.pg_namespace ns ON ns.nspname = t.table_schema " +
+               "JOIN pg_catalog.pg_class cls ON cls.relname = t.table_name AND cls.relnamespace = ns.oid " +
+               "LEFT JOIN LATERAL (" +
+               "  SELECT string_agg(att.attname, ',' ORDER BY att.attnum) AS primary_key " +
+               "  FROM pg_catalog.pg_index idx " +
+               "  JOIN pg_catalog.pg_attribute att ON att.attrelid = idx.indrelid AND att.attnum = ANY(idx.indkey) " +
+               "  WHERE idx.indrelid = cls.oid AND idx.indisprimary" +
+               ") pk ON true " +
+               "WHERE t.table_schema = ? " +
+               "AND t.table_type IN ('BASE TABLE', 'VIEW') " +
+               "ORDER BY t.table_name";
     }
 
     /**
@@ -298,6 +329,8 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                 .databaseName(databaseName)
                 .schemaName(schemaName)
                 .comment(rs.getString("comment"))
+                .tableType(rs.getString("table_type"))
+                .primaryKey(rs.getString("primary_key"))
                 .build();
     }
 
@@ -309,9 +342,8 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);  // 30秒查询超时
-            pstmt.setString(1, databaseName);
-            pstmt.setString(2, targetSchema);
-            pstmt.setString(3, tableName);
+            pstmt.setString(1, targetSchema);
+            pstmt.setString(2, tableName);
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 String version = getDatabaseVersion(connection);
@@ -327,13 +359,24 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
      * 获取查询列信息的SQL
      */
     protected String getColumnsQuery() {
-        return "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.ordinal_position, " +
-               "pgd.description as comment " +
-               "FROM information_schema.columns c " +
-               "LEFT JOIN pg_catalog.pg_statio_all_tables st ON st.relname = c.table_name AND st.schemaname = c.table_schema " +
-               "LEFT JOIN pg_catalog.pg_description pgd ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position " +
-               "WHERE c.table_catalog = ? AND c.table_schema = ? AND c.table_name = ? " +
-               "ORDER BY c.ordinal_position";
+        return "SELECT a.attname AS column_name, " +
+               "pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type, " +
+               "CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END AS is_nullable, " +
+               "pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS column_default, " +
+               "a.attnum AS ordinal_position, " +
+               "pg_catalog.col_description(c.oid, a.attnum) AS comment, " +
+               "EXISTS (" +
+               "  SELECT 1 FROM pg_catalog.pg_index idx " +
+               "  WHERE idx.indrelid = c.oid AND idx.indisprimary AND a.attnum = ANY(idx.indkey)" +
+               ") AS is_primary_key " +
+               "FROM pg_catalog.pg_namespace n " +
+               "JOIN pg_catalog.pg_class c ON c.relnamespace = n.oid " +
+               "JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid " +
+               "LEFT JOIN pg_catalog.pg_attrdef ad ON ad.adrelid = c.oid AND ad.adnum = a.attnum " +
+               "WHERE n.nspname = ? AND c.relname = ? " +
+               "AND c.relkind IN ('r', 'p', 'v', 'm', 'f') " +
+               "AND a.attnum > 0 AND NOT a.attisdropped " +
+               "ORDER BY a.attnum";
     }
 
     /**
@@ -341,6 +384,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
      */
     protected ColumnMetadata buildColumnMetadata(ResultSet rs, String databaseName, String schemaName, String tableName, String version) throws SQLException {
         String dataType = rs.getString("data_type");
+        String normalizedDataType = normalizeSqlType(dataType);
         String columnDefault = rs.getString("column_default");
         boolean isAutoIncrement = columnDefault != null && columnDefault.contains("nextval");
 
@@ -353,9 +397,10 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
                 .dataType(dataType)
                 .nullable("YES".equalsIgnoreCase(rs.getString("is_nullable")))
                 .defaultValue(columnDefault)
+                .primaryKey(rs.getBoolean("is_primary_key"))
                 .autoIncrement(isAutoIncrement)
                 .ordinalPosition(rs.getInt("ordinal_position"))
-                .javaType(mapToJavaType(dataType, version))
+                .javaType(mapToJavaType(normalizedDataType, version))
                 .build();
     }
 
@@ -414,7 +459,7 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
         if (sqlType == null) {
             return "Object";
         }
-        String type = sqlType.toLowerCase();
+        String type = normalizeSqlType(sqlType);
 
         // 首先检查版本特定映射
         for (Map.Entry<String, Map<String, String>> entry : versionSpecificTypeMappings.entrySet()) {
@@ -428,6 +473,55 @@ public abstract class AbstractPostgreSQLCompatibleExtractor implements DatabaseM
 
         // 然后使用默认映射
         return typeMapping.getOrDefault(type, "Object");
+    }
+
+    protected String normalizeSqlType(String sqlType) {
+        if (sqlType == null) {
+            return null;
+        }
+
+        String type = sqlType.toLowerCase().trim();
+
+        if (type.startsWith("timestamp with time zone")) {
+            return "timestamp with time zone";
+        }
+        if (type.startsWith("timestamp without time zone")) {
+            return "timestamp without time zone";
+        }
+        if (type.startsWith("time with time zone")) {
+            return "time with time zone";
+        }
+        if (type.startsWith("time without time zone")) {
+            return "time without time zone";
+        }
+
+        int parenIndex = type.indexOf('(');
+        if (parenIndex > 0) {
+            type = type.substring(0, parenIndex).trim();
+        }
+
+        if (type.endsWith("[]")) {
+            type = "array";
+        }
+
+        return type;
+    }
+
+    protected String resolveDatabaseName(Connection connection) throws SQLException {
+        String catalog = connection.getCatalog();
+        if (catalog != null && !catalog.isEmpty()) {
+            return catalog;
+        }
+
+        try (PreparedStatement pstmt = connection.prepareStatement("SELECT current_database()");
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+        } catch (SQLException ex) {
+            log.debug("Failed to resolve database name via current_database(): {}", ex.getMessage());
+        }
+        return catalog;
     }
 
     /**

@@ -1,29 +1,18 @@
-<template>
-  <div class="page-container">
-    <n-card title="代码生成器">
-      <n-alert type="info" title="TODO" :bordered="false">
-        此页面待实现，需要对接后端代码生成API
-      </n-alert>
-      <div style="margin-top: 20px;">
-        <n-text>功能包括：</n-text>
-        <ul>
-          <li>数据库表选择</li>
-          <li>代码模板配置</li>
-          <li>代码生成和下载</li>
-          <li>代码预览</li>
-          <li>自定义生成规则</li>
-        </ul>
-      </div>
-    </n-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { NCard, NAlert, NText } from 'naive-ui'
+import ModulePlaceholder from '@/components/ModulePlaceholder.vue'
 </script>
 
-<style scoped>
-.page-container {
-  padding: 20px;
-}
-</style>
+<template>
+  <ModulePlaceholder
+    title="代码生成工坊"
+    subtitle="基于元数据生成后端与前端脚手架，缩短业务模块交付周期。"
+    tag="Generator"
+    :features="[
+      '按数据表批量生成实体、Mapper、Service、Controller',
+      '支持 Vue 页面、API、路由与权限代码模板',
+      '模板变量与命名策略可视化配置',
+      '生成预览、差异对比与下载打包',
+      '支持自定义模板仓库与版本治理'
+    ]"
+  />
+</template>

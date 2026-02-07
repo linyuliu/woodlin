@@ -1,200 +1,214 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { 
-  NCard, 
-  NSpace, 
-  NButton, 
-  NDataTable, 
-  NInput,
+import { computed, h, onMounted, ref } from 'vue'
+import {
+  NButton,
+  NCard,
+  NDataTable,
   NForm,
   NFormItem,
+  NGrid,
+  NGridItem,
+  NIcon,
+  NInput,
   NModal,
+  NPopconfirm,
+  NSpace,
+  NStatistic,
+  NTag,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { 
-  getConfigList, 
-  getConfigsByCategory,
+import { AddOutline, RefreshOutline, SearchOutline } from '@vicons/ionicons5'
+import {
   addConfig,
-  updateConfig,
   deleteConfig,
-  getBuildInfo,
   evictConfigCache,
+  getBuildInfo,
+  getConfigList,
+  updateConfig,
   warmupConfigCache,
-  type SysConfig,
-  type BuildInfo
+  type BuildInfo,
+  type SysConfig
 } from '@/api/config'
 
 const message = useMessage()
 const loading = ref(false)
+const keyword = ref('')
 
-// 配置列表
 const configList = ref<SysConfig[]>([])
-
-// 构建信息
 const buildInfo = ref<BuildInfo | null>(null)
 
-// 编辑对话框
 const showEditModal = ref(false)
+const isEditing = ref(false)
 const editingConfig = ref<SysConfig>({
   configName: '',
   configKey: '',
-  configValue: ''
+  configValue: '',
+  configType: 'system'
 })
-const isEditing = ref(false)
 
-// 表格列定义
+const filteredConfigList = computed(() => {
+  const key = keyword.value.trim().toLowerCase()
+  if (!key) {
+    return configList.value
+  }
+  return configList.value.filter(item => {
+    const target = [item.configName, item.configKey, item.configValue, item.configType, item.remark]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return target.includes(key)
+  })
+})
+
+const categoryCount = computed(() => new Set(configList.value.map(item => item.configType || 'default')).size)
+
 const columns: DataTableColumns<SysConfig> = [
-  { title: 'ID', key: 'configId', width: 80 },
-  { title: '配置名称', key: 'configName', width: 150 },
-  { title: '配置键', key: 'configKey', width: 200 },
-  { 
-    title: '配置值', 
-    key: 'configValue',
-    ellipsis: {
-      tooltip: true
-    }
+  { title: '名称', key: 'configName', width: 150 },
+  { title: '配置键', key: 'configKey', width: 220 },
+  { title: '配置值', key: 'configValue', ellipsis: { tooltip: true } },
+  {
+    title: '类型',
+    key: 'configType',
+    width: 110,
+    render: row => h(NTag, { size: 'small', type: 'info' }, { default: () => row.configType || 'default' })
   },
-  { title: '配置类型', key: 'configType', width: 100 },
   { title: '备注', key: 'remark', ellipsis: { tooltip: true } },
   {
     title: '操作',
     key: 'actions',
-    width: 180,
-    render: (row) => {
-      return [
-        h(NButton, {
-          size: 'small',
-          type: 'primary',
-          style: { marginRight: '8px' },
-          onClick: () => handleEdit(row)
-        }, { default: () => '编辑' }),
-        h(NButton, {
-          size: 'small',
-          type: 'error',
-          onClick: () => handleDelete(row.configId!)
-        }, { default: () => '删除' })
-      ]
-    }
+    width: 160,
+    render: row =>
+      h(NSpace, { size: 4 }, () => [
+        h(
+          NButton,
+          {
+            size: 'small',
+            text: true,
+            type: 'primary',
+            onClick: () => handleEdit(row)
+          },
+          { default: () => '编辑' }
+        ),
+        h(
+          NPopconfirm,
+          {
+            onPositiveClick: () => {
+              if (typeof row.configId === 'number') {
+                handleDelete(row.configId)
+              }
+            }
+          },
+          {
+            default: () => `确认删除配置 ${row.configKey} 吗？`,
+            trigger: () =>
+              h(
+                NButton,
+                {
+                  size: 'small',
+                  text: true,
+                  type: 'error'
+                },
+                { default: () => '删除' }
+              )
+          }
+        )
+      ])
   }
 ]
 
-/**
- * 加载配置列表
- */
 const loadConfigList = async () => {
+  loading.value = true
   try {
-    loading.value = true
     configList.value = await getConfigList()
-    message.success('加载配置列表成功')
   } catch (error) {
-    message.error('加载配置列表失败')
     console.error(error)
+    message.error('加载配置列表失败')
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 加载构建信息
- */
 const loadBuildInfo = async () => {
   try {
     buildInfo.value = await getBuildInfo()
   } catch (error) {
-    console.error('加载构建信息失败:', error)
+    console.error(error)
   }
 }
 
-/**
- * 添加配置
- */
 const handleAdd = () => {
   editingConfig.value = {
     configName: '',
     configKey: '',
-    configValue: ''
+    configValue: '',
+    configType: 'system'
   }
   isEditing.value = false
   showEditModal.value = true
 }
 
-/**
- * 编辑配置
- */
 const handleEdit = (config: SysConfig) => {
   editingConfig.value = { ...config }
   isEditing.value = true
   showEditModal.value = true
 }
 
-/**
- * 保存配置
- */
 const handleSave = async () => {
+  loading.value = true
   try {
-    loading.value = true
     if (isEditing.value) {
       await updateConfig(editingConfig.value)
       message.success('更新配置成功')
     } else {
       await addConfig(editingConfig.value)
-      message.success('添加配置成功')
+      message.success('新增配置成功')
     }
     showEditModal.value = false
     await loadConfigList()
   } catch (error) {
-    message.error('保存配置失败')
     console.error(error)
+    message.error('保存配置失败')
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 删除配置
- */
 const handleDelete = async (configId: number) => {
+  loading.value = true
   try {
-    loading.value = true
     await deleteConfig(String(configId))
     message.success('删除配置成功')
     await loadConfigList()
   } catch (error) {
+    console.error(error)
     message.error('删除配置失败')
-    console.error(error)
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 清除缓存
- */
 const handleEvictCache = async () => {
+  loading.value = true
   try {
-    loading.value = true
     await evictConfigCache()
-    message.success('清除缓存成功')
+    message.success('配置缓存已清除')
   } catch (error) {
-    message.error('清除缓存失败')
     console.error(error)
+    message.error('清除配置缓存失败')
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 预热缓存
- */
 const handleWarmupCache = async () => {
+  loading.value = true
   try {
-    loading.value = true
     await warmupConfigCache()
-    message.success('预热缓存成功')
+    message.success('配置缓存预热完成')
   } catch (error) {
-    message.error('预热缓存失败')
     console.error(error)
+    message.error('预热配置缓存失败')
   } finally {
     loading.value = false
   }
@@ -208,128 +222,168 @@ onMounted(() => {
 
 <template>
   <div class="config-view">
-    <NSpace vertical :size="16">
-      <!-- 构建信息 -->
-      <NCard v-if="buildInfo" title="构建信息" :bordered="false" size="small">
-        <div class="build-info">
-          <div class="info-item">
-            <span class="label">版本:</span>
-            <span class="value">{{ buildInfo.version }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">构建时间:</span>
-            <span class="value">{{ buildInfo.buildTime }}</span>
-          </div>
-          <div v-if="buildInfo.gitCommit" class="info-item">
-            <span class="label">Git Commit:</span>
-            <span class="value">{{ buildInfo.gitCommit }}</span>
-          </div>
-          <div v-if="buildInfo.gitBranch" class="info-item">
-            <span class="label">Git Branch:</span>
-            <span class="value">{{ buildInfo.gitBranch }}</span>
-          </div>
+    <n-card :bordered="false" class="hero-card">
+      <div class="hero-content">
+        <div>
+          <h2>系统配置中心</h2>
+          <p>集中管理平台运行参数、缓存与构建版本信息，支持在线编辑与即时生效。</p>
         </div>
-      </NCard>
+        <n-tag type="info" size="small">运行配置面板</n-tag>
+      </div>
+    </n-card>
 
-      <!-- 配置管理 -->
-      <NCard title="系统配置管理" :bordered="false">
-        <template #header-extra>
-          <NSpace>
-            <NButton size="small" @click="handleAdd">
-              新增配置
-            </NButton>
-            <NButton size="small" @click="handleEvictCache" :loading="loading">
-              清除缓存
-            </NButton>
-            <NButton size="small" @click="handleWarmupCache" :loading="loading">
-              预热缓存
-            </NButton>
-            <NButton size="small" @click="loadConfigList" :loading="loading">
-              刷新
-            </NButton>
-          </NSpace>
-        </template>
-        <NDataTable
-          :columns="columns"
-          :data="configList"
-          :bordered="false"
-          :single-line="false"
-          :loading="loading"
-          size="small"
-        />
-      </NCard>
-    </NSpace>
+    <n-grid :x-gap="12" :y-gap="12" cols="1 s:3" responsive="screen">
+      <n-grid-item>
+        <n-card :bordered="false" class="stat-card">
+          <n-statistic label="配置总数" :value="configList.length" />
+        </n-card>
+      </n-grid-item>
+      <n-grid-item>
+        <n-card :bordered="false" class="stat-card">
+          <n-statistic label="配置类型数" :value="categoryCount" />
+        </n-card>
+      </n-grid-item>
+      <n-grid-item>
+        <n-card :bordered="false" class="stat-card">
+          <n-statistic label="当前版本" :value="buildInfo?.version || '-'" />
+        </n-card>
+      </n-grid-item>
+    </n-grid>
 
-    <!-- 编辑对话框 -->
-    <NModal
+    <n-card v-if="buildInfo" :bordered="false" title="构建信息">
+      <div class="build-info">
+        <div class="info-item"><span class="label">构建时间</span><span class="value">{{ buildInfo.buildTime || '-' }}</span></div>
+        <div class="info-item"><span class="label">Git Commit</span><span class="value">{{ buildInfo.gitCommit || '-' }}</span></div>
+        <div class="info-item"><span class="label">Git Branch</span><span class="value">{{ buildInfo.gitBranch || '-' }}</span></div>
+      </div>
+    </n-card>
+
+    <n-card :bordered="false" title="配置列表">
+      <template #header-extra>
+        <n-space>
+          <n-input v-model:value="keyword" clearable size="small" placeholder="搜索配置名称/键/值">
+            <template #prefix>
+              <n-icon><search-outline /></n-icon>
+            </template>
+          </n-input>
+          <n-button size="small" type="primary" @click="handleAdd">
+            <template #icon>
+              <n-icon><add-outline /></n-icon>
+            </template>
+            新增配置
+          </n-button>
+          <n-button size="small" @click="handleEvictCache" :loading="loading">清除缓存</n-button>
+          <n-button size="small" @click="handleWarmupCache" :loading="loading">预热缓存</n-button>
+          <n-button size="small" @click="loadConfigList" :loading="loading">
+            <template #icon>
+              <n-icon><refresh-outline /></n-icon>
+            </template>
+            刷新
+          </n-button>
+        </n-space>
+      </template>
+
+      <n-data-table
+        :columns="columns"
+        :data="filteredConfigList"
+        :loading="loading"
+        :pagination="{ pageSize: 10, showSizePicker: true, pageSizes: [10, 20, 50] }"
+        :bordered="false"
+        size="small"
+        :single-line="false"
+      />
+    </n-card>
+
+    <n-modal
       v-model:show="showEditModal"
-      preset="dialog"
+      preset="card"
       :title="isEditing ? '编辑配置' : '新增配置'"
-      positive-text="保存"
-      negative-text="取消"
-      @positive-click="handleSave"
+      style="width: 560px"
+      :bordered="false"
+      :segmented="{ content: true, footer: true }"
     >
-      <NForm :model="editingConfig" label-placement="left" label-width="100">
-        <NFormItem label="配置名称" required>
-          <NInput v-model:value="editingConfig.configName" placeholder="请输入配置名称" />
-        </NFormItem>
-        <NFormItem label="配置键" required>
-          <NInput v-model:value="editingConfig.configKey" placeholder="请输入配置键" />
-        </NFormItem>
-        <NFormItem label="配置值" required>
-          <NInput 
-            v-model:value="editingConfig.configValue" 
-            type="textarea"
-            placeholder="请输入配置值"
-            :rows="3"
-          />
-        </NFormItem>
-        <NFormItem label="配置类型">
-          <NInput v-model:value="editingConfig.configType" placeholder="请输入配置类型" />
-        </NFormItem>
-        <NFormItem label="备注">
-          <NInput 
-            v-model:value="editingConfig.remark" 
-            type="textarea"
-            placeholder="请输入备注"
-            :rows="2"
-          />
-        </NFormItem>
-      </NForm>
-    </NModal>
+      <n-form :model="editingConfig" label-placement="left" label-width="100">
+        <n-form-item label="配置名称" required>
+          <n-input v-model:value="editingConfig.configName" placeholder="请输入配置名称" />
+        </n-form-item>
+        <n-form-item label="配置键" required>
+          <n-input v-model:value="editingConfig.configKey" placeholder="请输入配置键" />
+        </n-form-item>
+        <n-form-item label="配置值" required>
+          <n-input v-model:value="editingConfig.configValue" type="textarea" :rows="3" placeholder="请输入配置值" />
+        </n-form-item>
+        <n-form-item label="配置类型">
+          <n-input v-model:value="editingConfig.configType" placeholder="system / security / api" />
+        </n-form-item>
+        <n-form-item label="备注">
+          <n-input v-model:value="editingConfig.remark" type="textarea" :rows="2" placeholder="可选说明" />
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showEditModal = false">取消</n-button>
+          <n-button type="primary" :loading="loading" @click="handleSave">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
-<script lang="ts">
-import { h } from 'vue'
-
-export default {
-  name: 'ConfigView'
-}
-</script>
-
 <style scoped>
 .config-view {
-  padding: 16px;
+  padding: 8px 0;
+}
+
+.hero-card {
+  background: linear-gradient(120deg, #0a4d68 0%, #088395 52%, #05bfdb 100%);
+}
+
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content h2 {
+  margin: 0 0 6px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color-inverse) 82%, transparent);
+}
+
+.stat-card {
+  background: radial-gradient(circle at top right, rgba(5, 191, 219, 0.24), transparent 48%), var(--bg-color);
 }
 
 .build-info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
 
 .info-item {
+  border: 1px solid color-mix(in srgb, var(--border-color-light) 68%, transparent);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--bg-color-tertiary) 54%, transparent);
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.info-item .label {
+.label {
+  font-size: 12px;
+  color: var(--text-color-tertiary);
+}
+
+.value {
+  color: var(--text-color-primary);
   font-weight: 500;
-  min-width: 100px;
-}
-
-.info-item .value {
-  color: #666;
 }
 </style>

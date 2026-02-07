@@ -221,7 +221,18 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      * 提取字符集信息，子类可覆盖
      */
     protected void extractCharsetInfo(Connection connection, String databaseName, DatabaseMetadata dbMetadata) throws SQLException {
-        // 默认实现，子类可覆盖
+        String sql = "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME " +
+                "FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(10);
+            pstmt.setString(1, databaseName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    dbMetadata.setCharset(rs.getString("DEFAULT_CHARACTER_SET_NAME"));
+                    dbMetadata.setCollation(rs.getString("DEFAULT_COLLATION_NAME"));
+                }
+            }
+        }
     }
 
     @Override
@@ -251,7 +262,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      */
     protected List<TableMetadata> extractTablesNative(Connection connection, String databaseName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
-        String version = getDatabaseVersion(connection);
+        Map<String, String> primaryKeyMap = loadPrimaryKeyMap(connection, databaseName);
 
         // 使用 SHOW TABLE STATUS 获取表的详细信息（包括注释、引擎等）
         String sql = "SHOW TABLE STATUS FROM `" + escapeSqlIdentifier(databaseName) + "`";
@@ -275,43 +286,18 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
                             .databaseName(databaseName)
                             .comment(tableComment)
                             .tableType(tableType)
+                            .primaryKey(primaryKeyMap.get(tableName))
                             .engine(engine)
                             .collation(collation)
                             .createTime(createTime)
                             .updateTime(updateTime)
                             .build();
-
-                    // 提取列信息，同时获取主键（主键信息在SHOW FULL COLUMNS结果的Key字段中）
-                    List<ColumnMetadata> columns = extractColumnsNative(connection, databaseName, tableName, version);
-                    table.setColumns(columns);
-                    // 从列信息中找出主键列
-                    table.setPrimaryKey(findPrimaryKeyFromColumns(columns));
                     tables.add(table);
                 }
             }
         }
 
         return tables;
-    }
-
-    /**
-     * 从列列表中查找主键列名
-     * <p>
-     * 优化：直接从已提取的列元数据中获取主键信息，避免额外的数据库查询。
-     * </p>
-     *
-     * @param columns 列元数据列表
-     * @return 主键列名，如果没有主键则返回null
-     */
-    protected String findPrimaryKeyFromColumns(List<ColumnMetadata> columns) {
-        if (columns == null || columns.isEmpty()) {
-            return null;
-        }
-        return columns.stream()
-                .filter(col -> Boolean.TRUE.equals(col.getPrimaryKey()))
-                .map(ColumnMetadata::getColumnName)
-                .findFirst()
-                .orElse(null);
     }
 
     /**
@@ -324,6 +310,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
      */
     protected List<TableMetadata> extractTablesFromInfoSchema(Connection connection, String databaseName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
+        Map<String, String> primaryKeyMap = loadPrimaryKeyMap(connection, databaseName);
         String sql = getTablesQuery();
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -333,8 +320,7 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     TableMetadata table = buildTableMetadata(rs, databaseName);
-                    table.setColumns(extractColumns(connection, databaseName, null, table.getTableName()));
-                    table.setPrimaryKey(findPrimaryKey(connection, databaseName, table.getTableName()));
+                    table.setPrimaryKey(primaryKeyMap.get(table.getTableName()));
                     tables.add(table);
                 }
             }
@@ -792,6 +778,32 @@ public abstract class AbstractMySQLCompatibleExtractor implements DatabaseMetada
             }
         }
         return null;
+    }
+
+    /**
+     * 批量加载数据库内所有表主键信息，避免逐表查询。
+     */
+    protected Map<String, String> loadPrimaryKeyMap(Connection connection, String databaseName) throws SQLException {
+        Map<String, String> primaryKeyMap = new HashMap<>();
+        String sql = "SELECT TABLE_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS PRIMARY_KEY " +
+                "FROM information_schema.STATISTICS " +
+                "WHERE TABLE_SCHEMA = ? AND INDEX_NAME = 'PRIMARY' " +
+                "GROUP BY TABLE_NAME";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setQueryTimeout(30);
+            pstmt.setString(1, databaseName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    primaryKeyMap.put(rs.getString("TABLE_NAME"), rs.getString("PRIMARY_KEY"));
+                }
+            }
+        } catch (SQLException ex) {
+            // 某些兼容数据库对 statistics 的支持有限，降级为空映射不影响主流程。
+            log.debug("Batch load primary key map failed for database {}: {}", databaseName, ex.getMessage());
+        }
+
+        return primaryKeyMap;
     }
 
     /**

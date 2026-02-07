@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import {NLayoutContent} from 'naive-ui'
+import { computed } from 'vue'
+import { NLayoutContent, NSpin } from 'naive-ui'
+import { useAppStore } from '@/stores'
+
+const appStore = useAppStore()
+const loading = computed(() => appStore.loading)
+const loadingText = computed(() => appStore.loadingText)
 </script>
 
 <template>
   <NLayoutContent class="app-content">
     <div class="content-wrapper">
-      <router-view v-slot="{ Component }">
-        <transition name="fade-slide" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <NSpin :show="loading" size="large" :description="loadingText">
+        <router-view v-slot="{ Component }">
+          <transition name="fade-slide" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </NSpin>
     </div>
   </NLayoutContent>
 </template>
@@ -24,6 +32,10 @@ import {NLayoutContent} from 'naive-ui'
 .content-wrapper {
   padding: var(--spacing-xl);
   min-height: 100%;
+}
+
+.content-wrapper :deep(.n-spin-container) {
+  min-height: calc(100vh - var(--header-height) - var(--spacing-xl) * 2);
 }
 
 .fade-slide-enter-active {
