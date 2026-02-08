@@ -65,14 +65,11 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-generator</artifactId>
         </dependency>
-        <!-- Temporarily disabled due to Kotlin compilation errors in ETL module -->
-        <!--
         <dependency>
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-etl</artifactId>
             <version>${woodlin.version}</version>
         </dependency>
-        -->
         <dependency>
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-system-datasource</artifactId>

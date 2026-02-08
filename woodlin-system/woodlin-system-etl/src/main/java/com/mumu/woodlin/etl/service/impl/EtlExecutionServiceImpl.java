@@ -1,311 +1,728 @@
 package com.mumu.woodlin.etl.service.impl;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Objects;
+import java.util.Set;
+import java.util.StringJoiner;
+import java.util.stream.Collectors;
+import java.util.zip.CRC32;
 import javax.sql.DataSource;
 
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.etl.dialect.DatabaseDialect;
+import com.mumu.woodlin.etl.dialect.DatabaseDialectResolver;
+import com.mumu.woodlin.etl.entity.EtlColumnMappingRule;
+import com.mumu.woodlin.etl.entity.EtlDataBucketChecksum;
+import com.mumu.woodlin.etl.entity.EtlDataValidationLog;
 import com.mumu.woodlin.etl.entity.EtlJob;
+import com.mumu.woodlin.etl.entity.EtlSyncCheckpoint;
+import com.mumu.woodlin.etl.entity.EtlTableStructureSnapshot;
 import com.mumu.woodlin.etl.enums.SyncMode;
+import com.mumu.woodlin.etl.model.TableColumnMetadata;
+import com.mumu.woodlin.etl.model.TableSchemaMetadata;
+import com.mumu.woodlin.etl.service.EtlTableMetadataInspector;
+import com.mumu.woodlin.etl.service.IEtlColumnMappingRuleService;
+import com.mumu.woodlin.etl.service.IEtlDataBucketChecksumService;
+import com.mumu.woodlin.etl.service.IEtlDataValidationLogService;
 import com.mumu.woodlin.etl.service.IEtlExecutionLogService;
 import com.mumu.woodlin.etl.service.IEtlExecutionService;
-import com.mumu.woodlin.sql2api.model.ColumnMetadata;
-import com.mumu.woodlin.sql2api.model.TableMetadata;
-import com.mumu.woodlin.sql2api.service.DatabaseMetadataService;
+import com.mumu.woodlin.etl.service.IEtlSyncCheckpointService;
+import com.mumu.woodlin.etl.service.IEtlTableStructureSnapshotService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
- * ETL执行服务实现
- * 
+ * ETL执行服务实现。
+ *
  * @author mumu
- * @description ETL任务执行服务实现，负责实际的数据抽取、转换、加载操作
- * @since 2025-01-01
+ * @since 1.0.0
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EtlExecutionServiceImpl implements IEtlExecutionService {
-    
+
+    private static final int DEFAULT_BATCH_SIZE = 1000;
+    private static final int DEFAULT_BUCKET_SIZE = 64;
+    private static final int MAX_IN_CLAUSE_SIZE = 900;
+
     private final DynamicRoutingDataSource dynamicRoutingDataSource;
     private final IEtlExecutionLogService executionLogService;
-    
+    private final IEtlColumnMappingRuleService columnMappingRuleService;
+    private final IEtlSyncCheckpointService syncCheckpointService;
+    private final IEtlDataBucketChecksumService bucketChecksumService;
+    private final IEtlDataValidationLogService validationLogService;
+    private final IEtlTableStructureSnapshotService structureSnapshotService;
+    private final DatabaseDialectResolver dialectResolver;
+    private final EtlTableMetadataInspector metadataInspector;
+    private final ObjectMapper objectMapper;
+
     @Async
     @Override
     public void execute(EtlJob job) {
-        log.info("开始执行ETL任务: {}", job.getJobName());
-        
-        Long logId = executionLogService.recordExecutionStart(job);
-        
-        long extractedRows = 0;
-        long transformedRows = 0;
-        long loadedRows = 0;
-        long failedRows = 0;
-        
+        Long executionLogId = executionLogService.recordExecutionStart(job);
+        Summary summary = new Summary();
         try {
-            // 1. Extract - 数据提取
-            List<Map<String, Object>> extractedData = extractData(job);
-            extractedRows = extractedData.size();
-            log.info("提取数据完成，记录数: {}", extractedRows);
-            
-            // 2. Transform - 数据转换
-            List<Map<String, Object>> transformedData = transformData(job, extractedData);
-            transformedRows = transformedData.size();
-            log.info("转换数据完成，记录数: {}", transformedRows);
-            
-            // 3. Load - 数据加载
-            loadedRows = loadData(job, transformedData);
-            log.info("加载数据完成，记录数: {}", loadedRows);
-            
-            // 记录执行成功
-            String executionDetail = String.format(
-                "提取: %d条, 转换: %d条, 加载: %d条",
-                extractedRows, transformedRows, loadedRows
-            );
-            executionLogService.recordExecutionSuccess(
-                logId, extractedRows, transformedRows, loadedRows, executionDetail
-            );
-            
-            log.info("ETL任务执行成功: {}", job.getJobName());
-            
-        } catch (Exception e) {
-            log.error("ETL任务执行失败: {}", job.getJobName(), e);
-            
-            // 记录执行失败
-            failedRows = extractedRows - loadedRows;
+            validateJob(job);
+            DataSource sourceDataSource = getDataSource(job.getSourceDatasource(), "源");
+            DataSource targetDataSource = getDataSource(job.getTargetDatasource(), "目标");
+            try (Connection sourceConnection = sourceDataSource.getConnection();
+                 Connection targetConnection = targetDataSource.getConnection()) {
+                DatabaseDialect sourceDialect = dialectResolver.resolve(sourceConnection);
+                DatabaseDialect targetDialect = dialectResolver.resolve(targetConnection);
+                TableSchemaMetadata sourceMetadata = metadataInspector.inspect(
+                        job.getSourceDatasource(), job.getSourceSchema(), job.getSourceTable()
+                );
+                TableSchemaMetadata targetMetadata = metadataInspector.inspect(
+                        job.getTargetDatasource(), job.getTargetSchema(), job.getTargetTable()
+                );
+                recordSnapshot(job, sourceMetadata, job.getSourceDatasource(), "SOURCE");
+                recordSnapshot(job, targetMetadata, job.getTargetDatasource(), "TARGET");
+                List<MappingSpec> mappings = resolveMappings(job, sourceMetadata, targetMetadata);
+                String sourcePrimaryKey = resolveSourcePrimaryKey(sourceMetadata, mappings);
+                String targetPrimaryKey = resolveTargetPrimaryKey(sourcePrimaryKey, mappings, targetMetadata);
+                adjustTargetSchema(job, sourceMetadata, targetMetadata, mappings, targetConnection, targetDialect);
+                SyncMode syncMode = SyncMode.fromCode(job.getSyncMode());
+                EtlSyncCheckpoint checkpoint = syncCheckpointService.getOrCreate(job);
+                if (syncMode == SyncMode.FULL) {
+                    clearTargetTable(job, targetConnection, targetDialect);
+                }
+                int bucketSize = resolveBucketSize(job);
+                BucketRetryPolicy retryPolicy = resolveBucketRetryPolicy(job);
+                summary = runSync(
+                        job,
+                        syncMode,
+                        sourceConnection,
+                        targetConnection,
+                        sourceDialect,
+                        targetDialect,
+                        mappings,
+                        sourcePrimaryKey,
+                        targetPrimaryKey,
+                        checkpoint,
+                        executionLogId,
+                        bucketSize,
+                        retryPolicy
+                );
+                String validationStatus = summary.mismatchBucketCount > 0 ? "FAILED" : "SUCCESS";
+                syncCheckpointService.updateAfterExecution(
+                        checkpoint,
+                        summary.lastIncrementalValue,
+                        summary.extractedRows,
+                        summary.targetComparedRows,
+                        summary.appliedBucketCount,
+                        summary.skippedBucketCount,
+                        validationStatus,
+                        executionLogId
+                );
+                recordValidation(job, executionLogId, summary, validationStatus);
+                executionLogService.recordExecutionSuccess(
+                        executionLogId,
+                        summary.extractedRows,
+                        summary.transformedRows,
+                        summary.loadedRows,
+                        buildExecutionDetail(summary)
+                );
+            }
+        } catch (Exception exception) {
+            long failedRows = Math.max(summary.extractedRows - summary.loadedRows, 0);
             executionLogService.recordExecutionFailure(
-                logId, extractedRows, transformedRows, loadedRows, failedRows, 
-                e.getMessage()
+                    executionLogId,
+                    summary.extractedRows,
+                    summary.transformedRows,
+                    summary.loadedRows,
+                    failedRows,
+                    exception.getMessage()
             );
+            log.error("ETL任务执行失败: jobId={}, jobName={}", job.getJobId(), job.getJobName(), exception);
         }
     }
-    
-    /**
-     * 数据提取
-     */
-    private List<Map<String, Object>> extractData(EtlJob job) throws Exception {
-        List<Map<String, Object>> result = new ArrayList<>();
-        
-        DataSource sourceDataSource = dynamicRoutingDataSource.getDataSource(job.getSourceDatasource());
-        if (sourceDataSource == null) {
-            throw new IllegalArgumentException("源数据源不存在: " + job.getSourceDatasource());
+
+    private Summary runSync(
+            EtlJob job,
+            SyncMode syncMode,
+            Connection sourceConnection,
+            Connection targetConnection,
+            DatabaseDialect sourceDialect,
+            DatabaseDialect targetDialect,
+            List<MappingSpec> mappings,
+            String sourcePrimaryKey,
+            String targetPrimaryKey,
+            EtlSyncCheckpoint checkpoint,
+            Long executionLogId,
+            int bucketSize,
+            BucketRetryPolicy retryPolicy
+    ) throws SQLException {
+        List<String> sourceColumns = resolveSourceColumns(mappings, sourcePrimaryKey, job.getIncrementalColumn());
+        List<String> targetColumns = mappings.stream().map(MappingSpec::targetColumn).distinct().collect(Collectors.toList());
+        List<Map<String, Object>> sourceRows = fetchSourceRows(
+                job, syncMode, sourceConnection, sourceDialect, sourceColumns, sourcePrimaryKey, checkpoint
+        );
+        Summary summary = new Summary();
+        if (sourceRows.isEmpty()) {
+            return summary;
         }
-        
-        try (Connection conn = sourceDataSource.getConnection()) {
-            String query = buildExtractQuery(job);
-            log.debug("提取SQL: {}", query);
-            
-            try (PreparedStatement pstmt = conn.prepareStatement(query);
-                 ResultSet rs = pstmt.executeQuery()) {
-                
-                ResultSetMetaData metaData = rs.getMetaData();
-                int columnCount = metaData.getColumnCount();
-                
-                while (rs.next()) {
-                    Map<String, Object> row = new HashMap<>();
-                    for (int i = 1; i <= columnCount; i++) {
-                        String columnName = metaData.getColumnName(i);
-                        Object value = rs.getObject(i);
-                        row.put(columnName, value);
+        String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
+        String upsertSql = targetDialect.buildUpsertSql(targetTable, targetColumns, List.of(targetPrimaryKey));
+        Map<Integer, List<Map<String, Object>>> buckets = new HashMap<>();
+        for (Map<String, Object> sourceRow : sourceRows) {
+            Map<String, Object> transformed = transformRow(sourceRow, mappings);
+            Object primaryKeyValue = transformed.get(targetPrimaryKey);
+            if (primaryKeyValue == null) {
+                throw new BusinessException("主键字段值为空，无法分桶同步: " + targetPrimaryKey);
+            }
+            int bucket = Math.floorMod(String.valueOf(primaryKeyValue).hashCode(), bucketSize);
+            buckets.computeIfAbsent(bucket, value -> new ArrayList<>()).add(transformed);
+            summary.lastIncrementalValue = StringUtils.hasText(job.getIncrementalColumn())
+                    ? valueToText(sourceRow.get(job.getIncrementalColumn()))
+                    : summary.lastIncrementalValue;
+        }
+        List<EtlDataBucketChecksum> bucketRecords = new ArrayList<>();
+        for (Map.Entry<Integer, List<Map<String, Object>>> bucketEntry : buckets.entrySet()) {
+            List<Map<String, Object>> sourceBucketRows = bucketEntry.getValue();
+            Set<Object> primaryKeyValues = sourceBucketRows.stream()
+                    .map(item -> item.get(targetPrimaryKey))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            List<Map<String, Object>> targetBefore = queryTargetRowsByPrimaryKeys(
+                    targetConnection, targetDialect, targetTable, targetColumns, targetPrimaryKey, primaryKeyValues
+            );
+            String sourceChecksum = checksum(sourceBucketRows, targetColumns, targetPrimaryKey);
+            String targetChecksum = checksum(targetBefore, targetColumns, targetPrimaryKey);
+            boolean needsSync = sourceBucketRows.size() != targetBefore.size() || !sourceChecksum.equals(targetChecksum);
+            boolean bucketApplied = false;
+            if (needsSync) {
+                upsertRows(targetConnection, upsertSql, targetColumns, sourceBucketRows);
+                bucketApplied = true;
+            }
+            List<Map<String, Object>> targetAfter = queryTargetRowsByPrimaryKeys(
+                    targetConnection, targetDialect, targetTable, targetColumns, targetPrimaryKey, primaryKeyValues
+            );
+            String targetAfterChecksum = checksum(targetAfter, targetColumns, targetPrimaryKey);
+            boolean mismatch = sourceBucketRows.size() != targetAfter.size() || !sourceChecksum.equals(targetAfterChecksum);
+            int retryCount = 0;
+            boolean retrySuccess = false;
+            while (mismatch && retryCount < retryPolicy.maxRetryTimes()) {
+                retryCount++;
+                sleepBeforeRetry(retryPolicy.retryIntervalMillis());
+                upsertRows(targetConnection, upsertSql, targetColumns, sourceBucketRows);
+                bucketApplied = true;
+                targetAfter = queryTargetRowsByPrimaryKeys(
+                        targetConnection, targetDialect, targetTable, targetColumns, targetPrimaryKey, primaryKeyValues
+                );
+                targetAfterChecksum = checksum(targetAfter, targetColumns, targetPrimaryKey);
+                mismatch = sourceBucketRows.size() != targetAfter.size() || !sourceChecksum.equals(targetAfterChecksum);
+                retrySuccess = !mismatch;
+            }
+            if (bucketApplied) {
+                summary.appliedBucketCount++;
+                summary.loadedRows += sourceBucketRows.size();
+            } else {
+                summary.skippedBucketCount++;
+            }
+            if (retryCount > 0) {
+                summary.retriedBucketCount++;
+            }
+            if (retrySuccess) {
+                summary.recoveredBucketCount++;
+            }
+            if (mismatch) {
+                summary.mismatchBucketCount++;
+            }
+            String bucketBoundaryStart = resolveBucketBoundary(primaryKeyValues, true);
+            String bucketBoundaryEnd = resolveBucketBoundary(primaryKeyValues, false);
+            String skipReason = resolveBucketSkipReason(needsSync, bucketApplied, retryCount, retrySuccess, mismatch);
+            summary.extractedRows += sourceBucketRows.size();
+            summary.transformedRows += sourceBucketRows.size();
+            summary.targetComparedRows += targetAfter.size();
+            summary.sourceDigest = roll(summary.sourceDigest, sourceChecksum);
+            summary.targetDigest = roll(summary.targetDigest, targetAfterChecksum);
+            bucketRecords.add(new EtlDataBucketChecksum()
+                    .setJobId(job.getJobId())
+                    .setExecutionLogId(executionLogId)
+                    .setBucketNumber(bucketEntry.getKey())
+                    .setSourceRowCount((long) sourceBucketRows.size())
+                    .setTargetRowCount((long) targetAfter.size())
+                    .setSourceChecksum(sourceChecksum)
+                    .setTargetChecksum(targetAfterChecksum)
+                    .setBucketBoundaryStart(bucketBoundaryStart)
+                    .setBucketBoundaryEnd(bucketBoundaryEnd)
+                    .setNeedsSync(needsSync ? "1" : "0")
+                    .setRetryCount(retryCount)
+                    .setRetrySuccess(retrySuccess ? "1" : "0")
+                    .setLastRetryTime(retryCount > 0 ? LocalDateTime.now() : null)
+                    .setSkipReason(skipReason)
+                    .setComparedAt(LocalDateTime.now())
+                    .setTenantId(job.getTenantId()));
+        }
+        bucketChecksumService.saveBatchRecords(bucketRecords);
+        return summary;
+    }
+
+    private List<Map<String, Object>> fetchSourceRows(
+            EtlJob job,
+            SyncMode syncMode,
+            Connection sourceConnection,
+            DatabaseDialect sourceDialect,
+            List<String> sourceColumns,
+            String sourcePrimaryKey,
+            EtlSyncCheckpoint checkpoint
+    ) throws SQLException {
+        String sourceTable = sourceDialect.qualifyTable(job.getSourceSchema(), job.getSourceTable());
+        String selectColumns = sourceColumns.stream().map(sourceDialect::quoteIdentifier).collect(Collectors.joining(", "));
+        StringBuilder sql = new StringBuilder("SELECT ").append(selectColumns).append(" FROM ").append(sourceTable);
+        List<String> conditions = new ArrayList<>();
+        if (StringUtils.hasText(job.getFilterCondition())) {
+            conditions.add(job.getFilterCondition());
+        }
+        boolean bindIncremental = false;
+        if (syncMode == SyncMode.INCREMENTAL
+                && StringUtils.hasText(job.getIncrementalColumn())
+                && StringUtils.hasText(checkpoint.getLastIncrementalValue())) {
+            conditions.add(sourceDialect.quoteIdentifier(job.getIncrementalColumn()) + " > ?");
+            bindIncremental = true;
+        }
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ").append(String.join(" AND ", conditions));
+        }
+        String orderColumn = StringUtils.hasText(job.getIncrementalColumn()) ? job.getIncrementalColumn() : sourcePrimaryKey;
+        sql.append(" ORDER BY ").append(sourceDialect.quoteIdentifier(orderColumn)).append(", ")
+                .append(sourceDialect.quoteIdentifier(sourcePrimaryKey));
+        List<Map<String, Object>> result = new ArrayList<>();
+        try (PreparedStatement statement = sourceConnection.prepareStatement(sql.toString())) {
+            statement.setFetchSize(resolveBatchSize(job));
+            if (bindIncremental) {
+                statement.setObject(1, checkpoint.getLastIncrementalValue());
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (int index = 0; index < sourceColumns.size(); index++) {
+                        row.put(sourceColumns.get(index), resultSet.getObject(index + 1));
                     }
                     result.add(row);
                 }
             }
         }
-        
         return result;
     }
-    
-    /**
-     * 构建提取查询SQL
-     */
-    private String buildExtractQuery(EtlJob job) {
-        // 如果配置了自定义查询SQL，直接使用
-        if (job.getSourceQuery() != null && !job.getSourceQuery().trim().isEmpty()) {
-            String query = job.getSourceQuery();
-            
-            // 如果配置了过滤条件，添加到WHERE子句 - 使用StringBuilder优化
-            if (job.getFilterCondition() != null && !job.getFilterCondition().trim().isEmpty()) {
-                StringBuilder queryBuilder = new StringBuilder(query);
-                if (query.toUpperCase().contains("WHERE")) {
-                    queryBuilder.append(" AND ").append(job.getFilterCondition());
-                } else {
-                    queryBuilder.append(" WHERE ").append(job.getFilterCondition());
+
+    private List<Map<String, Object>> queryTargetRowsByPrimaryKeys(
+            Connection targetConnection,
+            DatabaseDialect targetDialect,
+            String targetTable,
+            List<String> targetColumns,
+            String targetPrimaryKey,
+            Collection<Object> primaryKeyValues
+    ) throws SQLException {
+        if (primaryKeyValues == null || primaryKeyValues.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Object> keyList = new ArrayList<>(primaryKeyValues);
+        List<Map<String, Object>> result = new ArrayList<>();
+        int offset = 0;
+        while (offset < keyList.size()) {
+            int end = Math.min(offset + MAX_IN_CLAUSE_SIZE, keyList.size());
+            List<Object> subKeys = keyList.subList(offset, end);
+            String sql = targetDialect.buildSelectByPrimaryKeyInSql(targetTable, targetColumns, targetPrimaryKey, subKeys.size());
+            try (PreparedStatement statement = targetConnection.prepareStatement(sql)) {
+                for (int index = 0; index < subKeys.size(); index++) {
+                    statement.setObject(index + 1, subKeys.get(index));
                 }
-                return queryBuilder.toString();
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    while (resultSet.next()) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        for (int index = 0; index < targetColumns.size(); index++) {
+                            row.put(targetColumns.get(index), resultSet.getObject(index + 1));
+                        }
+                        result.add(row);
+                    }
+                }
             }
-            
-            return query;
+            offset = end;
         }
-        
-        // 否则根据表名构建查询
-        StringBuilder sql = new StringBuilder("SELECT * FROM ");
-        
-        // 添加Schema（如果有）
-        if (job.getSourceSchema() != null && !job.getSourceSchema().trim().isEmpty()) {
-            sql.append(job.getSourceSchema()).append(".");
-        }
-        
-        sql.append(job.getSourceTable());
-        
-        // 添加过滤条件
-        if (job.getFilterCondition() != null && !job.getFilterCondition().trim().isEmpty()) {
-            sql.append(" WHERE ").append(job.getFilterCondition());
-        }
-        
-        // 增量同步逻辑
-        if (SyncMode.INCREMENTAL.getCode().equals(job.getSyncMode()) 
-                && job.getIncrementalColumn() != null) {
-            if (job.getFilterCondition() != null && !job.getFilterCondition().trim().isEmpty()) {
-                sql.append(" AND ");
-            } else {
-                sql.append(" WHERE ");
-            }
-            sql.append(job.getIncrementalColumn())
-               .append(" > (SELECT MAX(").append(job.getIncrementalColumn())
-               .append(") FROM ");
-            
-            if (job.getTargetSchema() != null && !job.getTargetSchema().trim().isEmpty()) {
-                sql.append(job.getTargetSchema()).append(".");
-            }
-            sql.append(job.getTargetTable()).append(")");
-        }
-        
-        return sql.toString();
+        return result;
     }
-    
-    /**
-     * 数据转换
-     */
-    private List<Map<String, Object>> transformData(EtlJob job, List<Map<String, Object>> data) {
-        // 如果没有字段映射配置，直接返回原数据
-        if (job.getColumnMapping() == null || job.getColumnMapping().trim().isEmpty()) {
-            return data;
+
+    private void upsertRows(
+            Connection targetConnection,
+            String upsertSql,
+            List<String> targetColumns,
+            List<Map<String, Object>> sourceRows
+    ) throws SQLException {
+        try (PreparedStatement statement = targetConnection.prepareStatement(upsertSql)) {
+            for (Map<String, Object> sourceRow : sourceRows) {
+                for (int index = 0; index < targetColumns.size(); index++) {
+                    statement.setObject(index + 1, sourceRow.get(targetColumns.get(index)));
+                }
+                statement.addBatch();
+            }
+            statement.executeBatch();
         }
-        
-        // 基础的字段映射实现
-        // 解析columnMapping配置（JSON格式）
-        // TODO: 未来版本将支持更复杂的转换规则
+    }
+
+    private void adjustTargetSchema(
+            EtlJob job,
+            TableSchemaMetadata sourceMetadata,
+            TableSchemaMetadata targetMetadata,
+            List<MappingSpec> mappings,
+            Connection targetConnection,
+            DatabaseDialect targetDialect
+    ) throws SQLException {
+        String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
+        for (MappingSpec mapping : mappings) {
+            boolean exists = targetMetadata.findColumn(mapping.targetColumn()).isPresent();
+            if (exists) {
+                continue;
+            }
+            TableColumnMetadata sourceColumn = sourceMetadata.findColumn(mapping.sourceColumn())
+                    .orElseThrow(() -> new BusinessException("源字段不存在: " + mapping.sourceColumn()));
+            String sql = targetDialect.buildAddColumnSql(targetTable, mapping.targetColumn(), sourceColumn.getTypeName());
+            try (PreparedStatement statement = targetConnection.prepareStatement(sql)) {
+                statement.execute();
+            }
+        }
+    }
+
+    private List<MappingSpec> resolveMappings(
+            EtlJob job,
+            TableSchemaMetadata sourceMetadata,
+            TableSchemaMetadata targetMetadata
+    ) {
+        List<EtlColumnMappingRule> rules = columnMappingRuleService.listEnabledRulesByJobId(job.getJobId());
+        if (!rules.isEmpty()) {
+            return rules.stream().map(item -> new MappingSpec(item.getSourceColumnName(), item.getTargetColumnName()))
+                    .collect(Collectors.toList());
+        }
+        if (StringUtils.hasText(job.getColumnMapping())) {
+            try {
+                Map<String, String> mapping = objectMapper.readValue(
+                        job.getColumnMapping(), new TypeReference<Map<String, String>>() {
+                        }
+                );
+                return mapping.entrySet().stream().map(item -> new MappingSpec(item.getKey(), item.getValue()))
+                        .collect(Collectors.toList());
+            } catch (Exception exception) {
+                throw new BusinessException("字段映射JSON解析失败");
+            }
+        }
+        List<MappingSpec> identityMappings = new ArrayList<>();
+        for (TableColumnMetadata sourceColumn : sourceMetadata.getColumns()) {
+            if (targetMetadata.findColumn(sourceColumn.getColumnName()).isPresent()) {
+                identityMappings.add(new MappingSpec(sourceColumn.getColumnName(), sourceColumn.getColumnName()));
+            }
+        }
+        return identityMappings;
+    }
+
+    private String resolveSourcePrimaryKey(TableSchemaMetadata sourceMetadata, List<MappingSpec> mappings) {
+        if (!sourceMetadata.getPrimaryKeyColumns().isEmpty()) {
+            return sourceMetadata.getPrimaryKeyColumns().get(0);
+        }
+        if (!mappings.isEmpty()) {
+            return mappings.get(0).sourceColumn();
+        }
+        throw new BusinessException("无法解析源主键字段");
+    }
+
+    private String resolveTargetPrimaryKey(
+            String sourcePrimaryKey,
+            List<MappingSpec> mappings,
+            TableSchemaMetadata targetMetadata
+    ) {
+        String targetPrimaryKey = mappings.stream()
+                .filter(item -> item.sourceColumn().equalsIgnoreCase(sourcePrimaryKey))
+                .map(MappingSpec::targetColumn)
+                .findFirst()
+                .orElse(sourcePrimaryKey);
+        if (targetMetadata.findColumn(targetPrimaryKey).isEmpty()) {
+            throw new BusinessException("目标主键字段不存在: " + targetPrimaryKey);
+        }
+        return targetPrimaryKey;
+    }
+
+    private List<String> resolveSourceColumns(List<MappingSpec> mappings, String sourcePrimaryKey, String incrementalColumn) {
+        Set<String> sourceColumns = new LinkedHashSet<>();
+        for (MappingSpec mapping : mappings) {
+            sourceColumns.add(mapping.sourceColumn());
+        }
+        sourceColumns.add(sourcePrimaryKey);
+        if (StringUtils.hasText(incrementalColumn)) {
+            sourceColumns.add(incrementalColumn);
+        }
+        return new ArrayList<>(sourceColumns);
+    }
+
+    private Map<String, Object> transformRow(Map<String, Object> sourceRow, List<MappingSpec> mappings) {
+        Map<String, Object> targetRow = new LinkedHashMap<>();
+        for (MappingSpec mapping : mappings) {
+            targetRow.put(mapping.targetColumn(), sourceRow.get(mapping.sourceColumn()));
+        }
+        return targetRow;
+    }
+
+    private String checksum(List<Map<String, Object>> rows, List<String> columns, String primaryKeyColumn) {
+        CRC32 crc32 = new CRC32();
+        List<Map<String, Object>> sortedRows = new ArrayList<>(rows);
+        sortedRows.sort(Comparator.comparing(item -> valueToText(item.get(primaryKeyColumn))));
+        for (Map<String, Object> row : sortedRows) {
+            StringJoiner joiner = new StringJoiner("|");
+            for (String column : columns) {
+                joiner.add(valueToText(row.get(column)));
+            }
+            byte[] bytes = joiner.toString().getBytes(StandardCharsets.UTF_8);
+            crc32.update(bytes, 0, bytes.length);
+        }
+        return Long.toHexString(crc32.getValue());
+    }
+
+    private String roll(String current, String next) {
+        CRC32 crc32 = new CRC32();
+        String merged = (current == null ? "" : current) + "|" + (next == null ? "" : next);
+        byte[] bytes = merged.getBytes(StandardCharsets.UTF_8);
+        crc32.update(bytes, 0, bytes.length);
+        return Long.toHexString(crc32.getValue());
+    }
+
+    private void recordValidation(EtlJob job, Long executionLogId, Summary summary, String validationStatus) {
+        validationLogService.record(new EtlDataValidationLog()
+                .setJobId(job.getJobId())
+                .setExecutionLogId(executionLogId)
+                .setValidationType(job.getSyncMode())
+                .setSourceRowCount(summary.extractedRows)
+                .setTargetRowCount(summary.targetComparedRows)
+                .setSourceChecksum(summary.sourceDigest)
+                .setTargetChecksum(summary.targetDigest)
+                .setBucketCount(summary.appliedBucketCount + summary.skippedBucketCount)
+                .setMismatchBucketCount(summary.mismatchBucketCount)
+                .setValidationStatus(validationStatus)
+                .setValidationMessage("mismatchBuckets=" + summary.mismatchBucketCount)
+                .setValidatedAt(LocalDateTime.now())
+                .setTenantId(job.getTenantId()));
+    }
+
+    private String buildExecutionDetail(Summary summary) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("extractedRows", summary.extractedRows);
+        detail.put("transformedRows", summary.transformedRows);
+        detail.put("loadedRows", summary.loadedRows);
+        detail.put("appliedBucketCount", summary.appliedBucketCount);
+        detail.put("skippedBucketCount", summary.skippedBucketCount);
+        detail.put("mismatchBucketCount", summary.mismatchBucketCount);
+        detail.put("retriedBucketCount", summary.retriedBucketCount);
+        detail.put("recoveredBucketCount", summary.recoveredBucketCount);
+        detail.put("sourceDigest", summary.sourceDigest);
+        detail.put("targetDigest", summary.targetDigest);
+        detail.put("lastIncrementalValue", summary.lastIncrementalValue);
         try {
-            // 简单示例：假设columnMapping是JSON格式的字段映射
-            // 实际使用时需要解析JSON并应用映射
-            log.debug("应用字段映射配置: {}", job.getColumnMapping());
-            // 这里可以添加字段重命名、类型转换等逻辑
-        } catch (Exception e) {
-            log.warn("字段映射配置解析失败，使用原始数据: {}", e.getMessage());
+            return objectMapper.writeValueAsString(detail);
+        } catch (Exception exception) {
+            return detail.toString();
         }
-        
-        return data;
     }
-    
-    /**
-     * 数据加载
-     */
-    private long loadData(EtlJob job, List<Map<String, Object>> data) throws Exception {
-        if (data.isEmpty()) {
-            return 0;
-        }
-        
-        DataSource targetDataSource = dynamicRoutingDataSource.getDataSource(job.getTargetDatasource());
-        if (targetDataSource == null) {
-            throw new IllegalArgumentException("目标数据源不存在: " + job.getTargetDatasource());
-        }
-        
-        long loadedRows = 0;
-        int batchSize = job.getBatchSize();
-        
-        try (Connection conn = targetDataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            
-            String insertSql = buildInsertSql(job, data.get(0));
-            log.debug("插入SQL: {}", insertSql);
-            
-            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
-                int batchCount = 0;
-                
-                for (Map<String, Object> row : data) {
-                    int paramIndex = 1;
-                    for (Object value : row.values()) {
-                        pstmt.setObject(paramIndex++, value);
-                    }
-                    pstmt.addBatch();
-                    batchCount++;
-                    
-                    // 达到批次大小，执行批处理
-                    if (batchCount >= batchSize) {
-                        int[] results = pstmt.executeBatch();
-                        // 优化：使用Arrays.stream进行更高效的汇总 - 修复：sum而非count
-                        long batchLoadedRows = Arrays.stream(results)
-                            .filter(result -> result > 0)
-                            .mapToLong(Integer::longValue)
-                            .sum();
-                        loadedRows += batchLoadedRows;
-                        conn.commit();
-                        batchCount = 0;
-                        log.debug("批量插入 {} 条记录", batchLoadedRows);
-                    }
-                }
-                
-                // 执行剩余的批处理
-                if (batchCount > 0) {
-                    int[] results = pstmt.executeBatch();
-                    // 优化：使用Arrays.stream进行更高效的汇总 - 修复：sum而非count
-                    long batchLoadedRows = Arrays.stream(results)
-                        .filter(result -> result > 0)
-                        .mapToLong(Integer::longValue)
-                        .sum();
-                    loadedRows += batchLoadedRows;
-                    conn.commit();
-                    log.debug("批量插入 {} 条记录", batchLoadedRows);
-                }
-            } catch (Exception e) {
-                conn.rollback();
-                throw e;
-            }
-        }
-        
-        return loadedRows;
+
+    private void recordSnapshot(EtlJob job, TableSchemaMetadata metadata, String datasourceName, String tag) {
+        structureSnapshotService.save(new EtlTableStructureSnapshot()
+                .setJobId(job.getJobId())
+                .setDatasourceName(datasourceName)
+                .setSchemaName(metadata.getSchemaName())
+                .setTableName(metadata.getTableName())
+                .setColumnCount(metadata.getColumns().size())
+                .setPrimaryKeyColumns(String.join(",", metadata.getPrimaryKeyColumns()))
+                .setStructureDigest(metadata.getStructureDigest())
+                .setSnapshotTime(LocalDateTime.now())
+                .setTenantId(job.getTenantId())
+                .setRemark(tag));
     }
-    
-    /**
-     * 构建插入SQL
-     */
-    private String buildInsertSql(EtlJob job, Map<String, Object> sampleRow) {
-        StringBuilder sql = new StringBuilder("INSERT INTO ");
-        
-        // 添加Schema（如果有）
-        if (job.getTargetSchema() != null && !job.getTargetSchema().trim().isEmpty()) {
-            sql.append(job.getTargetSchema()).append(".");
+
+    private void clearTargetTable(EtlJob job, Connection targetConnection, DatabaseDialect targetDialect) throws SQLException {
+        String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
+        try (PreparedStatement statement = targetConnection.prepareStatement(targetDialect.buildDeleteAllSql(targetTable))) {
+            statement.executeUpdate();
         }
-        
-        sql.append(job.getTargetTable()).append(" (");
-        
-        // 添加列名
-        List<String> columns = new ArrayList<>(sampleRow.keySet());
-        sql.append(String.join(", ", columns));
-        sql.append(") VALUES (");
-        
-        // 添加占位符
-        for (int i = 0; i < columns.size(); i++) {
-            if (i > 0) {
-                sql.append(", ");
-            }
-            sql.append("?");
+    }
+
+    private int resolveBatchSize(EtlJob job) {
+        if (job.getBatchSize() == null || job.getBatchSize() <= 0) {
+            return DEFAULT_BATCH_SIZE;
         }
-        sql.append(")");
-        
-        return sql.toString();
+        return job.getBatchSize();
+    }
+
+    private int resolveBucketSize(EtlJob job) {
+        Map<String, Object> transformConfig = parseTransformConfig(job.getTransformRules());
+        Object value = transformConfig.get("bucketSize");
+        if (value == null) {
+            return DEFAULT_BUCKET_SIZE;
+        }
+        int bucketSize = parseNonNegativeInt(value, DEFAULT_BUCKET_SIZE);
+        return bucketSize > 0 ? bucketSize : DEFAULT_BUCKET_SIZE;
+    }
+
+    private BucketRetryPolicy resolveBucketRetryPolicy(EtlJob job) {
+        int maxRetryTimes = job.getRetryCount() == null ? 0 : Math.max(job.getRetryCount(), 0);
+        long retryIntervalMillis = job.getRetryInterval() == null ? 0L : Math.max(job.getRetryInterval(), 0) * 1000L;
+        Map<String, Object> transformConfig = parseTransformConfig(job.getTransformRules());
+        maxRetryTimes = parseNonNegativeInt(transformConfig.get("mismatchBucketRetryCount"), maxRetryTimes);
+        Object retryIntervalMs = transformConfig.get("mismatchBucketRetryIntervalMs");
+        if (retryIntervalMs != null) {
+            retryIntervalMillis = parseNonNegativeLong(retryIntervalMs, retryIntervalMillis);
+        }
+        Object retryIntervalSec = transformConfig.get("mismatchBucketRetryIntervalSec");
+        if (retryIntervalSec != null) {
+            long retrySeconds = parseNonNegativeLong(retryIntervalSec, retryIntervalMillis / 1000L);
+            retryIntervalMillis = retrySeconds * 1000L;
+        }
+        return new BucketRetryPolicy(maxRetryTimes, retryIntervalMillis);
+    }
+
+    private Map<String, Object> parseTransformConfig(String transformRules) {
+        if (!StringUtils.hasText(transformRules)) {
+            return new HashMap<>();
+        }
+        try {
+            return objectMapper.readValue(transformRules, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception exception) {
+            log.warn("解析 transformRules 失败，按默认策略继续: {}", exception.getMessage());
+            return new HashMap<>();
+        }
+    }
+
+    private int parseNonNegativeInt(Object value, int defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value.toString());
+            return Math.max(parsed, 0);
+        } catch (Exception exception) {
+            return defaultValue;
+        }
+    }
+
+    private long parseNonNegativeLong(Object value, long defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            long parsed = Long.parseLong(value.toString());
+            return Math.max(parsed, 0L);
+        } catch (Exception exception) {
+            return defaultValue;
+        }
+    }
+
+    private void sleepBeforeRetry(long retryIntervalMillis) {
+        if (retryIntervalMillis <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(retryIntervalMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException("桶位重试等待被中断", exception);
+        }
+    }
+
+    private String resolveBucketSkipReason(
+            boolean needsSync,
+            boolean bucketApplied,
+            int retryCount,
+            boolean retrySuccess,
+            boolean mismatch
+    ) {
+        if (!bucketApplied) {
+            return "bucket_checksum_equal";
+        }
+        if (retryCount <= 0) {
+            return needsSync ? null : "bucket_checksum_mismatch";
+        }
+        if (retrySuccess) {
+            return "bucket_retry_recovered";
+        }
+        if (mismatch) {
+            return "bucket_retry_exhausted";
+        }
+        return null;
+    }
+
+    private String valueToText(Object value) {
+        return value == null ? "NULL" : String.valueOf(value);
+    }
+
+    private String resolveBucketBoundary(Collection<Object> primaryKeyValues, boolean first) {
+        if (primaryKeyValues == null || primaryKeyValues.isEmpty()) {
+            return null;
+        }
+        List<String> boundaries = primaryKeyValues.stream()
+                .filter(Objects::nonNull)
+                .map(this::valueToText)
+                .sorted()
+                .collect(Collectors.toList());
+        if (boundaries.isEmpty()) {
+            return null;
+        }
+        return first ? boundaries.get(0) : boundaries.get(boundaries.size() - 1);
+    }
+
+    private DataSource getDataSource(String datasourceName, String label) {
+        DataSource dataSource = dynamicRoutingDataSource.getDataSource(datasourceName);
+        if (dataSource == null) {
+            throw new BusinessException(label + "数据源不存在: " + datasourceName);
+        }
+        return dataSource;
+    }
+
+    private void validateJob(EtlJob job) {
+        if (job == null || job.getJobId() == null) {
+            throw new BusinessException("任务信息不能为空");
+        }
+        if (!StringUtils.hasText(job.getSourceDatasource()) || !StringUtils.hasText(job.getTargetDatasource())) {
+            throw new BusinessException("源和目标数据源不能为空");
+        }
+        if (!StringUtils.hasText(job.getSourceTable()) || !StringUtils.hasText(job.getTargetTable())) {
+            throw new BusinessException("源和目标表不能为空");
+        }
+    }
+
+    private record MappingSpec(String sourceColumn, String targetColumn) {
+    }
+
+    private record BucketRetryPolicy(int maxRetryTimes, long retryIntervalMillis) {
+    }
+
+    private static class Summary {
+        private long extractedRows;
+        private long transformedRows;
+        private long loadedRows;
+        private long targetComparedRows;
+        private int appliedBucketCount;
+        private int skippedBucketCount;
+        private int mismatchBucketCount;
+        private int retriedBucketCount;
+        private int recoveredBucketCount;
+        private String lastIncrementalValue;
+        private String sourceDigest = "";
+        private String targetDigest = "";
     }
 }

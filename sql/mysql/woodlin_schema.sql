@@ -888,8 +888,160 @@ CREATE TABLE `sys_etl_execution_log`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='ETL执行历史表';
 
+-- ETL字段映射规则表
+DROP TABLE IF EXISTS `sys_etl_column_mapping_rule`;
+CREATE TABLE `sys_etl_column_mapping_rule`
+(
+  `mapping_id`          bigint(20)   NOT NULL COMMENT '映射规则ID',
+  `job_id`              bigint(20)   NOT NULL COMMENT '任务ID',
+  `source_schema_name`  varchar(100) DEFAULT NULL COMMENT '源schema名称',
+  `source_table_name`   varchar(100) DEFAULT NULL COMMENT '源表名称',
+  `source_column_name`  varchar(100) NOT NULL COMMENT '源字段名称',
+  `source_column_type`  varchar(100) DEFAULT NULL COMMENT '源字段类型',
+  `target_schema_name`  varchar(100) DEFAULT NULL COMMENT '目标schema名称',
+  `target_table_name`   varchar(100) DEFAULT NULL COMMENT '目标表名称',
+  `target_column_name`  varchar(100) NOT NULL COMMENT '目标字段名称',
+  `target_column_type`  varchar(100) DEFAULT NULL COMMENT '目标字段类型',
+  `mapping_action`      varchar(20)  DEFAULT 'INSERT' COMMENT '映射动作',
+  `ordinal_position`    int(11)      DEFAULT 0 COMMENT '字段顺序',
+  `enabled`             char(1)      DEFAULT '1' COMMENT '是否启用（1-启用，0-禁用）',
+  `tenant_id`           varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `remark`              varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`           varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`mapping_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='ETL字段映射规则表';
+
+-- ETL同步检查点表
+DROP TABLE IF EXISTS `sys_etl_sync_checkpoint`;
+CREATE TABLE `sys_etl_sync_checkpoint`
+(
+  `checkpoint_id`         bigint(20)   NOT NULL COMMENT '检查点ID',
+  `job_id`                bigint(20)   NOT NULL COMMENT '任务ID',
+  `sync_mode`             varchar(20)  DEFAULT NULL COMMENT '同步模式',
+  `incremental_column`    varchar(100) DEFAULT NULL COMMENT '增量字段',
+  `last_incremental_value` varchar(255) DEFAULT NULL COMMENT '上次增量值',
+  `last_sync_time`        datetime     DEFAULT NULL COMMENT '上次同步时间',
+  `source_row_count`      bigint(20)   DEFAULT 0 COMMENT '源侧行数',
+  `target_row_count`      bigint(20)   DEFAULT 0 COMMENT '目标侧行数',
+  `applied_bucket_count`  int(11)      DEFAULT 0 COMMENT '命中桶数量',
+  `skipped_bucket_count`  int(11)      DEFAULT 0 COMMENT '跳过桶数量',
+  `validation_status`     varchar(20)  DEFAULT NULL COMMENT '校验状态',
+  `last_execution_log_id` bigint(20)   DEFAULT NULL COMMENT '最近执行日志ID',
+  `tenant_id`             varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `remark`                varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`             varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`           datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`             varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`           datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`               char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`checkpoint_id`),
+  UNIQUE KEY `uk_etl_sync_checkpoint_job` (`job_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='ETL同步检查点表';
+
+-- ETL表结构快照表
+DROP TABLE IF EXISTS `sys_etl_table_structure_snapshot`;
+CREATE TABLE `sys_etl_table_structure_snapshot`
+(
+  `snapshot_id`         bigint(20)   NOT NULL COMMENT '快照ID',
+  `job_id`              bigint(20)   NOT NULL COMMENT '任务ID',
+  `datasource_name`     varchar(100) NOT NULL COMMENT '数据源名称',
+  `schema_name`         varchar(100) DEFAULT NULL COMMENT 'schema名称',
+  `table_name`          varchar(100) NOT NULL COMMENT '表名称',
+  `column_count`        int(11)      DEFAULT 0 COMMENT '字段数量',
+  `primary_key_columns` varchar(500) DEFAULT NULL COMMENT '主键字段列表',
+  `structure_digest`    varchar(128) NOT NULL COMMENT '结构摘要',
+  `snapshot_time`       datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '快照时间',
+  `tenant_id`           varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `remark`              varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`           varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`snapshot_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='ETL表结构快照表';
+
+-- ETL桶位校验快照表
+DROP TABLE IF EXISTS `sys_etl_data_bucket_checksum`;
+CREATE TABLE `sys_etl_data_bucket_checksum`
+(
+  `bucket_checksum_id`  bigint(20)   NOT NULL COMMENT '桶位校验ID',
+  `job_id`              bigint(20)   NOT NULL COMMENT '任务ID',
+  `execution_log_id`    bigint(20)   NOT NULL COMMENT '执行日志ID',
+  `bucket_number`       int(11)      NOT NULL COMMENT '桶号',
+  `bucket_boundary_start` varchar(255) DEFAULT NULL COMMENT '桶边界起始值',
+  `bucket_boundary_end` varchar(255) DEFAULT NULL COMMENT '桶边界结束值',
+  `source_row_count`    bigint(20)   DEFAULT 0 COMMENT '源侧桶行数',
+  `target_row_count`    bigint(20)   DEFAULT 0 COMMENT '目标侧桶行数',
+  `source_checksum`     varchar(128) DEFAULT NULL COMMENT '源侧校验值',
+  `target_checksum`     varchar(128) DEFAULT NULL COMMENT '目标侧校验值',
+  `retry_count`         int(11)      DEFAULT 0 COMMENT '重试次数',
+  `retry_success`       char(1)      DEFAULT '0' COMMENT '重试是否修复成功（1-是，0-否）',
+  `last_retry_time`     datetime     DEFAULT NULL COMMENT '最后一次重试时间',
+  `needs_sync`          char(1)      DEFAULT '0' COMMENT '是否需要同步（1-是，0-否）',
+  `skip_reason`         varchar(255) DEFAULT NULL COMMENT '跳过原因',
+  `compared_at`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '比对时间',
+  `tenant_id`           varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`           varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`bucket_checksum_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='ETL桶位校验快照表';
+
+-- ETL数据一致性校验日志表
+DROP TABLE IF EXISTS `sys_etl_data_validation_log`;
+CREATE TABLE `sys_etl_data_validation_log`
+(
+  `validation_log_id`   bigint(20)   NOT NULL COMMENT '校验日志ID',
+  `job_id`              bigint(20)   NOT NULL COMMENT '任务ID',
+  `execution_log_id`    bigint(20)   NOT NULL COMMENT '执行日志ID',
+  `validation_type`     varchar(20)  DEFAULT NULL COMMENT '校验类型',
+  `source_row_count`    bigint(20)   DEFAULT 0 COMMENT '源侧行数',
+  `target_row_count`    bigint(20)   DEFAULT 0 COMMENT '目标侧行数',
+  `source_checksum`     varchar(128) DEFAULT NULL COMMENT '源侧摘要',
+  `target_checksum`     varchar(128) DEFAULT NULL COMMENT '目标侧摘要',
+  `bucket_count`        int(11)      DEFAULT 0 COMMENT '桶数量',
+  `mismatch_bucket_count` int(11)    DEFAULT 0 COMMENT '差异桶数量',
+  `validation_status`   varchar(20)  DEFAULT NULL COMMENT '校验状态',
+  `validation_message`  text         DEFAULT NULL COMMENT '校验信息',
+  `validated_at`        datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '校验时间',
+  `tenant_id`           varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`           varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`validation_log_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='ETL数据一致性校验日志表';
+
 -- ETL任务表索引
 CREATE INDEX `idx_etl_job_composite` ON `sys_etl_job` (`status`, `next_execute_time`);
 
 -- ETL执行历史表索引
 CREATE INDEX `idx_etl_log_composite` ON `sys_etl_execution_log` (`job_id`, `start_time` DESC);
+
+-- ETL字段映射规则索引
+CREATE INDEX `idx_etl_mapping_rule_job` ON `sys_etl_column_mapping_rule` (`job_id`, `enabled`, `ordinal_position`);
+
+-- ETL表结构快照索引
+CREATE INDEX `idx_etl_structure_snapshot_lookup`
+  ON `sys_etl_table_structure_snapshot` (`job_id`, `datasource_name`, `schema_name`, `table_name`, `snapshot_time`);
+
+-- ETL桶位校验快照索引
+CREATE INDEX `idx_etl_bucket_checksum_execution`
+  ON `sys_etl_data_bucket_checksum` (`execution_log_id`, `bucket_number`);
+
+-- ETL数据一致性校验日志索引
+CREATE INDEX `idx_etl_validation_log_execution`
+  ON `sys_etl_data_validation_log` (`execution_log_id`, `validation_status`);

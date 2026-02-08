@@ -18,7 +18,7 @@
     <artifactId>woodlin-system</artifactId>
     <packaging>pom</packaging>
     <name>Woodlin System Modules</name>
-    <description>Woodlin 系统模块聚合器 - 统一管理核心、安全、租户、文件、任务、生成器和SQL2API等功能模块</description>
+    <description>Woodlin 系统模块聚合器 - 统一管理核心、安全、租户、文件、任务、生成器、DSL和ETL等功能模块</description>
 
     <!-- 子模块定义 -->
     <modules>
@@ -29,10 +29,9 @@
         <module>woodlin-system-task</module>
         <module>woodlin-system-generator</module>
         <module>woodlin-system-datasource</module>
-<!--        <module>woodlin-system-sql2api</module>-->
+        <!-- <module>woodlin-system-sql2api</module> -->
         <module>woodlin-system-dsl</module>
-        <!-- Temporarily disabled due to Kotlin compilation errors - not related to git-commit-id-plugin changes -->
-<!--        <module>woodlin-system-etl</module>-->
+        <module>woodlin-system-etl</module>
     </modules>
 
 </project>
