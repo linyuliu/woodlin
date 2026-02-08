@@ -3,6 +3,7 @@ package com.mumu.woodlin.etl.service.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +31,7 @@ import com.mumu.woodlin.task.service.ITaskScheduleService;
 @RequiredArgsConstructor
 public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> implements IEtlJobService {
     
-    private final ITaskScheduleService taskScheduleService;
+    private final ObjectProvider<ITaskScheduleService> taskScheduleServiceProvider;
     private final IEtlExecutionService etlExecutionService;
     
     @Override
@@ -86,7 +87,7 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
             if (!oldJob.getStatus().equals(etlJob.getStatus()) || cronChanged) {
                 
                 // 删除旧的调度任务
-                taskScheduleService.deleteJob(oldJob.getJobName(), oldJob.getJobGroup());
+                deleteScheduleJob(oldJob);
                 
                 // 如果是启用状态，创建新的调度任务
                 if (EtlJobStatus.ENABLED.getCode().equals(etlJob.getStatus())) {
@@ -108,7 +109,7 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
         }
         
         // 删除调度任务
-        taskScheduleService.deleteJob(job.getJobName(), job.getJobGroup());
+        deleteScheduleJob(job);
         
         // 删除ETL任务
         return this.removeById(jobId);
@@ -150,7 +151,7 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
         
         // 删除调度任务
         if (updated) {
-            taskScheduleService.deleteJob(job.getJobName(), job.getJobGroup());
+            deleteScheduleJob(job);
         }
         
         return updated;
@@ -196,6 +197,11 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
      */
     private void createScheduleJob(EtlJob etlJob) {
         try {
+            ITaskScheduleService taskScheduleService = taskScheduleServiceProvider.getIfAvailable();
+            if (taskScheduleService == null) {
+                log.warn("未检测到 ITaskScheduleService 实现，跳过本地调度创建: jobName={}", etlJob.getJobName());
+                return;
+            }
             // 将ETL任务的jobId作为invokeTarget参数传递给调度系统
             // 调度系统执行时会调用 IEtlJobService.executeJob(jobId)
             String invokeTarget = String.format("etlJobService.executeJob(%d)", etlJob.getJobId());
@@ -209,6 +215,19 @@ public class EtlJobServiceImpl extends ServiceImpl<EtlJobMapper, EtlJob> impleme
             log.info("创建ETL调度任务成功: {}", etlJob.getJobName());
         } catch (Exception e) {
             log.error("创建ETL调度任务失败: {}", etlJob.getJobName(), e);
+        }
+    }
+
+    private void deleteScheduleJob(EtlJob etlJob) {
+        try {
+            ITaskScheduleService taskScheduleService = taskScheduleServiceProvider.getIfAvailable();
+            if (taskScheduleService == null) {
+                log.warn("未检测到 ITaskScheduleService 实现，跳过本地调度删除: jobName={}", etlJob.getJobName());
+                return;
+            }
+            taskScheduleService.deleteJob(etlJob.getJobName(), etlJob.getJobGroup());
+        } catch (Exception exception) {
+            log.error("删除ETL调度任务失败: {}", etlJob.getJobName(), exception);
         }
     }
 }

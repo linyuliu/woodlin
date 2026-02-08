@@ -59,23 +59,52 @@ woodlin-system-etl/
 └── config/              # 配置类
 ```
 
+### 关键运行基座表
+
+- `sys_etl_column_mapping_rule`: 源字段到目标字段映射规则，支持启用禁用与顺序控制。
+- `sys_etl_sync_checkpoint`: 增量同步检查点，记录上次增量值与桶位执行统计。
+- `sys_etl_table_structure_snapshot`: 源/目标表结构快照，用于结构变更检测。
+- `sys_etl_data_bucket_checksum`: 分桶校验结果，支持“校验相等直接跳过同步”策略。
+- `sys_etl_data_validation_log`: 每次执行后的数据一致性校验日志。
+
 ### 依赖关系
 
 ETL模块依赖以下模块：
 
-- **woodlin-system-sql2api**: 数据库元数据提取功能
 - **woodlin-system-task**: 任务调度功能
+- **woodlin-system-datasource**: 元数据提取、缓存与数据库适配能力
 - **Dynamic DataSource**: 多数据源支持
+- **ETL内置方言适配器**: 负责跨库写入 SQL（upsert / merge / identifier quote）适配
+- **XXL-Job（可选）**: 支持通过 `woodlinEtlSyncHandler` 触发 ETL 任务
+
+### XXL-Job 触发参数
+
+- 处理器名：`woodlinEtlSyncHandler`
+- 参数支持：
+  - `10001`
+  - `jobId=10001`
+  - `{"jobId":10001}`
+
+### 分桶重试策略配置
+
+在 `sys_etl_job.transform_rules` 中可配置：
+
+- `bucketSize`: 分桶数（默认 `64`）
+- `mismatchBucketRetryCount`: 差异桶重试次数（默认取 `retry_count`）
+- `mismatchBucketRetryIntervalMs`: 差异桶重试间隔毫秒（默认取 `retry_interval * 1000`）
 
 ## 快速开始
 
 ### 1. 数据库初始化
 
-执行SQL脚本创建ETL相关表：
+执行主库脚本创建ETL相关表：
 
 ```sql
--- 在 sql/mysql/ 或 sql/postgresql/ 目录下
-source etl_schema.sql
+-- MySQL
+source sql/mysql/woodlin_schema.sql
+
+-- PostgreSQL
+\i sql/postgresql/woodlin_schema.sql
 ```
 
 ### 2. 配置数据源

@@ -632,6 +632,133 @@ CREATE TABLE sys_etl_execution_log
   PRIMARY KEY (log_id)
 );
 
+DROP TABLE IF EXISTS sys_etl_column_mapping_rule CASCADE;
+CREATE TABLE sys_etl_column_mapping_rule
+(
+  mapping_id          bigint       NOT NULL,
+  job_id              bigint       NOT NULL,
+  source_schema_name  varchar(100) DEFAULT NULL,
+  source_table_name   varchar(100) DEFAULT NULL,
+  source_column_name  varchar(100) NOT NULL,
+  source_column_type  varchar(100) DEFAULT NULL,
+  target_schema_name  varchar(100) DEFAULT NULL,
+  target_table_name   varchar(100) DEFAULT NULL,
+  target_column_name  varchar(100) NOT NULL,
+  target_column_type  varchar(100) DEFAULT NULL,
+  mapping_action      varchar(20)  DEFAULT 'INSERT',
+  ordinal_position    integer      DEFAULT 0,
+  enabled             char(1)      DEFAULT '1',
+  tenant_id           varchar(64)  DEFAULT NULL,
+  remark              varchar(500) DEFAULT NULL,
+  create_by           varchar(64)  DEFAULT NULL,
+  create_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by           varchar(64)  DEFAULT NULL,
+  update_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted             char(1)      DEFAULT '0',
+  PRIMARY KEY (mapping_id)
+);
+
+DROP TABLE IF EXISTS sys_etl_sync_checkpoint CASCADE;
+CREATE TABLE sys_etl_sync_checkpoint
+(
+  checkpoint_id         bigint       NOT NULL,
+  job_id                bigint       NOT NULL,
+  sync_mode             varchar(20)  DEFAULT NULL,
+  incremental_column    varchar(100) DEFAULT NULL,
+  last_incremental_value varchar(255) DEFAULT NULL,
+  last_sync_time        timestamp    DEFAULT NULL,
+  source_row_count      bigint       DEFAULT 0,
+  target_row_count      bigint       DEFAULT 0,
+  applied_bucket_count  integer      DEFAULT 0,
+  skipped_bucket_count  integer      DEFAULT 0,
+  validation_status     varchar(20)  DEFAULT NULL,
+  last_execution_log_id bigint       DEFAULT NULL,
+  tenant_id             varchar(64)  DEFAULT NULL,
+  remark                varchar(500) DEFAULT NULL,
+  create_by             varchar(64)  DEFAULT NULL,
+  create_time           timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by             varchar(64)  DEFAULT NULL,
+  update_time           timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted               char(1)      DEFAULT '0',
+  PRIMARY KEY (checkpoint_id),
+  UNIQUE (job_id)
+);
+
+DROP TABLE IF EXISTS sys_etl_table_structure_snapshot CASCADE;
+CREATE TABLE sys_etl_table_structure_snapshot
+(
+  snapshot_id         bigint       NOT NULL,
+  job_id              bigint       NOT NULL,
+  datasource_name     varchar(100) NOT NULL,
+  schema_name         varchar(100) DEFAULT NULL,
+  table_name          varchar(100) NOT NULL,
+  column_count        integer      DEFAULT 0,
+  primary_key_columns varchar(500) DEFAULT NULL,
+  structure_digest    varchar(128) NOT NULL,
+  snapshot_time       timestamp    DEFAULT CURRENT_TIMESTAMP,
+  tenant_id           varchar(64)  DEFAULT NULL,
+  remark              varchar(500) DEFAULT NULL,
+  create_by           varchar(64)  DEFAULT NULL,
+  create_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by           varchar(64)  DEFAULT NULL,
+  update_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted             char(1)      DEFAULT '0',
+  PRIMARY KEY (snapshot_id)
+);
+
+DROP TABLE IF EXISTS sys_etl_data_bucket_checksum CASCADE;
+CREATE TABLE sys_etl_data_bucket_checksum
+(
+  bucket_checksum_id   bigint       NOT NULL,
+  job_id               bigint       NOT NULL,
+  execution_log_id     bigint       NOT NULL,
+  bucket_number        integer      NOT NULL,
+  bucket_boundary_start varchar(255) DEFAULT NULL,
+  bucket_boundary_end  varchar(255) DEFAULT NULL,
+  source_row_count     bigint       DEFAULT 0,
+  target_row_count     bigint       DEFAULT 0,
+  source_checksum      varchar(128) DEFAULT NULL,
+  target_checksum      varchar(128) DEFAULT NULL,
+  retry_count          integer      DEFAULT 0,
+  retry_success        char(1)      DEFAULT '0',
+  last_retry_time      timestamp    DEFAULT NULL,
+  needs_sync           char(1)      DEFAULT '0',
+  skip_reason          varchar(255) DEFAULT NULL,
+  compared_at          timestamp    DEFAULT CURRENT_TIMESTAMP,
+  tenant_id            varchar(64)  DEFAULT NULL,
+  create_by            varchar(64)  DEFAULT NULL,
+  create_time          timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by            varchar(64)  DEFAULT NULL,
+  update_time          timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted              char(1)      DEFAULT '0',
+  PRIMARY KEY (bucket_checksum_id)
+);
+
+DROP TABLE IF EXISTS sys_etl_data_validation_log CASCADE;
+CREATE TABLE sys_etl_data_validation_log
+(
+  validation_log_id     bigint       NOT NULL,
+  job_id                bigint       NOT NULL,
+  execution_log_id      bigint       NOT NULL,
+  validation_type       varchar(20)  DEFAULT NULL,
+  source_row_count      bigint       DEFAULT 0,
+  target_row_count      bigint       DEFAULT 0,
+  source_checksum       varchar(128) DEFAULT NULL,
+  target_checksum       varchar(128) DEFAULT NULL,
+  bucket_count          integer      DEFAULT 0,
+  mismatch_bucket_count integer      DEFAULT 0,
+  validation_status     varchar(20)  DEFAULT NULL,
+  validation_message    text         DEFAULT NULL,
+  validated_at          timestamp    DEFAULT CURRENT_TIMESTAMP,
+  tenant_id             varchar(64)  DEFAULT NULL,
+  create_by             varchar(64)  DEFAULT NULL,
+  create_time           timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by             varchar(64)  DEFAULT NULL,
+  update_time           timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted               char(1)      DEFAULT '0',
+  PRIMARY KEY (validation_log_id)
+);
+
 -- =============================================
 -- Indexes
 -- =============================================
@@ -727,3 +854,11 @@ CREATE INDEX idx_sys_etl_execution_log_job_id ON sys_etl_execution_log (job_id);
 CREATE INDEX idx_sys_etl_execution_log_execution_status ON sys_etl_execution_log (execution_status);
 CREATE INDEX idx_sys_etl_execution_log_start_time ON sys_etl_execution_log (start_time);
 CREATE INDEX idx_sys_etl_execution_log_tenant_id ON sys_etl_execution_log (tenant_id);
+CREATE INDEX idx_sys_etl_column_mapping_rule_job
+  ON sys_etl_column_mapping_rule (job_id, enabled, ordinal_position);
+CREATE INDEX idx_sys_etl_structure_snapshot_lookup
+  ON sys_etl_table_structure_snapshot (job_id, datasource_name, schema_name, table_name, snapshot_time);
+CREATE INDEX idx_sys_etl_bucket_checksum_execution
+  ON sys_etl_data_bucket_checksum (execution_log_id, bucket_number);
+CREATE INDEX idx_sys_etl_validation_log_execution
+  ON sys_etl_data_validation_log (execution_log_id, validation_status);
