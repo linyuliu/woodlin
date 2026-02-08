@@ -86,6 +86,7 @@ const metadata = ref<DatabaseMetadata | null>(null)
 const schemas = ref<SchemaMetadata[]>([])
 const tableMap = ref<Record<string, TableMetadata[]>>({})
 const schemaLoadedMap = ref<Record<string, boolean>>({})
+const schemaLoadingMap = ref<Record<string, boolean>>({})
 const columns = ref<ColumnMetadata[]>([])
 const selectedTable = ref<TableMetadata | null>(null)
 const selectedTreeKeys = ref<string[]>([])
@@ -291,18 +292,32 @@ const refreshCacheInfo = async (code: string) => {
 }
 
 const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refresh = false) => {
+  if (schemaLoadingMap.value[schemaName]) {
+    return
+  }
   if (schemaLoadedMap.value[schemaName] && !refresh) {
     return
   }
-  const targetSchema = schemaName === '__default__' ? undefined : schemaName
-  const tables = await getDatasourceTables(code, targetSchema, refresh)
-  tableMap.value = {
-    ...tableMap.value,
-    [schemaName]: tables || []
-  }
-  schemaLoadedMap.value = {
-    ...schemaLoadedMap.value,
+  schemaLoadingMap.value = {
+    ...schemaLoadingMap.value,
     [schemaName]: true
+  }
+  try {
+    const targetSchema = schemaName === '__default__' ? undefined : schemaName
+    const tables = await getDatasourceTables(code, targetSchema, refresh)
+    tableMap.value = {
+      ...tableMap.value,
+      [schemaName]: tables || []
+    }
+    schemaLoadedMap.value = {
+      ...schemaLoadedMap.value,
+      [schemaName]: true
+    }
+  } finally {
+    schemaLoadingMap.value = {
+      ...schemaLoadingMap.value,
+      [schemaName]: false
+    }
   }
 }
 
@@ -341,6 +356,7 @@ const loadWorkspace = async (code: string, refresh = false) => {
   expandedKeys.value = []
   tableMap.value = {}
   schemaLoadedMap.value = {}
+  schemaLoadingMap.value = {}
   keyword.value = ''
   tableOnlyWithComment.value = false
 
@@ -392,23 +408,23 @@ const handleTreeSelect = async (keys: Array<string | number>) => {
   await loadColumnsForTable(datasourceCode.value, schemaName, tableName)
 }
 
-const handleExpandedKeysUpdate = (keys: Array<string | number>) => {
-  expandedKeys.value = keys.map(item => String(item))
-}
+const handleExpandedKeysUpdate = async (keys: Array<string | number>) => {
+  const nextKeys = keys.map(item => String(item))
+  const previousKeySet = new Set(expandedKeys.value)
+  expandedKeys.value = nextKeys
 
-const handleTreeLoad = async (node: unknown) => {
   if (!datasourceCode.value) {
     return
   }
-  const treeNode = node as TreeNode
-  if (!treeNode.key.startsWith('schema::')) {
-    return
+
+  const newlyExpandedSchemaNames = nextKeys
+    .filter(key => key.startsWith('schema::') && !previousKeySet.has(key))
+    .map(key => key.split('::')[1])
+    .filter((schemaName): schemaName is string => Boolean(schemaName))
+
+  for (const schemaName of newlyExpandedSchemaNames) {
+    await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
   }
-  const schemaName = treeNode.key.split('::')[1]
-  if (!schemaName) {
-    return
-  }
-  await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
 }
 
 const handleBack = () => {
@@ -428,19 +444,16 @@ watch(
   () => datasourceCode.value,
   async code => {
     if (!code) {
+      message.warning('缺少数据源编码')
       return
     }
     await loadWorkspace(code)
-  }
+  },
+  { immediate: true }
 )
 
-onMounted(async () => {
+onMounted(() => {
   restoreColumnPreference()
-  if (!datasourceCode.value) {
-    message.warning('缺少数据源编码')
-    return
-  }
-  await loadWorkspace(datasourceCode.value)
 })
 </script>
 
@@ -532,7 +545,6 @@ onMounted(async () => {
               :data="filteredTreeData"
               :selected-keys="selectedTreeKeys"
               :expanded-keys="expandedKeys"
-              :on-load="handleTreeLoad"
               @update:expanded-keys="handleExpandedKeysUpdate"
               @update:selected-keys="handleTreeSelect"
             />
