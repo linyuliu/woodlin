@@ -67,8 +67,8 @@ const config = getConfig()
 const request = axios.create({
   // API基础URL，从配置获取
   baseURL: config.http.baseURL,
-  // 请求超时时间
-  timeout: config.http.timeout,
+  // 请求超时时间：排查阶段暂时关闭超时限制（0 = 不限制）
+  timeout: 0,
   // 是否携带Cookie
   withCredentials: config.http.withCredentials,
   // 默认请求头
@@ -159,19 +159,23 @@ request.interceptors.response.use(
     // 假设后端返回格式为 { code: number, message: string, data: any }
     // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
     if (statusCode != null && statusCode !== 200) {
-      logger.error('API业务错误:', data.message)
-      
-      // 显示错误提示
-      if (extConfig.showError !== false) {
-        // TODO: 显示错误消息
-        // window.$message?.error(data.message || 'Unknown error')
-      }
-      
-      return Promise.reject(new Error(data.message || 'Unknown error'))
+      // 排查阶段：仅记录业务码异常，不在请求层直接拦截，避免误判导致页面拿不到数据
+      logger.warn('[HTTP][BUSINESS_CODE_NOT_200]', {
+        traceId: traceConfig.__traceId,
+        method: getRequestMethod(traceConfig),
+        url: getRequestUrl(traceConfig),
+        businessCode: statusCode,
+        message: data.message
+      })
     }
     
-    // 返回数据部分，简化组件中的数据获取
-    return data.data
+    // 兼容两类返回：
+    // 1) 统一包装格式：{ code, message, data }
+    // 2) 直接返回业务对象/数组
+    if (data && typeof data === 'object' && 'data' in data) {
+      return data.data
+    }
+    return data as unknown
   },
   (error) => {
     const traceConfig = (error.config || {}) as TraceableRequestConfig
