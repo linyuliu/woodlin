@@ -26,16 +26,13 @@ import {
 import { ArrowBackOutline, FilterOutline, OptionsOutline, SyncOutline } from '@vicons/ionicons5'
 import {
   getDatasourceByCode,
-  getDatasourceCacheInfo,
   getDatasourceMetadata,
   getDatasourceSchemas,
   getDatasourceTables,
   getTableColumns,
-  refreshDatasourceCache,
   type ColumnMetadata,
   type DatabaseMetadata,
   type DatasourceConfig,
-  type MetadataCacheInfo,
   type SchemaMetadata,
   type TableMetadata
 } from '@/api/datasource'
@@ -79,7 +76,6 @@ const datasource = ref<DatasourceConfig | null>(null)
 
 const metaLoading = ref(false)
 const columnsLoading = ref(false)
-const cacheLoading = ref(false)
 const keyword = ref('')
 const tableOnlyWithComment = ref(false)
 
@@ -93,7 +89,7 @@ const selectedTable = ref<TableMetadata | null>(null)
 const selectedTreeKeys = ref<string[]>([])
 const expandedKeys = ref<string[]>([])
 const visibleColumnKeys = ref<ColumnFieldKey[]>([...DEFAULT_COLUMN_KEYS])
-const cacheInfoList = ref<MetadataCacheInfo[]>([])
+const cacheInfoList = ref<any[]>([])
 
 const schemaCount = computed(() => {
   const schemaNames = schemas.value.length > 0 ? schemas.value.map(item => item.schemaName) : ['__default__']
@@ -289,22 +285,17 @@ const loadDatasourceBasic = async (code: string) => {
 }
 
 const refreshCacheInfo = async (code: string) => {
-  cacheLoading.value = true
-  try {
-    cacheInfoList.value = await getDatasourceCacheInfo(code)
-  } finally {
-    cacheLoading.value = false
-  }
+  // 当前排查阶段不依赖缓存接口，避免后端缺少缓存路由导致页面主流程失败
+  logger.info(`[WORKSPACE][CACHE][${code}] skip: cache api disabled`)
+  cacheInfoList.value = []
 }
 
 const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refresh = false) => {
   const requestLabel = `[WORKSPACE][TABLES][${code}][${schemaName}]`
   if (schemaLoadingMap.value[schemaName]) {
-    logger.debug(`${requestLabel} skip: schema is already loading`)
     return
   }
   if (schemaLoadedMap.value[schemaName] && !refresh) {
-    logger.debug(`${requestLabel} skip: schema already loaded`)
     return
   }
   logger.info(`${requestLabel} start`, { refresh })
@@ -451,22 +442,22 @@ const handleTreeSelect = async (keys: Array<string | number>) => {
 }
 
 const handleExpandedKeysUpdate = (keys: Array<string | number>) => {
-  expandedKeys.value = keys.map(item => String(item))
-}
+  const nextKeys = keys.map(item => String(item))
+  const previousKeySet = new Set(expandedKeys.value)
+  expandedKeys.value = nextKeys
 
-const handleTreeLoad = async (node: unknown) => {
   if (!datasourceCode.value) {
     return
   }
-  const treeNode = node as TreeNode
-  if (!treeNode.key.startsWith('schema::')) {
-    return
+
+  const newlyExpandedSchemaNames = nextKeys
+    .filter(key => key.startsWith('schema::') && !previousKeySet.has(key))
+    .map(key => key.split('::')[1])
+    .filter((schemaName): schemaName is string => Boolean(schemaName))
+
+  for (const schemaName of newlyExpandedSchemaNames) {
+    void ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
   }
-  const schemaName = treeNode.key.split('::')[1]
-  if (!schemaName) {
-    return
-  }
-  await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
 }
 
 const handleBack = () => {
@@ -477,9 +468,8 @@ const handleRefreshWorkspace = async () => {
   if (!datasourceCode.value) {
     return
   }
-  await refreshDatasourceCache(datasourceCode.value)
   await loadWorkspace(datasourceCode.value, true)
-  message.success('元数据已手动刷新（缓存已清空）')
+  message.success('元数据已手动刷新')
 }
 
 watch(
@@ -513,10 +503,9 @@ onMounted(() => {
             <h2>{{ datasource?.datasourceName || datasourceCode }}</h2>
             <n-tag size="small" type="info">{{ datasource?.datasourceType || '-' }}</n-tag>
           </n-space>
-          <p>按层级加载元数据（Schema -> 表 -> 字段），缓存30分钟，可手动刷新。</p>
+          <p>按层级加载元数据（Schema -> 表 -> 字段），可手动刷新。</p>
         </div>
         <n-space>
-          <n-tag size="small" type="success">缓存TTL 30分钟</n-tag>
           <n-tag size="small" type="default">最近更新：{{ formatTime(lastCacheUpdatedAt) }}</n-tag>
           <n-button type="primary" @click="handleRefreshWorkspace">
             <template #icon>
@@ -556,7 +545,7 @@ onMounted(() => {
             </n-space>
           </template>
 
-          <n-spin :show="metaLoading || cacheLoading">
+          <n-spin :show="metaLoading">
             <n-space vertical size="small" class="meta-summary">
               <n-text depth="3">数据库：{{ metadata?.databaseName || '-' }}</n-text>
               <n-text depth="3">版本：{{ metadata?.databaseProductVersion || '-' }}</n-text>
@@ -587,7 +576,6 @@ onMounted(() => {
               :data="filteredTreeData"
               :selected-keys="selectedTreeKeys"
               :expanded-keys="expandedKeys"
-              :on-load="handleTreeLoad"
               @update:expanded-keys="handleExpandedKeysUpdate"
               @update:selected-keys="handleTreeSelect"
             />

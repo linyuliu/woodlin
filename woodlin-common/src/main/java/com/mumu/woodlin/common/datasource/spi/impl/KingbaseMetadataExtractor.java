@@ -273,7 +273,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     private List<TableMetadata> extractTablesNative(Connection connection, String databaseName, String schemaName) throws SQLException {
         List<TableMetadata> tables = new ArrayList<>();
         boolean hasSchemaFilter = schemaName != null && !schemaName.isEmpty();
-        
+
         String sql;
         if (hasSchemaFilter) {
             // 指定 schema 时，只查询该 schema 的表
@@ -375,7 +375,7 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
                     ORDER BY schemaname, tablename                                -- 排序
                     """;
         }
-        
+
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setQueryTimeout(30);
             if (hasSchemaFilter) {
