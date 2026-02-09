@@ -1,9 +1,9 @@
 /**
- * HTTP请求工具模块 - 增强版
- * 
+ * HTTP请求工具模块 - 简化稳定版
+ *
  * @author mumu
  * @description 基于axios封装的HTTP请求工具，提供统一的请求拦截、响应处理、错误处理、加密解密等功能
- *              集成全局loading、防抖、节流等功能
+ *              当前暂时停用复杂请求状态管理（去重、全局loading、自动重试），先保证请求链路稳定可观测
  * @since 2025-01-01
  */
 
@@ -30,101 +30,33 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   encrypt?: boolean
   /** 是否解密响应数据 */
   decrypt?: boolean
-  /** 是否显示加载提示 */
+  /** 是否显示加载提示（当前简化模式暂不处理） */
   showLoading?: boolean
   /** 是否显示错误提示 */
   showError?: boolean
-  /** 是否重试请求 */
+  /** 是否重试请求（当前简化模式暂不处理） */
   retry?: boolean
-  /** 重试次数 */
+  /** 重试次数（当前简化模式暂不处理） */
   retryCount?: number
-  /** 重试延迟（毫秒） */
+  /** 重试延迟（毫秒，当前简化模式暂不处理） */
   retryDelay?: number
   /** 是否忽略token */
   ignoreToken?: boolean
+  /** 是否启用重复请求去重（当前简化模式暂不处理） */
+  dedupe?: boolean
 }
 
 /**
- * 请求队列，用于管理并发请求
+ * 请求追踪配置
  */
-const requestQueue = new Map<string, AbortController>()
-
-/**
- * Loading计数器，用于管理多个请求的loading状态
- */
-let loadingCount = 0
-
-/**
- * App store 实例缓存（延迟加载）
- */
-let appStoreInstance: any = null
-
-/**
- * 获取App Store实例（单例模式）
- */
-async function getAppStoreInstance() {
-  if (!appStoreInstance) {
-    const { useAppStore } = await import('@/stores/app')
-    appStoreInstance = useAppStore()
-  }
-  return appStoreInstance
+type TraceableRequestConfig = InternalAxiosRequestConfig & {
+  __traceId?: string
+  __requestStartAt?: number
 }
 
-/**
- * 显示全局Loading
- */
-function showGlobalLoading() {
-  if (loadingCount === 0) {
-    getAppStoreInstance()
-      .then(appStore => appStore.showLoading())
-      .catch(error => logger.warn('无法显示全局Loading:', error))
-  }
-  loadingCount++
-}
-
-/**
- * 隐藏全局Loading
- */
-function hideGlobalLoading() {
-  loadingCount--
-  if (loadingCount <= 0) {
-    loadingCount = 0
-    getAppStoreInstance()
-      .then(appStore => appStore.hideLoading())
-      .catch(error => logger.warn('无法隐藏全局Loading:', error))
-  }
-}
-
-/**
- * 生成请求唯一标识
- */
-function generateRequestKey(config: InternalAxiosRequestConfig): string {
-  const { method, url, params, data } = config
-  return [method, url, JSON.stringify(params), JSON.stringify(data)].join('&')
-}
-
-/**
- * 取消重复请求
- */
-function removePendingRequest(config: InternalAxiosRequestConfig) {
-  const requestKey = generateRequestKey(config)
-  
-  if (requestQueue.has(requestKey)) {
-    const controller = requestQueue.get(requestKey)
-    controller?.abort()
-    requestQueue.delete(requestKey)
-  }
-}
-
-/**
- * 添加请求到队列
- */
-function addPendingRequest(config: InternalAxiosRequestConfig) {
-  const requestKey = generateRequestKey(config)
-  const controller = new AbortController()
-  config.signal = controller.signal
-  requestQueue.set(requestKey, controller)
-}
+const getRequestMethod = (config?: { method?: string }) => (config?.method || 'GET').toUpperCase()
+const getRequestUrl = (config?: { url?: string }) => config?.url || ''
+const getDuration = (startAt?: number) => (typeof startAt === 'number' ? Date.now() - startAt : -1)
 
 /**
  * 创建axios实例
@@ -152,10 +84,7 @@ const request = axios.create({
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const extConfig = config as ExtendedAxiosRequestConfig
-    
-    // 取消重复请求
-    removePendingRequest(config)
-    addPendingRequest(config)
+    const traceConfig = config as TraceableRequestConfig
     
     // 添加认证Token
     if (!extConfig.ignoreToken) {
@@ -172,7 +101,10 @@ request.interceptors.request.use(
     }
     
     // 添加请求ID（用于追踪）
-    config.headers['X-Request-Id'] = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const traceId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+    traceConfig.__traceId = traceId
+    traceConfig.__requestStartAt = Date.now()
+    config.headers['X-Request-Id'] = traceId
     
     // 加密请求数据
     if (extConfig.encrypt && config.data) {
@@ -180,11 +112,14 @@ request.interceptors.request.use(
         encrypted: simpleEncrypt(config.data)
       }
     }
-    
-    // 显示加载提示
-    if (extConfig.showLoading !== false) {
-      showGlobalLoading()
-    }
+
+    logger.info('[HTTP][START]', {
+      traceId,
+      method: getRequestMethod(config),
+      url: getRequestUrl(config),
+      params: config.params,
+      data: config.data
+    })
     
     return config
   },
@@ -201,14 +136,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const extConfig = response.config as ExtendedAxiosRequestConfig
-    
-    // 从请求队列中移除
-    removePendingRequest(response.config as InternalAxiosRequestConfig)
-    
-    // 隐藏加载提示
-    if (extConfig.showLoading !== false) {
-      hideGlobalLoading()
-    }
+    const traceConfig = response.config as TraceableRequestConfig
     
     const { data } = response
     
@@ -216,11 +144,20 @@ request.interceptors.response.use(
     if (extConfig.decrypt && data.data?.encrypted) {
       data.data = simpleDecrypt(data.data.encrypted)
     }
+
+    const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
+    logger.info('[HTTP][END]', {
+      traceId: traceConfig.__traceId,
+      method: getRequestMethod(traceConfig),
+      url: getRequestUrl(traceConfig),
+      httpStatus: response.status,
+      businessCode: statusCode,
+      durationMs: getDuration(traceConfig.__requestStartAt)
+    })
     
     // 根据后端的响应格式进行统一处理
     // 假设后端返回格式为 { code: number, message: string, data: any }
     // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
-    const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
     if (statusCode != null && statusCode !== 200) {
       logger.error('API业务错误:', data.message)
       
@@ -236,20 +173,18 @@ request.interceptors.response.use(
     // 返回数据部分，简化组件中的数据获取
     return data.data
   },
-  async (error) => {
-    const extConfig = error.config as ExtendedAxiosRequestConfig
-    
-    // 从请求队列中移除
-    if (error.config) {
-      removePendingRequest(error.config)
-    }
-    
-    // 隐藏加载提示
-    if (extConfig?.showLoading !== false) {
-      hideGlobalLoading()
-    }
-    
-    logger.error('HTTP请求错误:', error)
+  (error) => {
+    const traceConfig = (error.config || {}) as TraceableRequestConfig
+
+    logger.error('[HTTP][ERROR]', {
+      traceId: traceConfig.__traceId,
+      method: getRequestMethod(traceConfig),
+      url: getRequestUrl(traceConfig),
+      httpStatus: error.response?.status,
+      errorCode: error.code,
+      message: error.message,
+      durationMs: getDuration(traceConfig.__requestStartAt)
+    })
     
     // 处理不同的HTTP状态码
     if (error.response?.status === 401) {
@@ -283,24 +218,6 @@ request.interceptors.response.use(
       return Promise.reject(error)
     } else if (!error.response) {
       logger.error('网络连接错误')
-    }
-    
-    // 请求重试
-    if (extConfig?.retry && extConfig.retryCount && extConfig.retryCount > 0) {
-      logger.log(`重试请求 (剩余次数: ${extConfig.retryCount})`)
-      extConfig.retryCount--
-      
-      // 延迟后重试
-      await new Promise(resolve => setTimeout(resolve, extConfig.retryDelay || 1000))
-      
-      return request(extConfig)
-    }
-    
-    // 显示错误提示
-    if (extConfig?.showError !== false) {
-      // TODO: 显示错误消息
-      // const message = error.response?.data?.message || error.message || '请求失败'
-      // window.$message?.error(message)
     }
     
     return Promise.reject(error)
