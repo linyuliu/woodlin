@@ -1,27 +1,19 @@
 package com.mumu.woodlin.datasource.service;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import java.util.Properties;
 
 import cn.hutool.core.util.StrUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -67,35 +59,6 @@ public class DatabaseMetadataService {
      * </p>
      */
     private final Map<String, HikariDataSource> metadataDataSources = new ConcurrentHashMap<>();
-    /**
-     * 元数据缓存（30分钟）
-     * key: scope::datasourceCode::schema::table
-     */
-    private final Map<String, MetadataCacheEntry> metadataCache = new ConcurrentHashMap<>();
-    private final Map<String, AtomicBoolean> metadataRefreshingFlags = new ConcurrentHashMap<>();
-    private final Map<String, Object> metadataCacheLocks = new ConcurrentHashMap<>();
-    private static final long METADATA_CACHE_TTL_MILLIS = 30 * 60 * 1000L;
-    private static final String[] MYSQL_FAMILY_PRODUCTS = {"mysql", "mariadb", "tidb", "oceanbase"};
-    private static final String[] POSTGRES_FAMILY_PRODUCTS = {"postgresql", "opengauss", "kingbase", "gaussdb", "vastbase"};
-    private static final String[] SQLSERVER_FAMILY_PRODUCTS = {"sql server", "sqlserver"};
-
-    @Getter
-    @RequiredArgsConstructor
-    private static final class MetadataCacheEntry {
-        private final Object value;
-        private final long updatedAt;
-        private final long expiresAt;
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    public static final class MetadataCacheInfo {
-        private final String cacheKey;
-        private final String scope;
-        private final long updatedAt;
-        private final long expiresAt;
-        private final boolean expired;
-    }
 
     /**
      * 获取数据源的完整元数据
@@ -108,22 +71,6 @@ public class DatabaseMetadataService {
      * @return 数据库元数据
      */
     public DatabaseMetadata getDatabaseMetadata(String datasourceCode) {
-        return getDatabaseMetadata(datasourceCode, false);
-    }
-
-    /**
-     * 获取数据源的完整元数据（支持缓存刷新）
-     *
-     * @param datasourceCode 数据源编码
-     * @param refresh true=强制刷新并重建缓存，false=优先读取缓存
-     * @return 数据库元数据
-     */
-    public DatabaseMetadata getDatabaseMetadata(String datasourceCode, boolean refresh) {
-        String key = buildCacheKey("metadata", datasourceCode, null, null);
-        return getWithCache(key, refresh, () -> loadDatabaseMetadata(datasourceCode));
-    }
-
-    private DatabaseMetadata loadDatabaseMetadata(String datasourceCode) {
         log.info("获取数据源 {} 的元数据", datasourceCode);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -133,7 +80,7 @@ public class DatabaseMetadataService {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
 
             // 使用Connection直接提取元数据
-            DatabaseMetaData metaData = connection.getMetaData();
+            java.sql.DatabaseMetaData metaData = connection.getMetaData();
             String databaseName = connection.getCatalog();
 
             DatabaseMetadata metadata = DatabaseMetadata.builder()
@@ -180,10 +127,10 @@ public class DatabaseMetadataService {
      */
     private void extractCharsetAndCollation(Connection connection, DatabaseMetadata metadata) {
         try {
-            String productName = StrUtil.nullToEmpty(metadata.getDatabaseProductName()).toLowerCase();
+            String productName = cn.hutool.core.util.StrUtil.nullToEmpty(metadata.getDatabaseProductName()).toLowerCase();
 
             // MySQL及其兼容数据库（MariaDB、TiDB等）
-            if (StrUtil.containsAny(productName, MYSQL_FAMILY_PRODUCTS)) {
+            if (cn.hutool.core.util.StrUtil.containsAny(productName, "mysql", "mariadb", "tidb", "oceanbase")) {
                 try (Statement stmt = connection.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT @@character_set_database AS charset, @@collation_database AS collation")) {
                     if (rs.next()) {
@@ -193,7 +140,7 @@ public class DatabaseMetadataService {
                 }
             }
             // PostgreSQL及其兼容数据库
-            else if (StrUtil.containsAny(productName, POSTGRES_FAMILY_PRODUCTS)) {
+            else if (cn.hutool.core.util.StrUtil.containsAny(productName, "postgresql", "opengauss", "kingbase", "gaussdb", "vastbase")) {
                 try (Statement stmt = connection.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT pg_encoding_to_char(encoding) AS charset, datcollate AS collation FROM pg_database WHERE datname = current_database()")) {
                     if (rs.next()) {
@@ -203,7 +150,7 @@ public class DatabaseMetadataService {
                 }
             }
             // Oracle
-            else if (StrUtil.contains(productName, "oracle")) {
+            else if (cn.hutool.core.util.StrUtil.contains(productName, "oracle")) {
                 try (Statement stmt = connection.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT value AS charset FROM nls_database_parameters WHERE parameter = 'NLS_CHARACTERSET'")) {
                     if (rs.next()) {
@@ -212,7 +159,7 @@ public class DatabaseMetadataService {
                 }
             }
             // SQL Server
-            else if (StrUtil.containsAny(productName, SQLSERVER_FAMILY_PRODUCTS)) {
+            else if (cn.hutool.core.util.StrUtil.containsAny(productName, "sql server", "sqlserver")) {
                 try (Statement stmt = connection.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT DATABASEPROPERTYEX(DB_NAME(), 'Collation') AS collation")) {
                     if (rs.next()) {
@@ -236,22 +183,6 @@ public class DatabaseMetadataService {
      * @return Schema列表
      */
     public List<SchemaMetadata> getSchemas(String datasourceCode) {
-        return getSchemas(datasourceCode, false);
-    }
-
-    /**
-     * 获取数据源的Schema列表（支持缓存刷新）
-     *
-     * @param datasourceCode 数据源编码
-     * @param refresh true=强制刷新并重建缓存，false=优先读取缓存
-     * @return Schema列表
-     */
-    public List<SchemaMetadata> getSchemas(String datasourceCode, boolean refresh) {
-        String key = buildCacheKey("schemas", datasourceCode, null, null);
-        return getWithCache(key, refresh, () -> loadSchemas(datasourceCode));
-    }
-
-    private List<SchemaMetadata> loadSchemas(String datasourceCode) {
         log.info("获取数据源 {} 的Schema列表", datasourceCode);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -278,24 +209,6 @@ public class DatabaseMetadataService {
      * @return 表列表
      */
     public List<TableMetadata> getTables(String datasourceCode,String schemaName) {
-        return getTables(datasourceCode, schemaName, false);
-    }
-
-    /**
-     * 获取数据源的表列表（支持缓存刷新）
-     *
-     * @param datasourceCode 数据源编码
-     * @param schemaName Schema
-     * @param refresh true=强制刷新并重建缓存，false=优先读取缓存
-     * @return 表列表
-     */
-    public List<TableMetadata> getTables(String datasourceCode, String schemaName, boolean refresh) {
-        String normalizedSchema = normalizeDimension(schemaName);
-        String key = buildCacheKey("tables", datasourceCode, normalizedSchema, null);
-        return getWithCache(key, refresh, () -> loadTables(datasourceCode, schemaName));
-    }
-
-    private List<TableMetadata> loadTables(String datasourceCode, String schemaName) {
         log.info("获取数据源 {} 的表列表", datasourceCode);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -304,7 +217,7 @@ public class DatabaseMetadataService {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
-            schemaName = StrUtil.emptyToDefault(schemaName, getSchema(connection));
+            schemaName = StrUtil.emptyToDefault(schemaName,getSchema(connection)) ;
             return extractor.extractTables(connection, databaseName, schemaName);
 
         } catch (SQLException e) {
@@ -324,26 +237,6 @@ public class DatabaseMetadataService {
      * @return 字段列表
      */
     public List<ColumnMetadata> getColumns(String datasourceCode,String schemaName, String tableName) {
-        return getColumns(datasourceCode, schemaName, tableName, false);
-    }
-
-    /**
-     * 获取指定表字段列表（支持缓存刷新）
-     *
-     * @param datasourceCode 数据源编码
-     * @param schemaName Schema
-     * @param tableName 表名
-     * @param refresh true=强制刷新并重建缓存，false=优先读取缓存
-     * @return 字段列表
-     */
-    public List<ColumnMetadata> getColumns(String datasourceCode, String schemaName, String tableName, boolean refresh) {
-        String normalizedSchema = normalizeDimension(schemaName);
-        String normalizedTable = normalizeDimension(tableName);
-        String key = buildCacheKey("columns", datasourceCode, normalizedSchema, normalizedTable);
-        return getWithCache(key, refresh, () -> loadColumns(datasourceCode, schemaName, tableName));
-    }
-
-    private List<ColumnMetadata> loadColumns(String datasourceCode, String schemaName, String tableName) {
         log.info("获取数据源 {} 表 {} 的字段列表", datasourceCode, tableName);
 
         InfraDatasourceConfig config = getDatasourceConfig(datasourceCode);
@@ -352,7 +245,7 @@ public class DatabaseMetadataService {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetadataExtractor extractor = findExtractor(connection);
             String databaseName = connection.getCatalog();
-            schemaName = StrUtil.emptyToDefault(schemaName, getSchema(connection));
+            schemaName = StrUtil.emptyToDefault(schemaName,getSchema(connection)) ;
             return extractor.extractColumns(connection, databaseName, schemaName, tableName);
 
         } catch (SQLException e) {
@@ -372,109 +265,11 @@ public class DatabaseMetadataService {
     public void refreshMetadataCache(String datasourceCode) {
         log.info("刷新数据源 {} 的元数据缓存", datasourceCode);
 
-        clearMetadataCache(datasourceCode);
-
         HikariDataSource dataSource = metadataDataSources.remove(datasourceCode);
         if (dataSource != null) {
             dataSource.close();
             log.debug("已关闭数据源 {} 的元数据连接池", datasourceCode);
         }
-    }
-
-    /**
-     * 获取指定数据源的缓存信息（包含时间戳）
-     *
-     * @param datasourceCode 数据源编码
-     * @return 缓存信息列表
-     */
-    public List<MetadataCacheInfo> getMetadataCacheInfo(String datasourceCode) {
-        long now = System.currentTimeMillis();
-        List<MetadataCacheInfo> infoList = new ArrayList<>();
-        metadataCache.forEach((cacheKey, entry) -> {
-            String[] parts = cacheKey.split("::", 4);
-            if (parts.length >= 2 && Objects.equals(parts[1], datasourceCode)) {
-                infoList.add(new MetadataCacheInfo(
-                        cacheKey,
-                        parts[0],
-                        entry.updatedAt,
-                        entry.expiresAt,
-                        now > entry.expiresAt
-                ));
-            }
-        });
-        infoList.sort(Comparator.comparingLong(MetadataCacheInfo::getUpdatedAt).reversed());
-        return infoList;
-    }
-
-    private void clearMetadataCache(String datasourceCode) {
-        String keyMiddle = "::" + datasourceCode + "::";
-        metadataCache.keySet().removeIf(key -> key.contains(keyMiddle));
-        metadataRefreshingFlags.keySet().removeIf(key -> key.contains(keyMiddle));
-        metadataCacheLocks.keySet().removeIf(key -> key.contains(keyMiddle));
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T getWithCache(String cacheKey, boolean forceRefresh, Supplier<T> loader) {
-        if (forceRefresh) {
-            return refreshCacheValue(cacheKey, loader, true);
-        }
-
-        MetadataCacheEntry entry = metadataCache.get(cacheKey);
-        long now = System.currentTimeMillis();
-        if (entry == null) {
-            return refreshCacheValue(cacheKey, loader, false);
-        }
-
-        if (now <= entry.expiresAt) {
-            return (T) entry.value;
-        }
-
-        triggerAsyncRefresh(cacheKey, loader);
-        // 过期返回旧值，后台刷新，避免击穿。
-        return (T) entry.value;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T refreshCacheValue(String cacheKey, Supplier<T> loader, boolean force) {
-        Object lock = metadataCacheLocks.computeIfAbsent(cacheKey, key -> new Object());
-        synchronized (lock) {
-            if (!force) {
-                MetadataCacheEntry cached = metadataCache.get(cacheKey);
-                if (cached != null && System.currentTimeMillis() <= cached.expiresAt) {
-                    return (T) cached.value;
-                }
-            }
-
-            T value = loader.get();
-            long now = System.currentTimeMillis();
-            metadataCache.put(cacheKey, new MetadataCacheEntry(value, now, now + METADATA_CACHE_TTL_MILLIS));
-            return value;
-        }
-    }
-
-    private <T> void triggerAsyncRefresh(String cacheKey, Supplier<T> loader) {
-        AtomicBoolean refreshing = metadataRefreshingFlags.computeIfAbsent(cacheKey, key -> new AtomicBoolean(false));
-        if (!refreshing.compareAndSet(false, true)) {
-            return;
-        }
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                refreshCacheValue(cacheKey, loader, true);
-            } catch (Exception e) {
-                log.warn("异步刷新元数据缓存失败，key={}", cacheKey, e);
-            } finally {
-                refreshing.set(false);
-            }
-        });
-    }
-
-    private String buildCacheKey(String scope, String datasourceCode, String schemaName, String tableName) {
-        return scope + "::" + datasourceCode + "::" + normalizeDimension(schemaName) + "::" + normalizeDimension(tableName);
-    }
-
-    private String normalizeDimension(String value) {
-        return StrUtil.blankToDefault(value, "__default__");
     }
 
     /**
@@ -575,14 +370,14 @@ public class DatabaseMetadataService {
      */
     private String resolveTestQuery(InfraDatasourceConfig config) {
         // 优先使用配置的测试SQL
-        if (StrUtil.isNotBlank(config.getTestSql())) {
+        if (cn.hutool.core.util.StrUtil.isNotBlank(config.getTestSql())) {
             return config.getTestSql();
         }
 
         // 根据数据库类型获取默认测试SQL
-        if (StrUtil.isNotBlank(config.getDatasourceType())) {
+        if (cn.hutool.core.util.StrUtil.isNotBlank(config.getDatasourceType())) {
             String testSql = extractorFactory.getDefaultTestQuery(config.getDatasourceType());
-            if (StrUtil.isNotBlank(testSql)) {
+            if (cn.hutool.core.util.StrUtil.isNotBlank(testSql)) {
                 return testSql;
             }
         }
@@ -607,9 +402,6 @@ public class DatabaseMetadataService {
             }
         });
         metadataDataSources.clear();
-        metadataCache.clear();
-        metadataRefreshingFlags.clear();
-        metadataCacheLocks.clear();
     }
 
     /**
@@ -674,19 +466,19 @@ public class DatabaseMetadataService {
      */
     private String resolveDriver(String driverClassName, String jdbcUrl) {
         // 如果已配置驱动类名，直接返回
-        if (StrUtil.isNotBlank(driverClassName)) {
+        if (cn.hutool.core.util.StrUtil.isNotBlank(driverClassName)) {
             return driverClassName;
         }
 
         // 通过JDBC URL推断数据库类型
         String databaseType = extractorFactory.inferDatabaseType(jdbcUrl);
-        if (StrUtil.isBlank(databaseType)) {
+        if (cn.hutool.core.util.StrUtil.isBlank(databaseType)) {
             throw new BusinessException("无法识别JDBC URL的数据库类型，请指定 driverClass");
         }
 
         // 获取该数据库类型的默认驱动类名
         String defaultDriver = extractorFactory.getDefaultDriverClass(databaseType);
-        if (StrUtil.isBlank(defaultDriver)) {
+        if (cn.hutool.core.util.StrUtil.isBlank(defaultDriver)) {
             throw new BusinessException("无法获取数据库类型 " + databaseType + " 的驱动类名，请指定 driverClass");
         }
 

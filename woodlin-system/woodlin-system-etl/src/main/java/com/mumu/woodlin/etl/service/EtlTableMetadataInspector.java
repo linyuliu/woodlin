@@ -47,7 +47,7 @@ public class EtlTableMetadataInspector {
             throw new BusinessException("表名不能为空");
         }
         String normalizedSchema = normalizeSchema(schemaName);
-        List<ColumnMetadata> columns = databaseMetadataService.getColumns(datasourceCode, normalizedSchema, tableName, false);
+        List<ColumnMetadata> columns = databaseMetadataService.getColumns(datasourceCode, normalizedSchema, tableName);
         if (columns.isEmpty()) {
             throw new BusinessException("表不存在或字段为空: " + tableName);
         }
@@ -93,7 +93,7 @@ public class EtlTableMetadataInspector {
         if (!primaryKeys.isEmpty()) {
             return new ArrayList<>(primaryKeys);
         }
-        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceCode, schemaName, false);
+        List<TableMetadata> tables = databaseMetadataService.getTables(datasourceCode, schemaName);
         return tables.stream()
                 .filter(table -> table.getTableName() != null && table.getTableName().equalsIgnoreCase(tableName))
                 .findFirst()

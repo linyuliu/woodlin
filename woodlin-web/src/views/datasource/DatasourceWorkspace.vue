@@ -23,7 +23,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { ArrowBackOutline, FilterOutline, OptionsOutline, RefreshOutline, SyncOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, FilterOutline, OptionsOutline, SyncOutline } from '@vicons/ionicons5'
 import {
   getDatasourceByCode,
   getDatasourceCacheInfo,
@@ -39,6 +39,7 @@ import {
   type SchemaMetadata,
   type TableMetadata
 } from '@/api/datasource'
+import { logger } from '@/utils/logger'
 
 type TreeNode = {
   key: string
@@ -139,6 +140,11 @@ const filteredTreeData = computed<TreeNode[]>(() => {
   treeData.value.forEach(schemaNode => {
     const schemaName = schemaNode.key.split('::')[1] || '__default__'
     if (!schemaLoadedMap.value[schemaName]) {
+      result.push({
+        key: schemaNode.key,
+        label: schemaNode.label,
+        isLeaf: false
+      })
       return
     }
     const children = (schemaNode.children || []).filter(child => {
@@ -292,12 +298,16 @@ const refreshCacheInfo = async (code: string) => {
 }
 
 const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refresh = false) => {
+  const requestLabel = `[WORKSPACE][TABLES][${code}][${schemaName}]`
   if (schemaLoadingMap.value[schemaName]) {
+    logger.debug(`${requestLabel} skip: schema is already loading`)
     return
   }
   if (schemaLoadedMap.value[schemaName] && !refresh) {
+    logger.debug(`${requestLabel} skip: schema already loaded`)
     return
   }
+  logger.info(`${requestLabel} start`, { refresh })
   schemaLoadingMap.value = {
     ...schemaLoadingMap.value,
     [schemaName]: true
@@ -305,6 +315,7 @@ const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refres
   try {
     const targetSchema = schemaName === '__default__' ? undefined : schemaName
     const tables = await getDatasourceTables(code, targetSchema, refresh)
+    logger.info(`${requestLabel} end`, { tableCount: tables?.length || 0 })
     tableMap.value = {
       ...tableMap.value,
       [schemaName]: tables || []
@@ -313,6 +324,9 @@ const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refres
       ...schemaLoadedMap.value,
       [schemaName]: true
     }
+  } catch (error) {
+    logger.error(`${requestLabel} failed`, error)
+    message.error(`加载 Schema [${schemaName}] 表列表失败`)
   } finally {
     schemaLoadingMap.value = {
       ...schemaLoadingMap.value,
@@ -322,11 +336,18 @@ const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refres
 }
 
 const loadColumnsForTable = async (code: string, schemaName: string, tableName: string, refresh = false) => {
+  const requestLabel = `[WORKSPACE][COLUMNS][${code}][${schemaName}][${tableName}]`
+  logger.info(`${requestLabel} start`, { refresh })
   columnsLoading.value = true
   try {
     const targetSchema = schemaName === '__default__' ? undefined : schemaName
     columns.value = await getTableColumns(code, tableName, targetSchema, refresh)
+    logger.info(`${requestLabel} end`, { columnCount: columns.value.length })
     selectedTable.value = (tableMap.value[schemaName] || []).find(item => item.tableName === tableName) || null
+  } catch (error) {
+    logger.error(`${requestLabel} failed`, error)
+    columns.value = []
+    message.error(`加载表 [${tableName}] 字段失败`)
   } finally {
     columnsLoading.value = false
   }
@@ -346,9 +367,11 @@ const autoSelectFirstTable = async (code: string) => {
 }
 
 const loadWorkspace = async (code: string, refresh = false) => {
+  const requestLabel = `[WORKSPACE][INIT][${code}]`
   if (!code) {
     return
   }
+  logger.info(`${requestLabel} start`, { refresh })
   metaLoading.value = true
   columns.value = []
   selectedTable.value = null
@@ -386,6 +409,14 @@ const loadWorkspace = async (code: string, refresh = false) => {
       await autoSelectFirstTable(code)
     }
     await refreshCacheInfo(code)
+    logger.info(`${requestLabel} end`, {
+      schemaCount: schemaNames.length,
+      loadedSchemaCount: Object.values(schemaLoadedMap.value).filter(Boolean).length,
+      tableCount: Object.values(tableMap.value).reduce((total, tables) => total + tables.length, 0)
+    })
+  } catch (error) {
+    logger.error(`${requestLabel} failed`, error)
+    message.error('加载数据源工作台失败，请查看控制台日志')
   } finally {
     metaLoading.value = false
   }
@@ -397,6 +428,17 @@ const handleTreeSelect = async (keys: Array<string | number>) => {
     return
   }
   const key = String(keys[0])
+  if (key.startsWith('schema::')) {
+    const schemaName = key.split('::')[1]
+    if (!schemaName) {
+      return
+    }
+    if (!expandedKeys.value.includes(key)) {
+      expandedKeys.value = [...expandedKeys.value, key]
+    }
+    await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
+    return
+  }
   if (!key.startsWith('table::')) {
     return
   }
@@ -408,23 +450,23 @@ const handleTreeSelect = async (keys: Array<string | number>) => {
   await loadColumnsForTable(datasourceCode.value, schemaName, tableName)
 }
 
-const handleExpandedKeysUpdate = async (keys: Array<string | number>) => {
-  const nextKeys = keys.map(item => String(item))
-  const previousKeySet = new Set(expandedKeys.value)
-  expandedKeys.value = nextKeys
+const handleExpandedKeysUpdate = (keys: Array<string | number>) => {
+  expandedKeys.value = keys.map(item => String(item))
+}
 
+const handleTreeLoad = async (node: unknown) => {
   if (!datasourceCode.value) {
     return
   }
-
-  const newlyExpandedSchemaNames = nextKeys
-    .filter(key => key.startsWith('schema::') && !previousKeySet.has(key))
-    .map(key => key.split('::')[1])
-    .filter((schemaName): schemaName is string => Boolean(schemaName))
-
-  for (const schemaName of newlyExpandedSchemaNames) {
-    await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
+  const treeNode = node as TreeNode
+  if (!treeNode.key.startsWith('schema::')) {
+    return
   }
+  const schemaName = treeNode.key.split('::')[1]
+  if (!schemaName) {
+    return
+  }
+  await ensureSchemaTablesLoaded(datasourceCode.value, schemaName)
 }
 
 const handleBack = () => {
@@ -545,6 +587,7 @@ onMounted(() => {
               :data="filteredTreeData"
               :selected-keys="selectedTreeKeys"
               :expanded-keys="expandedKeys"
+              :on-load="handleTreeLoad"
               @update:expanded-keys="handleExpandedKeysUpdate"
               @update:selected-keys="handleTreeSelect"
             />
