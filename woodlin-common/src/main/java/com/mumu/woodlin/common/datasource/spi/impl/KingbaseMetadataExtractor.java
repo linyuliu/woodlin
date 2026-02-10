@@ -672,12 +672,10 @@ public class KingbaseMetadataExtractor extends AbstractPostgreSQLCompatibleExtra
     @Override
     public String getDefaultTestQuery() {
         CompatibilityMode mode = currentMode.get();
-        return switch (mode) {
-            case ORACLE -> "SELECT 1 FROM DUAL";
-            case MYSQL -> "SELECT 1";
-            case MSSQL -> "SELECT 1";
-            default -> "SELECT 1";
-        };
+        if (mode.equals(CompatibilityMode.ORACLE)){
+            return  "select 1 from dual";
+        }
+        return  super.getDefaultTestQuery();
     }
 
     @Override
