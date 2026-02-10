@@ -16,7 +16,6 @@ import {
   NPopover,
   NSpace,
   NSpin,
-  NStatistic,
   NTag,
   NText,
   NTree,
@@ -329,12 +328,18 @@ const ensureSchemaTablesLoaded = async (code: string, schemaName: string, refres
 const loadColumnsForTable = async (code: string, schemaName: string, tableName: string, refresh = false) => {
   const requestLabel = `[WORKSPACE][COLUMNS][${code}][${schemaName}][${tableName}]`
   logger.info(`${requestLabel} start`, { refresh })
+  const currentTable = (tableMap.value[schemaName] || []).find(item => item.tableName === tableName) || null
+  selectedTable.value = currentTable
+  if (!refresh && currentTable?.columns && currentTable.columns.length > 0) {
+    columns.value = currentTable.columns
+    logger.info(`${requestLabel} hit table payload`, { columnCount: columns.value.length })
+    return
+  }
   columnsLoading.value = true
   try {
     const targetSchema = schemaName === '__default__' ? undefined : schemaName
     columns.value = await getTableColumns(code, tableName, targetSchema, refresh)
     logger.info(`${requestLabel} end`, { columnCount: columns.value.length })
-    selectedTable.value = (tableMap.value[schemaName] || []).find(item => item.tableName === tableName) || null
   } catch (error) {
     logger.error(`${requestLabel} failed`, error)
     columns.value = []
@@ -376,27 +381,37 @@ const loadWorkspace = async (code: string, refresh = false) => {
 
   try {
     await loadDatasourceBasic(code)
-    const [metaData, schemaData] = await Promise.all([
-      getDatasourceMetadata(code, refresh),
-      getDatasourceSchemas(code, refresh).catch(() => [])
-    ])
+    const metaData = await getDatasourceMetadata(code, refresh)
+    const schemaData = metaData?.schemas?.length
+      ? metaData.schemas
+      : await getDatasourceSchemas(code, refresh).catch(() => [])
     metadata.value = metaData
     schemas.value = schemaData || []
 
     const schemaNames = schemas.value.length > 0 ? schemas.value.map(item => item.schemaName) : ['__default__']
+    const schemaTableMap = new Map(
+      schemas.value.map(item => [
+        item.schemaName,
+        Array.isArray(item.tables) ? item.tables : undefined
+      ])
+    )
     tableMap.value = schemaNames.reduce<Record<string, TableMetadata[]>>((acc, schemaName) => {
-      acc[schemaName] = []
+      const tables = schemaTableMap.get(schemaName)
+      acc[schemaName] = tables || []
       return acc
     }, {})
     schemaLoadedMap.value = schemaNames.reduce<Record<string, boolean>>((acc, schemaName) => {
-      acc[schemaName] = false
+      const tables = schemaTableMap.get(schemaName)
+      acc[schemaName] = Array.isArray(tables)
       return acc
     }, {})
 
     const firstSchema = schemaNames[0]
     if (firstSchema) {
       expandedKeys.value = [`schema::${firstSchema}`]
-      await ensureSchemaTablesLoaded(code, firstSchema, refresh)
+      if (!schemaLoadedMap.value[firstSchema] || refresh) {
+        await ensureSchemaTablesLoaded(code, firstSchema, refresh)
+      }
       await autoSelectFirstTable(code)
     }
     await refreshCacheInfo(code)
@@ -517,24 +532,6 @@ onMounted(() => {
       </div>
     </n-card>
 
-    <n-grid :x-gap="12" :y-gap="12" cols="1 s:3" responsive="screen">
-      <n-grid-item>
-        <n-card :bordered="false" class="stat-card">
-          <n-statistic label="Schema 总数" :value="schemaCount" />
-        </n-card>
-      </n-grid-item>
-      <n-grid-item>
-        <n-card :bordered="false" class="stat-card">
-          <n-statistic label="已加载 Schema" :value="loadedSchemaCount" />
-        </n-card>
-      </n-grid-item>
-      <n-grid-item>
-        <n-card :bordered="false" class="stat-card">
-          <n-statistic label="已加载表数" :value="tableCount" />
-        </n-card>
-      </n-grid-item>
-    </n-grid>
-
     <n-grid :x-gap="12" :y-gap="12" cols="1 l:24" responsive="screen">
       <n-grid-item :span="9">
         <n-card title="Schema / 表" :bordered="false" class="panel-card">
@@ -627,7 +624,6 @@ onMounted(() => {
               :columns="columnColumns"
               :data="columns"
               :loading="columnsLoading"
-              :pagination="{ pageSize: 12 }"
               size="small"
               max-height="580"
             />
@@ -666,10 +662,6 @@ onMounted(() => {
 .hero-content p {
   margin: 8px 0 0;
   color: color-mix(in srgb, var(--text-color-inverse) 82%, transparent);
-}
-
-.stat-card {
-  background: radial-gradient(circle at top right, rgba(5, 191, 219, 0.24), transparent 48%), var(--bg-color);
 }
 
 .panel-card {

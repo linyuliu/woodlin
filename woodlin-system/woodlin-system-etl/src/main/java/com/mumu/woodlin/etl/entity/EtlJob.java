@@ -60,10 +60,10 @@ public class EtlJob extends BaseEntity {
     private String jobDescription;
     
     /**
-     * 源数据库名称（对应动态数据源配置）
+     * 源数据源名称（优先匹配动态数据源，未命中时回退匹配 infra_datasource.datasource_code）
      */
     @TableField("source_datasource")
-    @Schema(description = "源数据源名称")
+    @Schema(description = "源数据源名称/编码")
     private String sourceDatasource;
     
     /**
@@ -88,10 +88,10 @@ public class EtlJob extends BaseEntity {
     private String sourceQuery;
     
     /**
-     * 目标数据库名称（对应动态数据源配置）
+     * 目标数据源名称（优先匹配动态数据源，未命中时回退匹配 infra_datasource.datasource_code）
      */
     @TableField("target_datasource")
-    @Schema(description = "目标数据源名称")
+    @Schema(description = "目标数据源名称/编码")
     private String targetDatasource;
     
     /**
