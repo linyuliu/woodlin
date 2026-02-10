@@ -268,11 +268,11 @@ GET /api/etl/logs
 | jobName | String | 是 | 任务名称 |
 | jobGroup | String | 否 | 任务组名 |
 | jobDescription | String | 否 | 任务描述 |
-| sourceDatasource | String | 是 | 源数据源名称 |
+| sourceDatasource | String | 是 | 源数据源名称（优先动态数据源，未命中时按 `infra_datasource.datasource_code` 解析） |
 | sourceTable | String | 否* | 源表名 |
 | sourceSchema | String | 否 | 源Schema名 |
 | sourceQuery | String | 否* | 源查询SQL |
-| targetDatasource | String | 是 | 目标数据源名称 |
+| targetDatasource | String | 是 | 目标数据源名称（优先动态数据源，未命中时按 `infra_datasource.datasource_code` 解析） |
 | targetTable | String | 是 | 目标表名 |
 | targetSchema | String | 否 | 目标Schema名 |
 | syncMode | String | 是 | 同步模式（FULL/INCREMENTAL） |

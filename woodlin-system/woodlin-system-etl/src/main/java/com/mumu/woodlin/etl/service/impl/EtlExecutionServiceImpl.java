@@ -25,6 +25,7 @@ import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.datasource.service.InfraDatasourceService;
 import com.mumu.woodlin.etl.dialect.DatabaseDialect;
 import com.mumu.woodlin.etl.dialect.DatabaseDialectResolver;
 import com.mumu.woodlin.etl.entity.EtlColumnMappingRule;
@@ -66,6 +67,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
     private static final int MAX_IN_CLAUSE_SIZE = 900;
 
     private final DynamicRoutingDataSource dynamicRoutingDataSource;
+    private final InfraDatasourceService infraDatasourceService;
     private final IEtlExecutionLogService executionLogService;
     private final IEtlColumnMappingRuleService columnMappingRuleService;
     private final IEtlSyncCheckpointService syncCheckpointService;
@@ -687,10 +689,15 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
 
     private DataSource getDataSource(String datasourceName, String label) {
         DataSource dataSource = dynamicRoutingDataSource.getDataSource(datasourceName);
-        if (dataSource == null) {
-            throw new BusinessException(label + "数据源不存在: " + datasourceName);
+        if (dataSource != null) {
+            return dataSource;
         }
-        return dataSource;
+        log.debug("{}数据源 {} 未在动态数据源中注册，尝试使用 Infra JDBC 数据源配置", label, datasourceName);
+        try {
+            return infraDatasourceService.getDataSourceByCode(datasourceName);
+        } catch (BusinessException exception) {
+            throw new BusinessException(label + "数据源不可用: " + datasourceName + "，" + exception.getMessage(), exception);
+        }
     }
 
     private void validateJob(EtlJob job) {

@@ -44,6 +44,7 @@ export interface SchemaMetadata {
   schemaName: string
   databaseName?: string
   comment?: string
+  tables?: TableMetadata[]
 }
 
 export interface TableMetadata {
@@ -53,6 +54,7 @@ export interface TableMetadata {
   comment?: string
   tableType?: string
   primaryKey?: string
+  columns?: ColumnMetadata[]
   createTime?: string
   updateTime?: string
   engine?: string
