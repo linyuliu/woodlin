@@ -67,7 +67,7 @@ export const usePermissionStore = defineStore('permission', () => {
     const flat: RouteRecordRaw[] = []
 
     function flatten(routes: RouteRecordRaw[]) {
-      routes.forEach(route => {
+      routes.forEach((route) => {
         flat.push(route)
         if (route.children) {
           flatten(route.children)
@@ -90,16 +90,13 @@ export const usePermissionStore = defineStore('permission', () => {
    * @param permissions 用户权限列表
    * @returns 过滤后的路由
    */
-  function filterAsyncRoutes(
-    routes: RouteRecordRaw[],
-    permissions: string[]
-  ): RouteRecordRaw[] {
+  function filterAsyncRoutes(routes: RouteRecordRaw[], permissions: string[]): RouteRecordRaw[] {
     const permissionSet = new Set(permissions)
 
     const filterRoutes = (source: RouteRecordRaw[]): RouteRecordRaw[] => {
       const result: RouteRecordRaw[] = []
 
-      source.forEach(route => {
+      source.forEach((route) => {
         const temp = {...route}
 
         if (hasRoutePermission(temp, permissionSet)) {
@@ -124,7 +121,7 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns 无权限要求的路由
    */
   function getPermissionFreeRoutes(routes: RouteRecordRaw[]): RouteRecordRaw[] {
-    return routes.filter(route => {
+    return routes.filter((route) => {
       return !route.meta?.permissions || (route.meta.permissions as string[]).length === 0
     })
   }
@@ -139,11 +136,13 @@ export const usePermissionStore = defineStore('permission', () => {
    */
   function hasRoutePermission(route: RouteRecordRaw, permissionSet: Set<string>): boolean {
     // 如果用户拥有超级权限，允许访问所有路由
-    if (permissionSet.has('*') ||
+    if (
+      permissionSet.has('*') ||
       permissionSet.has('admin') ||
-        permissionSet.has('super_admin') ||
-        permissionSet.has('ROLE_ADMIN') ||
-        permissionSet.has('ROLE_SUPER_ADMIN')) {
+      permissionSet.has('super_admin') ||
+      permissionSet.has('ROLE_ADMIN') ||
+      permissionSet.has('ROLE_SUPER_ADMIN')
+    ) {
       return true
     }
 
@@ -154,7 +153,7 @@ export const usePermissionStore = defineStore('permission', () => {
     }
 
     // 检查用户是否拥有路由所需的任一权限
-    return routePermissions.some(permission => permissionSet.has(permission))
+    return routePermissions.some((permission) => permissionSet.has(permission))
   }
 
   /**
@@ -171,7 +170,7 @@ export const usePermissionStore = defineStore('permission', () => {
     try {
       // 从后端获取用户路由
       logger.log('从后端获取用户路由...')
-      const backendRoutes = await getUserRoutes() as unknown as BackendRoute[]
+      const backendRoutes = (await getUserRoutes()) as unknown as BackendRoute[]
 
       if (backendRoutes && backendRoutes.length > 0) {
         logger.log('成功获取后端路由:', backendRoutes)
@@ -197,8 +196,10 @@ export const usePermissionStore = defineStore('permission', () => {
     addedRoutes.value = accessedRoutes
 
     // 仅保留布局下的子路由用于菜单（避免把登录等基础路由展示在侧边栏）
-    const rootLayout = accessedRoutes.find(r => r.path === '/' || r.children?.length)
-    menuRoutes.value = (rootLayout?.children || accessedRoutes).filter(route => !route.meta?.hideInMenu)
+    const rootLayout = accessedRoutes.find((r) => r.path === '/' || r.children?.length)
+    menuRoutes.value = (rootLayout?.children || accessedRoutes).filter(
+      (route) => !route.meta?.hideInMenu,
+    )
     isRoutesGenerated.value = true
 
     // 持久化路由生成状态到localStorage
@@ -213,7 +214,7 @@ export const usePermissionStore = defineStore('permission', () => {
       total: routes.value.length,
       added: addedRoutes.value.length,
       menu: menuRoutes.value.length,
-      accessedRoutes: accessedRoutes.map(r => r.path)
+      accessedRoutes: accessedRoutes.map((r) => r.path),
     })
 
     return accessedRoutes
@@ -229,12 +230,13 @@ export const usePermissionStore = defineStore('permission', () => {
     logger.log('使用降级路由（静态路由）, 用户权限:', permissions)
 
     // 如果权限中包含'*'或admin相关角色，则拥有所有权限
-    const hasAllPermissions = permissions.some(p =>
-      p === '*' ||
-      p === 'admin' ||
-      p === 'super_admin' ||
-      p === 'ROLE_ADMIN' ||
-      p === 'ROLE_SUPER_ADMIN'
+    const hasAllPermissions = permissions.some(
+      (p) =>
+        p === '*' ||
+        p === 'admin' ||
+        p === 'super_admin' ||
+        p === 'ROLE_ADMIN' ||
+        p === 'ROLE_SUPER_ADMIN',
     )
 
     if (hasAllPermissions) {
@@ -277,48 +279,152 @@ export const usePermissionStore = defineStore('permission', () => {
    * 注入本地扩展路由（后端未下发但前端必须可用的页面）
    */
   function injectLocalExtensionRoutes(accessedRoutes: RouteRecordRaw[]): RouteRecordRaw[] {
-    const rootRoute = accessedRoutes.find(route => route.path === '/' || Array.isArray(route.children))
+    const rootRoute = accessedRoutes.find(
+      (route) => route.path === '/' || Array.isArray(route.children),
+    )
     if (!rootRoute || !Array.isArray(rootRoute.children) || rootRoute.children.length === 0) {
       return accessedRoutes
     }
 
-    const datasourceRoute = rootRoute.children.find(route => {
+    const datasourceRoute = rootRoute.children.find((route) => {
       const normalized = normalizePath(route.path)
       return normalized === 'datasource' || normalized.endsWith('/datasource')
     })
 
     if (!datasourceRoute) {
-      return accessedRoutes
+      return injectLocalEtlRoutes(accessedRoutes, rootRoute)
     }
 
     if (!Array.isArray(datasourceRoute.children)) {
       datasourceRoute.children = []
     }
 
-    const exists = datasourceRoute.children.some(route => {
+    const datasourceWorkspaceExists = datasourceRoute.children.some((route) => {
       const normalized = normalizePath(route.path)
-      return route.name === 'DatasourceWorkspace' ||
+      return (
+        route.name === 'DatasourceWorkspace' ||
         normalized === 'workspace/:code' ||
         normalized.endsWith('/workspace/:code')
+      )
     })
 
-    if (exists) {
+    if (!datasourceWorkspaceExists) {
+      datasourceRoute.children.push({
+        path: 'workspace/:code',
+        name: 'DatasourceWorkspace',
+        component: () => import('@/views/datasource/DatasourceWorkspace.vue'),
+        meta: {
+          title: '元数据工作台',
+          hideInMenu: true,
+          activeMenu: '/datasource/list',
+          permissions: ['datasource:list:view'],
+        },
+      })
+      logger.log('已注入本地扩展路由: DatasourceWorkspace')
+    }
+
+    return injectLocalEtlRoutes(accessedRoutes, rootRoute)
+  }
+
+  function injectLocalEtlRoutes(
+    accessedRoutes: RouteRecordRaw[],
+    rootRoute: RouteRecordRaw,
+  ): RouteRecordRaw[] {
+    if (!Array.isArray(rootRoute.children)) {
       return accessedRoutes
     }
 
-    datasourceRoute.children.push({
-      path: 'workspace/:code',
-      name: 'DatasourceWorkspace',
-      component: () => import('@/views/datasource/DatasourceWorkspace.vue'),
-      meta: {
-        title: '元数据工作台',
-        hideInMenu: true,
-        activeMenu: '/datasource/list',
-        permissions: ['datasource:list:view']
-      }
+    const etlRoute = rootRoute.children.find((route) => {
+      const normalized = normalizePath(route.path)
+      return normalized === 'etl' || normalized.endsWith('/etl')
     })
 
-    logger.log('已注入本地扩展路由: DatasourceWorkspace')
+    if (!etlRoute) {
+      rootRoute.children.push({
+        path: 'etl',
+        name: 'Etl',
+        redirect: '/etl/offline',
+        meta: {
+          title: '同步任务',
+          icon: 'git-compare-outline',
+          permissions: ['task:list:view'],
+        },
+        children: [
+          {
+            path: 'offline',
+            name: 'EtlOfflineTaskList',
+            component: () => import('@/views/etl/EtlOfflineTaskList.vue'),
+            meta: {
+              title: '离线同步',
+              icon: 'swap-horizontal-outline',
+              permissions: ['task:list:view'],
+            },
+          },
+          {
+            path: 'offline/create',
+            name: 'EtlOfflineCreate',
+            component: () => import('@/views/etl/EtlOfflineCreate.vue'),
+            meta: {
+              title: '创建离线任务',
+              hideInMenu: true,
+              activeMenu: '/etl/offline',
+              permissions: ['task:list:view'],
+            },
+          },
+        ],
+      })
+      logger.log('已注入本地扩展路由: EtlOfflineTaskList/EtlOfflineCreate')
+      return accessedRoutes
+    }
+
+    if (!Array.isArray(etlRoute.children)) {
+      etlRoute.children = []
+    }
+
+    const offlineListExists = etlRoute.children.some((route) => {
+      const normalized = normalizePath(route.path)
+      return (
+        route.name === 'EtlOfflineTaskList' ||
+        normalized === 'offline' ||
+        normalized.endsWith('/offline')
+      )
+    })
+    if (!offlineListExists) {
+      etlRoute.children.push({
+        path: 'offline',
+        name: 'EtlOfflineTaskList',
+        component: () => import('@/views/etl/EtlOfflineTaskList.vue'),
+        meta: {
+          title: '离线同步',
+          icon: 'swap-horizontal-outline',
+          permissions: ['task:list:view'],
+        },
+      })
+    }
+
+    const offlineCreateExists = etlRoute.children.some((route) => {
+      const normalized = normalizePath(route.path)
+      return (
+        route.name === 'EtlOfflineCreate' ||
+        normalized === 'offline/create' ||
+        normalized.endsWith('/offline/create')
+      )
+    })
+    if (!offlineCreateExists) {
+      etlRoute.children.push({
+        path: 'offline/create',
+        name: 'EtlOfflineCreate',
+        component: () => import('@/views/etl/EtlOfflineCreate.vue'),
+        meta: {
+          title: '创建离线任务',
+          hideInMenu: true,
+          activeMenu: '/etl/offline',
+          permissions: ['task:list:view'],
+        },
+      })
+    }
+
+    logger.log('已注入本地扩展路由: EtlOfflineTaskList/EtlOfflineCreate')
     return accessedRoutes
   }
 
@@ -341,15 +447,15 @@ export const usePermissionStore = defineStore('permission', () => {
       path: '/',
       component: LAYOUT,
       redirect: '/dashboard',
-      children: []
+      children: [],
     }
 
     // 转换后端路由为子路由（后端已返回树形结构，直接转换即可）
-    rootRoute.children = backendRoutes.map(backendRoute => convertSingleRoute(backendRoute))
+    rootRoute.children = backendRoutes.map((backendRoute) => convertSingleRoute(backendRoute))
 
     logger.log('后端路由已转换为Vue Router格式:', {
       routeCount: rootRoute.children?.length || 0,
-      routes: rootRoute.children?.map(r => ({ path: r.path, name: r.name }))
+      routes: rootRoute.children?.map((r) => ({path: r.path, name: r.name})),
     })
 
     return [rootRoute]
@@ -373,8 +479,8 @@ export const usePermissionStore = defineStore('permission', () => {
         affix: backendRoute.meta?.affix || false,
         keepAlive: backendRoute.meta?.keepAlive || false,
         permissions: backendRoute.meta?.permissions || [],
-        order: backendRoute.meta?.order
-      }
+        order: backendRoute.meta?.order,
+      },
     }
 
     // 设置重定向
@@ -392,7 +498,7 @@ export const usePermissionStore = defineStore('permission', () => {
 
     // 递归处理子路由
     if (backendRoute.children && backendRoute.children.length > 0) {
-      route.children = backendRoute.children.map(child => convertSingleRoute(child))
+      route.children = backendRoute.children.map((child) => convertSingleRoute(child))
       logger.debug(`路由 ${backendRoute.path} 有 ${backendRoute.children.length} 个子路由`)
     }
 
@@ -456,7 +562,7 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns 找到的路由配置
    */
   function findRouteByPath(path: string): RouteRecordRaw | undefined {
-    return flatRoutes.value.find(route => route.path === path)
+    return flatRoutes.value.find((route) => route.path === path)
   }
 
   /**
@@ -466,7 +572,7 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns 找到的路由配置
    */
   function findRouteByName(name: string): RouteRecordRaw | undefined {
-    return flatRoutes.value.find(route => route.name === name)
+    return flatRoutes.value.find((route) => route.name === name)
   }
 
   /**
@@ -501,6 +607,6 @@ export const usePermissionStore = defineStore('permission', () => {
     filterAsyncRoutes,
     hasRoutePermission,
     findRouteByPath,
-    findRouteByName
+    findRouteByName,
   }
 })
