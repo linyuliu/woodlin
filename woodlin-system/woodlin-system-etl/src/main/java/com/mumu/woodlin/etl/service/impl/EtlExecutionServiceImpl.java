@@ -704,10 +704,15 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         }
     }
 
+    /**
+     * 等待重试，采用指数退避策略。
+     * 退避间隔 = baseInterval × 2^(attempt-1)，最大放大 16 倍（2^4）。
+     */
     private void sleepBeforeRetry(long retryIntervalMillis, int retryAttempt) {
         if (retryIntervalMillis <= 0) {
             return;
         }
+        // cap exponent at 4 to limit max backoff to 16x base interval
         long backoffInterval = retryIntervalMillis * (1L << Math.min(retryAttempt - 1, 4));
         try {
             Thread.sleep(backoffInterval);
