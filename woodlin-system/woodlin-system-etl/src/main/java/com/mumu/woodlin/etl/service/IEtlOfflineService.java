@@ -73,6 +73,13 @@ public interface IEtlOfflineService {
     EtlOfflineCreateJobResponse updateOfflineJob(Long jobId, EtlOfflineJobCreateRequest request);
 
     /**
+     * 删除离线任务。
+     *
+     * @param jobId 任务ID
+     */
+    void deleteOfflineJob(Long jobId);
+
+    /**
      * 查询表列表（支持关键字过滤）。
      *
      * @param datasourceCode 数据源编码
