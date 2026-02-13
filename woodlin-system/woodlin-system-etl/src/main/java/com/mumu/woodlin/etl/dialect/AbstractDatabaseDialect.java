@@ -28,6 +28,18 @@ public abstract class AbstractDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public String buildTruncateSql(String qualifiedTableName) {
+        return "TRUNCATE TABLE " + qualifiedTableName;
+    }
+
+    @Override
+    public String buildInsertSql(String qualifiedTableName, List<String> columns) {
+        String insertColumns = joinQuotedColumns(columns);
+        String insertValues = placeholders(columns.size());
+        return "INSERT INTO " + qualifiedTableName + " (" + insertColumns + ") VALUES (" + insertValues + ")";
+    }
+
+    @Override
     public String buildSelectByPrimaryKeyInSql(
             String qualifiedTableName,
             List<String> selectedColumns,

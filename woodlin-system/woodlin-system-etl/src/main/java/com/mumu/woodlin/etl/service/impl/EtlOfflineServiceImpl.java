@@ -317,6 +317,21 @@ public class EtlOfflineServiceImpl implements IEtlOfflineService {
     }
 
     @Override
+    public void deleteOfflineJob(Long jobId) {
+        if (jobId == null) {
+            throw new BusinessException("任务ID不能为空");
+        }
+        EtlJob existing = etlJobService.getById(jobId);
+        if (existing == null) {
+            throw new BusinessException("任务不存在: " + jobId);
+        }
+        boolean success = etlJobService.deleteJob(jobId);
+        if (!success) {
+            throw new BusinessException("删除离线ETL任务失败");
+        }
+    }
+
+    @Override
     public List<TableMetadata> listTables(String datasourceCode, String schemaName, String keyword, Integer limit) {
         List<TableMetadata> tables = databaseMetadataService.getTables(
             datasourceCode,

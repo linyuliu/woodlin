@@ -43,6 +43,14 @@ public interface DatabaseDialect {
     String buildDeleteAllSql(String qualifiedTableName);
 
     /**
+     * 构建 TRUNCATE 清空表 SQL。
+     *
+     * @param qualifiedTableName 全限定表名
+     * @return SQL
+     */
+    String buildTruncateSql(String qualifiedTableName);
+
+    /**
      * 构建 upsert SQL。
      *
      * @param qualifiedTableName 全限定表名
@@ -51,6 +59,15 @@ public interface DatabaseDialect {
      * @return upsert SQL
      */
     String buildUpsertSql(String qualifiedTableName, List<String> columns, List<String> primaryKeyColumns);
+
+    /**
+     * 构建纯 INSERT SQL（用于无主键表）。
+     *
+     * @param qualifiedTableName 全限定表名
+     * @param columns 写入列
+     * @return INSERT SQL
+     */
+    String buildInsertSql(String qualifiedTableName, List<String> columns);
 
     /**
      * 构建按主键批量查询 SQL。
