@@ -100,6 +100,8 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                 recordSnapshot(job, sourceMetadata, job.getSourceDatasource(), "SOURCE");
                 recordSnapshot(job, targetMetadata, job.getTargetDatasource(), "TARGET");
                 List<MappingSpec> mappings = resolveMappings(job, sourceMetadata, targetMetadata);
+                boolean keyless = sourceMetadata.getPrimaryKeyColumns().isEmpty()
+                        && targetMetadata.getPrimaryKeyColumns().isEmpty();
                 String sourcePrimaryKey = resolveSourcePrimaryKey(sourceMetadata, mappings);
                 String targetPrimaryKey = resolveTargetPrimaryKey(sourcePrimaryKey, mappings, targetMetadata);
                 adjustTargetSchema(job, sourceMetadata, targetMetadata, mappings, targetConnection, targetDialect);
@@ -123,7 +125,8 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                         checkpoint,
                         executionLogId,
                         bucketSize,
-                        retryPolicy
+                        retryPolicy,
+                        keyless
                 );
                 String validationStatus = summary.mismatchBucketCount > 0 ? "FAILED" : "SUCCESS";
                 syncCheckpointService.updateAfterExecution(
@@ -172,7 +175,8 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             EtlSyncCheckpoint checkpoint,
             Long executionLogId,
             int bucketSize,
-            BucketRetryPolicy retryPolicy
+            BucketRetryPolicy retryPolicy,
+            boolean keyless
     ) throws SQLException {
         List<String> sourceColumns = resolveSourceColumns(mappings, sourcePrimaryKey, job.getIncrementalColumn());
         List<String> targetColumns = mappings.stream().map(MappingSpec::targetColumn).distinct().collect(Collectors.toList());
@@ -184,13 +188,20 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             return summary;
         }
         String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
+
+        if (keyless) {
+            return runKeylessSync(job, targetConnection, targetDialect, mappings, targetColumns,
+                    sourceRows, targetTable, executionLogId);
+        }
+
         String upsertSql = targetDialect.buildUpsertSql(targetTable, targetColumns, List.of(targetPrimaryKey));
         Map<Integer, List<Map<String, Object>>> buckets = new HashMap<>();
         for (Map<String, Object> sourceRow : sourceRows) {
             Map<String, Object> transformed = transformRow(sourceRow, mappings);
             Object primaryKeyValue = transformed.get(targetPrimaryKey);
             if (primaryKeyValue == null) {
-                throw new BusinessException("主键字段值为空，无法分桶同步: " + targetPrimaryKey);
+                log.warn("逻辑主键字段值为空，跳过该行: {}", targetPrimaryKey);
+                continue;
             }
             int bucket = Math.floorMod(String.valueOf(primaryKeyValue).hashCode(), bucketSize);
             buckets.computeIfAbsent(bucket, value -> new ArrayList<>()).add(transformed);
@@ -225,7 +236,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             boolean retrySuccess = false;
             while (mismatch && retryCount < retryPolicy.maxRetryTimes()) {
                 retryCount++;
-                sleepBeforeRetry(retryPolicy.retryIntervalMillis());
+                sleepBeforeRetry(retryPolicy.retryIntervalMillis(), retryCount);
                 upsertRows(targetConnection, upsertSql, targetColumns, sourceBucketRows);
                 bucketApplied = true;
                 targetAfter = queryTargetRowsByPrimaryKeys(
@@ -280,6 +291,34 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         return summary;
     }
 
+    /**
+     * 无主键表同步：直接 INSERT 全部数据，跳过桶位校验和重试。
+     */
+    private Summary runKeylessSync(
+            EtlJob job,
+            Connection targetConnection,
+            DatabaseDialect targetDialect,
+            List<MappingSpec> mappings,
+            List<String> targetColumns,
+            List<Map<String, Object>> sourceRows,
+            String targetTable,
+            Long executionLogId
+    ) throws SQLException {
+        log.info("无主键表模式，直接批量插入: table={}, rows={}", targetTable, sourceRows.size());
+        String insertSql = targetDialect.buildInsertSql(targetTable, targetColumns);
+        Summary summary = new Summary();
+        List<Map<String, Object>> transformed = new ArrayList<>(sourceRows.size());
+        for (Map<String, Object> sourceRow : sourceRows) {
+            transformed.add(transformRow(sourceRow, mappings));
+        }
+        upsertRows(targetConnection, insertSql, targetColumns, transformed);
+        summary.extractedRows = sourceRows.size();
+        summary.transformedRows = sourceRows.size();
+        summary.loadedRows = sourceRows.size();
+        summary.appliedBucketCount = 1;
+        return summary;
+    }
+
     private List<Map<String, Object>> fetchSourceRows(
             EtlJob job,
             SyncMode syncMode,
@@ -307,11 +346,14 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             sql.append(" WHERE ").append(String.join(" AND ", conditions));
         }
         String orderColumn = StringUtils.hasText(job.getIncrementalColumn()) ? job.getIncrementalColumn() : sourcePrimaryKey;
-        sql.append(" ORDER BY ").append(sourceDialect.quoteIdentifier(orderColumn)).append(", ")
-                .append(sourceDialect.quoteIdentifier(sourcePrimaryKey));
+        sql.append(" ORDER BY ").append(sourceDialect.quoteIdentifier(orderColumn));
+        if (!orderColumn.equalsIgnoreCase(sourcePrimaryKey)) {
+            sql.append(", ").append(sourceDialect.quoteIdentifier(sourcePrimaryKey));
+        }
+        int batchSize = resolveBatchSize(job);
         List<Map<String, Object>> result = new ArrayList<>();
         try (PreparedStatement statement = sourceConnection.prepareStatement(sql.toString())) {
-            statement.setFetchSize(resolveBatchSize(job));
+            statement.setFetchSize(batchSize);
             if (bindIncremental) {
                 statement.setObject(1, checkpoint.getLastIncrementalValue());
             }
@@ -365,6 +407,8 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         return result;
     }
 
+    private static final int UPSERT_BATCH_SIZE = 500;
+
     private void upsertRows(
             Connection targetConnection,
             String upsertSql,
@@ -372,13 +416,21 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             List<Map<String, Object>> sourceRows
     ) throws SQLException {
         try (PreparedStatement statement = targetConnection.prepareStatement(upsertSql)) {
+            int count = 0;
             for (Map<String, Object> sourceRow : sourceRows) {
                 for (int index = 0; index < targetColumns.size(); index++) {
                     statement.setObject(index + 1, sourceRow.get(targetColumns.get(index)));
                 }
                 statement.addBatch();
+                count++;
+                if (count % UPSERT_BATCH_SIZE == 0) {
+                    statement.executeBatch();
+                    statement.clearBatch();
+                }
             }
-            statement.executeBatch();
+            if (count % UPSERT_BATCH_SIZE != 0) {
+                statement.executeBatch();
+            }
         }
     }
 
@@ -436,21 +488,31 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         return identityMappings;
     }
 
+    /**
+     * 解析源表主键字段。对于无主键表，回退到第一个映射字段作为逻辑主键。
+     */
     private String resolveSourcePrimaryKey(TableSchemaMetadata sourceMetadata, List<MappingSpec> mappings) {
         if (!sourceMetadata.getPrimaryKeyColumns().isEmpty()) {
             return sourceMetadata.getPrimaryKeyColumns().get(0);
         }
+        log.warn("源表 {} 无主键定义，回退使用第一个映射字段作为逻辑主键", sourceMetadata.getTableName());
         if (!mappings.isEmpty()) {
             return mappings.get(0).sourceColumn();
         }
-        throw new BusinessException("无法解析源主键字段");
+        throw new BusinessException("无法解析源主键字段，源表无主键且无字段映射");
     }
 
+    /**
+     * 解析目标表主键字段。对于无主键表，回退到第一个映射字段作为逻辑主键。
+     */
     private String resolveTargetPrimaryKey(
             String sourcePrimaryKey,
             List<MappingSpec> mappings,
             TableSchemaMetadata targetMetadata
     ) {
+        if (!targetMetadata.getPrimaryKeyColumns().isEmpty()) {
+            return targetMetadata.getPrimaryKeyColumns().get(0);
+        }
         String targetPrimaryKey = mappings.stream()
                 .filter(item -> item.sourceColumn().equalsIgnoreCase(sourcePrimaryKey))
                 .map(MappingSpec::targetColumn)
@@ -459,6 +521,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         if (targetMetadata.findColumn(targetPrimaryKey).isEmpty()) {
             throw new BusinessException("目标主键字段不存在: " + targetPrimaryKey);
         }
+        log.warn("目标表无主键定义，使用逻辑主键: {}", targetPrimaryKey);
         return targetPrimaryKey;
     }
 
@@ -558,8 +621,15 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
 
     private void clearTargetTable(EtlJob job, Connection targetConnection, DatabaseDialect targetDialect) throws SQLException {
         String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
-        try (PreparedStatement statement = targetConnection.prepareStatement(targetDialect.buildDeleteAllSql(targetTable))) {
+        String truncateSql = targetDialect.buildTruncateSql(targetTable);
+        try (PreparedStatement statement = targetConnection.prepareStatement(truncateSql)) {
             statement.executeUpdate();
+        } catch (SQLException exception) {
+            log.warn("TRUNCATE 失败，回退使用 DELETE: {}", exception.getMessage());
+            String deleteSql = targetDialect.buildDeleteAllSql(targetTable);
+            try (PreparedStatement statement = targetConnection.prepareStatement(deleteSql)) {
+                statement.executeUpdate();
+            }
         }
     }
 
@@ -634,12 +704,13 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         }
     }
 
-    private void sleepBeforeRetry(long retryIntervalMillis) {
+    private void sleepBeforeRetry(long retryIntervalMillis, int retryAttempt) {
         if (retryIntervalMillis <= 0) {
             return;
         }
+        long backoffInterval = retryIntervalMillis * (1L << Math.min(retryAttempt - 1, 4));
         try {
-            Thread.sleep(retryIntervalMillis);
+            Thread.sleep(backoffInterval);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new BusinessException("桶位重试等待被中断", exception);
