@@ -80,6 +80,13 @@ public class EtlOfflineController {
         return Result.success(etlOfflineService.updateOfflineJob(jobId, request));
     }
 
+    @Operation(summary = "删除离线任务")
+    @DeleteMapping("/jobs/{jobId}")
+    public Result<Void> deleteOfflineJob(@PathVariable("jobId") Long jobId) {
+        etlOfflineService.deleteOfflineJob(jobId);
+        return Result.success();
+    }
+
     @Operation(summary = "查询表列表（支持关键字过滤）")
     @GetMapping("/tables")
     public Result<List<TableMetadata>> listTables(

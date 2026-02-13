@@ -92,6 +92,15 @@ ETL模块依赖以下模块：
 - `bucketSize`: 分桶数（默认 `64`）
 - `mismatchBucketRetryCount`: 差异桶重试次数（默认取 `retry_count`）
 - `mismatchBucketRetryIntervalMs`: 差异桶重试间隔毫秒（默认取 `retry_interval * 1000`）
+- 重试间隔采用指数退避策略（interval × 2^(attempt-1)，最大放大 16 倍）
+
+### 无主键表处理
+
+当源表和目标表均无主键时，ETL 模块自动回退到以下策略：
+
+- 使用第一个映射字段作为逻辑主键进行排序
+- 全量同步模式下先 TRUNCATE 目标表再批量 INSERT
+- 跳过分桶校验与重试，直接写入数据
 
 ## 快速开始
 
