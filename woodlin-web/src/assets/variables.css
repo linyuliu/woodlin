@@ -42,6 +42,24 @@
   --spacing-md: 12px;
   --spacing-lg: 16px;
   --spacing-xl: 24px;
+  --card-padding-sm: 12px 14px;
+  --card-padding-md: 16px;
+  --card-padding-lg: 20px;
+  --card-padding-xl: 24px;
+
+  --success-color: #18a058;
+  --warning-color: #f0a020;
+  --error-color: #d03050;
+  --info-color: #2080f0;
+  --message-info-bg: #e6f7ff;
+  --message-info-border: #91d5ff;
+  --message-info-text: #1890ff;
+  --message-warning-bg: #fff7e6;
+  --message-warning-border: #ffd591;
+  --message-warning-text: #fa8c16;
+  --message-error-bg: #fff2f0;
+  --message-error-border: #ffccc7;
+  --message-error-text: #f5222d;
 
   --transition-fast: 150ms ease;
   --transition-normal: 220ms ease;
@@ -78,4 +96,13 @@
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.36);
   --shadow-md: 0 14px 30px rgba(0, 0, 0, 0.45);
   --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.5);
+  --message-info-bg: rgba(32, 128, 240, 0.16);
+  --message-info-border: rgba(32, 128, 240, 0.35);
+  --message-info-text: #64b5f6;
+  --message-warning-bg: rgba(240, 160, 32, 0.16);
+  --message-warning-border: rgba(240, 160, 32, 0.35);
+  --message-warning-text: #ffb74d;
+  --message-error-bg: rgba(208, 48, 80, 0.16);
+  --message-error-border: rgba(208, 48, 80, 0.35);
+  --message-error-text: #ef5350;
 }

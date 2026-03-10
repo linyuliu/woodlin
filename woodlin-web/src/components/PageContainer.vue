@@ -26,9 +26,11 @@ withDefaults(defineProps<{
         v-if="showSearch"
         :bordered="false"
         class="search-card"
-        content-style="padding: 20px;"
+        :content-style="{padding: 0}"
       >
-        <slot name="search"/>
+        <div class="card-p-md">
+          <slot name="search"/>
+        </div>
       </NCard>
 
       <!-- 主内容卡片 -->
@@ -36,13 +38,15 @@ withDefaults(defineProps<{
         :bordered="false"
         :title="title"
         class="content-card"
-        content-style="padding: 20px;"
+        :content-style="{padding: 0}"
       >
         <template v-if="$slots['header-extra']" #header-extra>
           <slot name="header-extra"/>
         </template>
 
-        <slot/>
+        <div class="card-p-lg">
+          <slot/>
+        </div>
       </NCard>
     </NSpace>
   </div>
@@ -71,7 +75,7 @@ withDefaults(defineProps<{
 }
 
 .content-card :deep(.n-card-header) {
-  padding-bottom: 16px;
+  padding: var(--card-padding-lg) var(--card-padding-lg) var(--card-padding-md);
 }
 
 .content-card :deep(.n-card-header__main) {

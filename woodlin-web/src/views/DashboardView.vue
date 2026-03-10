@@ -7,7 +7,7 @@
  * @since 2025-01-01
  */
 import {NCard, NGrid, NGridItem, NIcon, NProgress, NSpace, NStatistic} from 'naive-ui'
-import {h} from 'vue'
+import {h, type Component} from 'vue'
 import {
   BusinessOutline,
   CloudOutline,
@@ -87,7 +87,7 @@ const quickActions = [
 /**
  * 渲染统计图标
  */
-const renderIcon = (icon: any, color: string, bgColor: string) => {
+const renderIcon = (icon: Component, color: string, bgColor: string) => {
   return h(
     'div',
     {
@@ -114,25 +114,27 @@ const renderIcon = (icon: any, color: string, bgColor: string) => {
         <NCard
           :bordered="false"
           class="stat-card"
-          content-style="padding: 20px;"
+          :content-style="{padding: 0}"
         >
-          <div class="stat-content">
-            <div class="stat-info">
-              <span class="stat-label">{{ stat.label }}</span>
-              <div class="stat-value-row">
-                <NStatistic :value="stat.value" class="stat-number">
-                  <template #suffix>
-                    <span class="stat-suffix">{{ stat.suffix }}</span>
-                  </template>
-                </NStatistic>
+          <div class="card-p-lg">
+            <div class="stat-content">
+              <div class="stat-info">
+                <span class="stat-label">{{ stat.label }}</span>
+                <div class="stat-value-row">
+                  <NStatistic :value="stat.value" class="stat-number">
+                    <template #suffix>
+                      <span class="stat-suffix">{{ stat.suffix }}</span>
+                    </template>
+                  </NStatistic>
+                </div>
+                <div :class="{ 'trend-up': stat.trendUp, 'trend-down': !stat.trendUp }"
+                     class="stat-trend">
+                  <span>{{ stat.trend }}</span>
+                  <span class="trend-text">较昨日</span>
+                </div>
               </div>
-              <div :class="{ 'trend-up': stat.trendUp, 'trend-down': !stat.trendUp }"
-                   class="stat-trend">
-                <span>{{ stat.trend }}</span>
-                <span class="trend-text">较昨日</span>
-              </div>
+              <component :is="renderIcon(stat.icon, stat.color, stat.bgColor)"/>
             </div>
-            <component :is="renderIcon(stat.icon, stat.color, stat.bgColor)"/>
           </div>
         </NCard>
       </NGridItem>
@@ -145,7 +147,7 @@ const renderIcon = (icon: any, color: string, bgColor: string) => {
         <NCard
           :bordered="false"
           class="overview-card"
-          content-style="padding: 24px;"
+          :content-style="{padding: 0}"
           title="系统概览"
         >
           <template #header-extra>
@@ -154,43 +156,45 @@ const renderIcon = (icon: any, color: string, bgColor: string) => {
             </NIcon>
           </template>
 
-          <div class="overview-content">
-            <div class="welcome-section">
-              <h3>👋 欢迎使用 Woodlin 多租户管理系统！</h3>
-              <p class="description">
-                基于 Spring Boot 3 + Vue 3 + TypeScript + Naive UI 构建的现代化企业级多租户中后台管理系统框架。
-              </p>
-            </div>
+          <div class="card-p-xl">
+            <div class="overview-content">
+              <div class="welcome-section">
+                <h3>👋 欢迎使用 Woodlin 多租户管理系统！</h3>
+                <p class="description">
+                  基于 Spring Boot 3 + Vue 3 + TypeScript + Naive UI 构建的现代化企业级多租户中后台管理系统框架。
+                </p>
+              </div>
 
-            <div class="features-section">
-              <h4>✨ 核心功能特性</h4>
-              <div class="features-grid">
-                <div class="feature-item">
-                  <div class="feature-icon">🔐</div>
-                  <div class="feature-text">
-                    <h5>用户权限管理</h5>
-                    <p>完善的RBAC权限控制体系</p>
+              <div class="features-section">
+                <h4>✨ 核心功能特性</h4>
+                <div class="features-grid">
+                  <div class="feature-item">
+                    <div class="feature-icon">🔐</div>
+                    <div class="feature-text">
+                      <h5>用户权限管理</h5>
+                      <p>完善的RBAC权限控制体系</p>
+                    </div>
                   </div>
-                </div>
-                <div class="feature-item">
-                  <div class="feature-icon">🏢</div>
-                  <div class="feature-text">
-                    <h5>组织架构管理</h5>
-                    <p>灵活的部门层级结构</p>
+                  <div class="feature-item">
+                    <div class="feature-icon">🏢</div>
+                    <div class="feature-text">
+                      <h5>组织架构管理</h5>
+                      <p>灵活的部门层级结构</p>
+                    </div>
                   </div>
-                </div>
-                <div class="feature-item">
-                  <div class="feature-icon">🏠</div>
-                  <div class="feature-text">
-                    <h5>多租户隔离</h5>
-                    <p>完整的租户数据隔离方案</p>
+                  <div class="feature-item">
+                    <div class="feature-icon">🏠</div>
+                    <div class="feature-text">
+                      <h5>多租户隔离</h5>
+                      <p>完整的租户数据隔离方案</p>
+                    </div>
                   </div>
-                </div>
-                <div class="feature-item">
-                  <div class="feature-icon">📊</div>
-                  <div class="feature-text">
-                    <h5>实时监控</h5>
-                    <p>系统运行状态实时追踪</p>
+                  <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-text">
+                      <h5>实时监控</h5>
+                      <p>系统运行状态实时追踪</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -206,24 +210,26 @@ const renderIcon = (icon: any, color: string, bgColor: string) => {
           <NCard
             :bordered="false"
             class="status-card"
-            content-style="padding: 20px;"
+            :content-style="{padding: 0}"
             title="系统状态"
           >
-            <div class="status-list">
-              <div v-for="item in systemStatus" :key="item.label" class="status-item">
-                <div class="status-header">
-                  <span class="status-label">{{ item.label }}</span>
-                  <span class="status-value">{{ item.value }}%</span>
+            <div class="card-p-lg">
+              <div class="status-list">
+                <div v-for="item in systemStatus" :key="item.label" class="status-item">
+                  <div class="status-header">
+                    <span class="status-label">{{ item.label }}</span>
+                    <span class="status-value">{{ item.value }}%</span>
+                  </div>
+                  <NProgress
+                    :border-radius="4"
+                    :color="item.color"
+                    :height="8"
+                    :percentage="item.value"
+                    :rail-color="'rgba(0,0,0,0.05)'"
+                    :show-indicator="false"
+                    type="line"
+                  />
                 </div>
-                <NProgress
-                  :border-radius="4"
-                  :color="item.color"
-                  :height="8"
-                  :percentage="item.value"
-                  :rail-color="'rgba(0,0,0,0.05)'"
-                  :show-indicator="false"
-                  type="line"
-                />
               </div>
             </div>
           </NCard>
@@ -232,23 +238,25 @@ const renderIcon = (icon: any, color: string, bgColor: string) => {
           <NCard
             :bordered="false"
             class="quick-card"
-            content-style="padding: 16px;"
+            :content-style="{padding: 0}"
             title="快捷操作"
           >
-            <div class="quick-actions">
-              <router-link
-                v-for="action in quickActions"
-                :key="action.label"
-                :to="action.path"
-                class="quick-item"
-              >
-                <div :style="{ background: action.color + '15' }" class="quick-icon">
-                  <NIcon :color="action.color" :size="20">
-                    <component :is="action.icon"/>
-                  </NIcon>
-                </div>
-                <span class="quick-label">{{ action.label }}</span>
-              </router-link>
+            <div class="card-p-md">
+              <div class="quick-actions">
+                <router-link
+                  v-for="action in quickActions"
+                  :key="action.label"
+                  :to="action.path"
+                  class="quick-item"
+                >
+                  <div :style="{ background: action.color + '15' }" class="quick-icon">
+                    <NIcon :color="action.color" :size="20">
+                      <component :is="action.icon"/>
+                    </NIcon>
+                  </div>
+                  <span class="quick-label">{{ action.label }}</span>
+                </router-link>
+              </div>
             </div>
           </NCard>
         </NSpace>
