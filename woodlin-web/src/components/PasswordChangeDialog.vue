@@ -64,7 +64,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { NModal, NForm, NFormItem, NInput, NIcon, useMessage } from 'naive-ui'
 import { InformationCircle } from '@vicons/ionicons5'
-import axios from 'axios'
+import axios, {type AxiosError} from 'axios'
 
 interface Props {
   show: boolean
@@ -217,9 +217,10 @@ const handleConfirm = async () => {
     resetForm()
     emit('success')
     visible.value = false
-  } catch (error: any) {
-    if (error.response?.data?.message) {
-      message.error(error.response.data.message)
+  } catch (error) {
+    const axiosError = error as AxiosError<{message?: string}>
+    if (axiosError.response?.data?.message) {
+      message.error(axiosError.response.data.message)
     } else {
       message.error('密码修改失败，请重试')
     }
@@ -250,53 +251,56 @@ watch(visible, (newVisible) => {
 
 .message {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-  border-radius: 4px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid;
   font-size: 14px;
 }
 
 .message.info {
-  background-color: #e6f7ff;
-  border: 1px solid #91d5ff;
-  color: #1890ff;
+  background-color: var(--message-info-bg);
+  border-color: var(--message-info-border);
+  color: var(--message-info-text);
 }
 
 .message.warning {
-  background-color: #fff7e6;
-  border: 1px solid #ffd591;
-  color: #fa8c16;
+  background-color: var(--message-warning-bg);
+  border-color: var(--message-warning-border);
+  color: var(--message-warning-text);
 }
 
 .message.error {
-  background-color: #fff2f0;
-  border: 1px solid #ffccc7;
-  color: #f5222d;
+  background-color: var(--message-error-bg);
+  border-color: var(--message-error-border);
+  color: var(--message-error-text);
 }
 
 .password-tips {
   margin-top: 16px;
-  padding: 12px;
-  background-color: #fafafa;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background-color: var(--bg-color-tertiary);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-md);
 }
 
 .password-tips h4 {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: #333;
+  font-weight: 600;
+  color: var(--text-color-primary);
 }
 
 .password-tips ul {
   margin: 0;
   padding-left: 20px;
-  font-size: 12px;
-  color: #666;
+  color: var(--text-color-secondary);
 }
 
 .password-tips li {
-  margin-bottom: 4px;
+  margin: 4px 0;
+  font-size: 12px;
 }
 </style>
