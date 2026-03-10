@@ -399,8 +399,7 @@ const handleNextStep = async () => {
   if (currentStep.value < TOTAL_STEPS) {
     currentStep.value += 1
     if (currentStep.value === 3) {
-      await loadSchemasAndTables('source')
-      await loadSchemasAndTables('target')
+      await Promise.all([loadSchemasAndTables('source'), loadSchemasAndTables('target')])
     }
   }
 }
