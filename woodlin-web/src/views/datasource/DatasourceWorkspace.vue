@@ -88,7 +88,7 @@ const selectedTable = ref<TableMetadata | null>(null)
 const selectedTreeKeys = ref<string[]>([])
 const expandedKeys = ref<string[]>([])
 const visibleColumnKeys = ref<ColumnFieldKey[]>([...DEFAULT_COLUMN_KEYS])
-const cacheInfoList = ref<any[]>([])
+const cacheInfoList = ref<Array<{updatedAt: number}>>([])
 
 const schemaCount = computed(() => {
   const schemaNames = schemas.value.length > 0 ? schemas.value.map(item => item.schemaName) : ['__default__']

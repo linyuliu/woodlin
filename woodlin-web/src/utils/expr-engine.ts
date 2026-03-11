@@ -303,80 +303,107 @@ export function parse(input: string): Expr {
 }
 
 // 评估上下文类型
-export type EvalContext = Record<string, any>;
+export type EvalContext = Record<string, unknown>;
+type BuiltinFunction = (...args: unknown[]) => unknown;
 
 // 内置函数库
-const BUILTIN_FUNCTIONS: Record<string, (...args: any[]) => any> = {
+const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
     // 数学函数
-    abs: Math.abs,
-    ceil: Math.ceil,
-    floor: Math.floor,
-    round: Math.round,
-    max: Math.max,
-    min: Math.min,
-    sqrt: Math.sqrt,
-    pow: Math.pow,
+    abs: Math.abs as BuiltinFunction,
+    ceil: Math.ceil as BuiltinFunction,
+    floor: Math.floor as BuiltinFunction,
+    round: Math.round as BuiltinFunction,
+    max: Math.max as BuiltinFunction,
+    min: Math.min as BuiltinFunction,
+    sqrt: Math.sqrt as BuiltinFunction,
+    pow: Math.pow as BuiltinFunction,
     
     // 字符串函数
-    len: (s: any) => String(s).length,
-    upper: (s: any) => String(s).toUpperCase(),
-    lower: (s: any) => String(s).toLowerCase(),
-    trim: (s: any) => String(s).trim(),
-    substr: (s: any, start: number, len?: number) => String(s).substr(start, len),
+    len: (...args: unknown[]) => String(args[0]).length,
+    upper: (...args: unknown[]) => String(args[0]).toUpperCase(),
+    lower: (...args: unknown[]) => String(args[0]).toLowerCase(),
+    trim: (...args: unknown[]) => String(args[0]).trim(),
+    substr: (...args: unknown[]) => {
+        const source = String(args[0]);
+        const start = Number(args[1] ?? 0);
+        const len = args[2] !== undefined ? Number(args[2]) : undefined;
+        return source.substr(start, len);
+    },
     
     // 数组函数
-    count: (arr: any[]) => Array.isArray(arr) ? arr.length : 0,
-    sum: (arr: any[]) => Array.isArray(arr) ? arr.reduce((a, b) => a + Number(b), 0) : 0,
-    avg: (arr: any[]) => {
+    count: (...args: unknown[]) => {
+        const arr = args[0];
+        return Array.isArray(arr) ? arr.length : 0;
+    },
+    sum: (...args: unknown[]) => {
+        const arr = args[0];
+        return Array.isArray(arr) ? arr.reduce<number>((a, b) => a + Number(b), 0) : 0;
+    },
+    avg: (...args: unknown[]) => {
+        const arr = args[0];
         if (!Array.isArray(arr) || arr.length === 0) {return 0;}
-        return arr.reduce((a, b) => a + Number(b), 0) / arr.length;
+        return arr.reduce<number>((a, b) => a + Number(b), 0) / arr.length;
     },
     
     // 高阶函数
-    countIf: (arr: any[], predicate: (item: any) => boolean) => {
+    countIf: (...args: unknown[]) => {
+        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
         if (!Array.isArray(arr)) {return 0;}
+        if (typeof predicate !== 'function') {return 0;}
         return arr.filter(predicate).length;
     },
-    filter: (arr: any[], predicate: (item: any) => boolean) => {
+    filter: (...args: unknown[]) => {
+        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
         if (!Array.isArray(arr)) {return [];}
+        if (typeof predicate !== 'function') {return [];}
         return arr.filter(predicate);
     },
-    map: (arr: any[], fn: (item: any) => any) => {
+    map: (...args: unknown[]) => {
+        const [arr, fn] = args as [unknown, ((item: unknown) => unknown)?];
         if (!Array.isArray(arr)) {return [];}
+        if (typeof fn !== 'function') {return [];}
         return arr.map(fn);
     },
-    some: (arr: any[], predicate: (item: any) => boolean) => {
+    some: (...args: unknown[]) => {
+        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
         if (!Array.isArray(arr)) {return false;}
+        if (typeof predicate !== 'function') {return false;}
         return arr.some(predicate);
     },
-    every: (arr: any[], predicate: (item: any) => boolean) => {
+    every: (...args: unknown[]) => {
+        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
         if (!Array.isArray(arr)) {return false;}
+        if (typeof predicate !== 'function') {return false;}
         return arr.every(predicate);
     },
 };
 
 // 解析引用路径（支持嵌套属性和索引）
-function resolveRef(path: string, context: EvalContext): any {
+function resolveRef(path: string, context: EvalContext): unknown {
     // 处理简单的点分隔路径和数组索引
     const parts = path.split(/\.|\[/).map(p => p.replace(/\]$/, ''));
-    let value: any = context;
+    let value: unknown = context;
     
     for (const part of parts) {
         if (value === undefined || value === null) {return undefined;}
         
         // 如果是数字，当作数组索引
-        if (/^\d+$/.test(part)) {
+        if (/^\d+$/.test(part) && Array.isArray(value)) {
             value = value[Number(part)];
-        } else {
-            value = value[part];
+            continue;
         }
+        if (value && typeof value === 'object') {
+            value = (value as Record<string, unknown>)[part];
+            continue;
+        }
+        return undefined;
     }
     
     return value;
 }
 
 // 评估表达式
-export function evaluate(expr: Expr, context: EvalContext = {}): any {
+export function evaluate(expr: Expr, context: EvalContext = {}): unknown {
     switch (expr.type) {
         case 'number':
             return expr.value;
@@ -396,6 +423,8 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
         case 'binary': {
             const left = evaluate(expr.left, context);
             const right = evaluate(expr.right, context);
+            const leftComparable = left as string | number | boolean;
+            const rightComparable = right as string | number | boolean;
             
             switch (expr.op) {
                 case '+': return Number(left) + Number(right);
@@ -403,11 +432,13 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
                 case '*': return Number(left) * Number(right);
                 case '/': return Number(left) / Number(right);
                 case '%': return Number(left) % Number(right);
-                case '<': return left < right;
-                case '>': return left > right;
-                case '<=': return left <= right;
-                case '>=': return left >= right;
+                case '<': return leftComparable < rightComparable;
+                case '>': return leftComparable > rightComparable;
+                case '<=': return leftComparable <= rightComparable;
+                case '>=': return leftComparable >= rightComparable;
+                // eslint-disable-next-line eqeqeq
                 case '==': return left == right;
+                // eslint-disable-next-line eqeqeq
                 case '!=': return left != right;
                 case '===': return left === right;
                 case '!==': return left !== right;
@@ -433,7 +464,7 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
             const args = expr.args.map(arg => {
                 if (arg.type === 'lambda') {
                     // 返回一个函数，在调用时评估 lambda body
-                    return (param: any) => {
+                    return (param: unknown) => {
                         const newContext = {...context, [arg.param]: param};
                         return evaluate(arg.body, newContext);
                     };
@@ -446,7 +477,7 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
             
         case 'lambda':
             // Lambda 本身不直接评估，需要在函数调用时处理
-            return (param: any) => {
+            return (param: unknown) => {
                 const newContext = {...context, [expr.param]: param};
                 return evaluate(expr.body, newContext);
             };
@@ -457,7 +488,7 @@ export function evaluate(expr: Expr, context: EvalContext = {}): any {
 }
 
 // 便捷函数：解析并评估表达式
-export function exec(input: string, context: EvalContext = {}): any {
+export function exec(input: string, context: EvalContext = {}): unknown {
     const expr = parse(input);
     return evaluate(expr, context);
 }

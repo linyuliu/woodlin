@@ -46,7 +46,7 @@ export function base64Decode(str: string): string {
  * @param key 加密密钥
  * @returns 加密后的字符串
  */
-export function simpleEncrypt(data: any, key: string = 'woodlin_secret_key'): string {
+export function simpleEncrypt(data: unknown, key: string = 'woodlin_secret_key'): string {
   try {
     const str = typeof data === 'string' ? data : JSON.stringify(data)
     let encrypted = ''
@@ -59,7 +59,7 @@ export function simpleEncrypt(data: any, key: string = 'woodlin_secret_key'): st
     return base64Encode(encrypted)
   } catch (error) {
     console.error('加密失败:', error)
-    return data
+    return String(data)
   }
 }
 
@@ -70,7 +70,7 @@ export function simpleEncrypt(data: any, key: string = 'woodlin_secret_key'): st
  * @param key 解密密钥
  * @returns 解密后的数据
  */
-export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_key'): any {
+export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_key'): unknown {
   try {
     const decoded = base64Decode(encrypted)
     let decrypted = ''
@@ -122,7 +122,7 @@ export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_k
  * @param _publicKey 公钥（未使用，占位参数）
  * @returns 加密后的字符串
  */
-export function rsaEncrypt(data: any, _publicKey?: string): string {
+export function rsaEncrypt(data: unknown, _publicKey?: string): string {
   console.warn('TODO: 实现RSA加密，当前使用简单加密代替')
   return simpleEncrypt(data)
 }
@@ -135,7 +135,7 @@ export function rsaEncrypt(data: any, _publicKey?: string): string {
  * @param _privateKey 私钥（未使用，占位参数）
  * @returns 解密后的数据
  */
-export function rsaDecrypt(encrypted: string, _privateKey?: string): any {
+export function rsaDecrypt(encrypted: string, _privateKey?: string): unknown {
   console.warn('TODO: 实现RSA解密，当前使用简单解密代替')
   return simpleDecrypt(encrypted)
 }

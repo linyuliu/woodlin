@@ -346,6 +346,11 @@ import { NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NInputNumber, NSwitch
 import { getConfigsByCategory, batchUpdateConfig, type ConfigUpdateDto } from '@/api/config'
 
 const message = useMessage()
+interface ConfigApiResult {
+  code: number
+  data?: Record<string, string>
+  msg?: string
+}
 
 // 加载状态
 const saving = ref(false)
@@ -436,7 +441,7 @@ const sm4ModeOptions = [
 // 加载API加密配置
 async function loadApiEncryptionConfig() {
   try {
-    const res: any = await getConfigsByCategory('api.encryption')
+    const res = await getConfigsByCategory('api.encryption') as unknown as ConfigApiResult
     if (res.code === 200 && res.data) {
       const configs = res.data
       apiEncryptionConfig.enabled = configs['api.encryption.enabled'] === 'true'
@@ -464,7 +469,7 @@ async function loadApiEncryptionConfig() {
 // 加载密码策略配置
 async function loadPasswordPolicyConfig() {
   try {
-    const res: any = await getConfigsByCategory('password.policy')
+    const res = await getConfigsByCategory('password.policy') as unknown as ConfigApiResult
     if (res.code === 200 && res.data) {
       const configs = res.data
       passwordPolicyConfig.enabled = configs['password.policy.enabled'] === 'true'
@@ -489,7 +494,7 @@ async function loadPasswordPolicyConfig() {
 // 加载活动监控配置
 async function loadActivityMonitoringConfig() {
   try {
-    const res: any = await getConfigsByCategory('activity.monitoring')
+    const res = await getConfigsByCategory('activity.monitoring') as unknown as ConfigApiResult
     if (res.code === 200 && res.data) {
       const configs = res.data
       activityMonitoringConfig.enabled = configs['activity.monitoring.enabled'] === 'true'
@@ -530,7 +535,7 @@ async function handleSaveApiEncryption() {
       }
     }
     
-    const res: any = await batchUpdateConfig(updateData)
+    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
     if (res.code === 200) {
       message.success('API加密配置保存成功')
     } else {
@@ -567,7 +572,7 @@ async function handleSavePasswordPolicy() {
       }
     }
     
-    const res: any = await batchUpdateConfig(updateData)
+    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
     if (res.code === 200) {
       message.success('密码策略配置保存成功')
     } else {
@@ -597,7 +602,7 @@ async function handleSaveActivityMonitoring() {
       }
     }
     
-    const res: any = await batchUpdateConfig(updateData)
+    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
     if (res.code === 200) {
       message.success('活动监控配置保存成功')
     } else {

@@ -468,8 +468,7 @@ export const usePermissionStore = defineStore('permission', () => {
    * @returns Vue Router路由配置
    */
   function convertSingleRoute(backendRoute: BackendRoute): RouteRecordRaw {
-    // 构建路由对象 - 使用 any 类型避免 TypeScript 严格检查
-    const route: any = {
+    const route: Partial<RouteRecordRaw> = {
       path: backendRoute.path,
       name: backendRoute.name,
       meta: {

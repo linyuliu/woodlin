@@ -15,7 +15,7 @@ import { logger } from './logger'
 /**
  * 后端统一响应格式
  */
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   code: number | string  // 支持 number 或 string 类型，以兼容不同的序列化配置
   message: string
   data: T
@@ -141,8 +141,9 @@ request.interceptors.response.use(
     const { data } = response
     
     // 解密响应数据
-    if (extConfig.decrypt && data.data?.encrypted) {
-      data.data = simpleDecrypt(data.data.encrypted)
+    const encryptedPayload = data.data as {encrypted?: string} | undefined
+    if (extConfig.decrypt && encryptedPayload?.encrypted) {
+      data.data = simpleDecrypt(encryptedPayload.encrypted)
     }
 
     const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
@@ -156,9 +157,9 @@ request.interceptors.response.use(
     })
     
     // 根据后端的响应格式进行统一处理
-    // 假设后端返回格式为 { code: number, message: string, data: any }
+    // 假设后端返回格式为 { code: number, message: string, data: unknown }
     // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
-    if (statusCode != null && statusCode !== 200) {
+    if (statusCode !== null && statusCode !== undefined && statusCode !== 200) {
       // 排查阶段：仅记录业务码异常，不在请求层直接拦截，避免误判导致页面拿不到数据
       logger.warn('[HTTP][BUSINESS_CODE_NOT_200]', {
         traceId: traceConfig.__traceId,
@@ -173,9 +174,9 @@ request.interceptors.response.use(
     // 1) 统一包装格式：{ code, message, data }
     // 2) 直接返回业务对象/数组
     if (data && typeof data === 'object' && 'data' in data) {
-      return data.data
+      return data.data as never
     }
-    return data as unknown
+    return data as never
   },
   (error) => {
     const traceConfig = (error.config || {}) as TraceableRequestConfig
@@ -242,7 +243,7 @@ export const api = {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  get: <T = any>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
+  get: <T = unknown>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.get<ApiResponse<T>>(url, config).then(res => res as unknown as T),
   
   /**
@@ -252,7 +253,7 @@ export const api = {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  post: <T = any>(url: string, data?: any, config?: ExtendedAxiosRequestConfig): Promise<T> =>
+  post: <T = unknown>(url: string, data?: unknown, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.post<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
   
   /**
@@ -262,7 +263,7 @@ export const api = {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  put: <T = any>(url: string, data?: any, config?: ExtendedAxiosRequestConfig): Promise<T> =>
+  put: <T = unknown>(url: string, data?: unknown, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.put<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
   
   /**
@@ -271,7 +272,7 @@ export const api = {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  delete: <T = any>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
+  delete: <T = unknown>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.delete<ApiResponse<T>>(url, config).then(res => res as unknown as T),
     
   /**
@@ -281,7 +282,7 @@ export const api = {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  patch: <T = any>(url: string, data?: any, config?: ExtendedAxiosRequestConfig): Promise<T> =>
+  patch: <T = unknown>(url: string, data?: unknown, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.patch<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
 }
 
