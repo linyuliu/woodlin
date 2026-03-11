@@ -7,7 +7,7 @@
  * @since 2025-01-01
  */
 
-import axios, { type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
 import { getConfig } from '@/config'
 import { simpleEncrypt, simpleDecrypt } from './crypto'
 import { logger } from './logger'
@@ -134,7 +134,7 @@ request.interceptors.request.use(
  * 在收到响应后执行，可以统一处理响应数据、解密数据、错误码等
  */
 request.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  (response) => {
     const extConfig = response.config as ExtendedAxiosRequestConfig
     const traceConfig = response.config as TraceableRequestConfig
     
@@ -174,9 +174,9 @@ request.interceptors.response.use(
     // 1) 统一包装格式：{ code, message, data }
     // 2) 直接返回业务对象/数组
     if (data && typeof data === 'object' && 'data' in data) {
-      return data.data as never
+      return data.data
     }
-    return data as never
+    return data
   },
   (error) => {
     const traceConfig = (error.config || {}) as TraceableRequestConfig

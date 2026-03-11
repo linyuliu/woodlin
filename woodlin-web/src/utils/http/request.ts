@@ -130,7 +130,7 @@ class HttpRequest {
       }
       
       // 业务失败
-        throw new Error(apiResponse.message || '请求失败')
+        return Promise.reject(new Error(apiResponse.message || '请求失败')) as T
       }
     
     // 直接返回数据
@@ -159,18 +159,17 @@ class HttpRequest {
       const retryCount = requestOptions?.retryCount ?? httpConfig.retryCount
       const retryDelay = requestOptions?.retryDelay ?? httpConfig.retryDelay
       
-      const currentRetry = retryConfig?.__retryCount ?? 0
+      if (!retryConfig) {
+        return Promise.reject(error)
+      }
+      const currentRetry = retryConfig.__retryCount ?? 0
       
       if (currentRetry < retryCount) {
-        if (retryConfig) {
-          retryConfig.__retryCount = currentRetry + 1
-        }
+        retryConfig.__retryCount = currentRetry + 1
         
         // 延迟后重试
         await new Promise(resolve => setTimeout(resolve, retryDelay))
-        if (retryConfig) {
-          return this.axiosInstance.request(retryConfig)
-        }
+        return this.axiosInstance.request(retryConfig)
       }
     }
 
