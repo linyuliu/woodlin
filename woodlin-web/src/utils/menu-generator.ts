@@ -10,6 +10,7 @@ import { h, type Component } from 'vue'
 import { NIcon, type MenuOption } from 'naive-ui'
 import type { RouteRecordRaw } from 'vue-router'
 import * as Icons from '@vicons/ionicons5'
+type MenuOptionWithRoute = MenuOption & {route?: RouteRecordRaw}
 
 /**
  * 内置的图标别名映射，兼容后端返回的简短/旧标识
@@ -64,7 +65,7 @@ function renderIcon(icon?: Component | string, fallbackKey?: string) {
 
     if (typeof candidate === 'string') {
       const raw = candidate.trim()
-      if (!raw) continue
+      if (!raw) {continue}
 
       // 1) 直接尝试后端返回的组件名（可能已是 PascalCase）
       const direct = Icons[raw as keyof typeof Icons]
@@ -130,11 +131,11 @@ export function generateMenuFromRoutes(
       ? route.path
       : `${parentPath}/${route.path}`.replace(/\/+/g, '/')
 
-    const option: MenuOption = {
+    const option: MenuOptionWithRoute = {
       key: fullPath,
       label: (route.meta?.title as string) || route.name?.toString() || route.path,
     }
-    ;(option as any).route = route
+    option.route = route
 
     // 图标兼容：优先 meta.icon；否则用路由名称/路径的别名映射
     const fallbackKey = (route.name as string) || route.path

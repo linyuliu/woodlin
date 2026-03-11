@@ -28,20 +28,19 @@
  * const debouncedSave = debounce(saveData, 1000, true)
  * ```
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number = 300,
   immediate: boolean = false
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null
 
-  return function (this: any, ...args: Parameters<T>) {
-    const context = this
+  return function (this: unknown, ...args: Parameters<T>) {
 
     const later = () => {
       timeout = null
       if (!immediate) {
-        func.apply(context, args)
+        func.apply(this, args)
       }
     }
 
@@ -54,7 +53,7 @@ export function debounce<T extends (...args: any[]) => any>(
     timeout = setTimeout(later, wait)
 
     if (callNow) {
-      func.apply(context, args)
+      func.apply(this, args)
     }
   }
 }
@@ -78,7 +77,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * cancel()
  * ```
  */
-export function debounceCancelable<T extends (...args: any[]) => any>(
+export function debounceCancelable<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number = 300,
   immediate: boolean = false
@@ -88,13 +87,12 @@ export function debounceCancelable<T extends (...args: any[]) => any>(
 } {
   let timeout: ReturnType<typeof setTimeout> | null = null
 
-  const run = function (this: any, ...args: Parameters<T>) {
-    const context = this
+  const run = function (this: unknown, ...args: Parameters<T>) {
 
     const later = () => {
       timeout = null
       if (!immediate) {
-        func.apply(context, args)
+        func.apply(this, args)
       }
     }
 
@@ -107,7 +105,7 @@ export function debounceCancelable<T extends (...args: any[]) => any>(
     timeout = setTimeout(later, wait)
 
     if (callNow) {
-      func.apply(context, args)
+      func.apply(this, args)
     }
   }
 
@@ -142,7 +140,7 @@ export function debounceCancelable<T extends (...args: any[]) => any>(
  * // <input v-model="keyword" @input="search(keyword)" />
  * ```
  */
-export function useDebounceFn<T extends (...args: any[]) => any>(
+export function useDebounceFn<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number = 300
 ): (...args: Parameters<T>) => void {

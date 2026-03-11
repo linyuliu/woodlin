@@ -10,13 +10,11 @@ import {
   NFormItem,
   NIcon,
   NInput,
-  NCard,
   NPopconfirm,
   NSpace,
   NTag,
   NModal,
   NSelect,
-  NInputNumber,
   useMessage,
   type DataTableColumns,
   type FormInst
@@ -201,17 +199,18 @@ const loadUsers = async () => {
 const loadDepsAndRoles = async () => {
   const depts = await fetchDeptTree()
   const roles = await fetchRoleTree()
-  const buildDeptOptions = (nodes: DeptNode[], list: any[] = []) => {
+  type UserOption = { label: string; value: number }
+  const buildDeptOptions = (nodes: DeptNode[], list: UserOption[] = []) => {
     nodes.forEach(n => {
       list.push({ label: n.deptName, value: n.deptId })
-      if (n.children) buildDeptOptions(n.children, list)
+      if (n.children) {buildDeptOptions(n.children, list)}
     })
     return list
   }
-  const buildRoleOptions = (nodes: RoleNode[], list: any[] = []) => {
+  const buildRoleOptions = (nodes: RoleNode[], list: UserOption[] = []) => {
     nodes.forEach(n => {
       list.push({ label: n.roleName, value: n.roleId })
-      if (n.children) buildRoleOptions(n.children, list)
+      if (n.children) {buildRoleOptions(n.children, list)}
     })
     return list
   }

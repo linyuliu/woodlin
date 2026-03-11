@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -139,7 +139,7 @@ const openEditRole = () => {
   }
   Object.assign(roleForm, selectedRole.value)
   // 兼容字段名
-  roleForm.sortOrder = (selectedRole.value as any).sortOrder ?? selectedRole.value.roleSort ?? 0
+  roleForm.sortOrder = (selectedRole.value as SysRole & {sortOrder?: number}).sortOrder ?? selectedRole.value.roleSort ?? 0
   roleModalVisible.value = true
 }
 

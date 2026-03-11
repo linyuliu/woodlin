@@ -38,7 +38,6 @@ class HttpRequest {
   
   /** 请求队列（用于取消重复请求） */
   private pendingRequests: Map<string, AbortController> = new Map()
-
   constructor() {
     const config = getConfig()
     
@@ -99,7 +98,7 @@ class HttpRequest {
         const requestKey = this.getRequestKey(response.config)
         this.pendingRequests.delete(requestKey)
 
-        return this.handleResponse(response)
+        return this.handleResponse(response) as never
       },
       async (error: AxiosError) => {
         // 移除pending请求
@@ -119,7 +118,7 @@ class HttpRequest {
    * @param response Axios响应对象
    * @returns 处理后的数据
    */
-  private handleResponse(response: AxiosResponse): any {
+  private handleResponse(response: AxiosResponse): unknown {
     const { data } = response
     
     // 如果响应数据符合ApiResponse格式
@@ -145,14 +144,15 @@ class HttpRequest {
    * @param error Axios错误对象
    * @returns Promise.reject
    */
-  private async handleError(error: AxiosError): Promise<any> {
+  private async handleError(error: AxiosError): Promise<never> {
     // 请求被取消
     if (axios.isCancel(error)) {
       return Promise.reject(new Error('请求已取消'))
     }
 
     const { response, config } = error
-    const requestOptions = config as RequestOptions
+    const retryConfig = config as (RequestOptions & {__retryCount?: number}) | undefined
+    const requestOptions = retryConfig as RequestOptions | undefined
 
     // 请求超时，尝试重试
     if (error.code === 'ECONNABORTED' && requestOptions?.enableRetry !== false) {
@@ -160,16 +160,18 @@ class HttpRequest {
       const retryCount = requestOptions?.retryCount ?? httpConfig.retryCount
       const retryDelay = requestOptions?.retryDelay ?? httpConfig.retryDelay
       
-      // @ts-ignore
-      const currentRetry = config.__retryCount || 0
+      const currentRetry = retryConfig?.__retryCount ?? 0
       
       if (currentRetry < retryCount) {
-        // @ts-ignore
-        config.__retryCount = currentRetry + 1
+        if (retryConfig) {
+          retryConfig.__retryCount = currentRetry + 1
+        }
         
         // 延迟后重试
         await new Promise(resolve => setTimeout(resolve, retryDelay))
-        return this.axiosInstance.request(config!)
+        if (retryConfig) {
+          return this.axiosInstance.request(retryConfig)
+        }
       }
     }
 
@@ -252,7 +254,7 @@ class HttpRequest {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  get<T = any>(url: string, config?: RequestOptions): Promise<T> {
+  get<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
     return this.axiosInstance.get(url, config)
   }
 
@@ -265,7 +267,7 @@ class HttpRequest {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  post<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
+  post<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
     return this.axiosInstance.post(url, data, config)
   }
 
@@ -278,7 +280,7 @@ class HttpRequest {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  put<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
+  put<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
     return this.axiosInstance.put(url, data, config)
   }
 
@@ -290,7 +292,7 @@ class HttpRequest {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  delete<T = any>(url: string, config?: RequestOptions): Promise<T> {
+  delete<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
     return this.axiosInstance.delete(url, config)
   }
 
@@ -303,7 +305,7 @@ class HttpRequest {
    * @param config 请求配置
    * @returns Promise<T>
    */
-  patch<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
+  patch<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
     return this.axiosInstance.patch(url, data, config)
   }
 }

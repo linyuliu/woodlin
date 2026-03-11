@@ -24,7 +24,8 @@ import {
   useDialog,
   useMessage,
   type DataTableColumns,
-  type FormInst
+  type FormInst,
+  type TreeOption
 } from 'naive-ui'
 import {
   clearDictCache,
@@ -58,7 +59,7 @@ const dictData = ref<DictDataRecord[]>([])
 const selectedType = ref<DictTypeRecord | null>(null)
 
 const regionTree = ref<RegionNode[]>([])
-const regionTreeData = ref<any[]>([])
+const regionTreeData = ref<TreeOption[]>([])
 
 const statusOptions = [
   { label: '启用', value: '1' },
@@ -205,7 +206,7 @@ const dictDataColumns: DataTableColumns<DictDataRecord> = [
   }
 ]
 
-const convertToTreeData = (nodes: RegionNode[]): any[] =>
+const convertToTreeData = (nodes: RegionNode[]): TreeOption[] =>
   nodes.map(node => ({
     key: node.code,
     label: `${node.name} (${node.code})`,

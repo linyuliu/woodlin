@@ -74,7 +74,7 @@ export enum BusinessCode {
  * 
  * @template T 响应数据类型
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   /** 业务状态码 */
   code: number
   /** 响应消息 */
@@ -106,7 +106,7 @@ export interface PageParams {
  * 
  * @template T 列表数据类型
  */
-export interface PageResult<T = any> {
+export interface PageResult<T = unknown> {
   /** 数据列表 */
   records: T[]
   /** 总记录数 */
@@ -152,7 +152,7 @@ export interface RequestInterceptorConfig {
   /** 请求成功拦截器 */
   onFulfilled?: (config: AxiosRequestConfig) => AxiosRequestConfig | Promise<AxiosRequestConfig>
   /** 请求失败拦截器 */
-  onRejected?: (error: any) => any
+  onRejected?: (error: unknown) => unknown
 }
 
 /**
@@ -162,7 +162,7 @@ export interface ResponseInterceptorConfig {
   /** 响应成功拦截器 */
   onFulfilled?: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>
   /** 响应失败拦截器 */
-  onRejected?: (error: AxiosError) => any
+  onRejected?: (error: AxiosError) => unknown
 }
 
 /**
@@ -176,5 +176,5 @@ export interface HttpErrorInfo {
   /** HTTP状态码 */
   status?: number
   /** 错误详情 */
-  details?: any
+  details?: unknown
 }
