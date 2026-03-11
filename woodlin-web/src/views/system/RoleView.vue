@@ -101,7 +101,7 @@ const columns: DataTableColumns<Role> = [
     title: '父角色', 
     key: 'parentRoleId',
     width: 140,
-    render: row => row.parentRoleId ? (row as any).parentName || `#${row.parentRoleId}` : '—'
+    render: row => row.parentRoleId ? (row as Role & {parentName?: string}).parentName || `#${row.parentRoleId}` : '—'
   },
   { 
     title: '状态', 

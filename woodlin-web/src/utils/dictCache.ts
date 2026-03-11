@@ -19,7 +19,7 @@ interface CacheItem<T> {
  * 字典缓存类
  */
 class DictCache {
-  private cache: Map<string, CacheItem<any>>
+  private cache: Map<string, CacheItem<unknown>>
   private defaultTTL: number // 默认缓存时间（毫秒）
 
   constructor(defaultTTL: number = 5 * 60 * 1000) {

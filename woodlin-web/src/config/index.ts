@@ -199,8 +199,8 @@ const defaultConfig: ProjectConfig = {
  * @param source 源对象
  * @returns 合并后的对象
  */
-function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-  const result: Record<string, any> = { ...target }
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result: Record<string, unknown> = { ...(target as Record<string, unknown>) }
   
   for (const key in source) {
     const sourceValue = source[key]
@@ -214,7 +214,10 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
       typeof targetValue === 'object' &&
       !Array.isArray(targetValue)
     ) {
-      result[key] = deepMerge(targetValue, sourceValue)
+      result[key] = deepMerge(
+        targetValue as Record<string, unknown>,
+        sourceValue as Record<string, unknown>
+      )
     } else if (sourceValue !== undefined) {
       result[key] = sourceValue
     }

@@ -44,6 +44,13 @@ const message = useMessage()
 const deptTree = ref<TreeOption[]>([])
 const flatDepts = ref<{ label: string; value: number }[]>([])
 const selectedKeys = ref<string[]>([])
+type DeptTreeItem = { key: number | string; label: string; children?: DeptTreeItem[] }
+type DeptTreeLookupNode = { deptId: number | string; deptName: string; children?: DeptTreeLookupNode[] }
+const toLookupNode = (node: DeptTreeItem): DeptTreeLookupNode => ({
+  deptId: node.key,
+  deptName: node.label,
+  children: node.children?.map(toLookupNode)
+})
 
 const modalShow = ref(false)
 const formRef = ref<FormInst | null>(null)
@@ -119,7 +126,7 @@ const handleEdit = () => {
     return
   }
   // 从树中取出
-  const find = (list: any[]): DeptNode | undefined => {
+  const find = (list: DeptTreeLookupNode[]): DeptTreeLookupNode | undefined => {
     for (const n of list) {
       if (n.deptId === Number(id)) {
         return n
@@ -133,12 +140,10 @@ const handleEdit = () => {
     }
     return undefined
   }
-  const current = find((deptTree.value as any[]).map(x => ({
-    deptId: x.key,
-    deptName: x.label,
-    children: (x as any).children?.map((c: any) => ({ deptId: c.key, deptName: c.label, children: c.children }))
-  })))
-  form.value = current ? { ...current } : { deptId: Number(id) }
+  const current = find((deptTree.value as DeptTreeItem[]).map(toLookupNode))
+  form.value = current
+    ? { deptId: Number(current.deptId), deptName: current.deptName }
+    : { deptId: Number(id) }
   modalShow.value = true
 }
 

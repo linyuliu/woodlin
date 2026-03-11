@@ -2,7 +2,7 @@ import { RouterView, type RouteComponent } from 'vue-router'
 import { LAYOUT } from './route-constants'
 
 // 自动收集 views 下的页面组件，支持 .vue / .tsx
-const viewModules: Record<string, () => Promise<any>> = import.meta.glob('@/views/**/*.{vue,tsx}')
+const viewModules: Record<string, () => Promise<unknown>> = import.meta.glob('@/views/**/*.{vue,tsx}')
 
 /**
  * 后端常用 component 标识到实际视图文件的别名映射

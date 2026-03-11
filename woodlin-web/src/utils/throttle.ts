@@ -26,13 +26,13 @@
  * window.addEventListener('scroll', throttledScroll)
  * ```
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number = 300
 ): (...args: Parameters<T>) => void {
   let lastTime = 0
 
-  return function (this: any, ...args: Parameters<T>) {
+  return function (this: unknown, ...args: Parameters<T>) {
     const now = Date.now()
 
     if (now - lastTime >= wait) {
@@ -59,7 +59,7 @@ export function throttle<T extends (...args: any[]) => any>(
  * const throttledFunc = throttleAdvanced(handler, 1000, { trailing: false })
  * ```
  */
-export function throttleAdvanced<T extends (...args: any[]) => any>(
+export function throttleAdvanced<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number = 300,
   options: {
@@ -72,8 +72,7 @@ export function throttleAdvanced<T extends (...args: any[]) => any>(
 
   const { leading = true, trailing = true } = options
 
-  return function (this: any, ...args: Parameters<T>) {
-    const context = this
+  return function (this: unknown, ...args: Parameters<T>) {
     const now = Date.now()
 
     // 如果不需要首次立即执行，则重置previous
@@ -90,12 +89,12 @@ export function throttleAdvanced<T extends (...args: any[]) => any>(
       }
 
       previous = now
-      func.apply(context, args)
+      func.apply(this, args)
     } else if (!timeout && trailing) {
       timeout = setTimeout(() => {
         previous = leading ? Date.now() : 0
         timeout = null
-        func.apply(context, args)
+        func.apply(this, args)
       }, remaining)
     }
   }
@@ -119,7 +118,7 @@ export function throttleAdvanced<T extends (...args: any[]) => any>(
  * cancel()
  * ```
  */
-export function throttleCancelable<T extends (...args: any[]) => any>(
+export function throttleCancelable<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number = 300
 ): {
@@ -129,8 +128,7 @@ export function throttleCancelable<T extends (...args: any[]) => any>(
   let timeout: ReturnType<typeof setTimeout> | null = null
   let previous = 0
 
-  const run = function (this: any, ...args: Parameters<T>) {
-    const context = this
+  const run = function (this: unknown, ...args: Parameters<T>) {
     const now = Date.now()
     const remaining = wait - (now - previous)
 
@@ -141,12 +139,12 @@ export function throttleCancelable<T extends (...args: any[]) => any>(
       }
 
       previous = now
-      func.apply(context, args)
+      func.apply(this, args)
     } else if (!timeout) {
       timeout = setTimeout(() => {
         previous = Date.now()
         timeout = null
-        func.apply(context, args)
+        func.apply(this, args)
       }, remaining)
     }
   }
@@ -181,7 +179,7 @@ export function throttleCancelable<T extends (...args: any[]) => any>(
  * // <div @scroll="handleScroll">...</div>
  * ```
  */
-export function useThrottleFn<T extends (...args: any[]) => any>(
+export function useThrottleFn<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number = 300
 ): (...args: Parameters<T>) => void {

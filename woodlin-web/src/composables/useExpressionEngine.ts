@@ -10,8 +10,7 @@ import { exec, parse, type EvalContext, ParseError } from '@/utils/expr-engine';
 /**
  * 表达式评估结果
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ExpressionResult<T = any> {
+export interface ExpressionResult<T = unknown> {
   value: T | null;
   error: string | null;
   isValid: boolean;
@@ -24,7 +23,7 @@ export interface ExpressionResult<T = any> {
  * @param context - 评估上下文 (可以是响应式的)
  * @returns 包含评估结果和方法的对象
  */
-export function useExpression<T = any>(
+export function useExpression<T = unknown>(
   expression: Ref<string> | string,
   context?: Ref<EvalContext> | EvalContext
 ) {
@@ -202,7 +201,7 @@ export function useExpressionValidator(expression: Ref<string> | string) {
  * 
  * 监听表达式变化并执行回调
  */
-export function useExpressionWatch<T = any>(
+export function useExpressionWatch<T = unknown>(
   expression: Ref<string> | string,
   context: Ref<EvalContext> | EvalContext,
   callback: (value: T | null, isValid: boolean) => void

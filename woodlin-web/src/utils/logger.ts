@@ -7,12 +7,13 @@
  */
 
 const isDev = import.meta.env.DEV
+type LogArgs = unknown[]
 
 export const logger = {
   /**
    * 输出普通日志
    */
-  log(...args: any[]) {
+  log(...args: LogArgs) {
     if (isDev) {
       console.log(...args)
     }
@@ -21,7 +22,7 @@ export const logger = {
   /**
    * 输出信息日志
    */
-  info(...args: any[]) {
+  info(...args: LogArgs) {
     if (isDev) {
       console.info(...args)
     }
@@ -30,7 +31,7 @@ export const logger = {
   /**
    * 输出警告日志
    */
-  warn(...args: any[]) {
+  warn(...args: LogArgs) {
     if (isDev) {
       console.warn(...args)
     }
@@ -39,14 +40,14 @@ export const logger = {
   /**
    * 输出错误日志（始终输出）
    */
-  error(...args: any[]) {
+  error(...args: LogArgs) {
     console.error(...args)
   },
 
   /**
    * 输出调试日志
    */
-  debug(...args: any[]) {
+  debug(...args: LogArgs) {
     if (isDev) {
       console.debug(...args)
     }
