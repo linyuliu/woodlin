@@ -130,7 +130,7 @@ class HttpRequest {
       }
       
       // 业务失败
-        return Promise.reject(new Error(apiResponse.message || '请求失败')) as T
+        throw new Error(apiResponse.message || '请求失败')
       }
     
     // 直接返回数据
