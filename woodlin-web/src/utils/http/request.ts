@@ -97,8 +97,7 @@ class HttpRequest {
         // 移除pending请求
         const requestKey = this.getRequestKey(response.config)
         this.pendingRequests.delete(requestKey)
-
-        return this.handleResponse(response) as never
+        return response
       },
       async (error: AxiosError) => {
         // 移除pending请求
@@ -118,7 +117,7 @@ class HttpRequest {
    * @param response Axios响应对象
    * @returns 处理后的数据
    */
-  private handleResponse(response: AxiosResponse): unknown {
+  private handleResponse<T>(response: AxiosResponse): T {
     const { data } = response
     
     // 如果响应数据符合ApiResponse格式
@@ -127,15 +126,15 @@ class HttpRequest {
       
       // 业务成功
       if (apiResponse.code === 200) {
-        return apiResponse.data
+          return apiResponse.data as T
       }
       
       // 业务失败
-      return Promise.reject(new Error(apiResponse.message || '请求失败'))
-    }
+        throw new Error(apiResponse.message || '请求失败')
+      }
     
     // 直接返回数据
-    return data
+    return data as T
   }
 
   /**
@@ -255,7 +254,7 @@ class HttpRequest {
    * @returns Promise<T>
    */
   get<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
-    return this.axiosInstance.get(url, config)
+    return this.axiosInstance.get(url, config).then((response) => this.handleResponse<T>(response))
   }
 
   /**
@@ -268,7 +267,7 @@ class HttpRequest {
    * @returns Promise<T>
    */
   post<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
-    return this.axiosInstance.post(url, data, config)
+    return this.axiosInstance.post(url, data, config).then((response) => this.handleResponse<T>(response))
   }
 
   /**
@@ -281,7 +280,7 @@ class HttpRequest {
    * @returns Promise<T>
    */
   put<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
-    return this.axiosInstance.put(url, data, config)
+    return this.axiosInstance.put(url, data, config).then((response) => this.handleResponse<T>(response))
   }
 
   /**
@@ -293,7 +292,7 @@ class HttpRequest {
    * @returns Promise<T>
    */
   delete<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
-    return this.axiosInstance.delete(url, config)
+    return this.axiosInstance.delete(url, config).then((response) => this.handleResponse<T>(response))
   }
 
   /**
@@ -306,7 +305,7 @@ class HttpRequest {
    * @returns Promise<T>
    */
   patch<T = unknown>(url: string, data?: unknown, config?: RequestOptions): Promise<T> {
-    return this.axiosInstance.patch(url, data, config)
+    return this.axiosInstance.patch(url, data, config).then((response) => this.handleResponse<T>(response))
   }
 }
 
