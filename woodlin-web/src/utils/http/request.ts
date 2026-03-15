@@ -138,6 +138,105 @@ class HttpRequest {
   }
 
   /**
+   * 超时场景下尝试重试请求
+   *
+   * @param error Axios错误对象
+   * @param retryConfig 重试配置
+   * @param requestOptions 请求选项
+   * @returns 成功时返回重试响应，否则返回null
+   */
+  private async tryRetryOnTimeout(
+    error: AxiosError,
+    retryConfig: (RequestOptions & { __retryCount?: number }) | undefined,
+    requestOptions: RequestOptions | undefined
+  ): Promise<AxiosResponse | null> {
+    if (!this.shouldRetryTimeout(error.code, requestOptions)) {
+      return null
+    }
+
+    const retryPolicy = this.resolveRetryPolicy(requestOptions)
+    if (!retryConfig || !this.hasRetryQuota(retryConfig, retryPolicy.retryCount)) {
+      return null
+    }
+
+    retryConfig.__retryCount = (retryConfig.__retryCount ?? 0) + 1
+    await new Promise((resolve) => setTimeout(resolve, retryPolicy.retryDelay))
+    return this.axiosInstance.request(retryConfig)
+  }
+
+  /**
+   * 是否允许超时重试
+   */
+  private shouldRetryTimeout(errorCode: string | undefined, requestOptions: RequestOptions | undefined): boolean {
+    return errorCode === 'ECONNABORTED' && requestOptions?.enableRetry !== false
+  }
+
+  /**
+   * 获取重试策略
+   */
+  private resolveRetryPolicy(requestOptions: RequestOptions | undefined): { retryCount: number; retryDelay: number } {
+    const httpConfig = getConfig().http
+    return {
+      retryCount: requestOptions?.retryCount ?? httpConfig.retryCount,
+      retryDelay: requestOptions?.retryDelay ?? httpConfig.retryDelay
+    }
+  }
+
+  /**
+   * 是否仍有重试额度
+   */
+  private hasRetryQuota(
+    retryConfig: RequestOptions & { __retryCount?: number },
+    retryCount: number
+  ): boolean {
+    const currentRetry = retryConfig.__retryCount ?? 0
+    return currentRetry < retryCount
+  }
+
+  /**
+   * 按状态码记录错误日志
+   *
+   * @param status HTTP状态码
+   */
+  private logHttpStatusError(status?: number): void {
+    if (!status) {
+      return
+    }
+
+    switch (status) {
+      case 401:
+        this.handleUnauthorized()
+        break
+      case 403:
+        logger.error('权限不足')
+        break
+      case 404:
+        logger.error('资源未找到')
+        break
+      case 500:
+        logger.error('服务器内部错误')
+        break
+      case 503:
+        logger.error('服务暂时不可用')
+        break
+      default:
+        break
+    }
+  }
+
+  /**
+   * 组装错误消息
+   *
+   * @param response Axios响应
+   * @param error Axios错误对象
+   * @returns 错误消息
+   */
+  private buildErrorMessage(response: AxiosResponse | undefined, error: AxiosError): string {
+    const responseData = response?.data as ApiResponse | undefined
+    return responseData?.message || error.message || '请求失败'
+  }
+
+  /**
    * 处理错误响应
    * 
    * @param error Axios错误对象
@@ -153,51 +252,14 @@ class HttpRequest {
     const retryConfig = config as (RequestOptions & {__retryCount?: number}) | undefined
     const requestOptions = retryConfig as RequestOptions | undefined
 
-    // 请求超时，尝试重试
-    if (error.code === 'ECONNABORTED' && requestOptions?.enableRetry !== false) {
-      const httpConfig = getConfig().http
-      const retryCount = requestOptions?.retryCount ?? httpConfig.retryCount
-      const retryDelay = requestOptions?.retryDelay ?? httpConfig.retryDelay
-      
-      if (!retryConfig) {
-        return Promise.reject(error)
-      }
-      const currentRetry = retryConfig.__retryCount ?? 0
-      
-      if (currentRetry < retryCount) {
-        retryConfig.__retryCount = currentRetry + 1
-        
-        // 延迟后重试
-        await new Promise(resolve => setTimeout(resolve, retryDelay))
-        return this.axiosInstance.request(retryConfig)
-      }
+    const retryResponse = await this.tryRetryOnTimeout(error, retryConfig, requestOptions)
+    if (retryResponse) {
+      return retryResponse as never
     }
 
-    // 处理HTTP错误状态码
-    if (response) {
-      switch (response.status) {
-        case 401:
-          // 未授权，清除token并跳转登录
-          this.handleUnauthorized()
-          break
-        case 403:
-          logger.error('权限不足')
-          break
-        case 404:
-          logger.error('资源未找到')
-          break
-        case 500:
-          logger.error('服务器内部错误')
-          break
-        case 503:
-          logger.error('服务暂时不可用')
-          break
-      }
-    }
+    this.logHttpStatusError(response?.status)
 
-    // Extract error message with proper typing
-    const responseData = response?.data as ApiResponse | undefined
-    const errorMsg = responseData?.message || error.message || '请求失败'
+    const errorMsg = this.buildErrorMessage(response, error)
     return Promise.reject(new Error(errorMsg))
   }
 

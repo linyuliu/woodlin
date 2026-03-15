@@ -58,6 +58,175 @@ const getRequestMethod = (config?: { method?: string }) => (config?.method || 'G
 const getRequestUrl = (config?: { url?: string }) => config?.url || ''
 const getDuration = (startAt?: number) => (typeof startAt === 'number' ? Date.now() - startAt : -1)
 
+type WrappedResponseData = {
+  code?: number | string
+  message?: string
+  data?: unknown
+}
+
+/**
+ * 解析业务状态码
+ */
+function parseBusinessCode(code: unknown): number | null {
+  if (typeof code === 'number') {
+    return code
+  }
+  if (typeof code === 'string') {
+    const parsed = parseInt(code, 10)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+  return null
+}
+
+/**
+ * 解密响应数据
+ */
+function decryptResponsePayload(extConfig: ExtendedAxiosRequestConfig, data: WrappedResponseData) {
+  const encryptedPayload = data.data as { encrypted?: string } | undefined
+  if (extConfig.decrypt && encryptedPayload?.encrypted) {
+    data.data = simpleDecrypt(encryptedPayload.encrypted)
+  }
+}
+
+/**
+ * 记录响应结束日志
+ */
+function logResponseEnd(traceConfig: TraceableRequestConfig, httpStatus: number, businessCode: number | null) {
+  logger.info('[HTTP][END]', {
+    traceId: traceConfig.__traceId,
+    method: getRequestMethod(traceConfig),
+    url: getRequestUrl(traceConfig),
+    httpStatus,
+    businessCode,
+    durationMs: getDuration(traceConfig.__requestStartAt)
+  })
+}
+
+/**
+ * 记录业务码异常
+ */
+function warnNon200BusinessCode(traceConfig: TraceableRequestConfig, data: WrappedResponseData, businessCode: number | null) {
+  if (businessCode === null || businessCode === 200) {
+    return
+  }
+  logger.warn('[HTTP][BUSINESS_CODE_NOT_200]', {
+    traceId: traceConfig.__traceId,
+    method: getRequestMethod(traceConfig),
+    url: getRequestUrl(traceConfig),
+    businessCode,
+    message: data.message
+  })
+}
+
+/**
+ * 兼容两类返回体并提取业务数据
+ */
+function unwrapResponseData(data: unknown): unknown {
+  if (data && typeof data === 'object' && 'data' in data) {
+    return (data as WrappedResponseData).data
+  }
+  return data
+}
+
+/**
+ * 清理认证本地缓存
+ */
+function clearAuthLocalStorage() {
+  const config = getConfig()
+  localStorage.removeItem(config.http.tokenKey)
+  localStorage.removeItem(`${config.http.tokenKey}_expire`)
+  localStorage.removeItem('tenantId')
+  localStorage.removeItem('userInfo')
+  localStorage.removeItem('userPermissions')
+  localStorage.removeItem('userRoles')
+  localStorage.removeItem('routesGenerated')
+  localStorage.removeItem('routesGeneratedTime')
+}
+
+/**
+ * 处理 401 未授权
+ */
+function handleUnauthorizedError() {
+  clearAuthLocalStorage()
+  const loginPath = getConfig().router.loginPath
+  if (window.location.pathname !== loginPath) {
+    window.location.href = loginPath
+  }
+}
+
+/**
+ * 按状态码输出错误日志
+ */
+function logHttpErrorStatus(status?: number, code?: string): void {
+  if (status === 401) {
+    handleUnauthorizedError()
+    return
+  }
+  if (status === 403) {
+    logger.error('权限不足')
+    return
+  }
+  if (status === 404) {
+    logger.error('资源不存在')
+    return
+  }
+  if (status === 500) {
+    logger.error('服务器内部错误')
+    return
+  }
+  if (code === 'ECONNABORTED') {
+    logger.error('请求超时')
+    return
+  }
+  if (code === 'ERR_CANCELED') {
+    logger.warn('请求已取消')
+    return
+  }
+  if (!status) {
+    logger.error('网络连接错误')
+  }
+}
+
+/**
+ * 统一响应成功处理
+ */
+function handleResponseSuccess(response: { config: InternalAxiosRequestConfig; status: number; data: unknown }): unknown {
+  const extConfig = response.config as ExtendedAxiosRequestConfig
+  const traceConfig = response.config as TraceableRequestConfig
+  const data = response.data as WrappedResponseData
+
+  decryptResponsePayload(extConfig, data)
+  const businessCode = parseBusinessCode(data.code)
+  logResponseEnd(traceConfig, response.status, businessCode)
+  warnNon200BusinessCode(traceConfig, data, businessCode)
+  return unwrapResponseData(data)
+}
+
+/**
+ * 统一响应错误处理
+ */
+function handleResponseError(error: {
+  config?: InternalAxiosRequestConfig
+  response?: { status?: number }
+  code?: string
+  message?: string
+}) {
+  const traceConfig = (error.config || {}) as TraceableRequestConfig
+
+  logger.error('[HTTP][ERROR]', {
+    traceId: traceConfig.__traceId,
+    method: getRequestMethod(traceConfig),
+    url: getRequestUrl(traceConfig),
+    httpStatus: error.response?.status,
+    errorCode: error.code,
+    message: error.message,
+    durationMs: getDuration(traceConfig.__requestStartAt)
+  })
+
+  logHttpErrorStatus(error.response?.status, error.code)
+  return Promise.reject(error)
+}
+
 /**
  * 创建axios实例
  * 配置基础URL、超时时间等默认参数
@@ -134,99 +303,8 @@ request.interceptors.request.use(
  * 在收到响应后执行，可以统一处理响应数据、解密数据、错误码等
  */
 request.interceptors.response.use(
-  (response) => {
-    const extConfig = response.config as ExtendedAxiosRequestConfig
-    const traceConfig = response.config as TraceableRequestConfig
-    
-    const { data } = response
-    
-    // 解密响应数据
-    const encryptedPayload = data.data as {encrypted?: string} | undefined
-    if (extConfig.decrypt && encryptedPayload?.encrypted) {
-      data.data = simpleDecrypt(encryptedPayload.encrypted)
-    }
-
-    const statusCode = typeof data.code === 'string' ? parseInt(data.code, 10) : data.code
-    logger.info('[HTTP][END]', {
-      traceId: traceConfig.__traceId,
-      method: getRequestMethod(traceConfig),
-      url: getRequestUrl(traceConfig),
-      httpStatus: response.status,
-      businessCode: statusCode,
-      durationMs: getDuration(traceConfig.__requestStartAt)
-    })
-    
-    // 根据后端的响应格式进行统一处理
-    // 假设后端返回格式为 { code: number, message: string, data: unknown }
-    // 将 code 转换为数字进行比较，以处理可能为字符串或数字的情况
-    if (statusCode !== null && statusCode !== undefined && statusCode !== 200) {
-      // 排查阶段：仅记录业务码异常，不在请求层直接拦截，避免误判导致页面拿不到数据
-      logger.warn('[HTTP][BUSINESS_CODE_NOT_200]', {
-        traceId: traceConfig.__traceId,
-        method: getRequestMethod(traceConfig),
-        url: getRequestUrl(traceConfig),
-        businessCode: statusCode,
-        message: data.message
-      })
-    }
-    
-    // 兼容两类返回：
-    // 1) 统一包装格式：{ code, message, data }
-    // 2) 直接返回业务对象/数组
-    if (data && typeof data === 'object' && 'data' in data) {
-      return data.data
-    }
-    return data
-  },
-  (error) => {
-    const traceConfig = (error.config || {}) as TraceableRequestConfig
-
-    logger.error('[HTTP][ERROR]', {
-      traceId: traceConfig.__traceId,
-      method: getRequestMethod(traceConfig),
-      url: getRequestUrl(traceConfig),
-      httpStatus: error.response?.status,
-      errorCode: error.code,
-      message: error.message,
-      durationMs: getDuration(traceConfig.__requestStartAt)
-    })
-    
-    // 处理不同的HTTP状态码
-    if (error.response?.status === 401) {
-      // 未授权，清除token并跳转到登录页
-      localStorage.removeItem(getConfig().http.tokenKey)
-      localStorage.removeItem(`${getConfig().http.tokenKey}_expire`)
-      localStorage.removeItem('tenantId')
-      // 清除用户信息和路由状态
-      localStorage.removeItem('userInfo')
-      localStorage.removeItem('userPermissions')
-      localStorage.removeItem('userRoles')
-      localStorage.removeItem('routesGenerated')
-      localStorage.removeItem('routesGeneratedTime')
-      
-      // 避免在登录页重复跳转
-      if (window.location.pathname !== getConfig().router.loginPath) {
-        window.location.href = getConfig().router.loginPath
-      }
-    } else if (error.response?.status === 403) {
-      logger.error('权限不足')
-      // TODO: 跳转到403页面
-      // window.location.href = '/403'
-    } else if (error.response?.status === 404) {
-      logger.error('资源不存在')
-    } else if (error.response?.status === 500) {
-      logger.error('服务器内部错误')
-    } else if (error.code === 'ECONNABORTED') {
-      logger.error('请求超时')
-    } else if (error.code === 'ERR_CANCELED') {
-      logger.warn('请求已取消')
-      return Promise.reject(error)
-    } else if (!error.response) {
-      logger.error('网络连接错误')
-    }
-    
-    return Promise.reject(error)
-  }
+  (response) => handleResponseSuccess(response),
+  (error) => handleResponseError(error)
 )
 
 // 默认导出axios实例

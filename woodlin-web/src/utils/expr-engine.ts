@@ -2,501 +2,692 @@
 // 递归下降解析器 + AST 评估器（TypeScript）
 // 支持：数字、字符串、引用/索引、函数调用、lambda、三元表达式、countIf 等
 export type Expr =
-    | { type: 'number'; value: number }
-    | { type: 'string'; value: string }
-    | { type: 'ref'; value: string } // e.g. answers.q[0]
-    | { type: 'unary'; op: string; expr: Expr }
-    | { type: 'binary'; op: string; left: Expr; right: Expr }
-    | { type: 'ternary'; cond: Expr; thenExpr: Expr; elseExpr: Expr }
-    | { type: 'call'; name: string; args: Expr[] }
-    | { type: 'lambda'; param: string; body: Expr };
+  | { type: 'number'; value: number }
+  | { type: 'string'; value: string }
+  | { type: 'ref'; value: string }
+  | { type: 'unary'; op: string; expr: Expr }
+  | { type: 'binary'; op: string; left: Expr; right: Expr }
+  | { type: 'ternary'; cond: Expr; thenExpr: Expr; elseExpr: Expr }
+  | { type: 'call'; name: string; args: Expr[] }
+  | { type: 'lambda'; param: string; body: Expr }
 
 export class ParseError extends Error {
-    constructor(public message: string, public pos: number) {
-        super(`${message} (pos=${pos})`);
-        this.name = 'ParseError';
-    }
+  constructor(
+    public message: string,
+    public pos: number
+  ) {
+    super(`${message} (pos=${pos})`)
+    this.name = 'ParseError'
+  }
 }
 
-type TokenType = 'num' | 'str' | 'ident' | 'op' | 'punc' | 'eof';
-type Token = { type: TokenType; value: string; pos: number };
+type TokenType = 'num' | 'str' | 'ident' | 'op' | 'punc' | 'eof'
+type Token = { type: TokenType; value: string; pos: number }
 
-const isDigit = (ch: string) => /[0-9]/.test(ch);
-const isIdStart = (ch: string) => /[a-zA-Z_]/.test(ch);
-const isId = (ch: string) => /[a-zA-Z0-9_]/.test(ch);
-
-function tokenize(input: string): Token[] {
-    const out: Token[] = [];
-    let i = 0;
-    const len = input.length;
-
-    const push = (type: TokenType, value: string, pos = i) =>
-        out.push({type, value, pos});
-
-    while (i < len) {
-        const ch = input[i];
-        if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
-            i++;
-            continue;
-        }
-
-        // 数字（支持小数）
-        if (isDigit(ch) || (ch === '.' && isDigit(input[i + 1] || ''))) {
-            let j = i;
-            let hasDot = false;
-            while (
-                j < len &&
-                (isDigit(input[j]) || (!hasDot && input[j] === '.'))
-                ) {
-                if (input[j] === '.') {hasDot = true;}
-                j++;
-            }
-            push('num', input.slice(i, j), i);
-            i = j;
-            continue;
-        }
-
-        // 字符串字面量
-        if (ch === '"' || ch === "'") {
-            const quote = ch;
-            let j = i + 1;
-            let s = '';
-            while (j < len) {
-                if (input[j] === '\\') {
-                    s += input[j + 1] ?? '';
-                    j += 2;
-                    continue;
-                }
-                if (input[j] === quote) {
-                    j++;
-                    break;
-                }
-                s += input[j];
-                j++;
-            }
-            push('str', s, i);
-            i = j;
-            continue;
-        }
-
-        // 标识符或关键字
-        if (isIdStart(ch)) {
-            let j = i;
-            while (j < len && isId(input[j])) {j++;}
-            const id = input.slice(i, j);
-            push('ident', id, i);
-            i = j;
-            continue;
-        }
-
-        // 操作符或标点（优先长符号）
-        const two = input.slice(i, i + 2);
-        const three = input.slice(i, i + 3);
-        if (three === '===' || three === '!==') {
-            push('op', three, i);
-            i += 3;
-            continue;
-        }
-        if (two === '&&' || two === '||' || two === '==' || two === '!=' ||
-            two === '>=' || two === '<=' || two === '=>') {
-            push('op', two, i);
-            i += 2;
-            continue;
-        }
-        if ('+-*/%<>?:=!'.includes(ch)) {
-            push('op', ch, i);
-            i++;
-            continue;
-        }
-        if ('(),[].'.includes(ch)) {
-            push('punc', ch, i);
-            i++;
-            continue;
-        }
-
-        throw new ParseError(`无法识别字符 '${ch}'`, i);
-    }
-
-    push('eof', '', i);
-    return out;
+type ScanResult = {
+  token: Token
+  nextIndex: number
 }
 
-// 辅助函数：将 AST 转换为字符串（用于调试和索引表达式）
+type OperatorProbeResult = {
+  value: string
+  nextIndex: number
+}
+
+const PRECEDENCE: Readonly<Record<string, number>> = {
+  '||': 1,
+  '&&': 2,
+  '==': 3,
+  '!=': 3,
+  '===': 3,
+  '!==': 3,
+  '<': 4,
+  '>': 4,
+  '<=': 4,
+  '>=': 4,
+  '+': 5,
+  '-': 5,
+  '*': 6,
+  '/': 6,
+  '%': 6
+}
+
+const THREE_CHAR_OPS = new Set(['===', '!=='])
+const TWO_CHAR_OPS = new Set(['&&', '||', '==', '!=', '>=', '<=', '=>'])
+const SINGLE_CHAR_OPS = new Set(['+', '-', '*', '/', '%', '<', '>', '?', ':', '=', '!'])
+const PUNCTUATION_CHARS = new Set(['(', ')', ',', '[', ']', '.'])
+
+const isDigit = (ch: string) => /[0-9]/.test(ch)
+const isIdentifierStart = (ch: string) => /[a-zA-Z_]/.test(ch)
+const isIdentifierBody = (ch: string) => /[a-zA-Z0-9_]/.test(ch)
+
+/**
+ * 将 AST 转换为字符串（用于索引表达式序列化）
+ */
 function stringifyExpr(expr: Expr): string {
-    switch (expr.type) {
-        case 'number':
-            return String(expr.value);
-        case 'string':
-            return `"${expr.value}"`;
-        case 'ref':
-            return expr.value;
-        case 'unary':
-            return `${expr.op}${stringifyExpr(expr.expr)}`;
-        case 'binary':
-            return `(${stringifyExpr(expr.left)} ${expr.op} ${stringifyExpr(expr.right)})`;
-        case 'ternary':
-            return `(${stringifyExpr(expr.cond)} ? ${stringifyExpr(expr.thenExpr)} : ${stringifyExpr(expr.elseExpr)})`;
-        case 'call':
-            return `${expr.name}(${expr.args.map(stringifyExpr).join(', ')})`;
-        case 'lambda':
-            return `${expr.param} => ${stringifyExpr(expr.body)}`;
-        default:
-            return 'unknown';
-    }
+  switch (expr.type) {
+    case 'number':
+      return String(expr.value)
+    case 'string':
+      return `"${expr.value}"`
+    case 'ref':
+      return expr.value
+    case 'unary':
+      return `${expr.op}${stringifyExpr(expr.expr)}`
+    case 'binary':
+      return `(${stringifyExpr(expr.left)} ${expr.op} ${stringifyExpr(expr.right)})`
+    case 'ternary':
+      return `(${stringifyExpr(expr.cond)} ? ${stringifyExpr(expr.thenExpr)} : ${stringifyExpr(expr.elseExpr)})`
+    case 'call':
+      return `${expr.name}(${expr.args.map(stringifyExpr).join(', ')})`
+    case 'lambda':
+      return `${expr.param} => ${stringifyExpr(expr.body)}`
+    default:
+      return 'unknown'
+  }
 }
 
-// Parser 构造器：返回 parseExpr 起点函数
-const makeParser = (tokens: Token[]) => {
-    // 运算符优先级表（值越大优先级越高）
-    const PRECEDENCE: Record<string, number> = {
-        '||': 1,
-        '&&': 2,
-        '==': 3, '!=': 3, '===': 3, '!==': 3,
-        '<': 4, '>': 4, '<=': 4, '>=': 4,
-        '+': 5, '-': 5,
-        '*': 6, '/': 6, '%': 6,
-    };
+/**
+ * 扫描数字
+ */
+function scanNumber(input: string, start: number): ScanResult {
+  let index = start
+  let hasDot = false
 
-    // parsePrimary：解析基础表达式：字面量、引用、调用、索引、括号、unary
-    const parsePrimary = (i: number): [Expr, number] => {
-        const t = tokens[i];
-        if (!t) {throw new ParseError('意外结束', i);}
-        if (t.type === 'num') {return [{type: 'number', value: Number(t.value)}, i + 1];}
-        if (t.type === 'str') {return [{type: 'string', value: t.value}, i + 1];}
+  while (index < input.length) {
+    const current = input[index]
+    const isDot = current === '.'
+    if (!isDigit(current) && !(isDot && !hasDot)) {
+      break
+    }
+    if (isDot) {
+      hasDot = true
+    }
+    index++
+  }
 
-        if (t.type === 'ident') {
-            // 识别 lambda（param => expr）
-            const next = tokens[i + 1];
-            if (next && next.type === 'op' && next.value === '=>') {
-                const param = t.value;
-                const [body, idx] = parseExpr(i + 2);
-                return [{type: 'lambda', param, body}, idx];
-            }
+  return {
+    token: { type: 'num', value: input.slice(start, index), pos: start },
+    nextIndex: index
+  }
+}
 
-            // 否则处理引用/调用/属性/索引链
-            let node: Expr = {type: 'ref', value: t.value};
-            let cur = i + 1;
-            while (true) {
-                const tk = tokens[cur];
-                if (!tk) {break;}
-                // 调用
-                if (tk.type === 'punc' && tk.value === '(') {
-                    const args: Expr[] = [];
-                    cur++; // skip '('
-                    if (!(tokens[cur].type === 'punc' && tokens[cur].value === ')')) {
-                        while (true) {
-                            const [arg, nextIdx] = parseExpr(cur);
-                            args.push(arg);
-                            cur = nextIdx;
-                            if (tokens[cur].type === 'punc' && tokens[cur].value === ',') {
-                                cur++;
-                                continue;
-                            }
-                            break;
-                        }
-                    }
-                    if (!(tokens[cur].type === 'punc' && tokens[cur].value === ')'))
-                        {throw new ParseError('期望 )', tokens[cur].pos);}
-                    cur++;
-                    // Extract name from ref node
-                    const name: string = node.type === 'ref' ? node.value : 'unknown';
-                    node = {type: 'call', name, args};
-                    continue;
-                }
-                // 属性访问
-                if (tk.type === 'punc' && tk.value === '.') {
-                    if (!(tokens[cur + 1] && tokens[cur + 1].type === 'ident'))
-                        {throw new ParseError('期望标识符作为属性名', tokens[cur].pos);}
-                    const prop = tokens[cur + 1].value;
-                    // Only ref nodes have mutable value property
-                    if (node.type === 'ref') {
-                        node.value = node.value + '.' + prop;
-                    }
-                    cur += 2;
-                    continue;
-                }
-                // 索引 [...]
-                if (tk.type === 'punc' && tk.value === '[') {
-                    cur++;
-                    const [idxExpr, nextIdx] = parseExpr(cur);
-                    cur = nextIdx;
-                    if (!(tokens[cur].type === 'punc' && tokens[cur].value === ']'))
-                        {throw new ParseError('期望 ]', tokens[cur].pos);}
-                    cur++;
-                    // 将索引表达式序列化内嵌到 ref 字符串（evaluate 时会解析）
-                    // Only ref nodes have mutable value property
-                    if (node.type === 'ref') {
-                        node.value = node.value + '[' + stringifyExpr(idxExpr) + ']';
-                    }
-                    continue;
-                }
-                break;
-            }
-            return [node, cur];
+/**
+ * 扫描字符串字面量
+ */
+function scanString(input: string, start: number): ScanResult {
+  const quote = input[start]
+  let index = start + 1
+  let value = ''
+
+  while (index < input.length) {
+    const current = input[index]
+    if (current === '\\') {
+      value += input[index + 1] ?? ''
+      index += 2
+      continue
+    }
+    if (current === quote) {
+      index++
+      break
+    }
+    value += current
+    index++
+  }
+
+  return {
+    token: { type: 'str', value, pos: start },
+    nextIndex: index
+  }
+}
+
+/**
+ * 扫描标识符
+ */
+function scanIdentifier(input: string, start: number): ScanResult {
+  let index = start
+  while (index < input.length && isIdentifierBody(input[index])) {
+    index++
+  }
+  return {
+    token: { type: 'ident', value: input.slice(start, index), pos: start },
+    nextIndex: index
+  }
+}
+
+/**
+ * 探测操作符
+ */
+function probeOperator(input: string, index: number): OperatorProbeResult | null {
+  const threeChars = input.slice(index, index + 3)
+  if (THREE_CHAR_OPS.has(threeChars)) {
+    return { value: threeChars, nextIndex: index + 3 }
+  }
+
+  const twoChars = input.slice(index, index + 2)
+  if (TWO_CHAR_OPS.has(twoChars)) {
+    return { value: twoChars, nextIndex: index + 2 }
+  }
+
+  const oneChar = input[index]
+  if (SINGLE_CHAR_OPS.has(oneChar)) {
+    return { value: oneChar, nextIndex: index + 1 }
+  }
+
+  return null
+}
+
+/**
+ * 扫描操作符或标点
+ */
+function scanSymbol(input: string, index: number): ScanResult {
+  const operator = probeOperator(input, index)
+  if (operator) {
+    return {
+      token: { type: 'op', value: operator.value, pos: index },
+      nextIndex: operator.nextIndex
+    }
+  }
+
+  const current = input[index]
+  if (PUNCTUATION_CHARS.has(current)) {
+    return {
+      token: { type: 'punc', value: current, pos: index },
+      nextIndex: index + 1
+    }
+  }
+
+  throw new ParseError(`无法识别字符 '${current}'`, index)
+}
+
+/**
+ * 词法分析
+ */
+function tokenize(input: string): Token[] {
+  const tokens: Token[] = []
+  let index = 0
+
+  while (index < input.length) {
+    const current = input[index]
+    if (/\s/.test(current)) {
+      index++
+      continue
+    }
+
+    const isDecimalStart = current === '.' && isDigit(input[index + 1] || '')
+    if (isDigit(current) || isDecimalStart) {
+      const scanned = scanNumber(input, index)
+      tokens.push(scanned.token)
+      index = scanned.nextIndex
+      continue
+    }
+
+    if (current === '"' || current === '\'') {
+      const scanned = scanString(input, index)
+      tokens.push(scanned.token)
+      index = scanned.nextIndex
+      continue
+    }
+
+    if (isIdentifierStart(current)) {
+      const scanned = scanIdentifier(input, index)
+      tokens.push(scanned.token)
+      index = scanned.nextIndex
+      continue
+    }
+
+    const scanned = scanSymbol(input, index)
+    tokens.push(scanned.token)
+    index = scanned.nextIndex
+  }
+
+  tokens.push({ type: 'eof', value: '', pos: index })
+  return tokens
+}
+
+/**
+ * 表达式解析器
+ */
+class Parser {
+  private cursor = 0
+
+  constructor(private readonly tokens: Token[]) {}
+
+  parse(): Expr {
+    const expr = this.parseExpression()
+    this.expect('eof')
+    return expr
+  }
+
+  private current(): Token {
+    return this.tokens[this.cursor] || this.tokens[this.tokens.length - 1]
+  }
+
+  private previous(): Token {
+    return this.tokens[Math.max(0, this.cursor - 1)]
+  }
+
+  private advance(): Token {
+    const token = this.current()
+    this.cursor++
+    return token
+  }
+
+  private match(type: TokenType, value?: string): boolean {
+    const token = this.current()
+    if (token.type !== type) {
+      return false
+    }
+    if (value !== undefined && token.value !== value) {
+      return false
+    }
+    this.advance()
+    return true
+  }
+
+  private expect(type: TokenType, value?: string): Token {
+    const token = this.current()
+    if (this.match(type, value)) {
+      return this.previous()
+    }
+
+    const expected = value ? `${type}:${value}` : type
+    throw new ParseError(`期望 ${expected}`, token.pos)
+  }
+
+  private parseExpression(): Expr {
+    return this.parseTernary()
+  }
+
+  private parseTernary(): Expr {
+    const condition = this.parseBinary(0)
+    if (!this.match('op', '?')) {
+      return condition
+    }
+
+    const thenExpr = this.parseExpression()
+    this.expect('op', ':')
+    const elseExpr = this.parseExpression()
+    return {
+      type: 'ternary',
+      cond: condition,
+      thenExpr,
+      elseExpr
+    }
+  }
+
+  private parseBinary(minPrecedence: number): Expr {
+    let left = this.parseUnary()
+
+    while (true) {
+      const token = this.current()
+      const precedence = token.type === 'op' ? PRECEDENCE[token.value] : undefined
+      if (precedence === undefined || precedence < minPrecedence) {
+        break
+      }
+
+      const operator = token.value
+      this.advance()
+      const right = this.parseBinary(precedence + 1)
+      left = {
+        type: 'binary',
+        op: operator,
+        left,
+        right
+      }
+    }
+
+    return left
+  }
+
+  private parseUnary(): Expr {
+    if (this.match('op', '-') || this.match('op', '!')) {
+      const operator = this.previous().value
+      return {
+        type: 'unary',
+        op: operator,
+        expr: this.parseUnary()
+      }
+    }
+    return this.parsePostfix()
+  }
+
+  private parsePostfix(): Expr {
+    let node = this.parsePrimary()
+
+    while (true) {
+      if (this.match('punc', '(')) {
+        node = this.parseCall(node)
+        continue
+      }
+      if (this.match('punc', '.')) {
+        node = this.parsePropertyAccess(node)
+        continue
+      }
+      if (this.match('punc', '[')) {
+        node = this.parseIndexAccess(node)
+        continue
+      }
+      break
+    }
+
+    return node
+  }
+
+  private parsePrimary(): Expr {
+    const token = this.current()
+
+    if (this.match('num')) {
+      return { type: 'number', value: Number(token.value) }
+    }
+    if (this.match('str')) {
+      return { type: 'string', value: token.value }
+    }
+    if (this.match('ident')) {
+      if (this.match('op', '=>')) {
+        return {
+          type: 'lambda',
+          param: token.value,
+          body: this.parseExpression()
         }
+      }
+      return { type: 'ref', value: token.value }
+    }
+    if (this.match('punc', '(')) {
+      const expr = this.parseExpression()
+      this.expect('punc', ')')
+      return expr
+    }
 
-        if (t.type === 'punc' && t.value === '(') {
-            const [expr, nextIdx] = parseExpr(i + 1);
-            if (!(tokens[nextIdx].type === 'punc' && tokens[nextIdx].value === ')'))
-                {throw new ParseError('期望 )', tokens[nextIdx].pos);}
-            return [expr, nextIdx + 1];
-        }
+    throw new ParseError(`无法解析主表达式: ${token.type}:${token.value}`, token.pos)
+  }
 
-        if (t.type === 'op' && (t.value === '-' || t.value === '!')) {
-            const [right, nextIdx] = parsePrimary(i + 1);
-            return [{type: 'unary', op: t.value, expr: right}, nextIdx];
-        }
+  private parseCall(node: Expr): Expr {
+    const args = this.parseArguments()
+    const name = node.type === 'ref' ? node.value : 'unknown'
+    return {
+      type: 'call',
+      name,
+      args
+    }
+  }
 
-        throw new ParseError(`无法解析主表达式: ${t.type}:${t.value}`, t.pos);
-    };
+  private parseArguments(): Expr[] {
+    const args: Expr[] = []
+    if (this.match('punc', ')')) {
+      return args
+    }
 
-    // parseBinary：处理二元运算符（左结合，优先级爬升）
-    const parseBinary = (i: number, minPrec: number): [Expr, number] => {
-        let [left, cur] = parsePrimary(i);
+    while (true) {
+      args.push(this.parseExpression())
+      if (this.match('punc', ',')) {
+        continue
+      }
+      break
+    }
 
-        while (true) {
-            const tk = tokens[cur];
-            if (!tk || tk.type !== 'op') {break;}
-            const prec = PRECEDENCE[tk.value];
-            if (prec === undefined || prec < minPrec) {break;}
+    this.expect('punc', ')')
+    return args
+  }
 
-            cur++; // skip operator
-            const [right, nextIdx] = parseBinary(cur, prec + 1);
-            left = {type: 'binary', op: tk.value, left, right};
-            cur = nextIdx;
-        }
+  private parsePropertyAccess(node: Expr): Expr {
+    const property = this.expect('ident')
+    if (node.type !== 'ref') {
+      throw new ParseError('期望标识符作为属性名', property.pos)
+    }
 
-        return [left, cur];
-    };
+    return {
+      type: 'ref',
+      value: `${node.value}.${property.value}`
+    }
+  }
 
-    // parseExpr：入口解析函数，处理三元表达式
-    const parseExpr = (i: number): [Expr, number] => {
-        const [cond, cur] = parseBinary(i, 0);
-        
-        // 三元表达式
-        if (tokens[cur] && tokens[cur].type === 'op' && tokens[cur].value === '?') {
-            const [thenExpr, nextIdx] = parseExpr(cur + 1);
-            if (!(tokens[nextIdx].type === 'op' && tokens[nextIdx].value === ':'))
-                {throw new ParseError('三元表达式期望 :', tokens[nextIdx].pos);}
-            const [elseExpr, finalIdx] = parseExpr(nextIdx + 1);
-            return [{type: 'ternary', cond, thenExpr, elseExpr}, finalIdx];
-        }
+  private parseIndexAccess(node: Expr): Expr {
+    const indexExpr = this.parseExpression()
+    this.expect('punc', ']')
+    if (node.type !== 'ref') {
+      throw new ParseError('仅引用类型支持索引访问', this.current().pos)
+    }
 
-        return [cond, cur];
-    };
+    return {
+      type: 'ref',
+      value: `${node.value}[${stringifyExpr(indexExpr)}]`
+    }
+  }
+}
 
-    return parseExpr;
-};
-
-// 解析入口函数
+/**
+ * 解析入口
+ */
 export function parse(input: string): Expr {
-    const tokens = tokenize(input);
-    const parseExpr = makeParser(tokens);
-    const [expr, idx] = parseExpr(0);
-    
-    // 确保所有 token 都被解析
-    if (tokens[idx].type !== 'eof') {
-        throw new ParseError(`意外的 token: ${tokens[idx].value}`, tokens[idx].pos);
-    }
-    
-    return expr;
+  const tokens = tokenize(input)
+  const parser = new Parser(tokens)
+  return parser.parse()
 }
 
-// 评估上下文类型
-export type EvalContext = Record<string, unknown>;
-type BuiltinFunction = (...args: unknown[]) => unknown;
+export type EvalContext = Record<string, unknown>
+type BuiltinFunction = (...args: unknown[]) => unknown
 
-// 内置函数库
 const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
-    // 数学函数
-    abs: Math.abs as BuiltinFunction,
-    ceil: Math.ceil as BuiltinFunction,
-    floor: Math.floor as BuiltinFunction,
-    round: Math.round as BuiltinFunction,
-    max: Math.max as BuiltinFunction,
-    min: Math.min as BuiltinFunction,
-    sqrt: Math.sqrt as BuiltinFunction,
-    pow: Math.pow as BuiltinFunction,
-    
-    // 字符串函数
-    len: (...args: unknown[]) => String(args[0]).length,
-    upper: (...args: unknown[]) => String(args[0]).toUpperCase(),
-    lower: (...args: unknown[]) => String(args[0]).toLowerCase(),
-    trim: (...args: unknown[]) => String(args[0]).trim(),
-    substr: (...args: unknown[]) => {
-        const source = String(args[0]);
-        const start = Number(args[1] ?? 0);
-        const len = args[2] !== undefined ? Number(args[2]) : undefined;
-        return source.substr(start, len);
-    },
-    
-    // 数组函数
-    count: (...args: unknown[]) => {
-        const arr = args[0];
-        return Array.isArray(arr) ? arr.length : 0;
-    },
-    sum: (...args: unknown[]) => {
-        const arr = args[0];
-        return Array.isArray(arr) ? arr.reduce<number>((a, b) => a + Number(b), 0) : 0;
-    },
-    avg: (...args: unknown[]) => {
-        const arr = args[0];
-        if (!Array.isArray(arr) || arr.length === 0) {return 0;}
-        return arr.reduce<number>((a, b) => a + Number(b), 0) / arr.length;
-    },
-    
-    // 高阶函数
-    countIf: (...args: unknown[]) => {
-        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
-        if (!Array.isArray(arr)) {return 0;}
-        if (typeof predicate !== 'function') {return 0;}
-        return arr.filter(predicate).length;
-    },
-    filter: (...args: unknown[]) => {
-        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
-        if (!Array.isArray(arr)) {return [];}
-        if (typeof predicate !== 'function') {return [];}
-        return arr.filter(predicate);
-    },
-    map: (...args: unknown[]) => {
-        const [arr, fn] = args as [unknown, ((item: unknown) => unknown)?];
-        if (!Array.isArray(arr)) {return [];}
-        if (typeof fn !== 'function') {return [];}
-        return arr.map(fn);
-    },
-    some: (...args: unknown[]) => {
-        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
-        if (!Array.isArray(arr)) {return false;}
-        if (typeof predicate !== 'function') {return false;}
-        return arr.some(predicate);
-    },
-    every: (...args: unknown[]) => {
-        const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?];
-        if (!Array.isArray(arr)) {return false;}
-        if (typeof predicate !== 'function') {return false;}
-        return arr.every(predicate);
-    },
-};
+  abs: Math.abs as BuiltinFunction,
+  ceil: Math.ceil as BuiltinFunction,
+  floor: Math.floor as BuiltinFunction,
+  round: Math.round as BuiltinFunction,
+  max: Math.max as BuiltinFunction,
+  min: Math.min as BuiltinFunction,
+  sqrt: Math.sqrt as BuiltinFunction,
+  pow: Math.pow as BuiltinFunction,
+  len: (...args: unknown[]) => String(args[0]).length,
+  upper: (...args: unknown[]) => String(args[0]).toUpperCase(),
+  lower: (...args: unknown[]) => String(args[0]).toLowerCase(),
+  trim: (...args: unknown[]) => String(args[0]).trim(),
+  substr: (...args: unknown[]) => {
+    const source = String(args[0])
+    const start = Number(args[1] ?? 0)
+    const len = args[2] !== undefined ? Number(args[2]) : undefined
+    return source.substr(start, len)
+  },
+  count: (...args: unknown[]) => {
+    const arr = args[0]
+    return Array.isArray(arr) ? arr.length : 0
+  },
+  sum: (...args: unknown[]) => {
+    const arr = args[0]
+    return Array.isArray(arr) ? arr.reduce<number>((a, b) => a + Number(b), 0) : 0
+  },
+  avg: (...args: unknown[]) => {
+    const arr = args[0]
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return 0
+    }
+    return arr.reduce<number>((a, b) => a + Number(b), 0) / arr.length
+  },
+  countIf: (...args: unknown[]) => {
+    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    if (!Array.isArray(arr) || typeof predicate !== 'function') {
+      return 0
+    }
+    return arr.filter(predicate).length
+  },
+  filter: (...args: unknown[]) => {
+    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    if (!Array.isArray(arr) || typeof predicate !== 'function') {
+      return []
+    }
+    return arr.filter(predicate)
+  },
+  map: (...args: unknown[]) => {
+    const [arr, fn] = args as [unknown, ((item: unknown) => unknown)?]
+    if (!Array.isArray(arr) || typeof fn !== 'function') {
+      return []
+    }
+    return arr.map(fn)
+  },
+  some: (...args: unknown[]) => {
+    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    if (!Array.isArray(arr) || typeof predicate !== 'function') {
+      return false
+    }
+    return arr.some(predicate)
+  },
+  every: (...args: unknown[]) => {
+    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    if (!Array.isArray(arr) || typeof predicate !== 'function') {
+      return false
+    }
+    return arr.every(predicate)
+  }
+}
 
-// 解析引用路径（支持嵌套属性和索引）
+/**
+ * 解析引用路径（支持点路径和数组索引）
+ */
 function resolveRef(path: string, context: EvalContext): unknown {
-    // 处理简单的点分隔路径和数组索引
-    const parts = path.split(/\.|\[/).map(p => p.replace(/\]$/, ''));
-    let value: unknown = context;
-    
-    for (const part of parts) {
-        if (value === undefined || value === null) {return undefined;}
-        
-        // 如果是数字，当作数组索引
-        if (/^\d+$/.test(part) && Array.isArray(value)) {
-            value = value[Number(part)];
-            continue;
-        }
-        if (value && typeof value === 'object') {
-            value = (value as Record<string, unknown>)[part];
-            continue;
-        }
-        return undefined;
+  const parts = path.split(/\.|\[/).map((part) => part.replace(/\]$/, ''))
+  let current: unknown = context
+
+  for (const part of parts) {
+    if (current === undefined || current === null) {
+      return undefined
     }
-    
-    return value;
+
+    const isArrayIndex = /^\d+$/.test(part)
+    if (isArrayIndex && Array.isArray(current)) {
+      current = current[Number(part)]
+      continue
+    }
+
+    if (typeof current === 'object') {
+      current = (current as Record<string, unknown>)[part]
+      continue
+    }
+
+    return undefined
+  }
+
+  return current
 }
 
-// 评估表达式
+type BinaryOperator = (left: unknown, right: unknown) => unknown
+type UnaryOperator = (value: unknown) => unknown
+
+const looseEqual: BinaryOperator = (left, right) =>
+  // eslint-disable-next-line eqeqeq
+  left == right
+
+const looseNotEqual: BinaryOperator = (left, right) =>
+  // eslint-disable-next-line eqeqeq
+  left != right
+
+const BINARY_OPERATORS: Readonly<Record<string, BinaryOperator>> = {
+  '+': (left, right) => Number(left) + Number(right),
+  '-': (left, right) => Number(left) - Number(right),
+  '*': (left, right) => Number(left) * Number(right),
+  '/': (left, right) => Number(left) / Number(right),
+  '%': (left, right) => Number(left) % Number(right),
+  '<': (left, right) => (left as string | number | boolean) < (right as string | number | boolean),
+  '>': (left, right) => (left as string | number | boolean) > (right as string | number | boolean),
+  '<=': (left, right) => (left as string | number | boolean) <= (right as string | number | boolean),
+  '>=': (left, right) => (left as string | number | boolean) >= (right as string | number | boolean),
+  '==': looseEqual,
+  '!=': looseNotEqual,
+  '===': (left, right) => left === right,
+  '!==': (left, right) => left !== right,
+  '&&': (left, right) => left && right,
+  '||': (left, right) => left || right
+}
+
+const UNARY_OPERATORS: Readonly<Record<string, UnaryOperator>> = {
+  '-': (value) => -Number(value),
+  '!': (value) => !value
+}
+
+/**
+ * 评估 lambda
+ */
+function evaluateLambda(expr: Extract<Expr, { type: 'lambda' }>, context: EvalContext) {
+  return (param: unknown) => {
+    const newContext = { ...context, [expr.param]: param }
+    return evaluate(expr.body, newContext)
+  }
+}
+
+/**
+ * 评估函数调用
+ */
+function evaluateCall(expr: Extract<Expr, { type: 'call' }>, context: EvalContext): unknown {
+  const fn = BUILTIN_FUNCTIONS[expr.name] || context[expr.name]
+  if (typeof fn !== 'function') {
+    throw new Error(`未定义的函数: ${expr.name}`)
+  }
+
+  const args = expr.args.map((arg) => {
+    if (arg.type === 'lambda') {
+      return evaluateLambda(arg, context)
+    }
+    return evaluate(arg, context)
+  })
+  return fn(...args)
+}
+
+/**
+ * 评估一元表达式
+ */
+function evaluateUnary(expr: Extract<Expr, { type: 'unary' }>, context: EvalContext): unknown {
+  const operation = UNARY_OPERATORS[expr.op]
+  if (!operation) {
+    throw new Error(`未知的一元运算符: ${expr.op}`)
+  }
+  return operation(evaluate(expr.expr, context))
+}
+
+/**
+ * 评估二元表达式
+ */
+function evaluateBinary(expr: Extract<Expr, { type: 'binary' }>, context: EvalContext): unknown {
+  const operation = BINARY_OPERATORS[expr.op]
+  if (!operation) {
+    throw new Error(`未知的二元运算符: ${expr.op}`)
+  }
+  const left = evaluate(expr.left, context)
+  const right = evaluate(expr.right, context)
+  return operation(left, right)
+}
+
+type ExprEvaluator<T extends Expr> = (expr: T, context: EvalContext) => unknown
+
+const EXPRESSION_EVALUATORS: {
+  [K in Expr['type']]: ExprEvaluator<Extract<Expr, { type: K }>>
+} = {
+  number: (expr) => expr.value,
+  string: (expr) => expr.value,
+  ref: (expr, context) => resolveRef(expr.value, context),
+  unary: (expr, context) => evaluateUnary(expr, context),
+  binary: (expr, context) => evaluateBinary(expr, context),
+  ternary: (expr, context) =>
+    evaluate(expr.cond, context) ? evaluate(expr.thenExpr, context) : evaluate(expr.elseExpr, context),
+  call: (expr, context) => evaluateCall(expr, context),
+  lambda: (expr, context) => evaluateLambda(expr, context)
+}
+
+/**
+ * 评估表达式
+ */
 export function evaluate(expr: Expr, context: EvalContext = {}): unknown {
-    switch (expr.type) {
-        case 'number':
-            return expr.value;
-            
-        case 'string':
-            return expr.value;
-            
-        case 'ref':
-            return resolveRef(expr.value, context);
-            
-        case 'unary':
-            const operand = evaluate(expr.expr, context);
-            if (expr.op === '-') {return -Number(operand);}
-            if (expr.op === '!') {return !operand;}
-            throw new Error(`未知的一元运算符: ${expr.op}`);
-            
-        case 'binary': {
-            const left = evaluate(expr.left, context);
-            const right = evaluate(expr.right, context);
-            const leftComparable = left as string | number | boolean;
-            const rightComparable = right as string | number | boolean;
-            
-            switch (expr.op) {
-                case '+': return Number(left) + Number(right);
-                case '-': return Number(left) - Number(right);
-                case '*': return Number(left) * Number(right);
-                case '/': return Number(left) / Number(right);
-                case '%': return Number(left) % Number(right);
-                case '<': return leftComparable < rightComparable;
-                case '>': return leftComparable > rightComparable;
-                case '<=': return leftComparable <= rightComparable;
-                case '>=': return leftComparable >= rightComparable;
-                // eslint-disable-next-line eqeqeq
-                case '==': return left == right;
-                // eslint-disable-next-line eqeqeq
-                case '!=': return left != right;
-                case '===': return left === right;
-                case '!==': return left !== right;
-                case '&&': return left && right;
-                case '||': return left || right;
-                default:
-                    throw new Error(`未知的二元运算符: ${expr.op}`);
-            }
-        }
-            
-        case 'ternary': {
-            const cond = evaluate(expr.cond, context);
-            return cond ? evaluate(expr.thenExpr, context) : evaluate(expr.elseExpr, context);
-        }
-            
-        case 'call': {
-            const fn = BUILTIN_FUNCTIONS[expr.name] || context[expr.name];
-            if (typeof fn !== 'function') {
-                throw new Error(`未定义的函数: ${expr.name}`);
-            }
-            
-            // 评估参数（特殊处理 lambda）
-            const args = expr.args.map(arg => {
-                if (arg.type === 'lambda') {
-                    // 返回一个函数，在调用时评估 lambda body
-                    return (param: unknown) => {
-                        const newContext = {...context, [arg.param]: param};
-                        return evaluate(arg.body, newContext);
-                    };
-                }
-                return evaluate(arg, context);
-            });
-            
-            return fn(...args);
-        }
-            
-        case 'lambda':
-            // Lambda 本身不直接评估，需要在函数调用时处理
-            return (param: unknown) => {
-                const newContext = {...context, [expr.param]: param};
-                return evaluate(expr.body, newContext);
-            };
-    }
-    
-    // This line should never be reached due to exhaustive switch above
-    throw new Error(`未知的表达式类型: ${(expr as {type: string}).type}`);
+  const evaluator = EXPRESSION_EVALUATORS[expr.type]
+  return evaluator(expr as never, context)
 }
 
-// 便捷函数：解析并评估表达式
+/**
+ * 便捷函数：解析并评估表达式
+ */
 export function exec(input: string, context: EvalContext = {}): unknown {
-    const expr = parse(input);
-    return evaluate(expr, context);
+  return evaluate(parse(input), context)
 }
 
-// 导出类型和函数
 export default {
-    parse,
-    evaluate,
-    exec,
-    ParseError,
-};
+  parse,
+  evaluate,
+  exec,
+  ParseError
+}

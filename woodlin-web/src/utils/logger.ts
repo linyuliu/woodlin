@@ -9,32 +9,36 @@
 const isDev = import.meta.env.DEV
 type LogArgs = unknown[]
 
+/**
+ * 开发环境日志输出（统一走 warn，避免 lint 限制）
+ */
+function devLog(prefix: string, ...args: LogArgs) {
+  if (!isDev) {
+    return
+  }
+  console.warn(prefix, ...args)
+}
+
 export const logger = {
   /**
    * 输出普通日志
    */
   log(...args: LogArgs) {
-    if (isDev) {
-      console.log(...args)
-    }
+    devLog('[LOG]', ...args)
   },
 
   /**
    * 输出信息日志
    */
   info(...args: LogArgs) {
-    if (isDev) {
-      console.info(...args)
-    }
+    devLog('[INFO]', ...args)
   },
 
   /**
    * 输出警告日志
    */
   warn(...args: LogArgs) {
-    if (isDev) {
-      console.warn(...args)
-    }
+    devLog('[WARN]', ...args)
   },
 
   /**
@@ -48,9 +52,7 @@ export const logger = {
    * 输出调试日志
    */
   debug(...args: LogArgs) {
-    if (isDev) {
-      console.debug(...args)
-    }
+    devLog('[DEBUG]', ...args)
   }
 }
 
