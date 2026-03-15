@@ -113,6 +113,9 @@
 
         <!-- Google Guava -->
         <guava.version>33.3.1-jre</guava.version>
+
+        <!-- Z3 约束求解器 -->
+        <z3-turnkey.version>4.14.0</z3-turnkey.version>
     </properties>
 
     <!-- 依赖版本管理 -->
@@ -158,6 +161,11 @@
             <dependency>
                 <groupId>com.mumu</groupId>
                 <artifactId>woodlin-system-sql2api</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-system-z3</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>
 
@@ -458,6 +466,13 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+
+            <!-- Z3 SMT Solver (包含全平台原生库) -->
+            <dependency>
+                <groupId>tools.aqua</groupId>
+                <artifactId>z3-turnkey</artifactId>
+                <version>${z3-turnkey.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

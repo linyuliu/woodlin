@@ -32,6 +32,7 @@
         <!-- <module>woodlin-system-sql2api</module> -->
         <module>woodlin-system-dsl</module>
         <module>woodlin-system-etl</module>
+        <module>woodlin-system-z3</module>
     </modules>
 
 </project>
