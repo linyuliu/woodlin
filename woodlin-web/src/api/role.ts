@@ -38,11 +38,22 @@ export interface RoleListParams {
 }
 
 /**
+ * 分页响应结构
+ */
+export interface RolePageData<T> {
+  data: T[]
+  current: number
+  size: number
+  total: number
+  pages: number
+}
+
+/**
  * 分页查询角色列表
  * @param params 查询参数
  */
 export function getRoleList(params: RoleListParams) {
-  return request.get('/system/role/list', { params })
+  return request.get<RolePageData<SysRole>, RolePageData<SysRole>>('/system/role/list', { params })
 }
 
 /**
@@ -82,7 +93,7 @@ export function deleteRole(roleIds: string) {
  * @param roleId 角色ID
  */
 export function getRoleMenus(roleId: number) {
-  return request.get(`/system/role/menu/${roleId}`)
+  return request.get<number[], number[]>(`/system/role/menu/${roleId}`)
 }
 
 /**
@@ -91,7 +102,7 @@ export function getRoleMenus(roleId: number) {
  * @param menuIds 菜单ID数组
  */
 export function assignRoleMenus(roleId: number, menuIds: number[]) {
-  return request.put(`/system/role/menu/${roleId}`, menuIds)
+  return request.put<number[], void>(`/system/role/menu/${roleId}`, menuIds)
 }
 
 /**

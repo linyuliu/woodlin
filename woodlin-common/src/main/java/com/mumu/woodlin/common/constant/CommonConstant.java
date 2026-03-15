@@ -72,7 +72,12 @@ public interface CommonConstant {
     /**
      * 超级管理员角色编码
      */
-    String SUPER_ADMIN_ROLE_CODE = "super_admin";
+    String SUPER_ADMIN_ROLE_CODE = SystemConstant.SUPER_ADMIN_ROLE_CODE;
+
+    /**
+     * 超级管理员角色编码（兼容历史）
+     */
+    String LEGACY_SUPER_ADMIN_ROLE_CODE = "super_admin";
     
     /**
      * 启用状态

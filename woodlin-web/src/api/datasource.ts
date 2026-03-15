@@ -80,14 +80,6 @@ export interface ColumnMetadata {
   javaType?: string
 }
 
-export interface MetadataCacheInfo {
-  cacheKey: string
-  scope: string
-  updatedAt: number
-  expiresAt: number
-  expired: boolean
-}
-
 export function getDatasourceList(): Promise<DatasourceConfig[]> {
   return request({
     url: '/admin/infra/datasource',
@@ -163,20 +155,4 @@ export function getTableColumns(code: string, table: string, schemaName?: string
     method: 'get',
     params: { code, table, schemaName, refresh }
   })
-}
-
-export function refreshDatasourceCache(code: string): Promise<void> {
-  return request({
-    url: '/admin/infra/datasource/cache/refresh',
-    method: 'post',
-    params: { code }
-  }) as Promise<void>
-}
-
-export function getDatasourceCacheInfo(code: string): Promise<MetadataCacheInfo[]> {
-  return request({
-    url: '/admin/infra/datasource/cache/info',
-    method: 'get',
-    params: { code }
-  }) as Promise<MetadataCacheInfo[]>
 }

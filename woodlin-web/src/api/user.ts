@@ -23,6 +23,7 @@ export interface SysUser {
   status?: string
   deptId?: number
   roleIds?: number[]
+  remark?: string
   createTime?: string
   updateTime?: string
 }
@@ -41,15 +42,22 @@ export interface UserListParams {
 }
 
 /**
+ * 分页响应结构
+ */
+export interface UserPageData<T> {
+  data: T[]
+  current: number
+  size: number
+  total: number
+  pages: number
+}
+
+/**
  * 分页查询用户列表
  * @param params 查询参数
  */
 export function getUserList(params: UserListParams) {
-  return request({
-    url: '/system/user/list',
-    method: 'get',
-    params
-  })
+  return request.get<UserPageData<SysUser>, UserPageData<SysUser>>('/system/user/list', { params })
 }
 
 /**
@@ -57,10 +65,7 @@ export function getUserList(params: UserListParams) {
  * @param userId 用户ID
  */
 export function getUserById(userId: number) {
-  return request({
-    url: `/system/user/${userId}`,
-    method: 'get'
-  })
+  return request.get<SysUser, SysUser>(`/system/user/${userId}`)
 }
 
 /**
@@ -68,11 +73,7 @@ export function getUserById(userId: number) {
  * @param data 用户数据
  */
 export function addUser(data: SysUser) {
-  return request({
-    url: '/system/user',
-    method: 'post',
-    data
-  })
+  return request.post<SysUser, void>('/system/user', data)
 }
 
 /**
@@ -80,11 +81,7 @@ export function addUser(data: SysUser) {
  * @param data 用户数据
  */
 export function updateUser(data: SysUser) {
-  return request({
-    url: '/system/user',
-    method: 'put',
-    data
-  })
+  return request.put<SysUser, void>('/system/user', data)
 }
 
 /**
@@ -93,10 +90,7 @@ export function updateUser(data: SysUser) {
  */
 export function deleteUser(userIds: string | number[]) {
   const ids = Array.isArray(userIds) ? userIds.join(',') : userIds
-  return request({
-    url: `/system/user/${ids}`,
-    method: 'delete'
-  })
+  return request.delete<void, void>(`/system/user/${ids}`)
 }
 
 /**
@@ -118,12 +112,7 @@ export function exportUser(params: UserListParams) {
  * @param password 新密码
  */
 export function resetUserPassword(userId: number, password: string) {
-  return request({
-    url: '/system/user/resetPwd',
-    method: 'put',
-    params: {
-      userId,
-      password
-    }
+  return request.put<void, void>('/system/user/resetPwd', null, {
+    params: { userId, password }
   })
 }

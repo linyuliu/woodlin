@@ -15,6 +15,12 @@ export * from './user'
 // 角色管理
 export * from './role'
 
+// 菜单管理
+export * from './menu'
+
+// 部门管理
+export * from './dept'
+
 // 租户管理
 export * from './tenant'
 

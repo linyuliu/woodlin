@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   NButton,
   NCard,
@@ -27,7 +26,6 @@ import {
   CheckmarkCircleOutline,
   CreateOutline,
   LinkOutline,
-  OpenOutline,
   RefreshOutline,
   SearchOutline,
   TrashOutline
@@ -40,9 +38,11 @@ import {
   updateDatasource,
   type DatasourceConfig
 } from '@/api/datasource'
+import { useUserStore } from '@/stores'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
-const router = useRouter()
 const message = useMessage()
+const userStore = useUserStore()
 
 const DEFAULT_PASSWORD = '12345678'
 
@@ -50,6 +50,11 @@ const listLoading = ref(false)
 const submitLoading = ref(false)
 const keyword = ref('')
 const datasourceList = ref<DatasourceConfig[]>([])
+const canViewDatasource = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.DATASOURCE_LIST))
+const canCreateDatasource = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.DATASOURCE_ADD))
+const canEditDatasource = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.DATASOURCE_EDIT))
+const canDeleteDatasource = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.DATASOURCE_REMOVE))
+const canTestDatasource = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.DATASOURCE_TEST))
 
 const modalVisible = ref(false)
 const isEditMode = ref(false)
@@ -62,12 +67,8 @@ const formModel = ref<DatasourceConfig>({
   username: '',
   password: DEFAULT_PASSWORD,
   driverClass: '',
-  testSql: '',
   status: 1,
-  owner: '',
-  bizTags: '',
-  remark: '',
-  extConfig: ''
+  remark: ''
 })
 
 const datasourceTypeOptions = [
@@ -108,9 +109,7 @@ const filteredDatasourceList = computed(() => {
       item.datasourceCode,
       item.datasourceName,
       item.datasourceType,
-      item.jdbcUrl,
-      item.owner,
-      item.bizTags
+      item.jdbcUrl
     ]
       .filter(Boolean)
       .join(' ')
@@ -172,53 +171,65 @@ const datasourceColumns: DataTableColumns<DatasourceConfig> = [
   {
     title: '操作',
     key: 'actions',
-    width: 360,
-    render: row =>
-      h(NSpace, { size: 4 }, () => [
-        h(
-          NButton,
-          {
-            size: 'small',
-            tertiary: true,
-            type: 'primary',
-            onClick: () => handleOpenWorkspace(row)
-          },
-          { default: () => '进入工作台', icon: () => h(NIcon, null, { default: () => h(OpenOutline) }) }
-        ),
-        h(
-          NButton,
-          {
-            size: 'small',
-            tertiary: true,
-            type: 'default',
-            onClick: () => handleOpenEdit(row)
-          },
-          { default: () => '编辑', icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) }
-        ),
-        h(
-          NButton,
-          {
-            size: 'small',
-            tertiary: true,
-            type: 'success',
-            onClick: () => handleTestDatasource(row)
-          },
-          { default: () => '测试', icon: () => h(NIcon, null, { default: () => h(LinkOutline) }) }
-        ),
-        h(
-          NPopconfirm,
-          { onPositiveClick: () => handleDeleteDatasource(row) },
-          {
-            default: () => `确认删除数据源 ${row.datasourceName} 吗？`,
-            trigger: () =>
-              h(
-                NButton,
-                { size: 'small', tertiary: true, type: 'error' },
-                { default: () => '删除', icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }
-              )
-          }
+    width: 250,
+    // eslint-disable-next-line max-lines-per-function
+    render: row => {
+      const actionButtons: ReturnType<typeof h>[] = []
+
+      if (canEditDatasource.value) {
+        actionButtons.push(
+          h(
+            NButton,
+            {
+              size: 'small',
+              tertiary: true,
+              type: 'default',
+              onClick: () => handleOpenEdit(row)
+            },
+            { default: () => '编辑', icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) }
+          )
         )
-      ])
+      }
+
+      if (canTestDatasource.value) {
+        actionButtons.push(
+          h(
+            NButton,
+            {
+              size: 'small',
+              tertiary: true,
+              type: 'success',
+              onClick: () => handleTestDatasource(row)
+            },
+            { default: () => '测试', icon: () => h(NIcon, null, { default: () => h(LinkOutline) }) }
+          )
+        )
+      }
+
+      if (canDeleteDatasource.value) {
+        actionButtons.push(
+          h(
+            NPopconfirm,
+            { onPositiveClick: () => handleDeleteDatasource(row) },
+            {
+              default: () => `确认删除数据源 ${row.datasourceName} 吗？`,
+              trigger: () =>
+                h(
+                  NButton,
+                  { size: 'small', tertiary: true, type: 'error' },
+                  { default: () => '删除', icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }
+                )
+            }
+          )
+        )
+      }
+
+      if (actionButtons.length === 0) {
+        return h(NTag, { size: 'small' }, { default: () => '只读' })
+      }
+
+      return h(NSpace, { size: 4 }, () => actionButtons)
+    }
   }
 ]
 
@@ -231,16 +242,16 @@ const resetForm = () => {
     username: '',
     password: DEFAULT_PASSWORD,
     driverClass: '',
-    testSql: '',
     status: 1,
-    owner: '',
-    bizTags: '',
-    remark: '',
-    extConfig: ''
+    remark: ''
   }
 }
 
 const loadDatasourceList = async () => {
+  if (!canViewDatasource.value) {
+    datasourceList.value = []
+    return
+  }
   listLoading.value = true
   try {
     datasourceList.value = await getDatasourceList()
@@ -249,25 +260,21 @@ const loadDatasourceList = async () => {
   }
 }
 
-const handleOpenWorkspace = (row: DatasourceConfig) => {
-  const routeLocation = router.resolve({
-    name: 'DatasourceWorkspace',
-    params: { code: row.datasourceCode }
-  })
-  if (!routeLocation.name) {
-    router.push(`/datasource/workspace/${row.datasourceCode}`)
+const handleOpenCreate = () => {
+  if (!canCreateDatasource.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_ADD} 权限`)
     return
   }
-  router.push(routeLocation)
-}
-
-const handleOpenCreate = () => {
   isEditMode.value = false
   resetForm()
   modalVisible.value = true
 }
 
 const handleOpenEdit = (row: DatasourceConfig) => {
+  if (!canEditDatasource.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_EDIT} 权限`)
+    return
+  }
   isEditMode.value = true
   formModel.value = { ...row }
   modalVisible.value = true
@@ -278,9 +285,17 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (isEditMode.value) {
+      if (!canEditDatasource.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_EDIT} 权限`)
+        return
+      }
       await updateDatasource(formModel.value)
       message.success('数据源更新成功')
     } else {
+      if (!canCreateDatasource.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_ADD} 权限`)
+        return
+      }
       await addDatasource(formModel.value)
       message.success('数据源创建成功')
     }
@@ -292,17 +307,29 @@ const handleSubmit = async () => {
 }
 
 const handleDeleteDatasource = async (row: DatasourceConfig) => {
+  if (!canDeleteDatasource.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_REMOVE} 权限`)
+    return
+  }
   await deleteDatasource(row.datasourceCode)
   message.success('数据源已删除')
   await loadDatasourceList()
 }
 
 const handleTestDatasource = async (row: DatasourceConfig) => {
+  if (!canTestDatasource.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_TEST} 权限`)
+    return
+  }
   await testDatasource(row)
   message.success(`连接测试通过：${row.datasourceName}`)
 }
 
 onMounted(async () => {
+  if (!canViewDatasource.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.DATASOURCE_LIST} 权限`)
+    return
+  }
   await loadDatasourceList()
 })
 </script>
@@ -313,16 +340,16 @@ onMounted(async () => {
       <div class="hero-content">
         <div>
           <h2>数据源管理</h2>
-          <p>列表页只做管理和检索。Schema、表、字段在独立工作台按层级懒加载，避免一次性全量读取。</p>
+          <p>仅保留数据源维护与连通性验证，元数据查询入口后续按业务模块接入。</p>
         </div>
         <n-space>
-          <n-button type="primary" @click="handleOpenCreate">
+          <n-button v-if="canCreateDatasource" type="primary" @click="handleOpenCreate">
             <template #icon>
               <n-icon><add-outline /></n-icon>
             </template>
             新增数据源
           </n-button>
-          <n-button secondary @click="loadDatasourceList">
+          <n-button secondary :disabled="!canViewDatasource" @click="loadDatasourceList">
             <template #icon>
               <n-icon><refresh-outline /></n-icon>
             </template>
@@ -353,12 +380,12 @@ onMounted(async () => {
     <n-card title="数据源列表" :bordered="false" class="panel-card">
       <template #header-extra>
         <n-space align="center" size="small">
-          <n-input v-model:value="keyword" clearable placeholder="搜索名称/编码/类型/标签" size="small" style="width: 280px">
+          <n-input v-model:value="keyword" clearable :disabled="!canViewDatasource" placeholder="搜索名称/编码/类型" size="small" style="width: 280px">
             <template #prefix>
               <n-icon><search-outline /></n-icon>
             </template>
           </n-input>
-          <n-text depth="3">双击行可快速进入工作台</n-text>
+          <n-text depth="3">新增/编辑后可直接测试连接</n-text>
         </n-space>
       </template>
 
@@ -370,7 +397,6 @@ onMounted(async () => {
         size="small"
         max-height="640"
         :row-key="(row: DatasourceConfig) => row.datasourceCode"
-        :row-props="(row: DatasourceConfig) => ({ onDblclick: () => handleOpenWorkspace(row) })"
       />
     </n-card>
 
@@ -437,38 +463,20 @@ onMounted(async () => {
           </n-grid-item>
         </n-grid>
 
-        <n-grid cols="1 m:2" responsive="screen" :x-gap="12">
-          <n-grid-item>
-            <n-form-item label="负责人">
-              <n-input v-model:value="formModel.owner" />
-            </n-form-item>
-          </n-grid-item>
-          <n-grid-item>
-            <n-form-item label="业务标签">
-              <n-input v-model:value="formModel.bizTags" placeholder="例如：etl,cdc,report" />
-            </n-form-item>
-          </n-grid-item>
-        </n-grid>
-
-        <n-form-item label="测试 SQL">
-          <n-input v-model:value="formModel.testSql" placeholder="留空则按数据库类型自动设置" />
-        </n-form-item>
         <n-form-item label="备注">
           <n-input v-model:value="formModel.remark" type="textarea" />
-        </n-form-item>
-        <n-form-item label="扩展配置">
-          <n-input
-            v-model:value="formModel.extConfig"
-            type="textarea"
-            placeholder='JSON，例如 {"metadata":{"preferNative":true}}'
-          />
         </n-form-item>
       </n-form>
 
       <template #footer>
         <n-space justify="end">
           <n-button @click="modalVisible = false">取消</n-button>
-          <n-button type="primary" :loading="submitLoading" @click="handleSubmit">
+          <n-button
+            type="primary"
+            :loading="submitLoading"
+            :disabled="(isEditMode && !canEditDatasource) || (!isEditMode && !canCreateDatasource)"
+            @click="handleSubmit"
+          >
             <template #icon>
               <n-icon><checkmark-circle-outline /></n-icon>
             </template>

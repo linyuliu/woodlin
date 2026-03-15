@@ -6,15 +6,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.security.service.PermissionCacheService;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
+import com.mumu.woodlin.system.entity.SysPermission;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysRoleHierarchy;
 import com.mumu.woodlin.system.entity.SysRoleInheritedPermission;
+import com.mumu.woodlin.system.entity.SysRolePermission;
+import com.mumu.woodlin.system.mapper.SysPermissionMapper;
 import com.mumu.woodlin.system.mapper.SysRoleHierarchyMapper;
 import com.mumu.woodlin.system.mapper.SysRoleInheritedPermissionMapper;
 import com.mumu.woodlin.system.mapper.SysRoleMapper;
+import com.mumu.woodlin.system.mapper.SysRolePermissionMapper;
 import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.util.RoleHierarchyUtil;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +28,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * 角色信息服务实现
@@ -38,6 +48,8 @@ import java.util.*;
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> implements ISysRoleService {
 
     private final SysRoleMapper roleMapper;
+    private final SysPermissionMapper permissionMapper;
+    private final SysRolePermissionMapper rolePermissionMapper;
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
 
@@ -112,6 +124,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateRole(SysRole role) {
+        SysRole existingRole = getById(role.getRoleId());
+        if (existingRole == null) {
+            throw new BusinessException("角色不存在");
+        }
+        validateSuperAdminRoleUpdate(existingRole, role);
+
         // 检查循环依赖
         if (role.getParentRoleId() != null && role.getParentRoleId() > 0) {
             if (checkCircularDependency(role.getRoleId(), role.getParentRoleId())) {
@@ -147,6 +165,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public boolean deleteRoleByIds(List<Long> roleIds) {
         if (CollUtil.isEmpty(roleIds)) {
             return false;
+        }
+
+        for (Long roleId : roleIds) {
+            if (isSuperAdminRole(roleId)) {
+                throw new BusinessException("超级管理员角色不允许删除");
+            }
         }
 
         // 检查是否有子角色
@@ -306,11 +330,57 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             return Collections.emptyList();
         }
 
-        // 这里需要查询权限表获取权限编码
-        // 简化处理，返回权限ID列表的字符串形式
-        return permissionIds.stream()
-            .map(String::valueOf)
+        List<SysPermission> permissionList = permissionMapper.selectBatchIds(permissionIds);
+        if (CollUtil.isEmpty(permissionList)) {
+            return Collections.emptyList();
+        }
+        return permissionList.stream()
+            .map(SysPermission::getPermissionCode)
+            .filter(StrUtil::isNotBlank)
+            .distinct()
             .toList();
+    }
+
+    @Override
+    public List<Long> selectPermissionIdsByRoleId(Long roleId) {
+        if (roleId == null) {
+            return Collections.emptyList();
+        }
+        return rolePermissionMapper.selectPermissionIdsByRoleId(roleId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean assignRolePermissions(Long roleId, List<Long> permissionIds) {
+        if (roleId == null) {
+            throw new BusinessException("角色ID不能为空");
+        }
+        if (isSuperAdminRole(roleId)) {
+            throw new BusinessException("超级管理员角色权限不允许删减");
+        }
+
+        List<Long> targetPermissionIds = permissionIds == null
+            ? Collections.emptyList()
+            : permissionIds.stream().filter(Objects::nonNull).distinct().toList();
+
+        rolePermissionMapper.deleteByRoleId(roleId);
+
+        if (CollUtil.isNotEmpty(targetPermissionIds)) {
+            List<SysRolePermission> relations = targetPermissionIds.stream()
+                .map(permissionId -> new SysRolePermission()
+                    .setRoleId(roleId)
+                    .setPermissionId(permissionId))
+                .toList();
+            rolePermissionMapper.batchInsert(relations);
+        }
+
+        refreshInheritedPermissions(roleId);
+        List<SysRole> descendants = selectDescendantRoles(roleId);
+        for (SysRole descendant : descendants) {
+            refreshInheritedPermissions(descendant.getRoleId());
+        }
+        evictRoleCache(roleId);
+        return true;
     }
 
     @Override
@@ -467,6 +537,52 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .setSortOrder(role.getSortOrder())
             .setHasChildren(false)
             .setChildren(new ArrayList<>());
+    }
+
+    /**
+     * 校验超级管理员角色可修改字段
+     *
+     * @param existingRole 当前角色
+     * @param inputRole 输入角色
+     */
+    private void validateSuperAdminRoleUpdate(SysRole existingRole, SysRole inputRole) {
+        if (!isSuperAdminRoleCode(existingRole.getRoleCode())) {
+            return;
+        }
+        if (StrUtil.isNotBlank(inputRole.getRoleCode())
+            && !Objects.equals(existingRole.getRoleCode(), inputRole.getRoleCode())) {
+            throw new BusinessException("超级管理员角色编码不允许修改");
+        }
+        if (StrUtil.isNotBlank(inputRole.getStatus())
+            && !Objects.equals(CommonConstant.STATUS_ENABLE, inputRole.getStatus())) {
+            throw new BusinessException("超级管理员角色不允许禁用");
+        }
+        if (!Objects.equals(existingRole.getParentRoleId(), inputRole.getParentRoleId())) {
+            throw new BusinessException("超级管理员角色层级不允许修改");
+        }
+    }
+
+    /**
+     * 判断是否超级管理员角色
+     *
+     * @param roleId 角色ID
+     * @return 是否超级管理员角色
+     */
+    private boolean isSuperAdminRole(Long roleId) {
+        SysRole role = getById(roleId);
+        return role != null && isSuperAdminRoleCode(role.getRoleCode());
+    }
+
+    /**
+     * 判断是否超级管理员角色编码
+     *
+     * @param roleCode 角色编码
+     * @return 是否超级管理员角色编码
+     */
+    private boolean isSuperAdminRoleCode(String roleCode) {
+        return StrUtil.equalsAny(roleCode,
+            CommonConstant.SUPER_ADMIN_ROLE_CODE,
+            CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE);
     }
 
     /**

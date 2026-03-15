@@ -17,10 +17,13 @@ const componentAlias: Record<string, string> = {
   'system/menu/index': '/src/views/system/MenuView.vue',
   'system/dict/index': '/src/views/system/DictView.vue',
   'system/config/index': '/src/views/system/ConfigView.vue',
-  'system/permission/index': '/src/views/system/permission/PermissionManagementView.vue',
+  // 历史权限页入口统一并入角色管理页
+  'system/permission/index': '/src/views/system/RoleView.vue',
   'system/settings/index': '/src/views/system/SystemSettingsView.vue',
   'datasource/list': '/src/views/datasource/DatasourceList.vue',
-  'datasource/monitor': '/src/views/datasource/DatasourceMonitor.vue',
+  // 数据源入口统一收敛到列表页，监控/工作台能力迁移到业务模块使用
+  'datasource/monitor': '/src/views/datasource/DatasourceList.vue',
+  'datasource/workspace': '/src/views/datasource/DatasourceList.vue',
   'tenant/list': '/src/views/tenant/TenantView.vue',
   'file/list': '/src/views/file/FileList.vue',
   'file/storage': '/src/views/file/FileStorage.vue',
