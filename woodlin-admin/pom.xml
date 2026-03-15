@@ -75,6 +75,10 @@
             <artifactId>woodlin-system-datasource</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-z3</artifactId>
+        </dependency>
 
 
         <!-- Spring Boot Starter -->
