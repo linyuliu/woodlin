@@ -1,14 +1,14 @@
 /**
  * 用户状态管理 Store
- * 
+ *
  * @author mumu
  * @description 管理用户信息、权限、角色等状态
  * @since 2025-01-01
  */
 
-import { ref, computed, nextTick } from 'vue'
-import { defineStore } from 'pinia'
-import { getUserInfo, type UserInfoResponse } from '@/api/auth'
+import {ref, computed, nextTick, type ComputedRef, type Ref} from 'vue'
+import {defineStore} from 'pinia'
+import {getUserInfo, type UserInfoResponse} from '@/api/auth'
 
 /**
  * 用户信息接口
@@ -42,6 +42,8 @@ export interface UserInfo {
   roles?: string[]
   /** 权限列表 */
   permissions?: string[]
+  /** 是否超级管理员（后端返回） */
+  superAdmin?: boolean
   /** 用户状态 */
   status?: string
   /** 创建时间 */
@@ -50,93 +52,182 @@ export interface UserInfo {
   lastLoginTime?: string
 }
 
+type UserStateRefs = {
+  userInfo: Ref<UserInfo | null>
+  permissions: Ref<string[]>
+  roles: Ref<string[]>
+  superAdmin: Ref<boolean>
+  isUserInfoLoaded: Ref<boolean>
+}
+
+type UserComputed = {
+  isLoggedIn: ComputedRef<boolean>
+  displayName: ComputedRef<string>
+  isAdmin: ComputedRef<boolean>
+  isSuperAdmin: ComputedRef<boolean>
+}
+
+const USER_INFO_KEY = 'userInfo'
+const USER_PERMISSION_KEY = 'userPermissions'
+const USER_ROLE_KEY = 'userRoles'
+const USER_SUPER_ADMIN_KEY = 'userIsSuperAdmin'
+
 /**
- * 用户状态管理 Store
+ * 创建用户状态
+ *
+ * @returns 状态对象
  */
-export const useUserStore = defineStore('user', () => {
-  // ===== 状态 =====
-  
-  /** 用户信息 */
-  const userInfo = ref<UserInfo | null>(null)
-  
-  /** 用户权限列表 */
-  const permissions = ref<string[]>([])
-  
-  /** 用户角色列表 */
-  const roles = ref<string[]>([])
-  
-  /** 是否已加载用户信息 */
-  const isUserInfoLoaded = ref(false)
-
-  // ===== 计算属性 =====
-  
-  /** 是否已登录（判断是否有用户信息） */
-  const isLoggedIn = computed(() => userInfo.value !== null)
-  
-  /** 用户名称（优先显示昵称，其次真实姓名，最后用户名） */
-  const displayName = computed(() => {
-    if (!userInfo.value) {return ''}
-    return userInfo.value.nickname || userInfo.value.realName || userInfo.value.username
-  })
-  
-  /** 是否是管理员 */
-  const isAdmin = computed(() => {
-    return roles.value.includes('admin') || roles.value.includes('ROLE_ADMIN')
-  })
-  
-  /** 是否是超级管理员 */
-  const isSuperAdmin = computed(() => {
-    return roles.value.includes('super_admin') || roles.value.includes('ROLE_SUPER_ADMIN')
-  })
-
-  // ===== 方法 =====
-  
-  /**
-   * 设置用户信息
-   * @param info 用户信息
-   */
-  function setUserInfo(info: UserInfo) {
-    userInfo.value = info
-    permissions.value = info.permissions || []
-    roles.value = info.roles || []
-    isUserInfoLoaded.value = true
-    
-    // 持久化用户信息到localStorage
-    try {
-      localStorage.setItem('userInfo', JSON.stringify(info))
-      localStorage.setItem('userPermissions', JSON.stringify(info.permissions || []))
-      localStorage.setItem('userRoles', JSON.stringify(info.roles || []))
-    } catch (error) {
-      console.error('保存用户信息到localStorage失败:', error)
-    }
+function createUserState(): UserStateRefs {
+  return {
+    userInfo: ref<UserInfo | null>(null),
+    permissions: ref<string[]>([]),
+    roles: ref<string[]>([]),
+    superAdmin: ref(false),
+    isUserInfoLoaded: ref(false)
   }
-  
-  /**
-   * 获取用户信息（从服务器获取）
-   */
-  async function fetchUserInfo(): Promise<UserInfo> {
+}
+
+/**
+ * 创建计算属性
+ *
+ * @param state 用户状态
+ * @returns 计算属性
+ */
+function createUserComputed(state: UserStateRefs): UserComputed {
+  const isLoggedIn = computed(() => state.userInfo.value !== null)
+  const displayName = computed(() => {
+    const info = state.userInfo.value
+    if (!info) {
+      return ''
+    }
+    return info.nickname || info.realName || info.username
+  })
+  const isAdmin = computed(() => {
+    return state.roles.value.includes('admin') || state.roles.value.includes('ROLE_ADMIN')
+  })
+  const isSuperAdmin = computed(() => {
+    return state.superAdmin.value || state.permissions.value.includes('*')
+  })
+
+  return {isLoggedIn, displayName, isAdmin, isSuperAdmin}
+}
+
+/**
+ * 持久化用户状态到 localStorage
+ *
+ * @param info 用户信息
+ */
+function persistUserState(info: UserInfo) {
+  try {
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(info))
+    localStorage.setItem(USER_PERMISSION_KEY, JSON.stringify(info.permissions || []))
+    localStorage.setItem(USER_ROLE_KEY, JSON.stringify(info.roles || []))
+    localStorage.setItem(USER_SUPER_ADMIN_KEY, String(Boolean(info.superAdmin)))
+  } catch (error) {
+    console.error('保存用户信息到localStorage失败:', error)
+  }
+}
+
+/**
+ * 从 localStorage 恢复用户状态
+ *
+ * @param state 用户状态
+ * @returns 是否恢复成功
+ */
+function restorePersistedUserState(state: UserStateRefs): boolean {
+  try {
+    const savedUserInfo = localStorage.getItem(USER_INFO_KEY)
+    const savedPermissions = localStorage.getItem(USER_PERMISSION_KEY)
+    const savedRoles = localStorage.getItem(USER_ROLE_KEY)
+    const savedIsSuperAdmin = localStorage.getItem(USER_SUPER_ADMIN_KEY)
+
+    if (!savedUserInfo) {
+      return false
+    }
+
+    state.userInfo.value = JSON.parse(savedUserInfo)
+    state.permissions.value = savedPermissions ? JSON.parse(savedPermissions) : []
+    state.roles.value = savedRoles ? JSON.parse(savedRoles) : []
+    state.superAdmin.value = savedIsSuperAdmin === 'true'
+    state.isUserInfoLoaded.value = true
+    return true
+  } catch (error) {
+    console.error('从localStorage恢复用户信息失败:', error)
+  }
+  return false
+}
+
+/**
+ * 清理 localStorage 用户状态
+ */
+function clearPersistedUserState() {
+  try {
+    localStorage.removeItem(USER_INFO_KEY)
+    localStorage.removeItem(USER_PERMISSION_KEY)
+    localStorage.removeItem(USER_ROLE_KEY)
+    localStorage.removeItem(USER_SUPER_ADMIN_KEY)
+  } catch (error) {
+    console.error('清除localStorage用户信息失败:', error)
+  }
+}
+
+/**
+ * 将后端用户信息转换为前端模型
+ *
+ * @param data 后端响应
+ * @returns 前端用户信息
+ */
+function mapToUserInfo(data: UserInfoResponse): UserInfo {
+  return {
+    id: data.userId || data.id || '',
+    username: data.username || '',
+    nickname: data.nickname,
+    realName: data.realName,
+    email: data.email,
+    mobile: data.mobile,
+    avatar: data.avatar,
+    gender: data.gender,
+    deptId: data.deptId,
+    deptName: data.deptName,
+    tenantId: data.tenantId,
+    tenantName: data.tenantName,
+    roles: data.roleCodes || data.roles || [],
+    permissions: data.permissions || [],
+    superAdmin: Boolean(data.superAdmin ?? data.isSuperAdmin),
+    status: data.status,
+    createTime: data.createTime,
+    lastLoginTime: data.lastLoginTime || data.loginTime
+  }
+}
+
+/**
+ * 创建 setUserInfo action
+ *
+ * @param state 用户状态
+ * @returns action
+ */
+function createSetUserInfoAction(state: UserStateRefs) {
+  return (info: UserInfo) => {
+    state.userInfo.value = info
+    state.permissions.value = info.permissions || []
+    state.roles.value = info.roles || []
+    state.superAdmin.value = Boolean(info.superAdmin)
+    state.isUserInfoLoaded.value = true
+    persistUserState(info)
+  }
+}
+
+/**
+ * 创建 fetchUserInfo action
+ *
+ * @param setUserInfo 设置用户信息 action
+ * @returns action
+ */
+function createFetchUserInfoAction(setUserInfo: (info: UserInfo) => void) {
+  return async (): Promise<UserInfo> => {
     try {
-      const data: UserInfoResponse = await getUserInfo()
-      // 将返回的数据转换为UserInfo类型，添加必要的字段处理
-      const info: UserInfo = {
-        id: data.userId || data.id || '',
-        username: data.username || '',
-        nickname: data.nickname,
-        realName: data.realName,
-        email: data.email,
-        mobile: data.mobile,
-        avatar: data.avatar,
-        gender: data.gender,
-        deptId: data.deptId,
-        deptName: data.deptName,
-        tenantId: data.tenantId,
-        tenantName: data.tenantName,
-        roles: data.roleCodes || data.roles || [],
-        permissions: data.permissions || [],
-        status: data.status,
-        createTime: data.createTime,
-        lastLoginTime: data.lastLoginTime || data.loginTime
-      }
+      const data = await getUserInfo()
+      const info = mapToUserInfo(data)
       setUserInfo(info)
       return info
     } catch (error) {
@@ -144,148 +235,147 @@ export const useUserStore = defineStore('user', () => {
       throw error
     }
   }
-  
-  /**
-   * 检查用户是否拥有指定权限
-   * @param permission 权限标识（支持数组）
-   * @returns 是否拥有权限
-   */
-  function hasPermission(permission: string | string[]): boolean {
-    // 超级管理员拥有所有权限
-    if (isSuperAdmin.value || isAdmin.value) {
+}
+
+/**
+ * 创建 hasPermission action
+ *
+ * @param state 用户状态
+ * @param isSuperAdmin 超管计算属性
+ * @returns action
+ */
+function createHasPermissionAction(state: UserStateRefs, isSuperAdmin: ComputedRef<boolean>) {
+  return (permission: string | string[]): boolean => {
+    if (isSuperAdmin.value || state.permissions.value.includes('*')) {
       return true
     }
-    
-    // 检查是否有通配符权限
-    if (permissions.value.includes('*')) {
-      return true
-    }
-    
     if (Array.isArray(permission)) {
-      // 数组：检查是否拥有其中任意一个权限
-      // 如果数组为空，表示路由无权限要求（如公共页面、用户设置等）
-      // 这种设计允许某些路由对所有登录用户开放
       if (permission.length === 0) {
         return true
       }
-      return permission.some(p => permissions.value.includes(p))
-    } else {
-      // 字符串：检查是否拥有该权限
-      return permissions.value.includes(permission)
+      return permission.some((item) => state.permissions.value.includes(item))
     }
+    return state.permissions.value.includes(permission)
   }
-  
-  /**
-   * 检查用户是否拥有所有指定权限
-   * @param permissionList 权限列表
-   * @returns 是否拥有所有权限
-   */
-  function hasAllPermissions(permissionList: string[]): boolean {
-    // 超级管理员拥有所有权限
-    if (isSuperAdmin.value) {
-      return true
-    }
-    
-    return permissionList.every(p => permissions.value.includes(p))
-  }
-  
-  /**
-   * 检查用户是否拥有指定角色
-   * @param role 角色标识（支持数组）
-   * @returns 是否拥有角色
-   */
-  function hasRole(role: string | string[]): boolean {
-    // 超级管理员拥有所有角色
-    if (isSuperAdmin.value) {
-      return true
-    }
-    
-    if (Array.isArray(role)) {
-      // 数组：检查是否拥有其中任意一个角色
-      return role.some(r => roles.value.includes(r))
-    } else {
-      // 字符串：检查是否拥有该角色
-      return roles.value.includes(role)
-    }
-  }
-  
-  /**
-   * 从localStorage恢复用户信息
-   */
-  function restoreUserInfo(): boolean {
-    try {
-      const savedUserInfo = localStorage.getItem('userInfo')
-      const savedPermissions = localStorage.getItem('userPermissions')
-      const savedRoles = localStorage.getItem('userRoles')
-      
-      if (savedUserInfo) {
-        userInfo.value = JSON.parse(savedUserInfo)
-        permissions.value = savedPermissions ? JSON.parse(savedPermissions) : []
-        roles.value = savedRoles ? JSON.parse(savedRoles) : []
-        isUserInfoLoaded.value = true
-        return true
-      }
-    } catch (error) {
-      console.error('从localStorage恢复用户信息失败:', error)
-    }
-    return false
-  }
-  
-  /**
-   * 清除用户信息（登出时调用）
-   */
-  function clearUserInfo() {
-    userInfo.value = null
-    permissions.value = []
-    roles.value = []
-    isUserInfoLoaded.value = false
-    
-    // 从localStorage清除用户信息
-    try {
-      localStorage.removeItem('userInfo')
-      localStorage.removeItem('userPermissions')
-      localStorage.removeItem('userRoles')
-    } catch (error) {
-      console.error('清除localStorage用户信息失败:', error)
-    }
-  }
-  
-  /**
-   * 更新用户信息（部分更新）
-   * @param info 要更新的用户信息
-   */
-  function updateUserInfo(info: Partial<UserInfo>) {
-    if (userInfo.value) {
-      userInfo.value = { ...userInfo.value, ...info }
-    }
-  }
+}
 
-  // 初始化：从localStorage恢复用户信息（延迟执行，避免阻塞主线程）
-  nextTick(() => {
-    restoreUserInfo()
-  })
+/**
+ * 创建 hasAllPermissions action
+ *
+ * @param state 用户状态
+ * @param isSuperAdmin 超管计算属性
+ * @returns action
+ */
+function createHasAllPermissionsAction(state: UserStateRefs, isSuperAdmin: ComputedRef<boolean>) {
+  return (permissionList: string[]): boolean => {
+    if (isSuperAdmin.value) {
+      return true
+    }
+    return permissionList.every((permission) => state.permissions.value.includes(permission))
+  }
+}
+
+/**
+ * 创建 hasRole action
+ *
+ * @param state 用户状态
+ * @param isSuperAdmin 超管计算属性
+ * @returns action
+ */
+function createHasRoleAction(state: UserStateRefs, isSuperAdmin: ComputedRef<boolean>) {
+  return (role: string | string[]): boolean => {
+    if (isSuperAdmin.value) {
+      return true
+    }
+    if (Array.isArray(role)) {
+      return role.some((item) => state.roles.value.includes(item))
+    }
+    return state.roles.value.includes(role)
+  }
+}
+
+/**
+ * 创建 clearUserInfo action
+ *
+ * @param state 用户状态
+ * @returns action
+ */
+function createClearUserInfoAction(state: UserStateRefs) {
+  return () => {
+    state.userInfo.value = null
+    state.permissions.value = []
+    state.roles.value = []
+    state.superAdmin.value = false
+    state.isUserInfoLoaded.value = false
+    clearPersistedUserState()
+  }
+}
+
+/**
+ * 创建 updateUserInfo action
+ *
+ * @param state 用户状态
+ * @returns action
+ */
+function createUpdateUserInfoAction(state: UserStateRefs) {
+  return (info: Partial<UserInfo>) => {
+    if (state.userInfo.value) {
+      state.userInfo.value = {...state.userInfo.value, ...info}
+    }
+  }
+}
+
+/**
+ * 创建用户动作集合
+ *
+ * @param state 用户状态
+ * @param computedState 用户计算属性
+ * @returns 动作集合
+ */
+function createUserActions(state: UserStateRefs, computedState: UserComputed) {
+  const setUserInfo = createSetUserInfoAction(state)
+  const fetchUserInfo = createFetchUserInfoAction(setUserInfo)
+  const hasPermission = createHasPermissionAction(state, computedState.isSuperAdmin)
+  const hasAllPermissions = createHasAllPermissionsAction(state, computedState.isSuperAdmin)
+  const hasRole = createHasRoleAction(state, computedState.isSuperAdmin)
+  const restoreUserInfo = () => restorePersistedUserState(state)
+  const clearUserInfo = createClearUserInfoAction(state)
+  const updateUserInfo = createUpdateUserInfoAction(state)
 
   return {
-    // 状态
-    userInfo,
-    permissions,
-    roles,
-    isUserInfoLoaded,
-    
-    // 计算属性
-    isLoggedIn,
-    displayName,
-    isAdmin,
-    isSuperAdmin,
-    
-    // 方法
     setUserInfo,
     fetchUserInfo,
-    restoreUserInfo,
     hasPermission,
     hasAllPermissions,
     hasRole,
+    restoreUserInfo,
     clearUserInfo,
     updateUserInfo
   }
-})
+}
+
+/**
+ * 组装用户 store
+ *
+ * @returns store 内容
+ */
+function createUserStore() {
+  const state = createUserState()
+  const computedState = createUserComputed(state)
+  const actions = createUserActions(state, computedState)
+
+  nextTick(() => {
+    actions.restoreUserInfo()
+  })
+
+  return {
+    ...state,
+    ...computedState,
+    ...actions
+  }
+}
+
+/**
+ * 用户状态管理 Store
+ */
+export const useUserStore = defineStore('user', createUserStore)

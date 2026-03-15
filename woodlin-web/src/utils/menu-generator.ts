@@ -11,6 +11,7 @@ import { NIcon, type MenuOption } from 'naive-ui'
 import type { RouteRecordRaw } from 'vue-router'
 import * as Icons from '@vicons/ionicons5'
 type MenuOptionWithRoute = MenuOption & {route?: RouteRecordRaw}
+type IconRenderer = NonNullable<MenuOption['icon']>
 
 /**
  * 内置的图标别名映射，兼容后端返回的简短/旧标识
@@ -46,52 +47,74 @@ const FALLBACK_ICONS: Record<string, keyof typeof Icons> = {
  * @param icon 图标组件或图标名称
  */
 function renderIcon(icon?: Component | string, fallbackKey?: string) {
-  const candidates: (string | Component | undefined)[] = []
-
-  if (icon) {
-    candidates.push(icon)
-  }
-  if (fallbackKey) {
-    // 兼容路径/名称，例如 system/user -> user
-    const parts = fallbackKey.split('/').filter(Boolean)
-    candidates.push(parts[parts.length - 1])
-    candidates.push(parts[0])
-  }
+  const candidates = collectIconCandidates(icon, fallbackKey)
 
   for (const candidate of candidates) {
-    if (!candidate) {
-      continue
+    if (typeof candidate !== 'string') {
+      return toIconRenderer(candidate)
     }
-
-    if (typeof candidate === 'string') {
-      const raw = candidate.trim()
-      if (!raw) {continue}
-
-      // 1) 直接尝试后端返回的组件名（可能已是 PascalCase）
-      const direct = Icons[raw as keyof typeof Icons]
-      if (direct) {
-        return () => h(NIcon, null, { default: () => h(direct) })
-      }
-
-      // 2) 尝试 kebab/camel 转 PascalCase
-      const iconName = toPascalCase(raw)
-      const IconComponent = Icons[iconName as keyof typeof Icons] as Component | undefined
-      if (IconComponent) {
-        return () => h(NIcon, null, { default: () => h(IconComponent) })
-      }
-
-      // 3) 尝试内置别名映射（全部转小写匹配）
-      const alias = FALLBACK_ICONS[raw.toLowerCase()] || FALLBACK_ICONS[iconName.toLowerCase()]
-      if (alias && Icons[alias]) {
-        const AliasComponent = Icons[alias] as Component
-        return () => h(NIcon, null, { default: () => h(AliasComponent) })
-      }
-    } else {
-      return () => h(NIcon, null, { default: () => h(candidate) })
+    const resolved = resolveStringIcon(candidate)
+    if (resolved) {
+      return toIconRenderer(resolved)
     }
   }
 
   return undefined
+}
+
+/**
+ * 组装图标候选集合
+ */
+function collectIconCandidates(icon?: Component | string, fallbackKey?: string): Array<string | Component> {
+  const candidates: Array<string | Component> = []
+
+  if (icon) {
+    candidates.push(icon)
+  }
+
+  if (fallbackKey) {
+    const parts = fallbackKey.split('/').filter(Boolean)
+    if (parts.length > 0) {
+      candidates.push(parts[parts.length - 1])
+      candidates.push(parts[0])
+    }
+  }
+
+  return candidates
+}
+
+/**
+ * 将图标组件包装为 NaiveUI 渲染函数
+ */
+function toIconRenderer(iconComponent: Component): IconRenderer {
+  return () => h(NIcon, null, { default: () => h(iconComponent) })
+}
+
+/**
+ * 根据字符串图标名称解析实际组件
+ */
+function resolveStringIcon(candidate: string): Component | undefined {
+  const raw = candidate.trim()
+  if (!raw) {
+    return undefined
+  }
+
+  const direct = Icons[raw as keyof typeof Icons] as Component | undefined
+  if (direct) {
+    return direct
+  }
+
+  const iconName = toPascalCase(raw)
+  const pascal = Icons[iconName as keyof typeof Icons] as Component | undefined
+  if (pascal) {
+    return pascal
+  }
+
+  const alias = FALLBACK_ICONS[raw.toLowerCase()] || FALLBACK_ICONS[iconName.toLowerCase()]
+  if (!alias) {
+    return undefined
+  }
+  return Icons[alias] as Component | undefined
 }
 
 /**
@@ -113,49 +136,66 @@ export function generateMenuFromRoutes(
   routes: RouteRecordRaw[],
   parentPath = ''
 ): MenuOption[] {
-  const menuOptions: MenuOption[] = []
+  return sortRoutesByOrder(routes)
+    .filter((route) => !route.meta?.hideInMenu)
+    .map((route) => buildMenuOption(route, parentPath))
+}
 
-  // 根据 meta.order 排序，默认 1000 保持稳定
-  const sortedRoutes = [...routes].sort((a, b) => {
+/**
+ * 按菜单顺序排序路由
+ */
+function sortRoutesByOrder(routes: RouteRecordRaw[]): RouteRecordRaw[] {
+  return [...routes].sort((a, b) => {
     const orderA = (a.meta?.order as number | undefined) ?? 1000
     const orderB = (b.meta?.order as number | undefined) ?? 1000
     return orderA - orderB
   })
+}
 
-  sortedRoutes.forEach((route) => {
-    if (route.meta?.hideInMenu) {
-      return
-    }
+/**
+ * 构建单个菜单项
+ */
+function buildMenuOption(route: RouteRecordRaw, parentPath: string): MenuOption {
+  const fullPath = buildRouteFullPath(route.path, parentPath)
+  const option = buildBaseMenuOption(route, fullPath)
+  appendChildMenus(option, route, fullPath)
+  return option
+}
 
-    const fullPath = route.path.startsWith('/')
-      ? route.path
-      : `${parentPath}/${route.path}`.replace(/\/+/g, '/')
+/**
+ * 构建菜单基础项
+ */
+function buildBaseMenuOption(route: RouteRecordRaw, fullPath: string): MenuOptionWithRoute {
+  return {
+    key: fullPath,
+    label: (route.meta?.title as string) || route.name?.toString() || route.path,
+    route,
+    icon: renderIcon(route.meta?.icon as string, (route.name as string) || route.path)
+  }
+}
 
-    const option: MenuOptionWithRoute = {
-      key: fullPath,
-      label: (route.meta?.title as string) || route.name?.toString() || route.path,
-    }
-    option.route = route
+/**
+ * 为菜单项追加子节点
+ */
+function appendChildMenus(option: MenuOptionWithRoute, route: RouteRecordRaw, fullPath: string) {
+  if (route.meta?.hideChildrenInMenu) {
+    return
+  }
+  const visibleChildren = (route.children || []).filter((child) => !child.meta?.hideInMenu)
+  const childMenus = generateMenuFromRoutes(visibleChildren, fullPath)
+  if (childMenus.length > 0) {
+    option.children = childMenus
+  }
+}
 
-    // 图标兼容：优先 meta.icon；否则用路由名称/路径的别名映射
-    const fallbackKey = (route.name as string) || route.path
-    option.icon = renderIcon(route.meta?.icon as string, fallbackKey)
-
-    // hideChildrenInMenu: 只显示当前节点，不下钻
-    const visibleChildren = (route.children || []).filter(
-      child => !child.meta?.hideInMenu
-    )
-    if (!route.meta?.hideChildrenInMenu && visibleChildren.length > 0) {
-      const childMenus = generateMenuFromRoutes(visibleChildren, fullPath)
-      if (childMenus.length > 0) {
-        option.children = childMenus
-      }
-    }
-
-    menuOptions.push(option)
-  })
-
-  return menuOptions
+/**
+ * 计算完整路由路径
+ */
+function buildRouteFullPath(path: string, parentPath: string): string {
+  if (path.startsWith('/')) {
+    return path
+  }
+  return `${parentPath}/${path}`.replace(/\/+/g, '/')
 }
 
 /**

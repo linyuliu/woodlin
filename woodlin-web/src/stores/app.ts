@@ -1,227 +1,248 @@
 /**
  * 应用全局状态管理 Store
- * 
+ *
  * @author mumu
  * @description 管理应用级别的全局状态，如加载状态、侧边栏折叠等
  * @since 2025-01-01
  */
 
-import { computed, ref } from 'vue'
-import { defineStore } from 'pinia'
+import {computed, ref, type ComputedRef, type Ref} from 'vue'
+import {defineStore} from 'pinia'
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop'
 type ThemeMode = 'light' | 'dark'
 
+type AppStateRefs = {
+  sidebarCollapsed: Ref<boolean>
+  loading: Ref<boolean>
+  loadingText: Ref<string>
+  showSettings: Ref<boolean>
+  device: Ref<DeviceType>
+  sidebarFixed: Ref<boolean>
+  themeMode: Ref<ThemeMode>
+}
+
+type AppComputed = {
+  isMobile: ComputedRef<boolean>
+  isTablet: ComputedRef<boolean>
+  isDesktop: ComputedRef<boolean>
+  isDarkMode: ComputedRef<boolean>
+}
+
+const SIDEBAR_STORAGE_KEY = 'sidebarCollapsed'
+const THEME_STORAGE_KEY = 'themeMode'
+
 /**
- * 应用全局状态管理 Store
+ * 创建应用状态
+ *
+ * @returns 状态对象
  */
-export const useAppStore = defineStore('app', () => {
-  const SIDEBAR_STORAGE_KEY = 'sidebarCollapsed'
-  const THEME_STORAGE_KEY = 'themeMode'
-
-  // ===== 状态 =====
-  
-  /** 侧边栏是否折叠 */
-  const sidebarCollapsed = ref(false)
-  
-  /** 全局加载状态 */
-  const loading = ref(false)
-  
-  /** 加载文本 */
-  const loadingText = ref('加载中...')
-  
-  /** 是否显示设置抽屉 */
-  const showSettings = ref(false)
-  
-  /** 设备类型 */
-  const device = ref<DeviceType>('desktop')
-  
-  /** 侧边栏是否固定（移动端） */
-  const sidebarFixed = ref(false)
-
-  /** 全局主题模式 */
-  const themeMode = ref<ThemeMode>('light')
-
-  // ===== 计算属性 =====
-  
-  /** 是否是移动设备 */
-  const isMobile = computed(() => device.value === 'mobile')
-  
-  /** 是否是平板设备 */
-  const isTablet = computed(() => device.value === 'tablet')
-  
-  /** 是否是桌面设备 */
-  const isDesktop = computed(() => device.value === 'desktop')
-
-  /** 是否为深色主题 */
-  const isDarkMode = computed(() => themeMode.value === 'dark')
-
-  // ===== 方法 =====
-  
-  /**
-   * 切换侧边栏折叠状态
-   */
-  function toggleSidebar() {
-    setSidebarCollapsed(!sidebarCollapsed.value)
+function createAppState(): AppStateRefs {
+  return {
+    sidebarCollapsed: ref(false),
+    loading: ref(false),
+    loadingText: ref('加载中...'),
+    showSettings: ref(false),
+    device: ref<DeviceType>('desktop'),
+    sidebarFixed: ref(false),
+    themeMode: ref<ThemeMode>('light')
   }
-  
-  /**
-   * 设置侧边栏状态
-   * @param collapsed 是否折叠
-   */
-  function setSidebarCollapsed(collapsed: boolean) {
-    sidebarCollapsed.value = collapsed
+}
+
+/**
+ * 创建计算属性
+ *
+ * @param state 状态对象
+ * @returns 计算属性
+ */
+function createAppComputed(state: AppStateRefs): AppComputed {
+  return {
+    isMobile: computed(() => state.device.value === 'mobile'),
+    isTablet: computed(() => state.device.value === 'tablet'),
+    isDesktop: computed(() => state.device.value === 'desktop'),
+    isDarkMode: computed(() => state.themeMode.value === 'dark')
+  }
+}
+
+/**
+ * 创建侧边栏动作
+ *
+ * @param state 状态对象
+ * @returns 动作集合
+ */
+function createSidebarActions(state: AppStateRefs) {
+  const setSidebarCollapsed = (collapsed: boolean) => {
+    state.sidebarCollapsed.value = collapsed
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
   }
-  
-  /**
-   * 恢复侧边栏状态
-   */
-  function restoreSidebarState() {
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!state.sidebarCollapsed.value)
+  }
+
+  const restoreSidebarState = () => {
     const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
     if (saved !== null) {
-      sidebarCollapsed.value = saved === 'true'
+      state.sidebarCollapsed.value = saved === 'true'
     }
   }
 
-  /**
-   * 应用主题到根节点
-   */
-  function applyTheme() {
+  return {
+    toggleSidebar,
+    setSidebarCollapsed,
+    restoreSidebarState
+  }
+}
+
+/**
+ * 创建主题动作
+ *
+ * @param state 状态对象
+ * @returns 动作集合
+ */
+function createThemeActions(state: AppStateRefs) {
+  const applyTheme = () => {
     const root = document.documentElement
-    root.setAttribute('data-theme', themeMode.value)
-    root.style.colorScheme = themeMode.value
+    root.setAttribute('data-theme', state.themeMode.value)
+    root.style.colorScheme = state.themeMode.value
   }
 
-  /**
-   * 设置主题模式
-   */
-  function setThemeMode(mode: ThemeMode) {
-    themeMode.value = mode
+  const setThemeMode = (mode: ThemeMode) => {
+    state.themeMode.value = mode
     localStorage.setItem(THEME_STORAGE_KEY, mode)
     applyTheme()
   }
 
-  /**
-   * 切换浅色/深色主题
-   */
-  function toggleThemeMode() {
-    setThemeMode(themeMode.value === 'light' ? 'dark' : 'light')
+  const toggleThemeMode = () => {
+    setThemeMode(state.themeMode.value === 'light' ? 'dark' : 'light')
   }
 
-  /**
-   * 恢复主题模式
-   */
-  function restoreThemeMode() {
+  const restoreThemeMode = () => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY)
     if (saved === 'light' || saved === 'dark') {
-      themeMode.value = saved
+      state.themeMode.value = saved
     }
     applyTheme()
   }
-  
-  /**
-   * 显示全局加载
-   * @param text 加载文本
-   */
-  function showLoading(text: string = '加载中...') {
-    loading.value = true
-    loadingText.value = text
-  }
-  
-  /**
-   * 隐藏全局加载
-   */
-  function hideLoading() {
-    loading.value = false
-    loadingText.value = '加载中...'
-  }
-  
-  /**
-   * 切换设置抽屉
-   */
-  function toggleSettings() {
-    showSettings.value = !showSettings.value
-  }
-  
-  /**
-   * 打开设置抽屉
-   */
-  function openSettings() {
-    showSettings.value = true
-  }
-  
-  /**
-   * 关闭设置抽屉
-   */
-  function closeSettings() {
-    showSettings.value = false
-  }
-  
-  /**
-   * 设置设备类型
-   * @param type 设备类型
-   */
-  function setDevice(type: DeviceType) {
-    device.value = type
-    
-    // 移动设备自动折叠侧边栏
-    if (type === 'mobile') {
-      sidebarCollapsed.value = true
-      sidebarFixed.value = false
-    }
-  }
-  
-  /**
-   * 检测设备类型（基于窗口宽度）
-   */
-  function detectDevice() {
-    const width = window.innerWidth
-    
-    if (width < 768) {
-      setDevice('mobile')
-    } else if (width < 1024) {
-      setDevice('tablet')
-    } else {
-      setDevice('desktop')
-    }
-  }
-
-  // 初始化：恢复侧边栏状态和检测设备类型
-  restoreSidebarState()
-  restoreThemeMode()
-  detectDevice()
 
   return {
-    // 状态
-    sidebarCollapsed,
-    loading,
-    loadingText,
-    showSettings,
-    device,
-    sidebarFixed,
-    themeMode,
-    
-    // 计算属性
-    isMobile,
-    isTablet,
-    isDesktop,
-    isDarkMode,
-    
-    // 方法
-    toggleSidebar,
-    setSidebarCollapsed,
-    restoreSidebarState,
-    showLoading,
-    hideLoading,
-    toggleSettings,
-    openSettings,
-    closeSettings,
-    setDevice,
-    detectDevice,
+    applyTheme,
     setThemeMode,
     toggleThemeMode,
-    applyTheme,
     restoreThemeMode
   }
-})
+}
+
+/**
+ * 创建加载动作
+ *
+ * @param state 状态对象
+ * @returns 动作集合
+ */
+function createLoadingActions(state: AppStateRefs) {
+  const showLoading = (text = '加载中...') => {
+    state.loading.value = true
+    state.loadingText.value = text
+  }
+
+  const hideLoading = () => {
+    state.loading.value = false
+    state.loadingText.value = '加载中...'
+  }
+
+  return {showLoading, hideLoading}
+}
+
+/**
+ * 创建设置面板动作
+ *
+ * @param state 状态对象
+ * @returns 动作集合
+ */
+function createSettingsActions(state: AppStateRefs) {
+  const toggleSettings = () => {
+    state.showSettings.value = !state.showSettings.value
+  }
+
+  const openSettings = () => {
+    state.showSettings.value = true
+  }
+
+  const closeSettings = () => {
+    state.showSettings.value = false
+  }
+
+  return {
+    toggleSettings,
+    openSettings,
+    closeSettings
+  }
+}
+
+/**
+ * 创建设备动作
+ *
+ * @param state 状态对象
+ * @returns 动作集合
+ */
+function createDeviceActions(state: AppStateRefs) {
+  const setDevice = (type: DeviceType) => {
+    state.device.value = type
+    if (type === 'mobile') {
+      state.sidebarCollapsed.value = true
+      state.sidebarFixed.value = false
+    }
+  }
+
+  const detectDevice = () => {
+    const width = window.innerWidth
+    if (width < 768) {
+      setDevice('mobile')
+      return
+    }
+    if (width < 1024) {
+      setDevice('tablet')
+      return
+    }
+    setDevice('desktop')
+  }
+
+  return {
+    setDevice,
+    detectDevice
+  }
+}
+
+/**
+ * 组装 App Store
+ *
+ * @returns store 内容
+ */
+function createAppStore() {
+  const state = createAppState()
+  const computedState = createAppComputed(state)
+  const sidebarActions = createSidebarActions(state)
+  const themeActions = createThemeActions(state)
+  const loadingActions = createLoadingActions(state)
+  const settingsActions = createSettingsActions(state)
+  const deviceActions = createDeviceActions(state)
+
+  sidebarActions.restoreSidebarState()
+  themeActions.restoreThemeMode()
+  deviceActions.detectDevice()
+
+  return {
+    ...state,
+    ...computedState,
+    ...sidebarActions,
+    ...themeActions,
+    ...loadingActions,
+    ...settingsActions,
+    ...deviceActions
+  }
+}
+
+/**
+ * 应用全局状态管理 Store
+ */
+export const useAppStore = defineStore('app', createAppStore)
