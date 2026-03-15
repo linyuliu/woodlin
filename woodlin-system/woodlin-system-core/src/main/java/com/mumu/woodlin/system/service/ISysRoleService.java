@@ -131,6 +131,23 @@ public interface ISysRoleService extends IService<SysRole> {
      * @return 权限编码列表
      */
     List<String> selectAllPermissionsByRoleId(Long roleId);
+
+    /**
+     * 查询角色已分配的权限ID列表
+     *
+     * @param roleId 角色ID
+     * @return 权限ID列表
+     */
+    List<Long> selectPermissionIdsByRoleId(Long roleId);
+
+    /**
+     * 分配角色权限
+     *
+     * @param roleId 角色ID
+     * @param permissionIds 权限ID列表
+     * @return 是否成功
+     */
+    boolean assignRolePermissions(Long roleId, List<Long> permissionIds);
     
     /**
      * 查询顶级角色列表（没有父角色的角色）

@@ -1,310 +1,614 @@
 <script setup lang="ts">
-/**
- * 用户管理（前端 mock）
- */
-import { h, onMounted, ref, computed } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import {
   NButton,
+  NCard,
   NDataTable,
   NForm,
   NFormItem,
   NIcon,
   NInput,
+  NModal,
   NPopconfirm,
+  NSelect,
   NSpace,
   NTag,
-  NModal,
-  NSelect,
+  useDialog,
   useMessage,
   type DataTableColumns,
-  type FormInst
+  type FormInst,
+  type SelectOption
 } from 'naive-ui'
 import {
   AddOutline,
   CreateOutline,
+  KeyOutline,
   RefreshOutline,
   SearchOutline,
   TrashOutline
 } from '@vicons/ionicons5'
+import { getDeptTree, type SysDept } from '@/api/dept'
+import { getRoleTree, type RoleTreeNode } from '@/api/role'
 import {
-  fetchUserList,
-  createUser,
+  addUser,
+  deleteUser,
+  getUserById,
+  getUserList,
+  resetUserPassword,
   updateUser,
-  deleteUsers,
-  fetchDeptTree,
-  fetchRoleTree,
-  type UserItem,
-  type DeptNode,
-  type RoleNode
-} from '@/api/mock/rbac'
+  type SysUser
+} from '@/api/user'
+import { useUserStore } from '@/stores'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
-type User = UserItem
+interface UserSearchForm {
+  username: string
+  nickname: string
+}
+
+interface UserFormData {
+  userId?: number
+  username: string
+  password: string
+  nickname: string
+  email: string
+  mobile: string
+  deptId: number | null
+  roleIds: number[]
+  status: string
+  remark: string
+}
 
 const message = useMessage()
+const dialog = useDialog()
+const userStore = useUserStore()
 const loading = ref(false)
 
-const searchForm = ref({
+const searchForm = ref<UserSearchForm>({
   username: '',
   nickname: ''
 })
 
-const users = ref<User[]>([])
-const deptOptions = ref<{ label: string; value: number }[]>([])
-const roleOptions = ref<{ label: string; value: number }[]>([])
+const userList = ref<SysUser[]>([])
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
 
-const userModalShow = ref(false)
+const deptOptions = ref<SelectOption[]>([])
+const roleOptions = ref<SelectOption[]>([])
+
+const userModalVisible = ref(false)
 const userFormRef = ref<FormInst | null>(null)
-const userForm = ref<Partial<User>>({
+const userForm = ref<UserFormData>({
   username: '',
+  password: '',
   nickname: '',
-  status: '1',
-  deptId: undefined,
-  roleIds: [],
   email: '',
-  mobile: ''
+  mobile: '',
+  deptId: null,
+  roleIds: [],
+  status: '1',
+  remark: ''
 })
 
 const userRules = {
   username: { required: true, message: '请输入用户名', trigger: 'blur' }
 }
 
-const filteredUsers = computed(() =>
-  users.value.filter(u => {
-    const nameOk = searchForm.value.username ? u.username.includes(searchForm.value.username) : true
-    const nickOk = searchForm.value.nickname ? (u.nickname || '').includes(searchForm.value.nickname) : true
-    return nameOk && nickOk
-  })
-)
-
-const statusTag = (status: string) => {
-  const map: Record<string, { type: 'success' | 'warning'; text: string }> = {
-    '1': { type: 'success', text: '启用' },
-    '0': { type: 'warning', text: '禁用' }
+const totalUsers = computed(() => total.value)
+const canViewUsers = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_LIST))
+const canCreateUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_ADD))
+const canUpdateUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_EDIT))
+const canDeleteUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_REMOVE))
+const canResetUserPassword = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_RESET_PWD))
+const roleNameMap = computed(() => {
+  const map = new Map<number, string>()
+  for (const option of roleOptions.value) {
+    if (typeof option.value === 'number' && typeof option.label === 'string') {
+      map.set(option.value, option.label)
+    }
   }
-  const cfg = map[status] || { type: 'warning', text: '未知' }
-  return h(NTag, { type: cfg.type, size: 'small' }, { default: () => cfg.text })
+  return map
+})
+
+const deptNameMap = computed(() => {
+  const map = new Map<number, string>()
+  for (const option of deptOptions.value) {
+    if (typeof option.value === 'number' && typeof option.label === 'string') {
+      map.set(option.value, option.label)
+    }
+  }
+  return map
+})
+
+const pagination = computed(() => ({
+  page: pageNum.value,
+  pageSize: pageSize.value,
+  itemCount: total.value,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onChange: (page: number) => {
+    pageNum.value = page
+    loadUserList()
+  },
+  onUpdatePageSize: (size: number) => {
+    pageSize.value = size
+    pageNum.value = 1
+    loadUserList()
+  }
+}))
+
+// eslint-disable-next-line max-lines-per-function
+const renderUserActionButtons = (row: SysUser) => {
+  const actionButtons: ReturnType<typeof h>[] = []
+
+  if (canUpdateUser.value) {
+    actionButtons.push(
+      h(
+        NButton,
+        {
+          text: true,
+          type: 'primary',
+          size: 'small',
+          onClick: () => openEdit(row)
+        },
+        {
+          default: () => '编辑',
+          icon: () => h(NIcon, null, { default: () => h(CreateOutline) })
+        }
+      )
+    )
+  }
+
+  if (canResetUserPassword.value) {
+    actionButtons.push(
+      h(
+        NButton,
+        {
+          text: true,
+          type: 'warning',
+          size: 'small',
+          onClick: () => openResetPwd(row)
+        },
+        {
+          default: () => '重置密码',
+          icon: () => h(NIcon, null, { default: () => h(KeyOutline) })
+        }
+      )
+    )
+  }
+
+  const renderDeleteTrigger = () =>
+    h(
+      NButton,
+      {
+        text: true,
+        type: 'error',
+        size: 'small'
+      },
+      {
+        default: () => '删除',
+        icon: () => h(NIcon, null, { default: () => h(TrashOutline) })
+      }
+    )
+
+  if (canDeleteUser.value) {
+    actionButtons.push(
+      h(
+        NPopconfirm,
+        {
+          onPositiveClick: () => handleDelete(row)
+        },
+        {
+          default: () => '确定删除该用户吗？',
+          trigger: renderDeleteTrigger
+        }
+      )
+    )
+  }
+
+  if (actionButtons.length === 0) {
+    return h(NTag, { size: 'small' }, { default: () => '只读' })
+  }
+
+  return h(NSpace, { size: 4 }, () => actionButtons)
 }
 
-const columns: DataTableColumns<User> = [
+const columns: DataTableColumns<SysUser> = [
   { title: '用户名', key: 'username', width: 140 },
   { title: '昵称', key: 'nickname', width: 140 },
   { title: '邮箱', key: 'email', ellipsis: { tooltip: true } },
+  { title: '手机号', key: 'mobile', width: 140 },
   {
     title: '部门',
     key: 'deptId',
-    width: 140,
-    render: row => row.deptId ? deptOptions.value.find(d => d.value === row.deptId)?.label || row.deptId : '—'
+    width: 150,
+    render: row => {
+      if (!row.deptId) {
+        return '—'
+      }
+      return deptNameMap.value.get(row.deptId) || `#${row.deptId}`
+    }
   },
   {
     title: '角色',
     key: 'roleIds',
-    width: 180,
-    render: row => row.roleIds.map(rid => roleOptions.value.find(r => r.value === rid)?.label || rid).join('、') || '—'
+    width: 200,
+    render: row => {
+      const ids = row.roleIds || []
+      if (!ids.length) {
+        return '—'
+      }
+      return ids.map(id => roleNameMap.value.get(id) || `#${id}`).join('、')
+    }
   },
-  { title: '状态', key: 'status', width: 90, align: 'center', render: row => statusTag(row.status) },
-  { title: '创建时间', key: 'createTime', width: 170 },
+  {
+    title: '状态',
+    key: 'status',
+    width: 90,
+    align: 'center',
+    render: row =>
+      h(
+        NTag,
+        { size: 'small', type: row.status === '1' ? 'success' : 'warning' },
+        { default: () => (row.status === '1' ? '启用' : '禁用') }
+      )
+  },
   {
     title: '操作',
     key: 'actions',
-    width: 210,
+    width: 260,
     align: 'center',
-    render: row =>
-      h(NSpace, { size: 6 }, () => [
-        h(
-          NButton,
-          { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) },
-          { default: () => '编辑', icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) }
-        ),
-        h(
-          NPopconfirm,
-          { onPositiveClick: () => handleDelete(row.userId!) },
-          {
-            default: () => '确定删除该用户吗？',
-            trigger: () =>
-              h(
-                NButton,
-                { text: true, type: 'error', size: 'small' },
-                { default: () => '删除', icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }
-              )
-          }
-        )
-      ])
+    render: renderUserActionButtons
   }
 ]
 
+const loadBaseOptions = async () => {
+  try {
+    const [roles, depts] = await Promise.all([getRoleTree(), getDeptTree()])
+    roleOptions.value = flattenRoleTree(roles)
+    deptOptions.value = flattenDeptTree(depts)
+  } catch (error) {
+    console.error(error)
+    message.error('加载角色/部门选项失败')
+  }
+}
+
+const loadUserList = async () => {
+  if (!canViewUsers.value) {
+    userList.value = []
+    total.value = 0
+    return
+  }
+  loading.value = true
+  try {
+    const result = await getUserList({
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+      username: searchForm.value.username.trim() || undefined,
+      nickname: searchForm.value.nickname.trim() || undefined
+    })
+
+    const users = result.data || []
+    const enriched = await enrichUserRoles(users)
+
+    userList.value = enriched
+    total.value = result.total || 0
+  } catch (error) {
+    console.error(error)
+    message.error('加载用户列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const enrichUserRoles = async (users: SysUser[]): Promise<SysUser[]> => {
+  const roleByUserId = new Map<number, number[]>()
+
+  const tasks = users
+    .filter(item => typeof item.userId === 'number')
+    .map(async item => {
+      const detail = await getUserById(item.userId as number)
+      roleByUserId.set(item.userId as number, detail.roleIds || [])
+    })
+
+  await Promise.allSettled(tasks)
+
+  return users.map(item => {
+    if (typeof item.userId !== 'number') {
+      return item
+    }
+    return {
+      ...item,
+      roleIds: roleByUserId.get(item.userId) || item.roleIds || []
+    }
+  })
+}
+
 const handleSearch = () => {
-  // 本地过滤，computed 已处理
+  pageNum.value = 1
+  loadUserList()
 }
 
 const handleReset = () => {
-  searchForm.value = { username: '', nickname: '' }
-}
-
-const handleAdd = () => {
-  userForm.value = {
-    userId: undefined,
+  searchForm.value = {
     username: '',
-    nickname: '',
-    status: '1',
-    deptId: undefined,
-    roleIds: [],
-    email: '',
-    mobile: ''
+    nickname: ''
   }
-  userModalShow.value = true
+  pageNum.value = 1
+  loadUserList()
 }
 
-const handleEdit = (row: User) => {
-  userForm.value = { ...row }
-  userModalShow.value = true
+const openAdd = () => {
+  if (!canCreateUser.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_ADD} 权限`)
+    return
+  }
+  userForm.value = {
+    username: '',
+    password: '',
+    nickname: '',
+    email: '',
+    mobile: '',
+    deptId: null,
+    roleIds: [],
+    status: '1',
+    remark: ''
+  }
+  userModalVisible.value = true
 }
 
-const handleDelete = (id: number) => {
-  deleteUsers([id]).then(() => {
-    message.success('删除成功')
-    loadUsers()
-  })
+// eslint-disable-next-line complexity
+const openEdit = async (row: SysUser) => {
+  if (!canUpdateUser.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_EDIT} 权限`)
+    return
+  }
+  if (!row.userId) {
+    return
+  }
+
+  loading.value = true
+  try {
+    const detail = await getUserById(row.userId)
+    userForm.value = {
+      userId: detail.userId,
+      username: detail.username,
+      password: '',
+      nickname: detail.nickname || '',
+      email: detail.email || '',
+      mobile: detail.mobile || '',
+      deptId: detail.deptId ?? null,
+      roleIds: detail.roleIds || [],
+      status: String(detail.status || '1'),
+      remark: detail.remark || ''
+    }
+    userModalVisible.value = true
+  } catch (error) {
+    console.error(error)
+    message.error('加载用户详情失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const submitUser = async () => {
   await userFormRef.value?.validate()
+
+  const payload: SysUser = {
+    userId: userForm.value.userId,
+    username: userForm.value.username.trim(),
+    password: userForm.value.password.trim() || undefined,
+    nickname: userForm.value.nickname.trim(),
+    email: userForm.value.email.trim(),
+    mobile: userForm.value.mobile.trim(),
+    deptId: userForm.value.deptId || undefined,
+    roleIds: userForm.value.roleIds,
+    status: userForm.value.status,
+    remark: userForm.value.remark.trim()
+  }
+
   loading.value = true
   try {
-    if (userForm.value.userId) {
-      await updateUser(userForm.value as UserItem)
-      message.success('更新成功')
+    if (payload.userId) {
+      if (!canUpdateUser.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_EDIT} 权限`)
+        return
+      }
+      await updateUser(payload)
+      message.success('修改成功')
     } else {
-      await createUser(userForm.value)
+      if (!canCreateUser.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_ADD} 权限`)
+        return
+      }
+      await addUser(payload)
       message.success('新增成功')
     }
-    userModalShow.value = false
-    await loadUsers()
+    userModalVisible.value = false
+    await loadUserList()
+  } catch (error) {
+    console.error(error)
+    message.error('保存失败')
   } finally {
     loading.value = false
   }
 }
 
-const loadUsers = async () => {
+const openResetPwd = (row: SysUser) => {
+  if (!canResetUserPassword.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_RESET_PWD} 权限`)
+    return
+  }
+  if (!row.userId) {
+    return
+  }
+  dialog.warning({
+    title: '重置密码',
+    content: `确认将用户 ${row.username} 的密码重置为默认密码 12345678？`,
+    positiveText: '确认',
+    negativeText: '取消',
+    async onPositiveClick() {
+      try {
+        await resetUserPassword(row.userId as number, '12345678')
+        message.success('密码重置成功')
+      } catch (error) {
+        console.error(error)
+        message.error('密码重置失败')
+      }
+    }
+  })
+}
+
+const handleDelete = async (row: SysUser) => {
+  if (!canDeleteUser.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_REMOVE} 权限`)
+    return
+  }
+  if (!row.userId) {
+    return
+  }
+
   loading.value = true
   try {
-    users.value = await fetchUserList({
-      username: searchForm.value.username,
-      nickname: searchForm.value.nickname
-    })
+    await deleteUser([row.userId])
+    message.success('删除成功')
+    await loadUserList()
+  } catch (error) {
+    console.error(error)
+    message.error('删除失败')
   } finally {
     loading.value = false
   }
 }
 
-const loadDepsAndRoles = async () => {
-  const depts = await fetchDeptTree()
-  const roles = await fetchRoleTree()
-  type UserOption = { label: string; value: number }
-  const buildDeptOptions = (nodes: DeptNode[], list: UserOption[] = []) => {
-    nodes.forEach(n => {
-      list.push({ label: n.deptName, value: n.deptId })
-      if (n.children) {buildDeptOptions(n.children, list)}
+const flattenRoleTree = (nodes: RoleTreeNode[], options: SelectOption[] = [], depth = 0): SelectOption[] => {
+  const prefix = depth > 0 ? `${'  '.repeat(depth)}└ ` : ''
+
+  for (const node of nodes) {
+    options.push({
+      label: `${prefix}${node.roleName}`,
+      value: node.roleId
     })
-    return list
+
+    if (node.children && node.children.length > 0) {
+      flattenRoleTree(node.children, options, depth + 1)
+    }
   }
-  const buildRoleOptions = (nodes: RoleNode[], list: UserOption[] = []) => {
-    nodes.forEach(n => {
-      list.push({ label: n.roleName, value: n.roleId })
-      if (n.children) {buildRoleOptions(n.children, list)}
-    })
-    return list
+
+  return options
+}
+
+const flattenDeptTree = (nodes: SysDept[], options: SelectOption[] = [], depth = 0): SelectOption[] => {
+  const prefix = depth > 0 ? `${'  '.repeat(depth)}└ ` : ''
+
+  for (const node of nodes) {
+    if (typeof node.deptId === 'number') {
+      options.push({
+        label: `${prefix}${node.deptName}`,
+        value: node.deptId
+      })
+    }
+
+    if (node.children && node.children.length > 0) {
+      flattenDeptTree(node.children, options, depth + 1)
+    }
   }
-  deptOptions.value = buildDeptOptions(depts)
-  roleOptions.value = buildRoleOptions(roles)
+
+  return options
 }
 
 onMounted(async () => {
-  await Promise.all([loadDepsAndRoles(), loadUsers()])
+  if (!canViewUsers.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_LIST} 权限`)
+    return
+  }
+  await loadBaseOptions()
+  await loadUserList()
 })
 </script>
 
 <template>
   <div class="user-page">
-    <div class="toolbar">
-      <NForm :model="searchForm" inline label-placement="left">
+    <NCard :bordered="false" class="hero-card">
+      <div class="hero-content">
+        <div>
+          <h2>用户账号管理</h2>
+          <p>维护登录账号、角色归属和部门归属，账号权限由角色继承得到。</p>
+        </div>
+        <NTag type="info" size="small">共 {{ totalUsers }} 个账号</NTag>
+      </div>
+    </NCard>
+
+    <NCard :bordered="false" class="toolbar-card">
+      <NForm inline :model="searchForm" label-placement="left">
         <NFormItem label="用户名">
-          <NInput
-            v-model:value="searchForm.username"
-            clearable
-            placeholder="请输入用户名"
-            style="width: 180px"
-          />
+          <NInput v-model:value="searchForm.username" clearable placeholder="请输入用户名" style="width: 180px" />
         </NFormItem>
         <NFormItem label="昵称">
-          <NInput
-            v-model:value="searchForm.nickname"
-            clearable
-            placeholder="请输入昵称"
-            style="width: 180px"
-          />
+          <NInput v-model:value="searchForm.nickname" clearable placeholder="请输入昵称" style="width: 180px" />
         </NFormItem>
         <NFormItem>
-          <NSpace :size="12">
-            <NButton :loading="loading" type="primary" @click="handleSearch">
+          <NSpace>
+            <NButton type="primary" :loading="loading" :disabled="!canViewUsers" @click="handleSearch">
               <template #icon>
-                <NIcon>
-                  <SearchOutline/>
-                </NIcon>
+                <NIcon><SearchOutline /></NIcon>
               </template>
               搜索
             </NButton>
-            <NButton @click="handleReset">
+            <NButton :disabled="!canViewUsers" @click="handleReset">
               <template #icon>
-                <NIcon>
-                  <RefreshOutline/>
-                </NIcon>
+                <NIcon><RefreshOutline /></NIcon>
               </template>
               重置
             </NButton>
-            <NButton type="primary" secondary @click="handleAdd">
+            <NButton v-if="canCreateUser" type="primary" secondary @click="openAdd">
               <template #icon>
-                <NIcon><AddOutline/></NIcon>
+                <NIcon><AddOutline /></NIcon>
               </template>
-              新增
+              新增用户
             </NButton>
           </NSpace>
         </NFormItem>
       </NForm>
-    </div>
+    </NCard>
 
-    <NDataTable
-      :bordered="false"
-      :columns="columns"
-      :data="filteredUsers"
-      :loading="loading"
-      :pagination="{
-        pageSize: 10,
-        showSizePicker: true,
-        pageSizes: [10, 20, 50],
-        showQuickJumper: true
-      }"
-      :single-line="false"
-      class="data-table"
-      striped
-    />
+    <NCard :bordered="false" title="用户列表" class="table-card">
+      <NDataTable
+        :columns="columns"
+        :data="userList"
+        :loading="loading"
+        :pagination="pagination"
+        :bordered="false"
+        striped
+      />
+    </NCard>
 
     <NModal
-      v-model:show="userModalShow"
+      v-model:show="userModalVisible"
       preset="card"
       :title="userForm.userId ? '编辑用户' : '新增用户'"
-      style="width: 560px"
+      style="width: 620px"
       :bordered="false"
       :segmented="{ content: true, footer: true }"
     >
       <NForm ref="userFormRef" :model="userForm" :rules="userRules" label-placement="left" label-width="100">
         <NFormItem label="用户名" path="username">
-          <NInput v-model:value="userForm.username" placeholder="唯一用户名" />
+          <NInput v-model:value="userForm.username" :disabled="!!userForm.userId" placeholder="登录用户名" />
+        </NFormItem>
+        <NFormItem label="密码" :required="!userForm.userId">
+          <NInput
+            v-model:value="userForm.password"
+            type="password"
+            show-password-on="click"
+            :placeholder="userForm.userId ? '留空表示不修改密码' : '留空使用系统默认密码'"
+          />
         </NFormItem>
         <NFormItem label="昵称">
           <NInput v-model:value="userForm.nickname" placeholder="可选" />
         </NFormItem>
         <NFormItem label="邮箱">
-          <NInput v-model:value="userForm.email" placeholder="user@example.com" />
+          <NInput v-model:value="userForm.email" placeholder="可选" />
         </NFormItem>
         <NFormItem label="手机号">
           <NInput v-model:value="userForm.mobile" placeholder="可选" />
@@ -330,13 +634,21 @@ onMounted(async () => {
           />
         </NFormItem>
         <NFormItem label="备注">
-          <NInput v-model:value="userForm.remark" type="textarea" placeholder="可填写业务说明" />
+          <NInput v-model:value="userForm.remark" type="textarea" placeholder="可选" />
         </NFormItem>
       </NForm>
+
       <template #footer>
         <NSpace justify="end">
-          <NButton @click="userModalShow = false">取消</NButton>
-          <NButton type="primary" :loading="loading" @click="submitUser">保存</NButton>
+          <NButton @click="userModalVisible = false">取消</NButton>
+          <NButton
+            type="primary"
+            :loading="loading"
+            :disabled="(userForm.userId && !canUpdateUser) || (!userForm.userId && !canCreateUser)"
+            @click="submitUser"
+          >
+            保存
+          </NButton>
         </NSpace>
       </template>
     </NModal>
@@ -345,15 +657,35 @@ onMounted(async () => {
 
 <style scoped>
 .user-page {
-  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-.data-table {
-  margin-top: 8px;
+
+.hero-card {
+  background: linear-gradient(120deg, #8b1e3f 0%, #c1292e 52%, #ea5f55 100%);
 }
-.data-table :deep(.n-data-table-th) {
-  font-weight: 600;
+
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-color-inverse);
 }
-.data-table :deep(.n-data-table-td) {
-  padding: 12px 16px;
+
+.hero-content h2 {
+  margin: 0 0 6px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color-inverse) 84%, transparent);
+}
+
+.toolbar-card,
+.table-card {
+  background: var(--bg-color);
 }
 </style>

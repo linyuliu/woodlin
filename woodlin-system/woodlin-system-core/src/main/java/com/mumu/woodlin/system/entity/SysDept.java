@@ -1,6 +1,8 @@
 package com.mumu.woodlin.system.entity;
 
 import java.io.Serial;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -113,4 +115,18 @@ public class SysDept extends BaseEntity {
     @TableField("remark")
     @Schema(description = "备注")
     private String remark;
+
+    /**
+     * 子部门列表（非数据库字段）
+     */
+    @TableField(exist = false)
+    @Schema(description = "子部门列表")
+    private List<SysDept> children = new ArrayList<>();
+
+    /**
+     * 是否有子部门（非数据库字段）
+     */
+    @TableField(exist = false)
+    @Schema(description = "是否有子部门")
+    private Boolean hasChildren;
 }

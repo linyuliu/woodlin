@@ -116,8 +116,16 @@ INSERT INTO sys_permission VALUES
  '数据源管理目录', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 (2001, 2000, '数据源列表', 'datasource:list', 'C', 'list', 'datasource/DatasourceList', 'list-outline', 1, '1', '0',
  '0', '1', '数据源列表页面', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
-(2002, 2000, '数据源监控', 'datasource:monitor', 'C', 'monitor', 'datasource/DatasourceMonitor', 'stats-chart-outline',
- 2, '1', '0', '0', '1', '数据源监控页面', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(2101, 2001, '数据源新增', 'datasource:add', 'F', '', '', '#', 1, '1', '0', '0', '1', '新增数据源按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(2102, 2001, '数据源修改', 'datasource:edit', 'F', '', '', '#', 2, '1', '0', '0', '1', '修改数据源按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(2103, 2001, '数据源删除', 'datasource:remove', 'F', '', '', '#', 3, '1', '0', '0', '1', '删除数据源按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(2104, 2001, '测试连接', 'datasource:test', 'F', '', '', '#', 4, '1', '0', '0', '1', '测试连接按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(2105, 2001, '元数据访问', 'datasource:metadata', 'F', '', '', '#', 5, '1', '0', '0', '1', '元数据接口权限', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 
 -- 租户管理
 (3000, 0, '租户管理', 'tenant', 'M', 'tenant', NULL, 'home-outline', 3, '1', '0', '0', '1', '租户管理目录', 'system',
@@ -178,7 +186,11 @@ INSERT INTO sys_role_permission VALUES
 -- 数据源管理
 (1, 2000),
 (1, 2001),
-(1, 2002),
+(1, 2101),
+(1, 2102),
+(1, 2103),
+(1, 2104),
+(1, 2105),
 -- 租户管理
 (1, 3000),
 (1, 3001),

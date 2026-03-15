@@ -167,6 +167,10 @@ export interface UserInfoResponse {
   roles?: string[]
   /** 权限列表 */
   permissions?: string[]
+  /** 是否超级管理员 */
+  superAdmin?: boolean
+  /** 是否超级管理员 (备用字段) */
+  isSuperAdmin?: boolean
   /** 用户状态 */
   status?: string
   /** 创建时间 */

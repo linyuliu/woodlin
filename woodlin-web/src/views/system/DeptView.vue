@@ -1,358 +1,449 @@
 <script setup lang="ts">
-/**
- * 部门管理视图
- * 
- * @author mumu
- * @description 部门管理（前端 mock，RBAC1 数据范围）
- * @since 2025-01-01 (rev 2026-01-31)
- */
-import { ref, h } from 'vue'
-import { 
-  NCard, NButton, NTree, NSpace, NInput, NForm, NFormItem,
-  NIcon, NPopconfirm, NEmpty, NModal, NInputNumber, NSelect,
-  useMessage, type TreeOption, type FormInst
+import { computed, h, onMounted, ref } from 'vue'
+import {
+  NButton,
+  NCard,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NInputNumber,
+  NModal,
+  NPopconfirm,
+  NSelect,
+  NSpace,
+  NTag,
+  NTree,
+  useMessage,
+  type FormInst,
+  type SelectOption,
+  type TreeOption
 } from 'naive-ui'
-import { 
-  AddOutline, 
-  SearchOutline, 
-  RefreshOutline,
+import {
+  AddOutline,
+  BusinessOutline,
   CreateOutline,
-  TrashOutline,
-  BusinessOutline
+  RefreshOutline,
+  SearchOutline,
+  TrashOutline
 } from '@vicons/ionicons5'
 import {
-  fetchDeptTree,
-  createDept,
-  updateDept,
+  addDept,
   deleteDept,
-  type DeptNode
-} from '@/api/mock/rbac'
+  getDeptById,
+  getDeptTree,
+  updateDept,
+  type SysDept
+} from '@/api/dept'
+import { useUserStore } from '@/stores'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
-/**
- * 搜索表单数据
- */
-const searchForm = ref({
-  name: ''
-})
+interface DeptSearchForm {
+  deptName: string
+}
 
-/**
- * 加载状态
- */
-const loading = ref(false)
+interface DeptFormData {
+  deptId?: number
+  parentId: number | null
+  deptName: string
+  deptCode: string
+  sortOrder: number
+  leader: string
+  phone: string
+  email: string
+  status: string
+  remark: string
+}
+
 const message = useMessage()
+const userStore = useUserStore()
+const loading = ref(false)
 
-const deptTree = ref<TreeOption[]>([])
-const flatDepts = ref<{ label: string; value: number }[]>([])
-const selectedKeys = ref<string[]>([])
-type DeptTreeItem = { key: number | string; label: string; children?: DeptTreeItem[] }
-type DeptTreeLookupNode = { deptId: number | string; deptName: string; children?: DeptTreeLookupNode[] }
-const toLookupNode = (node: DeptTreeItem): DeptTreeLookupNode => ({
-  deptId: node.key,
-  deptName: node.label,
-  children: node.children?.map(toLookupNode)
+const searchForm = ref<DeptSearchForm>({
+  deptName: ''
 })
 
-const modalShow = ref(false)
+const deptTree = ref<SysDept[]>([])
+const selectedKeys = ref<Array<string | number>>([])
+
+const modalVisible = ref(false)
 const formRef = ref<FormInst | null>(null)
-const form = ref<Partial<DeptNode>>({
-  deptName: '',
+const form = ref<DeptFormData>({
   parentId: null,
-  orderNum: 1,
-  status: '1'
+  deptName: '',
+  deptCode: '',
+  sortOrder: 0,
+  leader: '',
+  phone: '',
+  email: '',
+  status: '1',
+  remark: ''
 })
 
-const rules = {
+const formRules = {
   deptName: { required: true, message: '请输入部门名称', trigger: 'blur' }
 }
 
-/**
- * 部门树形数据
- */
-const buildTree = (nodes: DeptNode[]): TreeOption[] =>
-  nodes.map(n => ({
-    key: n.deptId,
-    label: n.deptName,
-    children: n.children ? buildTree(n.children) : undefined
-  }))
+const statusOptions = [
+  { label: '启用', value: '1' },
+  { label: '禁用', value: '0' }
+]
 
-const rebuildFlat = (nodes: DeptNode[], list: { label: string; value: number }[] = []) => {
-  nodes.forEach(n => {
-    list.push({ label: n.deptName, value: n.deptId })
-    if (n.children) {
-      rebuildFlat(n.children, list)
+const selectedDeptId = computed(() => {
+  const key = selectedKeys.value[0]
+  if (key === undefined || key === null) {
+    return null
+  }
+  return Number(key)
+})
+
+const treeData = computed<TreeOption[]>(() => buildTreeOptions(deptTree.value))
+const parentOptions = computed<SelectOption[]>(() => buildParentOptions(deptTree.value))
+const totalDepts = computed(() => countNodes(deptTree.value))
+const canViewDept = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_DEPT_LIST))
+const canCreateDept = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_DEPT_ADD))
+const canUpdateDept = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_DEPT_EDIT))
+const canDeleteDept = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_DEPT_REMOVE))
+
+const selectedDeptInfo = computed(() => {
+  if (!selectedDeptId.value) {
+    return null
+  }
+  return findNodeById(deptTree.value, selectedDeptId.value)
+})
+
+const toText = (value: string | undefined | null): string => value ?? ''
+
+const loadDeptTree = async () => {
+  if (!canViewDept.value) {
+    deptTree.value = []
+    selectedKeys.value = []
+    return
+  }
+  loading.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (searchForm.value.deptName.trim()) {
+      params.deptName = searchForm.value.deptName.trim()
     }
-  })
-  return list
+    deptTree.value = await getDeptTree(params)
+    if (selectedDeptId.value && !findNodeById(deptTree.value, selectedDeptId.value)) {
+      selectedKeys.value = []
+    }
+  } catch (error) {
+    console.error(error)
+    message.error('加载部门树失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-/**
- * 搜索部门
- */
 const handleSearch = () => {
-  // 前端本地树，不做额外请求
+  loadDeptTree()
 }
 
-/**
- * 重置搜索
- */
 const handleReset = () => {
   searchForm.value = {
-    name: ''
+    deptName: ''
   }
-  selectedKeys.value = []
+  loadDeptTree()
 }
 
-/**
- * 添加部门
- */
-const handleAdd = () => {
+const openAdd = () => {
+  if (!canCreateDept.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_ADD} 权限`)
+    return
+  }
   form.value = {
-    deptId: undefined,
+    parentId: selectedDeptId.value,
     deptName: '',
-    parentId: selectedKeys.value.length ? Number(selectedKeys.value[0]) : null,
-    orderNum: 1,
-    status: '1'
+    deptCode: '',
+    sortOrder: 0,
+    leader: '',
+    phone: '',
+    email: '',
+    status: '1',
+    remark: ''
   }
-  modalShow.value = true
+  modalVisible.value = true
 }
 
-/**
- * 编辑部门
- */
-const handleEdit = () => {
-  const id = selectedKeys.value[0]
-  if (!id) {
-    message.warning('请先选择要编辑的部门')
+const openEdit = async () => {
+  if (!canUpdateDept.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_EDIT} 权限`)
     return
   }
-  // 从树中取出
-  const find = (list: DeptTreeLookupNode[]): DeptTreeLookupNode | undefined => {
-    for (const n of list) {
-      if (n.deptId === Number(id)) {
-        return n
-      }
-      if (n.children) {
-        const hit = find(n.children)
-        if (hit) {
-          return hit
-        }
-      }
+  if (!selectedDeptId.value) {
+    message.warning('请先选择部门')
+    return
+  }
+
+  loading.value = true
+  try {
+    const detail = await getDeptById(selectedDeptId.value)
+    form.value = {
+      deptId: detail.deptId,
+      parentId: detail.parentId ?? null,
+      deptName: detail.deptName,
+      deptCode: toText(detail.deptCode),
+      sortOrder: detail.sortOrder ?? 0,
+      leader: toText(detail.leader),
+      phone: toText(detail.phone),
+      email: toText(detail.email),
+      status: detail.status ?? '1',
+      remark: toText(detail.remark)
     }
-    return undefined
+    modalVisible.value = true
+  } catch (error) {
+    console.error(error)
+    message.error('加载部门详情失败')
+  } finally {
+    loading.value = false
   }
-  const current = find((deptTree.value as DeptTreeItem[]).map(toLookupNode))
-  form.value = current
-    ? { deptId: Number(current.deptId), deptName: current.deptName }
-    : { deptId: Number(id) }
-  modalShow.value = true
 }
 
-/**
- * 删除部门
- */
-const handleDelete = () => {
-  if (selectedKeys.value.length === 0) {
-    message.warning('请先选择要删除的部门')
+const handleDelete = async () => {
+  if (!canDeleteDept.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_REMOVE} 权限`)
     return
   }
-  const id = Number(selectedKeys.value[0])
-  deleteDept(id).then(() => {
-    message.success('删除成功')
-    loadDept()
-  })
-}
+  if (!selectedDeptId.value) {
+    message.warning('请先选择部门')
+    return
+  }
 
-/**
- * 树节点前缀
- */
-const renderPrefix = () => {
-  return h(NIcon, { size: 18, style: { marginRight: '8px' } }, {
-    default: () => h(BusinessOutline)
-  })
+  loading.value = true
+  try {
+    await deleteDept(selectedDeptId.value)
+    message.success('删除成功')
+    selectedKeys.value = []
+    await loadDeptTree()
+  } catch (error) {
+    console.error(error)
+    message.error('删除失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const submit = async () => {
   await formRef.value?.validate()
+
+  const payload: SysDept = {
+    deptId: form.value.deptId,
+    parentId: form.value.parentId,
+    deptName: form.value.deptName.trim(),
+    deptCode: form.value.deptCode.trim(),
+    sortOrder: form.value.sortOrder,
+    leader: form.value.leader.trim(),
+    phone: form.value.phone.trim(),
+    email: form.value.email.trim(),
+    status: form.value.status,
+    remark: form.value.remark.trim()
+  }
+
   loading.value = true
   try {
-    if (form.value.deptId) {
-      await updateDept(form.value as DeptNode)
-      message.success('更新成功')
+    if (payload.deptId) {
+      if (!canUpdateDept.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_EDIT} 权限`)
+        return
+      }
+      await updateDept(payload)
+      message.success('修改成功')
     } else {
-      await createDept(form.value)
+      if (!canCreateDept.value) {
+        message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_ADD} 权限`)
+        return
+      }
+      await addDept(payload)
       message.success('新增成功')
     }
-    modalShow.value = false
-    await loadDept()
+    modalVisible.value = false
+    await loadDeptTree()
+  } catch (error) {
+    console.error(error)
+    message.error('保存失败')
   } finally {
     loading.value = false
   }
 }
 
-const loadDept = async () => {
-  loading.value = true
-  try {
-    const list = await fetchDeptTree()
-    deptTree.value = buildTree(list)
-    flatDepts.value = rebuildFlat(list)
-  } finally {
-    loading.value = false
+const buildTreeOptions = (nodes: SysDept[]): TreeOption[] =>
+  nodes.map(node => ({
+    key: node.deptId || 0,
+    label: node.deptName,
+    prefix: () => h(NIcon, null, { default: () => h(BusinessOutline) }),
+    children: node.children ? buildTreeOptions(node.children) : undefined
+  }))
+
+const buildParentOptions = (nodes: SysDept[], list: SelectOption[] = [], depth = 0): SelectOption[] => {
+  const prefix = depth > 0 ? `${'  '.repeat(depth)}└ ` : ''
+
+  for (const node of nodes) {
+    if (node.deptId) {
+      list.push({
+        label: `${prefix}${node.deptName}`,
+        value: node.deptId
+      })
+    }
+    if (node.children && node.children.length > 0) {
+      buildParentOptions(node.children, list, depth + 1)
+    }
   }
+
+  return list
 }
 
-loadDept()
+const countNodes = (nodes: SysDept[]): number =>
+  nodes.reduce((total, item) => total + 1 + countNodes(item.children || []), 0)
+
+const findNodeById = (nodes: SysDept[], id: number): SysDept | null => {
+  for (const node of nodes) {
+    if (node.deptId === id) {
+      return node
+    }
+    const child = findNodeById(node.children || [], id)
+    if (child) {
+      return child
+    }
+  }
+  return null
+}
+
+onMounted(() => {
+  if (!canViewDept.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_DEPT_LIST} 权限`)
+    return
+  }
+  loadDeptTree()
+})
 </script>
 
 <template>
-  <div class="dept-management-container">
-    <NSpace vertical :size="16">
-      <!-- 搜索区域 -->
-      <NCard :bordered="false" class="search-card">
-        <NForm inline :model="searchForm" label-placement="left">
-          <NFormItem label="部门名称">
-            <NInput 
-              v-model:value="searchForm.name" 
-              placeholder="请输入部门名称"
-              clearable
-              style="width: 300px"
-            />
-          </NFormItem>
-          <NFormItem>
-            <NSpace>
-              <NButton type="primary" @click="handleSearch" :loading="loading">
-                <template #icon>
-                  <NIcon>
-                    <SearchOutline />
-                  </NIcon>
-                </template>
-                搜索
-              </NButton>
-              <NButton @click="handleReset">
-                <template #icon>
-                  <NIcon>
-                    <RefreshOutline />
-                  </NIcon>
-                </template>
-                重置
-              </NButton>
-            </NSpace>
-          </NFormItem>
-        </NForm>
-      </NCard>
+  <div class="dept-page">
+    <NCard :bordered="false" class="hero-card">
+      <div class="hero-content">
+        <div>
+          <h2>组织架构管理</h2>
+          <p>维护部门层级、负责人和基础联系方式，用户所属部门会直接引用这里的数据。</p>
+        </div>
+        <NTag type="info" size="small">共 {{ totalDepts }} 个部门</NTag>
+      </div>
+    </NCard>
 
-      <!-- 部门树 -->
-      <NCard 
-        title="部门结构" 
-        :bordered="false" 
-        :segmented="{ content: true }"
-        class="tree-card"
-      >
-        <template #header-extra>
+    <NCard :bordered="false" class="toolbar-card">
+      <NForm inline :model="searchForm" label-placement="left">
+        <NFormItem label="部门名称">
+          <NInput v-model:value="searchForm.deptName" clearable placeholder="请输入部门名称" style="width: 220px" />
+        </NFormItem>
+        <NFormItem>
           <NSpace>
-            <NButton type="primary" @click="handleAdd">
+            <NButton type="primary" :loading="loading" :disabled="!canViewDept" @click="handleSearch">
               <template #icon>
-                <NIcon>
-                  <AddOutline />
-                </NIcon>
+                <NIcon><SearchOutline /></NIcon>
               </template>
-              添加部门
+              搜索
             </NButton>
-            <NButton 
-              type="info" 
-              @click="handleEdit"
-              :disabled="selectedKeys.length === 0"
-            >
+            <NButton :disabled="!canViewDept" @click="handleReset">
               <template #icon>
-                <NIcon>
-                  <CreateOutline />
-                </NIcon>
+                <NIcon><RefreshOutline /></NIcon>
+              </template>
+              重置
+            </NButton>
+            <NButton v-if="canCreateDept" type="primary" secondary @click="openAdd">
+              <template #icon>
+                <NIcon><AddOutline /></NIcon>
+              </template>
+              新增
+            </NButton>
+            <NButton v-if="canUpdateDept" :disabled="!selectedDeptId" @click="openEdit">
+              <template #icon>
+                <NIcon><CreateOutline /></NIcon>
               </template>
               编辑
             </NButton>
-            <NPopconfirm
-              @positive-click="handleDelete"
-            >
+            <NPopconfirm v-if="canDeleteDept" @positive-click="handleDelete">
               <template #trigger>
-                <NButton 
-                  type="error" 
-                  :disabled="selectedKeys.length === 0"
-                >
+                <NButton type="error" :disabled="!selectedDeptId">
                   <template #icon>
-                    <NIcon>
-                      <TrashOutline />
-                    </NIcon>
+                    <NIcon><TrashOutline /></NIcon>
                   </template>
                   删除
                 </NButton>
               </template>
-              确定要删除选中的部门吗？
+              确认删除当前部门？
             </NPopconfirm>
           </NSpace>
-        </template>
-        
-        <div class="tree-container">
-          <NTree
-            v-if="deptTree.length > 0"
-            block-line
-            checkable
-            selectable
-            expand-on-click
-            :data="deptTree"
-            v-model:selected-keys="selectedKeys"
-            :render-prefix="renderPrefix"
-          />
-          <NEmpty 
-            v-else
-            description="暂无部门数据"
-            style="padding: 40px 0"
-          />
-        </div>
-      </NCard>
-    </NSpace>
+        </NFormItem>
+      </NForm>
+    </NCard>
+
+    <NCard :bordered="false" title="部门树" class="tree-card">
+      <template #header-extra>
+        <NTag v-if="selectedDeptInfo" size="small" type="success">
+          当前：{{ selectedDeptInfo.deptName }}
+        </NTag>
+      </template>
+      <NTree
+        :data="treeData"
+        block-line
+        expand-on-click
+        selectable
+        :selected-keys="selectedKeys"
+        @update:selected-keys="(keys) => selectedKeys = keys"
+      />
+    </NCard>
 
     <NModal
-      v-model:show="modalShow"
+      v-model:show="modalVisible"
       preset="card"
       :title="form.deptId ? '编辑部门' : '新增部门'"
-      style="width: 520px"
+      style="width: 620px"
       :bordered="false"
       :segmented="{ content: true, footer: true }"
     >
-      <NForm ref="formRef" :model="form" :rules="rules" label-width="90" label-placement="left">
+      <NForm ref="formRef" :model="form" :rules="formRules" label-placement="left" label-width="100">
         <NFormItem label="部门名称" path="deptName">
           <NInput v-model:value="form.deptName" placeholder="请输入部门名称" />
         </NFormItem>
         <NFormItem label="上级部门">
-          <NSelect
-            v-model:value="form.parentId"
-            :options="flatDepts"
-            clearable
-            placeholder="根部门留空"
-          />
+          <NSelect v-model:value="form.parentId" :options="parentOptions" clearable placeholder="根部门可留空" />
         </NFormItem>
-        <NFormItem label="排序值">
-          <NInputNumber v-model:value="form.orderNum" :min="0" />
+        <NFormItem label="部门编码">
+          <NInput v-model:value="form.deptCode" placeholder="可选，例如 RD_CENTER" />
+        </NFormItem>
+        <NFormItem label="排序">
+          <NInputNumber v-model:value="form.sortOrder" :min="0" style="width: 100%" />
         </NFormItem>
         <NFormItem label="负责人">
-          <NInput v-model:value="form.leader" placeholder="可选填" />
+          <NInput v-model:value="form.leader" placeholder="可选" />
         </NFormItem>
         <NFormItem label="联系电话">
-          <NInput v-model:value="form.phone" placeholder="可选填" />
+          <NInput v-model:value="form.phone" placeholder="可选" />
+        </NFormItem>
+        <NFormItem label="邮箱">
+          <NInput v-model:value="form.email" placeholder="可选" />
         </NFormItem>
         <NFormItem label="状态">
-          <NSelect
-            v-model:value="form.status"
-            :options="[
-              { label: '启用', value: '1' },
-              { label: '禁用', value: '0' }
-            ]"
-          />
+          <NSelect v-model:value="form.status" :options="statusOptions" />
+        </NFormItem>
+        <NFormItem label="备注">
+          <NInput v-model:value="form.remark" type="textarea" placeholder="可选" />
         </NFormItem>
       </NForm>
+
       <template #footer>
         <NSpace justify="end">
-          <NButton @click="modalShow = false">取消</NButton>
-          <NButton type="primary" :loading="loading" @click="submit">保存</NButton>
+          <NButton @click="modalVisible = false">取消</NButton>
+          <NButton
+            type="primary"
+            :loading="loading"
+            :disabled="(form.deptId && !canUpdateDept) || (!form.deptId && !canCreateDept)"
+            @click="submit"
+          >
+            保存
+          </NButton>
         </NSpace>
       </template>
     </NModal>
@@ -360,21 +451,40 @@ loadDept()
 </template>
 
 <style scoped>
-.dept-management-container {
-  width: 100%;
-  height: 100%;
+.dept-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.search-card {
-  background: #fff;
+.hero-card {
+  background: linear-gradient(120deg, #1f3c88 0%, #2d63c8 52%, #5f8fe6 100%);
 }
 
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content h2 {
+  margin: 0 0 6px;
+  color: var(--text-color-inverse);
+}
+
+.hero-content p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color-inverse) 84%, transparent);
+}
+
+.toolbar-card,
 .tree-card {
-  background: #fff;
+  background: var(--bg-color);
 }
 
-.tree-container {
-  padding: 16px;
-  min-height: 400px;
+:deep(.n-tree-node-content__text) {
+  font-weight: 500;
 }
 </style>

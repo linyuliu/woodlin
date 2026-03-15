@@ -8,6 +8,7 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import com.mumu.woodlin.common.constant.CommonConstant;
 
 /**
  * 登录用户信息
@@ -174,7 +175,11 @@ public class LoginUser implements Serializable {
      * @return 是否为超级管理员
      */
     public boolean isSuperAdmin() {
-        return roleCodes != null && roleCodes.contains("super_admin");
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return false;
+        }
+        return roleCodes.contains(CommonConstant.SUPER_ADMIN_ROLE_CODE)
+            || roleCodes.contains(CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE);
     }
     
     /**

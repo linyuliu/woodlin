@@ -9,6 +9,7 @@
 
 import type {RouteRecordRaw} from 'vue-router'
 import {LAYOUT} from './route-constants'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
 /**
  * 静态路由（不需要权限的基础路由）
@@ -75,7 +76,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
           title: '仪表板',
           icon: 'speedometer-outline',
           affix: true, // 固定在标签页
-          permissions: ['dashboard:view'],
+          permissions: [PERMISSIONS.ROUTE.DASHBOARD],
         },
       },
 
@@ -87,7 +88,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '系统管理',
           icon: 'settings-outline',
-          permissions: ['system:view'],
+          permissions: [PERMISSIONS.ROUTE.SYSTEM],
         },
         children: [
           {
@@ -97,7 +98,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '用户管理',
               icon: 'people-outline',
-              permissions: ['system:user:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_USER],
             },
           },
           {
@@ -107,7 +108,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '角色管理',
               icon: 'shield-checkmark-outline',
-              permissions: ['system:role:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_ROLE],
             },
           },
           {
@@ -117,7 +118,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '部门管理',
               icon: 'business-outline',
-              permissions: ['system:dept:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_DEPT],
             },
           },
           {
@@ -127,17 +128,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '菜单管理',
               icon: 'list-outline',
-              permissions: ['system:menu:view'],
-            },
-          },
-          {
-            path: 'permission',
-            name: 'SystemPermission',
-            component: () => import('@/views/system/permission/PermissionManagementView.vue'),
-            meta: {
-              title: '权限管理',
-              icon: 'key-outline',
-              permissions: ['system:permission:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_MENU],
             },
           },
           {
@@ -147,7 +138,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '字典管理',
               icon: 'book-outline',
-              permissions: ['system:dict:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_DICT],
             },
           },
           {
@@ -157,7 +148,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '配置管理',
               icon: 'options-outline',
-              permissions: ['system:config:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_CONFIG],
             },
           },
           {
@@ -167,7 +158,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '系统设置',
               icon: 'cog-outline',
-              permissions: ['system:settings:view'],
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_SETTINGS],
             },
           },
         ],
@@ -181,7 +172,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '数据源管理',
           icon: 'server-outline',
-          permissions: ['datasource:view'],
+          permissions: [PERMISSIONS.ROUTE.DATASOURCE],
         },
         children: [
           {
@@ -191,28 +182,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '数据源列表',
               icon: 'list-outline',
-              permissions: ['datasource:list:view'],
-            },
-          },
-          {
-            path: 'monitor',
-            name: 'DatasourceMonitor',
-            component: () => import('@/views/datasource/DatasourceMonitor.vue'),
-            meta: {
-              title: '数据源监控',
-              icon: 'stats-chart-outline',
-              permissions: ['datasource:monitor:view'],
-            },
-          },
-          {
-            path: 'workspace/:code',
-            name: 'DatasourceWorkspace',
-            component: () => import('@/views/datasource/DatasourceWorkspace.vue'),
-            meta: {
-              title: '元数据工作台',
-              hideInMenu: true,
-              activeMenu: '/datasource/list',
-              permissions: ['datasource:list:view'],
+              permissions: [PERMISSIONS.ROUTE.DATASOURCE_LIST],
             },
           },
         ],
@@ -226,7 +196,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '租户管理',
           icon: 'home-outline',
-          permissions: ['tenant:view'],
+          permissions: [PERMISSIONS.ROUTE.TENANT],
         },
         children: [
           {
@@ -236,7 +206,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '租户列表',
               icon: 'list-outline',
-              permissions: ['tenant:list:view'],
+              permissions: [PERMISSIONS.ROUTE.TENANT_LIST],
             },
           },
         ],
@@ -250,7 +220,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '文件管理',
           icon: 'folder-outline',
-          permissions: ['file:view'],
+          permissions: [PERMISSIONS.ROUTE.FILE],
         },
         children: [
           {
@@ -260,7 +230,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '文件列表',
               icon: 'documents-outline',
-              permissions: ['file:list:view'],
+              permissions: [PERMISSIONS.ROUTE.FILE_LIST],
             },
           },
           {
@@ -270,7 +240,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '存储配置',
               icon: 'archive-outline',
-              permissions: ['file:storage:view'],
+              permissions: [PERMISSIONS.ROUTE.FILE_STORAGE],
             },
           },
         ],
@@ -284,7 +254,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '任务管理',
           icon: 'timer-outline',
-          permissions: ['task:view'],
+          permissions: [PERMISSIONS.ROUTE.TASK],
         },
         children: [
           {
@@ -294,7 +264,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '任务列表',
               icon: 'list-outline',
-              permissions: ['task:list:view'],
+              permissions: [PERMISSIONS.ROUTE.TASK_LIST],
             },
           },
           {
@@ -304,7 +274,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '任务日志',
               icon: 'receipt-outline',
-              permissions: ['task:log:view'],
+              permissions: [PERMISSIONS.ROUTE.TASK_LOG],
             },
           },
         ],
@@ -318,7 +288,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '同步任务',
           icon: 'git-compare-outline',
-          permissions: ['task:list:view'],
+          permissions: [PERMISSIONS.ROUTE.TASK_LIST],
         },
         children: [
           {
@@ -328,7 +298,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '离线同步',
               icon: 'swap-horizontal-outline',
-              permissions: ['task:list:view'],
+              permissions: [PERMISSIONS.ROUTE.TASK_LIST],
             },
           },
           {
@@ -339,7 +309,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
               title: '创建离线任务',
               hideInMenu: true,
               activeMenu: '/etl/offline',
-              permissions: ['task:list:view'],
+              permissions: [PERMISSIONS.ROUTE.TASK_LIST],
             },
           },
         ],
@@ -353,7 +323,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '开发工具',
           icon: 'code-slash-outline',
-          permissions: ['dev:view'],
+          permissions: [PERMISSIONS.ROUTE.DEV],
         },
         children: [
           {
@@ -363,7 +333,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: 'SQL转API',
               icon: 'terminal-outline',
-              permissions: ['dev:sql2api:view'],
+              permissions: [PERMISSIONS.ROUTE.DEV_SQL2API],
             },
           },
           {
@@ -373,7 +343,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '代码生成',
               icon: 'construct-outline',
-              permissions: ['dev:generator:view'],
+              permissions: [PERMISSIONS.ROUTE.DEV_GENERATOR],
             },
           },
         ],
@@ -398,3 +368,4 @@ export const notFoundRoute: RouteRecordRaw = {
  * 所有路由（用于调试和测试）
  */
 export const allRoutes = [...constantRoutes, ...asyncRoutes, notFoundRoute]
+

@@ -35,7 +35,7 @@ const naiveTheme = computed(() => (themeMode.value === 'dark' ? darkTheme : null
 <style>
 #app {
   height: 100vh;
-  font-family: var(--font-family);
+  font-family: var(--font-family),serif;
 }
 
 .app {

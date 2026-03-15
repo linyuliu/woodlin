@@ -3,6 +3,7 @@
  * - 纯内存实现，重启页面后重置
  * - 用 Promise + setTimeout 模拟网络
  */
+import { PERMISSIONS } from '@/constants/permission-keys'
 
 export type Gender = 'male' | 'female' | 'unknown'
 
@@ -97,7 +98,7 @@ let roleTree: RoleNode[] = [
     roleId: 1,
     parentRoleId: null,
     roleName: '超级管理员',
-    roleCode: 'super_admin',
+    roleCode: 'admin',
     sortOrder: 1,
     status: '1',
     remark: '拥有所有权限'
@@ -151,7 +152,7 @@ let menuTree: MenuNode[] = [
         type: 'M',
         path: '/system/user',
         component: 'system/UserView',
-        perms: 'system:user:view',
+        perms: PERMISSIONS.ROUTE.SYSTEM_USER,
         visible: '1',
         status: '1'
       },
@@ -164,7 +165,7 @@ let menuTree: MenuNode[] = [
         type: 'M',
         path: '/system/role',
         component: 'system/RoleView',
-        perms: 'system:role:view',
+        perms: PERMISSIONS.ROUTE.SYSTEM_ROLE,
         visible: '1',
         status: '1'
       },
@@ -177,7 +178,7 @@ let menuTree: MenuNode[] = [
         type: 'M',
         path: '/system/dept',
         component: 'system/DeptView',
-        perms: 'system:dept:view',
+        perms: PERMISSIONS.ROUTE.SYSTEM_DEPT,
         visible: '1',
         status: '1'
       },
@@ -190,7 +191,7 @@ let menuTree: MenuNode[] = [
         type: 'M',
         path: '/system/menu',
         component: 'system/MenuView',
-        perms: 'system:menu:view',
+        perms: PERMISSIONS.ROUTE.SYSTEM_MENU,
         visible: '1',
         status: '1'
       }
@@ -263,12 +264,12 @@ export async function createDept(payload: Partial<DeptNode>): Promise<DeptNode> 
         node.children.push(newNode)
         return true
       }
-      if (node.children && insert(node.children)) return true
+      if (node.children && insert(node.children)) {return true}
     }
     return false
   }
-  if (newNode.parentId) insert(deptTree)
-  else deptTree.push(newNode)
+  if (newNode.parentId) {insert(deptTree)}
+  else {deptTree.push(newNode)}
   return newNode
 }
 
@@ -279,7 +280,7 @@ export async function updateDept(payload: DeptNode): Promise<DeptNode> {
       if (node.deptId === payload.deptId) {
         Object.assign(node, payload)
       }
-      if (node.children) update(node.children)
+      if (node.children) {update(node.children)}
     })
   }
   update(deptTree)
@@ -293,7 +294,7 @@ export async function deleteDept(deptId: number): Promise<boolean> {
       .filter(n => n.deptId !== deptId)
       .map(n => ({ ...n, children: n.children ? remove(n.children) : undefined }))
   const ids = new Set(flatDeptIds(deptTree))
-  if (!ids.has(deptId)) return false
+  if (!ids.has(deptId)) {return false}
   deptTree = remove(deptTree)
   return true
 }
@@ -322,12 +323,12 @@ export async function createRole(payload: Partial<RoleNode>): Promise<RoleNode> 
         node.children.push(newNode)
         return true
       }
-      if (node.children && insert(node.children)) return true
+      if (node.children && insert(node.children)) {return true}
     }
     return false
   }
-  if (newNode.parentRoleId) insert(roleTree)
-  else roleTree.push(newNode)
+  if (newNode.parentRoleId) {insert(roleTree)}
+  else {roleTree.push(newNode)}
   return newNode
 }
 
@@ -335,8 +336,8 @@ export async function updateRole(payload: RoleNode): Promise<RoleNode> {
   await delay()
   const update = (list: RoleNode[]) =>
     list.forEach(node => {
-      if (node.roleId === payload.roleId) Object.assign(node, payload)
-      if (node.children) update(node.children)
+      if (node.roleId === payload.roleId) {Object.assign(node, payload)}
+      if (node.children) {update(node.children)}
     })
   update(roleTree)
   return payload
@@ -349,7 +350,7 @@ export async function deleteRole(roleId: number): Promise<boolean> {
       .filter(n => n.roleId !== roleId)
       .map(n => ({ ...n, children: n.children ? remove(n.children) : undefined }))
   const ids = new Set(flatRoleIds(roleTree))
-  if (!ids.has(roleId)) return false
+  if (!ids.has(roleId)) {return false}
   roleTree = remove(roleTree)
   users = users.map(u => ({ ...u, roleIds: u.roleIds.filter(id => id !== roleId) }))
   return true
@@ -386,12 +387,12 @@ export async function createMenu(payload: Partial<MenuNode>): Promise<MenuNode> 
         node.children.push(newNode)
         return true
       }
-      if (node.children && insert(node.children)) return true
+      if (node.children && insert(node.children)) {return true}
     }
     return false
   }
-  if (newNode.parentId) insert(menuTree)
-  else menuTree.push(newNode)
+  if (newNode.parentId) {insert(menuTree)}
+  else {menuTree.push(newNode)}
   return newNode
 }
 
@@ -399,8 +400,8 @@ export async function updateMenu(payload: MenuNode): Promise<MenuNode> {
   await delay()
   const update = (list: MenuNode[]) =>
     list.forEach(node => {
-      if (node.menuId === payload.menuId) Object.assign(node, payload)
-      if (node.children) update(node.children)
+      if (node.menuId === payload.menuId) {Object.assign(node, payload)}
+      if (node.children) {update(node.children)}
     })
   update(menuTree)
   return payload
@@ -413,7 +414,7 @@ export async function deleteMenu(menuId: number): Promise<boolean> {
       .filter(n => n.menuId !== menuId)
       .map(n => ({ ...n, children: n.children ? remove(n.children) : undefined }))
   const ids = new Set(flatMenuIds(menuTree))
-  if (!ids.has(menuId)) return false
+  if (!ids.has(menuId)) {return false}
   menuTree = remove(menuTree)
   return true
 }
@@ -432,10 +433,10 @@ export interface UserQuery {
 export async function fetchUserList(params: UserQuery = {}): Promise<UserItem[]> {
   await delay()
   return users.filter(u => {
-    if (params.username && !u.username.includes(params.username)) return false
-    if (params.nickname && !(u.nickname || '').includes(params.nickname)) return false
-    if (params.status && u.status !== params.status) return false
-    if (params.deptId && u.deptId !== params.deptId) return false
+    if (params.username && !u.username.includes(params.username)) {return false}
+    if (params.nickname && !(u.nickname || '').includes(params.nickname)) {return false}
+    if (params.status && u.status !== params.status) {return false}
+    if (params.deptId && u.deptId !== params.deptId) {return false}
     return true
   })
 }

@@ -12,6 +12,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.enums.ResultCode;
+import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.security.util.SecurityUtil;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,7 +61,7 @@ public class SysUserController {
             SysUser user,
             @Parameter(description = "页码，从1开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页显示数量", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
-        
+        requirePermission("system:user:list");
         IPage<SysUser> page = userBusinessService.queryUserPage(user, pageNum, pageSize);
         return R.ok(PageResult.of(page));
     }
@@ -73,6 +76,7 @@ public class SysUserController {
     )
     public R<SysUser> getInfo(
             @Parameter(description = "用户ID", required = true, example = "1") @PathVariable Long userId) {
+        requirePermission("system:user:list");
         SysUser user = userBusinessService.getUserById(userId);
         return R.ok(user);
     }
@@ -86,6 +90,7 @@ public class SysUserController {
         description = "创建新用户，用户名必须唯一，可同时设置用户角色和部门信息"
     )
     public R<Void> add(@Valid @RequestBody SysUser user) {
+        requirePermission("system:user:add");
         boolean result = userBusinessService.createUser(user);
         return result ? R.ok("新增用户成功") : R.fail("新增用户失败");
     }
@@ -99,6 +104,7 @@ public class SysUserController {
         description = "更新用户信息，不能修改用户名，可更新其他基本信息、角色和部门"
     )
     public R<Void> edit(@Valid @RequestBody SysUser user) {
+        requirePermission("system:user:edit");
         boolean result = userBusinessService.updateUser(user);
         return result ? R.ok("修改用户成功") : R.fail("修改用户失败");
     }
@@ -113,6 +119,7 @@ public class SysUserController {
     )
     public R<Void> remove(
             @Parameter(description = "用户ID，多个用逗号分隔", required = true, example = "1,2,3") @PathVariable String userIds) {
+        requirePermission("system:user:remove");
         List<String> ids = Arrays.asList(userIds.split(","));
         boolean result = userBusinessService.deleteUsers(ids);
         return result ? R.ok("删除用户成功") : R.fail("删除用户失败");
@@ -129,6 +136,7 @@ public class SysUserController {
     public R<Void> resetPwd(
             @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "新密码") @RequestParam String password) {
+        requirePermission("system:user:resetPwd");
         boolean result = userBusinessService.resetUserPassword(userId, password);
         return result ? R.ok("重置密码成功") : R.fail("重置密码失败");
     }
@@ -139,6 +147,7 @@ public class SysUserController {
     @PutMapping("/changeStatus")
     @Operation(summary = "状态修改")
     public R<Void> changeStatus(@RequestBody SysUser user) {
+        requirePermission("system:user:edit");
         boolean result = userBusinessService.changeUserStatus(user);
         return result ? R.ok("修改状态成功") : R.fail("修改状态失败");
     }
@@ -149,6 +158,7 @@ public class SysUserController {
     @PostMapping("/export")
     @Operation(summary = "导出用户数据")
     public void export(HttpServletResponse response, @RequestBody SysUser user) throws IOException {
+        requirePermission("system:user:export");
         userBusinessService.exportUsers(response, user);
     }
     
@@ -160,7 +170,7 @@ public class SysUserController {
     public R<String> importData(
             @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "是否更新支持") @RequestParam(defaultValue = "false") Boolean updateSupport) throws IOException {
-        
+        requirePermission("system:user:import");
         String message = userBusinessService.importUsers(file, updateSupport);
         return R.ok(message);
     }
@@ -171,6 +181,18 @@ public class SysUserController {
     @PostMapping("/importTemplate")
     @Operation(summary = "下载导入模板")
     public void importTemplate(HttpServletResponse response) throws IOException {
+        requirePermission("system:user:import");
         userBusinessService.downloadTemplate(response);
+    }
+
+    /**
+     * 权限校验
+     *
+     * @param permission 权限编码
+     */
+    private void requirePermission(String permission) {
+        if (!SecurityUtil.hasPermission(permission)) {
+            throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
+        }
     }
 }

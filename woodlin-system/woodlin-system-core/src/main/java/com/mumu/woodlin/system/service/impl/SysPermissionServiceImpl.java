@@ -2,10 +2,14 @@ package com.mumu.woodlin.system.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.system.dto.RouteVO;
 import com.mumu.woodlin.system.entity.SysPermission;
+import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.mapper.SysPermissionMapper;
+import com.mumu.woodlin.system.mapper.SysRoleMapper;
 import com.mumu.woodlin.system.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
         implements ISysPermissionService {
 
     private final SysPermissionMapper permissionMapper;
+    private final SysRoleMapper roleMapper;
 
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
@@ -59,6 +64,14 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     public List<SysPermission> selectPermissionsByUserId(Long userId) {
         if (userId == null) {
             return Collections.emptyList();
+        }
+        if (isSuperAdminUser(userId)) {
+            LambdaQueryWrapper<SysPermission> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SysPermission::getDeleted, "0")
+                .eq(SysPermission::getStatus, "1")
+                .orderByAsc(SysPermission::getSortOrder)
+                .orderByAsc(SysPermission::getPermissionId);
+            return list(wrapper);
         }
         return permissionMapper.selectPermissionsByUserId(userId);
     }
@@ -317,5 +330,24 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
                 buildChildrenRecursive(child, groupedByParent);
             }
         }
+    }
+
+    /**
+     * 判断用户是否超级管理员
+     *
+     * @param userId 用户ID
+     * @return 是否超级管理员
+     */
+    private boolean isSuperAdminUser(Long userId) {
+        List<SysRole> roles = roleMapper.selectRolesByUserId(userId);
+        if (CollUtil.isEmpty(roles)) {
+            return false;
+        }
+        return roles.stream()
+            .map(SysRole::getRoleCode)
+            .filter(StrUtil::isNotBlank)
+            .anyMatch(roleCode -> StrUtil.equalsAny(roleCode,
+                CommonConstant.SUPER_ADMIN_ROLE_CODE,
+                CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE));
     }
 }

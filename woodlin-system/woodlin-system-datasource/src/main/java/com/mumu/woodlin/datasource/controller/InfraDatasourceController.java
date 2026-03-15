@@ -17,12 +17,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.DatabaseMetadata;
 import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
+import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.datasource.entity.InfraDatasourceConfig;
 import com.mumu.woodlin.datasource.mapper.InfraDatasourceMapper;
 import com.mumu.woodlin.datasource.model.request.DatasourceRequest;
@@ -60,6 +62,7 @@ public class InfraDatasourceController {
     @GetMapping
     @Operation(summary = "查询数据源列表", description = "获取系统中所有已配置的数据源信息")
     public R<List<InfraDatasourceConfig>> list() {
+        requirePermission("datasource:list");
         return R.ok(datasourceMapper.selectList(new QueryWrapper<>()));
     }
 
@@ -74,6 +77,7 @@ public class InfraDatasourceController {
     public R<InfraDatasourceConfig> detail(
             @Parameter(description = "数据源唯一编码", required = true)
             @PathVariable("code") String code) {
+        requirePermission("datasource:list");
         InfraDatasourceConfig config = datasourceMapper.selectOne(new QueryWrapper<InfraDatasourceConfig>()
                 .eq("datasource_code", code));
         return config == null ? R.fail("数据源不存在") : R.ok(config);
@@ -90,6 +94,7 @@ public class InfraDatasourceController {
     public R<Void> create(
             @Parameter(description = "数据源配置信息", required = true)
             @Valid @RequestBody DatasourceRequest request) {
+        requirePermission("datasource:add");
         saveOrUpdate(request, false);
         return R.ok();
     }
@@ -105,6 +110,7 @@ public class InfraDatasourceController {
     public R<Void> update(
             @Parameter(description = "数据源配置信息", required = true)
             @Valid @RequestBody DatasourceRequest request) {
+        requirePermission("datasource:edit");
         saveOrUpdate(request, true);
         return R.ok();
     }
@@ -120,6 +126,7 @@ public class InfraDatasourceController {
     public R<Void> delete(
             @Parameter(description = "数据源唯一编码", required = true)
             @PathVariable("code") String code) {
+        requirePermission("datasource:remove");
         datasourceMapper.delete(new QueryWrapper<InfraDatasourceConfig>().eq("datasource_code", code));
         return R.ok();
     }
@@ -135,6 +142,7 @@ public class InfraDatasourceController {
     public R<Void> test(
             @Parameter(description = "数据源配置信息", required = true)
             @Valid @RequestBody DatasourceRequest request) {
+        requirePermission("datasource:test");
         datasourceService.validateConnectivity(
                 datasourceService.buildTemporaryDataSource(request),
                 request.getTestSql(),
@@ -157,6 +165,7 @@ public class InfraDatasourceController {
     public R<DatabaseMetadata> metadata(
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code) {
+        requirePermission("datasource:metadata");
         return R.ok(metadataService.getDatabaseMetadata(code));
     }
 
@@ -174,6 +183,7 @@ public class InfraDatasourceController {
     public R<List<SchemaMetadata>> schemas(
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code) {
+        requirePermission("datasource:metadata");
         return R.ok(metadataService.getSchemas(code));
     }
 
@@ -187,10 +197,11 @@ public class InfraDatasourceController {
     @Operation(summary = "获取表列表", description = "获取数据源中所有的表信息，包括表名、表类型、注释等")
     public R<List<TableMetadata>> tables(
             @Parameter(description = "数据源唯一编码", required = true)
-            @RequestParam(name ="code") String code,
+            @RequestParam(name = "code") String code,
             @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
             @RequestParam(name = "schemaName", required = false) String schemaName) {
-        return R.ok(metadataService.getTables(code,schemaName));
+        requirePermission("datasource:metadata");
+        return R.ok(metadataService.getTables(code, schemaName));
     }
 
     /**
@@ -209,7 +220,8 @@ public class InfraDatasourceController {
             @RequestParam(name = "schemaName", required = false) String schemaName,
             @Parameter(description = "表名", required = false)
             @RequestParam("table") String table) {
-        return R.ok(metadataService.getColumns(code,schemaName, table));
+        requirePermission("datasource:metadata");
+        return R.ok(metadataService.getColumns(code, schemaName, table));
     }
 
     /**
@@ -250,6 +262,17 @@ public class InfraDatasourceController {
             datasourceMapper.insert(record);
         } else {
             datasourceMapper.updateById(record);
+        }
+    }
+
+    /**
+     * 权限校验
+     *
+     * @param permission 权限编码
+     */
+    private void requirePermission(String permission) {
+        if (!SecurityUtil.hasPermission(permission)) {
+            throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
         }
     }
 }

@@ -15,7 +15,7 @@
  * ```
  */
 
-import type {Router} from 'vue-router'
+import type {NavigationGuardNext, RouteLocationNormalized, Router} from 'vue-router'
 import {getConfig} from '@/config'
 import {useAppStore, useAuthStore, usePermissionStore, useUserStore} from '@/stores'
 import {logger} from '@/utils/logger'
@@ -24,6 +24,120 @@ import {logger} from '@/utils/logger'
  * 白名单路由路径（允许匿名访问）
  */
 const WHITE_LIST = ['/login', '/register', '/forgot-password', '/403', '/404', '/500']
+
+/**
+ * 路由是否允许匿名访问
+ *
+ * @param to 目标路由
+ * @returns 是否匿名可访问
+ */
+function isAnonymousRoute(to: RouteLocationNormalized): boolean {
+  return Boolean(to.meta.anonymous) || WHITE_LIST.includes(to.path)
+}
+
+/**
+ * 跳转到登录页并携带回跳地址
+ *
+ * @param next 导航回调
+ * @param loginPath 登录页路径
+ * @param redirect 回跳地址
+ */
+function redirectToLogin(next: NavigationGuardNext, loginPath: string, redirect: string): void {
+  next({
+    path: loginPath,
+    query: {redirect}
+  })
+}
+
+/**
+ * 补齐动态路由
+ *
+ * @param permissionStore 权限store
+ * @param permissions 用户权限列表
+ * @param startLog 开始日志
+ * @param failLog 失败日志
+ */
+async function ensureDynamicRoutes(
+  permissionStore: ReturnType<typeof usePermissionStore>,
+  permissions: string[],
+  startLog: string,
+  failLog: string
+): Promise<void> {
+  if (permissionStore.isRoutesGenerated && permissionStore.addedRoutes.length > 0) {
+    return
+  }
+
+  logger.log(startLog)
+  try {
+    await permissionStore.generateRoutes(permissions)
+  } catch (error) {
+    logger.error(failLog, error)
+    logger.warn('动态路由生成失败，继续使用静态路由')
+  }
+}
+
+/**
+ * 确保用户信息和动态路由已就绪
+ *
+ * @param authStore 认证store
+ * @param userStore 用户store
+ * @param permissionStore 权限store
+ * @returns 是否准备完成
+ */
+async function ensureUserSessionReady(
+  authStore: ReturnType<typeof useAuthStore>,
+  userStore: ReturnType<typeof useUserStore>,
+  permissionStore: ReturnType<typeof usePermissionStore>
+): Promise<boolean> {
+  if (!userStore.isUserInfoLoaded) {
+    try {
+      logger.log('用户信息未加载，开始获取用户信息...')
+      await userStore.fetchUserInfo()
+      await ensureDynamicRoutes(
+        permissionStore,
+        userStore.permissions,
+        '路由未生成，开始生成动态路由...',
+        '生成路由失败，将使用降级方案:'
+      )
+    } catch (error) {
+      logger.error('加载用户信息失败:', error)
+      authStore.clearToken()
+      userStore.clearUserInfo()
+      return false
+    }
+    return true
+  }
+
+  await ensureDynamicRoutes(
+    permissionStore,
+    userStore.permissions,
+    '用户信息已存在，但路由未生成或为空，开始生成动态路由...',
+    '生成路由失败:'
+  )
+  return true
+}
+
+/**
+ * 将动态路由注册到router
+ *
+ * @param router 路由实例
+ * @param permissionStore 权限store
+ */
+async function addDynamicRoutes(
+  router: Router,
+  permissionStore: ReturnType<typeof usePermissionStore>
+): Promise<void> {
+  logger.log('添加动态路由到路由器...')
+
+  permissionStore.addedRoutes.forEach(route => {
+    router.addRoute(route)
+  })
+
+  const {notFoundRoute} = await import('./routes')
+  router.addRoute(notFoundRoute)
+  logger.log('404路由已添加')
+  permissionStore.markRoutesAdded()
+}
 
 /**
  * 登录验证守卫
@@ -40,10 +154,10 @@ function createAuthGuard(router: Router): void {
     const permissionStore = usePermissionStore()
 
     // 如果路由允许匿名访问，直接放行
-    if (to.meta.anonymous || WHITE_LIST.includes(to.path)) {
+    if (isAnonymousRoute(to)) {
       // 如果已登录且访问登录页，重定向到首页
       if (to.path === config.router.loginPath && authStore.isAuthenticated) {
-        next({ path: config.router.homePath })
+        next({path: config.router.homePath})
         return
       }
       next()
@@ -53,82 +167,24 @@ function createAuthGuard(router: Router): void {
     // 检查用户是否已认证
     if (!authStore.isAuthenticated) {
       logger.warn('用户未登录，跳转到登录页')
-      next({
-        path: config.router.loginPath,
-        query: { redirect: to.fullPath } // 保存目标路径，登录后可以跳转回来
-      })
+      redirectToLogin(next, config.router.loginPath, to.fullPath)
       return
     }
 
     // 检查Token是否即将过期
     authStore.checkTokenRefresh()
 
-    // 如果用户信息未加载，先加载用户信息
-    if (!userStore.isUserInfoLoaded) {
-      try {
-        logger.log('用户信息未加载，开始获取用户信息...')
-        await userStore.fetchUserInfo()
-
-        // 生成动态路由（缓存状态下也需要确保路由数据存在）
-        if (!permissionStore.isRoutesGenerated || permissionStore.addedRoutes.length === 0) {
-          logger.log('路由未生成，开始生成动态路由...')
-          try {
-            await permissionStore.generateRoutes(userStore.permissions)
-          } catch (routeError) {
-            // 路由生成失败不应该阻止用户访问
-            logger.error('生成路由失败，将使用降级方案:', routeError)
-            // 继续执行，允许使用静态路由
-          }
-        }
-      } catch (error) {
-        logger.error('加载用户信息失败:', error)
-
-        // 清除认证状态
-        authStore.clearToken()
-        userStore.clearUserInfo()
-
-        // 跳转到登录页
-        next({
-          path: config.router.loginPath,
-          query: { redirect: to.fullPath }
-        })
-        return
-      }
-    } else if (!permissionStore.isRoutesGenerated || permissionStore.addedRoutes.length === 0) {
-      // 用户信息已加载，但路由未生成或路由数据为空（刷新后从缓存恢复的情况）
-      try {
-        logger.log('用户信息已存在，但路由未生成或为空，开始生成动态路由...')
-        await permissionStore.generateRoutes(userStore.permissions)
-      } catch (error) {
-        logger.error('生成路由失败:', error)
-
-        // 路由生成失败不应该强制退出登录
-        // 用户仍然可以访问静态路由
-        logger.warn('动态路由生成失败，继续使用静态路由')
-
-        // 不阻止用户访问，继续导航
-      }
+    const isReady = await ensureUserSessionReady(authStore, userStore, permissionStore)
+    if (!isReady) {
+      redirectToLogin(next, config.router.loginPath, to.fullPath)
+      return
     }
 
     // 如果路由已生成但未添加到路由器，则添加路由
     if (permissionStore.isRoutesGenerated && !permissionStore.isRoutesAdded) {
-      logger.log('添加动态路由到路由器...')
-
-      // 动态添加路由
-      permissionStore.addedRoutes.forEach(route => {
-        router.addRoute(route)
-      })
-
-      // 添加404 catch-all路由（必须在所有动态路由之后）
-      const { notFoundRoute } = await import('./routes')
-      router.addRoute(notFoundRoute)
-      logger.log('404路由已添加')
-
-      // 标记路由已添加
-      permissionStore.markRoutesAdded()
-
+      await addDynamicRoutes(router, permissionStore)
       // 重新导航到目标路由（确保使用新添加的路由）
-      next({ ...to, replace: true })
+      next({...to, replace: true})
       return
     }
 
@@ -169,21 +225,6 @@ function createPermissionGuard(router: Router): void {
       logger.warn('  需要权限:', permissions)
       logger.warn('  用户权限:', userStore.permissions)
       logger.warn('  用户角色:', userStore.roles)
-
-      // 如果是管理员但权限检查失败，可能是权限数据问题，仍然放行
-      // 但记录详细日志用于安全审计
-      if (userStore.isAdmin || userStore.isSuperAdmin) {
-        logger.warn('⚠️ 管理员权限绕过：用户是管理员，放行访问')
-        logger.warn('  用户名:', userStore.userInfo?.username)
-        logger.warn('  目标路由:', to.path)
-        logger.warn('  需要权限:', permissions)
-        logger.warn('  实际权限:', userStore.permissions)
-        logger.warn('  角色:', userStore.roles)
-        // TODO: 可以在此处将管理员绕过事件发送到服务器进行审计
-        // await logSecurityEvent({ type: 'admin_bypass', user: userStore.userInfo, route: to.path })
-        next()
-        return
-      }
 
       // 跳转到403页面
       next({ path: '/403', replace: true })

@@ -9,6 +9,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.enums.ResultCode;
+import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.security.util.SecurityUtil;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,7 +58,7 @@ public class SysRoleController {
             SysRole role,
             @Parameter(description = "页码，从1开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页显示数量", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
-        
+        requirePermission("system:role:list");
         IPage<SysRole> page = roleService.selectRolePage(role, pageNum, pageSize);
         return R.ok(PageResult.of(page));
     }
@@ -70,6 +73,7 @@ public class SysRoleController {
     )
     public R<SysRole> getInfo(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
         SysRole role = roleService.getById(roleId);
         return R.ok(role);
     }
@@ -83,6 +87,7 @@ public class SysRoleController {
         description = "创建新角色，角色编码必须唯一，可设置父角色实现角色继承（RBAC1）"
     )
     public R<Void> add(@Valid @RequestBody SysRole role) {
+        requirePermission("system:role:add");
         // 检查角色名称唯一性
         if (!roleService.checkRoleNameUnique(role)) {
             return R.fail("角色名称已存在");
@@ -106,6 +111,7 @@ public class SysRoleController {
         description = "更新角色信息，可修改父角色以调整角色层次结构"
     )
     public R<Void> edit(@Valid @RequestBody SysRole role) {
+        requirePermission("system:role:edit");
         // 检查角色名称唯一性
         if (!roleService.checkRoleNameUnique(role)) {
             return R.fail("角色名称已存在");
@@ -131,6 +137,7 @@ public class SysRoleController {
     public R<Void> remove(
             @Parameter(description = "角色ID列表，逗号分隔", required = true, example = "1,2,3") 
             @PathVariable Long[] roleIds) {
+        requirePermission("system:role:remove");
         boolean result = roleService.deleteRoleByIds(List.of(roleIds));
         return result ? R.ok("删除角色成功") : R.fail("删除角色失败");
     }
@@ -145,6 +152,7 @@ public class SysRoleController {
     )
     public R<List<SysRole>> getAncestors(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
         List<SysRole> ancestors = roleService.selectAncestorRoles(roleId);
         return R.ok(ancestors);
     }
@@ -159,6 +167,7 @@ public class SysRoleController {
     )
     public R<List<SysRole>> getDescendants(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
         List<SysRole> descendants = roleService.selectDescendantRoles(roleId);
         return R.ok(descendants);
     }
@@ -173,6 +182,7 @@ public class SysRoleController {
     )
     public R<List<SysRole>> getChildren(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
         List<SysRole> children = roleService.selectDirectChildRoles(roleId);
         return R.ok(children);
     }
@@ -187,6 +197,7 @@ public class SysRoleController {
     )
     public R<List<SysRole>> getTopLevelRoles(
             @Parameter(description = "租户ID", example = "tenant001") @RequestParam(required = false) String tenantId) {
+        requirePermission("system:role:list");
         List<SysRole> topRoles = roleService.selectTopLevelRoles(tenantId);
         return R.ok(topRoles);
     }
@@ -202,6 +213,7 @@ public class SysRoleController {
     public R<Boolean> checkCircularDependency(
             @Parameter(description = "角色ID", required = true, example = "1") @RequestParam Long roleId,
             @Parameter(description = "父角色ID", required = true, example = "2") @RequestParam Long parentRoleId) {
+        requirePermission("system:role:list");
         boolean hasCircular = roleService.checkCircularDependency(roleId, parentRoleId);
         if (hasCircular) {
             return R.fail("设置该父角色会造成循环依赖");
@@ -219,6 +231,7 @@ public class SysRoleController {
     )
     public R<Void> refreshHierarchy(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:edit");
         boolean result = roleService.refreshRoleHierarchy(roleId);
         return result ? R.ok("刷新成功") : R.fail("刷新失败");
     }
@@ -233,8 +246,33 @@ public class SysRoleController {
     )
     public R<List<String>> getAllPermissions(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
         List<String> permissions = roleService.selectAllPermissionsByRoleId(roleId);
         return R.ok(permissions);
+    }
+
+    /**
+     * 查询角色已分配权限ID
+     */
+    @GetMapping("/menu/{roleId}")
+    @Operation(summary = "查询角色权限ID", description = "查询角色已分配的菜单/按钮/API权限ID列表")
+    public R<List<Long>> getRoleMenus(
+            @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:edit");
+        return R.ok(roleService.selectPermissionIdsByRoleId(roleId));
+    }
+
+    /**
+     * 分配角色权限
+     */
+    @PutMapping("/menu/{roleId}")
+    @Operation(summary = "分配角色权限", description = "按角色ID覆盖更新角色的菜单/按钮/API权限")
+    public R<Void> assignRoleMenus(
+            @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId,
+            @RequestBody(required = false) List<Long> menuIds) {
+        requirePermission("system:role:edit");
+        boolean result = roleService.assignRolePermissions(roleId, menuIds);
+        return result ? R.ok("分配成功") : R.fail("分配失败");
     }
     
     /**
@@ -247,7 +285,19 @@ public class SysRoleController {
     )
     public R<List<RoleTreeDTO>> getRoleTree(
             @Parameter(description = "租户ID", example = "tenant001") @RequestParam(required = false) String tenantId) {
+        requirePermission("system:role:list");
         List<RoleTreeDTO> tree = roleService.buildRoleTree(tenantId);
         return R.ok(tree);
+    }
+
+    /**
+     * 权限校验
+     *
+     * @param permission 权限编码
+     */
+    private void requirePermission(String permission) {
+        if (!SecurityUtil.hasPermission(permission)) {
+            throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
+        }
     }
 }
