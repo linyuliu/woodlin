@@ -38,9 +38,7 @@
             <property name="authorFormat" value="\S"/>
         </module>
 
-        <module name="JavadocVariable">
-            <property name="scope" value="public"/>
-        </module>
+        <module name="JavadocVariable"/>
 
         <module name="JavadocStyle">
             <property name="scope" value="public"/>
