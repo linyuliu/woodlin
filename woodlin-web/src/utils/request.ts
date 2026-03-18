@@ -303,7 +303,7 @@ request.interceptors.request.use(
  * 在收到响应后执行，可以统一处理响应数据、解密数据、错误码等
  */
 request.interceptors.response.use(
-  (response) => handleResponseSuccess(response),
+  (response) => handleResponseSuccess(response) as typeof response,
   (error) => handleResponseError(error)
 )
 

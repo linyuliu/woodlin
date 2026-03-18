@@ -1,6 +1,3 @@
-// 文件：expr-engine.ts
-// 递归下降解析器 + AST 评估器（TypeScript）
-// 支持：数字、字符串、引用/索引、函数调用、lambda、三元表达式、countIf 等
 export type Expr =
   | { type: 'number'; value: number }
   | { type: 'string'; value: string }
@@ -12,12 +9,12 @@ export type Expr =
   | { type: 'lambda'; param: string; body: Expr }
 
 export class ParseError extends Error {
-  constructor(
-    public message: string,
-    public pos: number
-  ) {
+  readonly pos: number
+
+  constructor(message: string, pos: number) {
     super(`${message} (pos=${pos})`)
     this.name = 'ParseError'
+    this.pos = pos
   }
 }
 
@@ -61,9 +58,10 @@ const isDigit = (ch: string) => /[0-9]/.test(ch)
 const isIdentifierStart = (ch: string) => /[a-zA-Z_]/.test(ch)
 const isIdentifierBody = (ch: string) => /[a-zA-Z0-9_]/.test(ch)
 
-/**
- * 将 AST 转换为字符串（用于索引表达式序列化）
- */
+function assertNever(value: never): never {
+  throw new Error(`未支持的表达式类型: ${JSON.stringify(value)}`)
+}
+
 function stringifyExpr(expr: Expr): string {
   switch (expr.type) {
     case 'number':
@@ -82,9 +80,9 @@ function stringifyExpr(expr: Expr): string {
       return `${expr.name}(${expr.args.map(stringifyExpr).join(', ')})`
     case 'lambda':
       return `${expr.param} => ${stringifyExpr(expr.body)}`
-    default:
-      return 'unknown'
   }
+
+  return assertNever(expr)
 }
 
 /**
@@ -119,6 +117,7 @@ function scanString(input: string, start: number): ScanResult {
   const quote = input[start]
   let index = start + 1
   let value = ''
+  let closed = false
 
   while (index < input.length) {
     const current = input[index]
@@ -129,10 +128,15 @@ function scanString(input: string, start: number): ScanResult {
     }
     if (current === quote) {
       index++
+      closed = true
       break
     }
     value += current
     index++
+  }
+
+  if (!closed) {
+    throw new ParseError('字符串未闭合', start)
   }
 
   return {
@@ -467,6 +471,9 @@ export function parse(input: string): Expr {
 
 export type EvalContext = Record<string, unknown>
 type BuiltinFunction = (...args: unknown[]) => unknown
+type PredicateFunction = (item: unknown) => boolean
+type MapperFunction = (item: unknown) => unknown
+type ComparableValue = string | number | boolean
 
 const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
   abs: Math.abs as BuiltinFunction,
@@ -485,7 +492,7 @@ const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
     const source = String(args[0])
     const start = Number(args[1] ?? 0)
     const len = args[2] !== undefined ? Number(args[2]) : undefined
-    return source.substr(start, len)
+    return len === undefined ? source.slice(start) : source.slice(start, start + len)
   },
   count: (...args: unknown[]) => {
     const arr = args[0]
@@ -503,35 +510,35 @@ const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
     return arr.reduce<number>((a, b) => a + Number(b), 0) / arr.length
   },
   countIf: (...args: unknown[]) => {
-    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    const [arr, predicate] = args as [unknown, PredicateFunction?]
     if (!Array.isArray(arr) || typeof predicate !== 'function') {
       return 0
     }
     return arr.filter(predicate).length
   },
   filter: (...args: unknown[]) => {
-    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    const [arr, predicate] = args as [unknown, PredicateFunction?]
     if (!Array.isArray(arr) || typeof predicate !== 'function') {
       return []
     }
     return arr.filter(predicate)
   },
   map: (...args: unknown[]) => {
-    const [arr, fn] = args as [unknown, ((item: unknown) => unknown)?]
+    const [arr, fn] = args as [unknown, MapperFunction?]
     if (!Array.isArray(arr) || typeof fn !== 'function') {
       return []
     }
     return arr.map(fn)
   },
   some: (...args: unknown[]) => {
-    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    const [arr, predicate] = args as [unknown, PredicateFunction?]
     if (!Array.isArray(arr) || typeof predicate !== 'function') {
       return false
     }
     return arr.some(predicate)
   },
   every: (...args: unknown[]) => {
-    const [arr, predicate] = args as [unknown, ((item: unknown) => boolean)?]
+    const [arr, predicate] = args as [unknown, PredicateFunction?]
     if (!Array.isArray(arr) || typeof predicate !== 'function') {
       return false
     }
@@ -539,11 +546,26 @@ const BUILTIN_FUNCTIONS: Record<string, BuiltinFunction> = {
   }
 }
 
-/**
- * 解析引用路径（支持点路径和数组索引）
- */
+function normalizeRefSegment(segment: string): string {
+  const normalized = segment.replace(/\]$/, '').trim()
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith('\'') && normalized.endsWith('\''))
+  ) {
+    return normalized.slice(1, -1)
+  }
+  return normalized
+}
+
+function splitRefPath(path: string): string[] {
+  return path
+    .split(/\.|\[/)
+    .map(normalizeRefSegment)
+    .filter(Boolean)
+}
+
 function resolveRef(path: string, context: EvalContext): unknown {
-  const parts = path.split(/\.|\[/).map((part) => part.replace(/\]$/, ''))
+  const parts = splitRefPath(path)
   let current: unknown = context
 
   for (const part of parts) {
@@ -585,16 +607,14 @@ const BINARY_OPERATORS: Readonly<Record<string, BinaryOperator>> = {
   '*': (left, right) => Number(left) * Number(right),
   '/': (left, right) => Number(left) / Number(right),
   '%': (left, right) => Number(left) % Number(right),
-  '<': (left, right) => (left as string | number | boolean) < (right as string | number | boolean),
-  '>': (left, right) => (left as string | number | boolean) > (right as string | number | boolean),
-  '<=': (left, right) => (left as string | number | boolean) <= (right as string | number | boolean),
-  '>=': (left, right) => (left as string | number | boolean) >= (right as string | number | boolean),
+  '<': (left, right) => (left as ComparableValue) < (right as ComparableValue),
+  '>': (left, right) => (left as ComparableValue) > (right as ComparableValue),
+  '<=': (left, right) => (left as ComparableValue) <= (right as ComparableValue),
+  '>=': (left, right) => (left as ComparableValue) >= (right as ComparableValue),
   '==': looseEqual,
   '!=': looseNotEqual,
   '===': (left, right) => left === right,
-  '!==': (left, right) => left !== right,
-  '&&': (left, right) => left && right,
-  '||': (left, right) => left || right
+  '!==': (left, right) => left !== right
 }
 
 const UNARY_OPERATORS: Readonly<Record<string, UnaryOperator>> = {
@@ -645,6 +665,16 @@ function evaluateUnary(expr: Extract<Expr, { type: 'unary' }>, context: EvalCont
  * 评估二元表达式
  */
 function evaluateBinary(expr: Extract<Expr, { type: 'binary' }>, context: EvalContext): unknown {
+  if (expr.op === '&&') {
+    const left = evaluate(expr.left, context)
+    return left ? evaluate(expr.right, context) : left
+  }
+
+  if (expr.op === '||') {
+    const left = evaluate(expr.left, context)
+    return left ? left : evaluate(expr.right, context)
+  }
+
   const operation = BINARY_OPERATORS[expr.op]
   if (!operation) {
     throw new Error(`未知的二元运算符: ${expr.op}`)
@@ -654,11 +684,11 @@ function evaluateBinary(expr: Extract<Expr, { type: 'binary' }>, context: EvalCo
   return operation(left, right)
 }
 
-type ExprEvaluator<T extends Expr> = (expr: T, context: EvalContext) => unknown
+type ExprEvaluatorMap = {
+  [K in Expr['type']]: (expr: Extract<Expr, { type: K }>, context: EvalContext) => unknown
+}
 
-const EXPRESSION_EVALUATORS: {
-  [K in Expr['type']]: ExprEvaluator<Extract<Expr, { type: K }>>
-} = {
+const EXPRESSION_EVALUATORS: ExprEvaluatorMap = {
   number: (expr) => expr.value,
   string: (expr) => expr.value,
   ref: (expr, context) => resolveRef(expr.value, context),
@@ -670,12 +700,9 @@ const EXPRESSION_EVALUATORS: {
   lambda: (expr, context) => evaluateLambda(expr, context)
 }
 
-/**
- * 评估表达式
- */
 export function evaluate(expr: Expr, context: EvalContext = {}): unknown {
-  const evaluator = EXPRESSION_EVALUATORS[expr.type]
-  return evaluator(expr as never, context)
+  const evaluator = EXPRESSION_EVALUATORS[expr.type] as (value: Expr, scope: EvalContext) => unknown
+  return evaluator(expr, context)
 }
 
 /**
