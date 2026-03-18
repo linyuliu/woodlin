@@ -344,13 +344,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NInputNumber, NSwitch, NSelect, NButton, NSpace, NDivider, useMessage } from 'naive-ui'
 import { getConfigsByCategory, batchUpdateConfig, type ConfigUpdateDto } from '@/api/config'
+import { logger } from '@/utils/logger'
 
 const message = useMessage()
-interface ConfigApiResult {
-  code: number
-  data?: Record<string, string>
-  msg?: string
-}
 
 // 加载状态
 const saving = ref(false)
@@ -438,74 +434,80 @@ const sm4ModeOptions = [
   { label: 'ECB', value: 'ECB' }
 ]
 
-// 加载API加密配置
+function readConfigString(configs: Record<string, string>, key: string, fallback = ''): string {
+  return configs[key] || fallback
+}
+
+function readConfigBoolean(configs: Record<string, string>, key: string, fallback = false): boolean {
+  return key in configs ? configs[key] === 'true' : fallback
+}
+
+async function loadCategoryConfigs(category: string): Promise<Record<string, string>> {
+  return getConfigsByCategory(category)
+}
+
+function applyApiEncryptionConfig(configs: Record<string, string>) {
+  apiEncryptionConfig.enabled = readConfigBoolean(configs, 'api.encryption.enabled')
+  apiEncryptionConfig.algorithm = readConfigString(configs, 'api.encryption.algorithm', 'AES')
+  apiEncryptionConfig.aesKey = readConfigString(configs, 'api.encryption.aes-key')
+  apiEncryptionConfig.aesIv = readConfigString(configs, 'api.encryption.aes-iv')
+  apiEncryptionConfig.aesMode = readConfigString(configs, 'api.encryption.aes-mode', 'CBC')
+  apiEncryptionConfig.aesPadding = readConfigString(configs, 'api.encryption.aes-padding', 'PKCS5Padding')
+  apiEncryptionConfig.rsaPublicKey = readConfigString(configs, 'api.encryption.rsa-public-key')
+  apiEncryptionConfig.rsaPrivateKey = readConfigString(configs, 'api.encryption.rsa-private-key')
+  apiEncryptionConfig.rsaKeySize = readConfigString(configs, 'api.encryption.rsa-key-size', '2048')
+  apiEncryptionConfig.sm4Key = readConfigString(configs, 'api.encryption.sm4-key')
+  apiEncryptionConfig.sm4Iv = readConfigString(configs, 'api.encryption.sm4-iv')
+  apiEncryptionConfig.sm4Mode = readConfigString(configs, 'api.encryption.sm4-mode', 'CBC')
+  apiEncryptionConfig.includePatterns = readConfigString(configs, 'api.encryption.include-patterns')
+  apiEncryptionConfig.excludePatterns = readConfigString(configs, 'api.encryption.exclude-patterns')
+  apiEncryptionConfig.encryptRequest = readConfigBoolean(configs, 'api.encryption.encrypt-request', true)
+  apiEncryptionConfig.encryptResponse = readConfigBoolean(configs, 'api.encryption.encrypt-response', true)
+}
+
 async function loadApiEncryptionConfig() {
   try {
-    const res = await getConfigsByCategory('api.encryption') as unknown as ConfigApiResult
-    if (res.code === 200 && res.data) {
-      const configs = res.data
-      apiEncryptionConfig.enabled = configs['api.encryption.enabled'] === 'true'
-      apiEncryptionConfig.algorithm = configs['api.encryption.algorithm'] || 'AES'
-      apiEncryptionConfig.aesKey = configs['api.encryption.aes-key'] || ''
-      apiEncryptionConfig.aesIv = configs['api.encryption.aes-iv'] || ''
-      apiEncryptionConfig.aesMode = configs['api.encryption.aes-mode'] || 'CBC'
-      apiEncryptionConfig.aesPadding = configs['api.encryption.aes-padding'] || 'PKCS5Padding'
-      apiEncryptionConfig.rsaPublicKey = configs['api.encryption.rsa-public-key'] || ''
-      apiEncryptionConfig.rsaPrivateKey = configs['api.encryption.rsa-private-key'] || ''
-      apiEncryptionConfig.rsaKeySize = configs['api.encryption.rsa-key-size'] || '2048'
-      apiEncryptionConfig.sm4Key = configs['api.encryption.sm4-key'] || ''
-      apiEncryptionConfig.sm4Iv = configs['api.encryption.sm4-iv'] || ''
-      apiEncryptionConfig.sm4Mode = configs['api.encryption.sm4-mode'] || 'CBC'
-      apiEncryptionConfig.includePatterns = configs['api.encryption.include-patterns'] || ''
-      apiEncryptionConfig.excludePatterns = configs['api.encryption.exclude-patterns'] || ''
-      apiEncryptionConfig.encryptRequest = configs['api.encryption.encrypt-request'] === 'true'
-      apiEncryptionConfig.encryptResponse = configs['api.encryption.encrypt-response'] === 'true'
-    }
+    const configs = await loadCategoryConfigs('api.encryption')
+    applyApiEncryptionConfig(configs)
   } catch (error) {
-    console.error('加载API加密配置失败:', error)
+    logger.error('加载API加密配置失败', error)
   }
 }
 
 // 加载密码策略配置
 async function loadPasswordPolicyConfig() {
   try {
-    const res = await getConfigsByCategory('password.policy') as unknown as ConfigApiResult
-    if (res.code === 200 && res.data) {
-      const configs = res.data
-      passwordPolicyConfig.enabled = configs['password.policy.enabled'] === 'true'
-      passwordPolicyConfig.requireChangeOnFirstLogin = configs['password.policy.require-change-on-first-login'] === 'true'
-      passwordPolicyConfig.expireDays = parseInt(configs['password.policy.expire-days'] || '0')
-      passwordPolicyConfig.warningDays = parseInt(configs['password.policy.warning-days'] || '7')
-      passwordPolicyConfig.maxErrorCount = parseInt(configs['password.policy.max-error-count'] || '5')
-      passwordPolicyConfig.lockDurationMinutes = parseInt(configs['password.policy.lock-duration-minutes'] || '30')
-      passwordPolicyConfig.strongPasswordRequired = configs['password.policy.strong-password-required'] === 'true'
-      passwordPolicyConfig.minLength = parseInt(configs['password.policy.min-length'] || '6')
-      passwordPolicyConfig.maxLength = parseInt(configs['password.policy.max-length'] || '20')
-      passwordPolicyConfig.requireDigits = configs['password.policy.require-digits'] === 'true'
-      passwordPolicyConfig.requireLowercase = configs['password.policy.require-lowercase'] === 'true'
-      passwordPolicyConfig.requireUppercase = configs['password.policy.require-uppercase'] === 'true'
-      passwordPolicyConfig.requireSpecialChars = configs['password.policy.require-special-chars'] === 'true'
-    }
+    const configs = await getConfigsByCategory('password.policy')
+    passwordPolicyConfig.enabled = configs['password.policy.enabled'] === 'true'
+    passwordPolicyConfig.requireChangeOnFirstLogin = configs['password.policy.require-change-on-first-login'] === 'true'
+    passwordPolicyConfig.expireDays = parseInt(configs['password.policy.expire-days'] || '0')
+    passwordPolicyConfig.warningDays = parseInt(configs['password.policy.warning-days'] || '7')
+    passwordPolicyConfig.maxErrorCount = parseInt(configs['password.policy.max-error-count'] || '5')
+    passwordPolicyConfig.lockDurationMinutes = parseInt(configs['password.policy.lock-duration-minutes'] || '30')
+    passwordPolicyConfig.strongPasswordRequired = configs['password.policy.strong-password-required'] === 'true'
+    passwordPolicyConfig.minLength = parseInt(configs['password.policy.min-length'] || '6')
+    passwordPolicyConfig.maxLength = parseInt(configs['password.policy.max-length'] || '20')
+    passwordPolicyConfig.requireDigits = configs['password.policy.require-digits'] === 'true'
+    passwordPolicyConfig.requireLowercase = configs['password.policy.require-lowercase'] === 'true'
+    passwordPolicyConfig.requireUppercase = configs['password.policy.require-uppercase'] === 'true'
+    passwordPolicyConfig.requireSpecialChars = configs['password.policy.require-special-chars'] === 'true'
   } catch (error) {
-    console.error('加载密码策略配置失败:', error)
+    logger.error('加载密码策略配置失败', error)
   }
 }
 
 // 加载活动监控配置
 async function loadActivityMonitoringConfig() {
   try {
-    const res = await getConfigsByCategory('activity.monitoring') as unknown as ConfigApiResult
-    if (res.code === 200 && res.data) {
-      const configs = res.data
-      activityMonitoringConfig.enabled = configs['activity.monitoring.enabled'] === 'true'
-      activityMonitoringConfig.timeoutSeconds = parseInt(configs['activity.monitoring.timeout-seconds'] || '1800')
-      activityMonitoringConfig.checkIntervalSeconds = parseInt(configs['activity.monitoring.check-interval-seconds'] || '60')
-      activityMonitoringConfig.monitorApiRequests = configs['activity.monitoring.monitor-api-requests'] === 'true'
-      activityMonitoringConfig.monitorUserInteractions = configs['activity.monitoring.monitor-user-interactions'] === 'true'
-      activityMonitoringConfig.warningBeforeTimeoutSeconds = parseInt(configs['activity.monitoring.warning-before-timeout-seconds'] || '300')
-    }
+    const configs = await getConfigsByCategory('activity.monitoring')
+    activityMonitoringConfig.enabled = configs['activity.monitoring.enabled'] === 'true'
+    activityMonitoringConfig.timeoutSeconds = parseInt(configs['activity.monitoring.timeout-seconds'] || '1800')
+    activityMonitoringConfig.checkIntervalSeconds = parseInt(configs['activity.monitoring.check-interval-seconds'] || '60')
+    activityMonitoringConfig.monitorApiRequests = configs['activity.monitoring.monitor-api-requests'] === 'true'
+    activityMonitoringConfig.monitorUserInteractions = configs['activity.monitoring.monitor-user-interactions'] === 'true'
+    activityMonitoringConfig.warningBeforeTimeoutSeconds = parseInt(configs['activity.monitoring.warning-before-timeout-seconds'] || '300')
   } catch (error) {
-    console.error('加载活动监控配置失败:', error)
+    logger.error('加载活动监控配置失败', error)
   }
 }
 
@@ -535,14 +537,10 @@ async function handleSaveApiEncryption() {
       }
     }
     
-    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
-    if (res.code === 200) {
-      message.success('API加密配置保存成功')
-    } else {
-      message.error(res.msg || '保存失败')
-    }
+    await batchUpdateConfig(updateData)
+    message.success('API加密配置保存成功')
   } catch (error) {
-    console.error('保存API加密配置失败:', error)
+    logger.error('保存API加密配置失败', error)
     message.error('保存失败')
   } finally {
     saving.value = false
@@ -572,14 +570,10 @@ async function handleSavePasswordPolicy() {
       }
     }
     
-    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
-    if (res.code === 200) {
-      message.success('密码策略配置保存成功')
-    } else {
-      message.error(res.msg || '保存失败')
-    }
+    await batchUpdateConfig(updateData)
+    message.success('密码策略配置保存成功')
   } catch (error) {
-    console.error('保存密码策略配置失败:', error)
+    logger.error('保存密码策略配置失败', error)
     message.error('保存失败')
   } finally {
     saving.value = false
@@ -602,14 +596,10 @@ async function handleSaveActivityMonitoring() {
       }
     }
     
-    const res = await batchUpdateConfig(updateData) as unknown as ConfigApiResult
-    if (res.code === 200) {
-      message.success('活动监控配置保存成功')
-    } else {
-      message.error(res.msg || '保存失败')
-    }
+    await batchUpdateConfig(updateData)
+    message.success('活动监控配置保存成功')
   } catch (error) {
-    console.error('保存活动监控配置失败:', error)
+    logger.error('保存活动监控配置失败', error)
     message.error('保存失败')
   } finally {
     saving.value = false

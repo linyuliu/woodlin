@@ -37,6 +37,7 @@ import {
 } from '@/api/dept'
 import { useUserStore } from '@/stores'
 import {PERMISSIONS} from '@/constants/permission-keys'
+import { logger } from '@/utils/logger'
 
 interface DeptSearchForm {
   deptName: string
@@ -131,7 +132,7 @@ const loadDeptTree = async () => {
       selectedKeys.value = []
     }
   } catch (error) {
-    console.error(error)
+    logger.error('加载部门树失败', error)
     message.error('加载部门树失败')
   } finally {
     loading.value = false
@@ -195,7 +196,7 @@ const openEdit = async () => {
     }
     modalVisible.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载部门详情失败', error)
     message.error('加载部门详情失败')
   } finally {
     loading.value = false
@@ -219,7 +220,7 @@ const handleDelete = async () => {
     selectedKeys.value = []
     await loadDeptTree()
   } catch (error) {
-    console.error(error)
+    logger.error('删除部门失败', error)
     message.error('删除失败')
   } finally {
     loading.value = false
@@ -262,7 +263,7 @@ const submit = async () => {
     modalVisible.value = false
     await loadDeptTree()
   } catch (error) {
-    console.error(error)
+    logger.error('保存部门失败', error)
     message.error('保存失败')
   } finally {
     loading.value = false

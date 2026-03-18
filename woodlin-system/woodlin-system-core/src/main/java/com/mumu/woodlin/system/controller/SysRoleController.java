@@ -88,18 +88,14 @@ public class SysRoleController {
     )
     public R<Void> add(@Valid @RequestBody SysRole role) {
         requirePermission("system:role:add");
-        // 检查角色名称唯一性
         if (!roleService.checkRoleNameUnique(role)) {
-            return R.fail("角色名称已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "角色名称已存在");
         }
-        
-        // 检查角色编码唯一性
         if (!roleService.checkRoleCodeUnique(role)) {
-            return R.fail("角色编码已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "角色编码已存在");
         }
-        
-        boolean result = roleService.insertRole(role);
-        return result ? R.ok("新增角色成功") : R.fail("新增角色失败");
+        ensureSuccess(roleService.insertRole(role), "新增角色失败");
+        return R.ok("新增角色成功");
     }
     
     /**
@@ -112,18 +108,14 @@ public class SysRoleController {
     )
     public R<Void> edit(@Valid @RequestBody SysRole role) {
         requirePermission("system:role:edit");
-        // 检查角色名称唯一性
         if (!roleService.checkRoleNameUnique(role)) {
-            return R.fail("角色名称已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "角色名称已存在");
         }
-        
-        // 检查角色编码唯一性
         if (!roleService.checkRoleCodeUnique(role)) {
-            return R.fail("角色编码已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "角色编码已存在");
         }
-        
-        boolean result = roleService.updateRole(role);
-        return result ? R.ok("修改角色成功") : R.fail("修改角色失败");
+        ensureSuccess(roleService.updateRole(role), "修改角色失败");
+        return R.ok("修改角色成功");
     }
     
     /**
@@ -138,8 +130,8 @@ public class SysRoleController {
             @Parameter(description = "角色ID列表，逗号分隔", required = true, example = "1,2,3") 
             @PathVariable Long[] roleIds) {
         requirePermission("system:role:remove");
-        boolean result = roleService.deleteRoleByIds(List.of(roleIds));
-        return result ? R.ok("删除角色成功") : R.fail("删除角色失败");
+        ensureSuccess(roleService.deleteRoleByIds(List.of(roleIds)), "删除角色失败");
+        return R.ok("删除角色成功");
     }
     
     /**
@@ -216,7 +208,7 @@ public class SysRoleController {
         requirePermission("system:role:list");
         boolean hasCircular = roleService.checkCircularDependency(roleId, parentRoleId);
         if (hasCircular) {
-            return R.fail("设置该父角色会造成循环依赖");
+            throw BusinessException.of(ResultCode.CONFLICT, "设置该父角色会造成循环依赖");
         }
         return R.ok(false);
     }
@@ -232,8 +224,8 @@ public class SysRoleController {
     public R<Void> refreshHierarchy(
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
         requirePermission("system:role:edit");
-        boolean result = roleService.refreshRoleHierarchy(roleId);
-        return result ? R.ok("刷新成功") : R.fail("刷新失败");
+        ensureSuccess(roleService.refreshRoleHierarchy(roleId), "刷新失败");
+        return R.ok("刷新成功");
     }
     
     /**
@@ -271,8 +263,8 @@ public class SysRoleController {
             @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId,
             @RequestBody(required = false) List<Long> menuIds) {
         requirePermission("system:role:edit");
-        boolean result = roleService.assignRolePermissions(roleId, menuIds);
-        return result ? R.ok("分配成功") : R.fail("分配失败");
+        ensureSuccess(roleService.assignRolePermissions(roleId, menuIds), "分配失败");
+        return R.ok("分配成功");
     }
     
     /**
@@ -298,6 +290,18 @@ public class SysRoleController {
     private void requirePermission(String permission) {
         if (!SecurityUtil.hasPermission(permission)) {
             throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
+        }
+    }
+
+    /**
+     * 成功状态校验
+     *
+     * @param result 操作结果
+     * @param failureMessage 失败消息
+     */
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
         }
     }
 }

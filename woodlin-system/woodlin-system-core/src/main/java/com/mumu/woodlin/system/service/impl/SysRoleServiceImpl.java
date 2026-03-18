@@ -346,6 +346,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (roleId == null) {
             return Collections.emptyList();
         }
+        if (isSuperAdminRole(roleId)) {
+            LambdaQueryWrapper<SysPermission> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SysPermission::getDeleted, "0")
+                .eq(SysPermission::getStatus, "1")
+                .orderByAsc(SysPermission::getSortOrder)
+                .orderByAsc(SysPermission::getPermissionId);
+            return permissionMapper.selectList(wrapper).stream()
+                .map(SysPermission::getPermissionId)
+                .toList();
+        }
         return rolePermissionMapper.selectPermissionIdsByRoleId(roleId);
     }
 

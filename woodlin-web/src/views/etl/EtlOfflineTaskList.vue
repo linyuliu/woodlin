@@ -150,6 +150,54 @@ const handleDelete = async (row: EtlJob) => {
   await loadData()
 }
 
+function renderActionButton(
+  label: string,
+  type: 'primary' | 'warning' | 'success' | 'error',
+  icon: typeof FlashOutline,
+  onClick: () => void
+) {
+  return h(
+    NButton,
+    {
+      size: 'small',
+      tertiary: true,
+      type,
+      onClick,
+    },
+    {
+      default: () => label,
+      icon: () => h(NIcon, null, { default: () => h(icon) }),
+    },
+  )
+}
+
+function renderToggleAction(row: EtlJob) {
+  if (row.status === '1') {
+    return renderActionButton('禁用', 'warning', PauseCircleOutline, () => handleEnableChange(row, false))
+  }
+
+  return renderActionButton('启用', 'success', PlayCircleOutline, () => handleEnableChange(row, true))
+}
+
+function renderDeleteAction(row: EtlJob) {
+  return h(
+    NPopconfirm,
+    { onPositiveClick: () => handleDelete(row) },
+    {
+      default: () => `确认删除任务 ${row.jobName} 吗？`,
+      trigger: () => renderActionButton('删除', 'error', TrashOutline, () => undefined),
+    },
+  )
+}
+
+function renderActionCell(row: EtlJob) {
+  return h(NSpace, { size: 4 }, () => [
+    renderActionButton('立即执行', 'primary', FlashOutline, () => handleExecute(row)),
+    renderToggleAction(row),
+    renderDeleteAction(row),
+  ])
+}
+
 const columns: DataTableColumns<EtlJob> = [
   {
     title: '任务',
@@ -220,65 +268,7 @@ const columns: DataTableColumns<EtlJob> = [
     title: '操作',
     key: 'actions',
     width: 290,
-    render: (row) =>
-      h(NSpace, {size: 4}, () => [
-        h(
-          NButton,
-          {
-            size: 'small',
-            tertiary: true,
-            type: 'primary',
-            onClick: () => handleExecute(row),
-          },
-          {
-            default: () => '立即执行',
-            icon: () => h(NIcon, null, {default: () => h(FlashOutline)}),
-          },
-        ),
-        row.status === '1'
-          ? h(
-            NButton,
-            {
-              size: 'small',
-              tertiary: true,
-              type: 'warning',
-              onClick: () => handleEnableChange(row, false),
-            },
-            {
-              default: () => '禁用',
-              icon: () => h(NIcon, null, {default: () => h(PauseCircleOutline)}),
-            },
-          )
-          : h(
-            NButton,
-            {
-              size: 'small',
-              tertiary: true,
-              type: 'success',
-              onClick: () => handleEnableChange(row, true),
-            },
-            {
-              default: () => '启用',
-              icon: () => h(NIcon, null, {default: () => h(PlayCircleOutline)}),
-            },
-          ),
-        h(
-          NPopconfirm,
-          {onPositiveClick: () => handleDelete(row)},
-          {
-            default: () => `确认删除任务 ${row.jobName} 吗？`,
-            trigger: () =>
-              h(
-                NButton,
-                {size: 'small', tertiary: true, type: 'error'},
-                {
-                  default: () => '删除',
-                  icon: () => h(NIcon, null, {default: () => h(TrashOutline)}),
-                },
-              ),
-          },
-        ),
-      ]),
+    render: (row) => renderActionCell(row),
   },
 ]
 

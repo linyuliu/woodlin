@@ -11,11 +11,11 @@ spring:
     nacos:
       # Nacos Server 地址
       # 示例默认值仅用于本地启动
-      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      server-addr: ${NACOS_SERVER_ADDR:mumuhk.oldletter.cn:8848}
 
       config:
         # Nacos 命名空间（可填 namespaceId 或 namespace 名称）
-        namespace: ${NACOS_NAMESPACE:public}
+        namespace: ${NACOS_NAMESPACE:mumu}
 
         # 配置分组
         group: ${NACOS_GROUP:DEFAULT_GROUP}

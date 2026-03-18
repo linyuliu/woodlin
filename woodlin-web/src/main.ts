@@ -10,6 +10,7 @@ import './assets/main.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { logger } from './utils/logger'
 
 // 引入 Naive UI 组件库
 import { 
@@ -52,7 +53,7 @@ const showStartupInfo = () => {
   const buildTime = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const nodeVersion = 'Unknown'
   
-  console.warn(`
+  logger.warn(`
 %c██╗    ██╗ ██████╗  ██████╗ ██████╗ ██╗     ██╗███╗   ██╗
 ██║    ██║██╔═══██╗██╔═══██╗██╔══██╗██║     ██║████╗  ██║
 ██║ █╗ ██║██║   ██║██║   ██║██║  ██║██║     ██║██╔██╗ ██║

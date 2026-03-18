@@ -33,6 +33,8 @@ export const PERMISSIONS = {
     SYSTEM_USER_ADD: 'system:user:add',
     SYSTEM_USER_EDIT: 'system:user:edit',
     SYSTEM_USER_REMOVE: 'system:user:remove',
+    SYSTEM_USER_EXPORT: 'system:user:export',
+    SYSTEM_USER_IMPORT: 'system:user:import',
     SYSTEM_USER_RESET_PWD: 'system:user:resetPwd',
     SYSTEM_ROLE_LIST: 'system:role:list',
     SYSTEM_ROLE_ADD: 'system:role:add',
@@ -51,7 +53,10 @@ export const PERMISSIONS = {
     DATASOURCE_EDIT: 'datasource:edit',
     DATASOURCE_REMOVE: 'datasource:remove',
     DATASOURCE_TEST: 'datasource:test',
-    DATASOURCE_METADATA: 'datasource:metadata',
+    TENANT_LIST: 'tenant:list',
+    TENANT_ADD: 'tenant:add',
+    TENANT_EDIT: 'tenant:edit',
+    TENANT_REMOVE: 'tenant:remove',
   },
 } as const
 

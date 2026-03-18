@@ -1,50 +1,46 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NCard, NDescriptions, NDescriptionsItem, NButton, NSpin, NTag } from 'naive-ui'
-import axios from 'axios'
-
-interface SystemVersionInfo {
-  systemName: string
-  systemVersion: string
-  buildTime: string
-  gitCommitId: string
-  buildProfile: string
-  javaVersion: string
-  springProfile: string
-  currentTime: string
-}
+import { getBuildInfo, type BuildInfo } from '@/api/config'
+import { logger } from '@/utils/logger'
 
 const loading = ref(false)
-const versionInfo = ref<SystemVersionInfo | null>(null)
+const versionInfo = ref<BuildInfo | null>(null)
 const frontendVersion = ref({
   version: '1.0.0',
   buildTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
   nodeVersion: 'Unknown',
-  environment: 'development'
+  environment: import.meta.env.MODE || 'development'
 })
+
+const backendCommitId = computed(() => versionInfo.value?.gitCommitIdAbbrev || versionInfo.value?.gitCommitId || '-')
+const backendEnvironment = computed(() => {
+  const mode = frontendVersion.value.environment
+  switch (mode) {
+    case 'production':
+      return { type: 'success' as const, text: '生产环境' }
+    case 'test':
+      return { type: 'warning' as const, text: '测试环境' }
+    case 'development':
+    case 'dev':
+    default:
+      return { type: 'info' as const, text: '开发环境' }
+  }
+})
+const backendWorkspaceStatus = computed(() =>
+  versionInfo.value?.gitDirty === 'true'
+    ? { type: 'warning' as const, text: '存在未提交变更' }
+    : { type: 'success' as const, text: '工作区干净' }
+)
 
 const loadVersionInfo = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/system/version')
-    versionInfo.value = response.data
+    versionInfo.value = await getBuildInfo()
   } catch (error) {
-    console.error('获取系统版本信息失败:', error)
+    logger.error('获取系统版本信息失败', error)
   } finally {
     loading.value = false
-  }
-}
-
-const getBuildStatus = (profile: string): { type: 'success' | 'warning' | 'info', text: string } => {
-  switch (profile) {
-    case 'production':
-      return { type: 'success', text: '生产环境' }
-    case 'test':
-      return { type: 'warning', text: '测试环境' }
-    case 'development':
-    case 'dev':
-    default:
-      return { type: 'info', text: '开发环境' }
   }
 }
 
@@ -67,30 +63,32 @@ onMounted(() => {
         <NCard title="后端系统" size="small" style="margin-bottom: 16px;">
           <NDescriptions v-if="versionInfo" bordered :column="2">
             <NDescriptionsItem label="系统名称">
-              <strong>{{ versionInfo.systemName }}</strong>
+              <strong>Woodlin Server</strong>
             </NDescriptionsItem>
             <NDescriptionsItem label="系统版本">
-              <NTag type="primary">v{{ versionInfo.systemVersion }}</NTag>
+              <NTag type="primary">v{{ versionInfo.buildVersion || '-' }}</NTag>
             </NDescriptionsItem>
             <NDescriptionsItem label="构建时间">
-              {{ versionInfo.buildTime }}
+              {{ versionInfo.buildTime || '-' }}
             </NDescriptionsItem>
             <NDescriptionsItem label="Git提交">
-              <code>{{ versionInfo.gitCommitId }}</code>
+              <code>{{ backendCommitId }}</code>
             </NDescriptionsItem>
             <NDescriptionsItem label="构建环境">
-              <NTag v-bind="getBuildStatus(versionInfo.buildProfile)">
-                {{ getBuildStatus(versionInfo.buildProfile).text }}
+              <NTag :type="backendEnvironment.type">
+                {{ backendEnvironment.text }}
               </NTag>
             </NDescriptionsItem>
-            <NDescriptionsItem label="Java版本">
-              {{ versionInfo.javaVersion }}
+            <NDescriptionsItem label="Git分支">
+              {{ versionInfo.gitBranch || '-' }}
             </NDescriptionsItem>
-            <NDescriptionsItem label="Spring环境">
-              {{ versionInfo.springProfile }}
+            <NDescriptionsItem label="工作区状态">
+              <NTag :type="backendWorkspaceStatus.type">
+                {{ backendWorkspaceStatus.text }}
+              </NTag>
             </NDescriptionsItem>
-            <NDescriptionsItem label="服务器时间">
-              {{ versionInfo.currentTime }}
+            <NDescriptionsItem label="远程仓库">
+              {{ versionInfo.gitRemoteOriginUrl || '-' }}
             </NDescriptionsItem>
           </NDescriptions>
         </NCard>
@@ -99,7 +97,7 @@ onMounted(() => {
         <NCard title="前端系统" size="small">
           <NDescriptions bordered :column="2">
             <NDescriptionsItem label="系统名称">
-              <strong>{{ versionInfo?.systemName || 'Woodlin' }} Web</strong>
+              <strong>Woodlin Web</strong>
             </NDescriptionsItem>
             <NDescriptionsItem label="系统版本">
               <NTag type="primary">v{{ frontendVersion.version }}</NTag>
@@ -111,8 +109,8 @@ onMounted(() => {
               {{ frontendVersion.nodeVersion }}
             </NDescriptionsItem>
             <NDescriptionsItem label="构建环境">
-              <NTag v-bind="getBuildStatus(frontendVersion.environment)">
-                {{ getBuildStatus(frontendVersion.environment).text }}
+              <NTag :type="backendEnvironment.type">
+                {{ backendEnvironment.text }}
               </NTag>
             </NDescriptionsItem>
             <NDescriptionsItem label="客户端时间">

@@ -67,7 +67,7 @@ public interface CommonConstant {
     /**
      * 默认租户ID（系统租户）
      */
-    String DEFAULT_TENANT_ID = "system";
+    String DEFAULT_TENANT_ID = SystemConstant.DEFAULT_TENANT_ID;
     
     /**
      * 超级管理员角色编码

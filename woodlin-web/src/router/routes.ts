@@ -98,6 +98,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '用户管理',
               icon: 'people-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_USER],
             },
           },
@@ -108,6 +109,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '角色管理',
               icon: 'shield-checkmark-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_ROLE],
             },
           },
@@ -118,6 +120,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '部门管理',
               icon: 'business-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_DEPT],
             },
           },
@@ -128,6 +131,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '菜单管理',
               icon: 'list-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_MENU],
             },
           },
@@ -138,6 +142,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '字典管理',
               icon: 'book-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_DICT],
             },
           },
@@ -148,6 +153,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '配置管理',
               icon: 'options-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.SYSTEM_CONFIG],
             },
           },
@@ -182,6 +188,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '数据源列表',
               icon: 'list-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.DATASOURCE_LIST],
             },
           },
@@ -206,6 +213,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '租户列表',
               icon: 'list-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.TENANT_LIST],
             },
           },
@@ -230,6 +238,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '文件列表',
               icon: 'documents-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.FILE_LIST],
             },
           },
@@ -264,6 +273,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '任务列表',
               icon: 'list-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.TASK_LIST],
             },
           },
@@ -274,6 +284,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '任务日志',
               icon: 'receipt-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.TASK_LOG],
             },
           },
@@ -298,6 +309,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: '离线同步',
               icon: 'swap-horizontal-outline',
+              keepAlive: true,
               permissions: [PERMISSIONS.ROUTE.TASK_LIST],
             },
           },

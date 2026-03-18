@@ -80,7 +80,7 @@ public class InfraDatasourceController {
         requirePermission("datasource:list");
         InfraDatasourceConfig config = datasourceMapper.selectOne(new QueryWrapper<InfraDatasourceConfig>()
                 .eq("datasource_code", code));
-        return config == null ? R.fail("数据源不存在") : R.ok(config);
+        return R.ok(requireDatasource(config));
     }
 
     /**
@@ -127,7 +127,8 @@ public class InfraDatasourceController {
             @Parameter(description = "数据源唯一编码", required = true)
             @PathVariable("code") String code) {
         requirePermission("datasource:remove");
-        datasourceMapper.delete(new QueryWrapper<InfraDatasourceConfig>().eq("datasource_code", code));
+        ensureSuccess(datasourceMapper.delete(new QueryWrapper<InfraDatasourceConfig>().eq("datasource_code", code)) > 0,
+            "数据源不存在");
         return R.ok();
     }
 
@@ -165,7 +166,7 @@ public class InfraDatasourceController {
     public R<DatabaseMetadata> metadata(
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code) {
-        requirePermission("datasource:metadata");
+        requirePermission("datasource:list");
         return R.ok(metadataService.getDatabaseMetadata(code));
     }
 
@@ -183,7 +184,7 @@ public class InfraDatasourceController {
     public R<List<SchemaMetadata>> schemas(
             @Parameter(description = "数据源唯一编码", required = true)
             @RequestParam("code") String code) {
-        requirePermission("datasource:metadata");
+        requirePermission("datasource:list");
         return R.ok(metadataService.getSchemas(code));
     }
 
@@ -200,7 +201,7 @@ public class InfraDatasourceController {
             @RequestParam(name = "code") String code,
             @Parameter(description = "Schema名称，某些数据库需要指定Schema才能查询表列表")
             @RequestParam(name = "schemaName", required = false) String schemaName) {
-        requirePermission("datasource:metadata");
+        requirePermission("datasource:list");
         return R.ok(metadataService.getTables(code, schemaName));
     }
 
@@ -220,7 +221,7 @@ public class InfraDatasourceController {
             @RequestParam(name = "schemaName", required = false) String schemaName,
             @Parameter(description = "表名", required = false)
             @RequestParam("table") String table) {
-        requirePermission("datasource:metadata");
+        requirePermission("datasource:list");
         return R.ok(metadataService.getColumns(code, schemaName, table));
     }
 
@@ -236,10 +237,10 @@ public class InfraDatasourceController {
         InfraDatasourceConfig exist = datasourceMapper.selectOne(wrapper);
 
         if (!isUpdate && exist != null) {
-            throw new BusinessException("数据源编码已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "数据源编码已存在");
         }
         if (isUpdate && exist == null) {
-            throw new BusinessException("数据源不存在，无法更新");
+            throw BusinessException.of(ResultCode.NOT_FOUND, "数据源不存在，无法更新");
         }
 
         InfraDatasourceConfig record = exist == null ? new InfraDatasourceConfig() : exist;
@@ -259,9 +260,22 @@ public class InfraDatasourceController {
         record.setExtConfig(request.getExtConfig());
 
         if (!isUpdate) {
-            datasourceMapper.insert(record);
-        } else {
-            datasourceMapper.updateById(record);
+            ensureSuccess(datasourceMapper.insert(record) > 0, "创建数据源失败");
+            return;
+        }
+        ensureSuccess(datasourceMapper.updateById(record) > 0, "更新数据源失败");
+    }
+
+    private InfraDatasourceConfig requireDatasource(InfraDatasourceConfig config) {
+        if (config == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "数据源不存在");
+        }
+        return config;
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
         }
     }
 

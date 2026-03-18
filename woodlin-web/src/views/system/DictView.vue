@@ -42,6 +42,7 @@ import {
   type DictTypeRecord,
   type RegionNode
 } from '@/api/dict'
+import { logger } from '@/utils/logger'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -232,7 +233,7 @@ const loadDictTypes = async () => {
       await loadDictData(selectedType.value.dictType)
     }
   } catch (error) {
-    console.error(error)
+    logger.error('加载字典类型失败', error)
     message.error('加载字典类型失败')
   } finally {
     typeLoading.value = false
@@ -247,7 +248,7 @@ const loadDictData = async (dictType: string) => {
   try {
     dictData.value = await listDictDataAdmin(dictType)
   } catch (error) {
-    console.error(error)
+    logger.error('加载字典项失败', error)
     message.error('加载字典项失败')
   } finally {
     dataLoading.value = false
@@ -264,7 +265,7 @@ const loadRegionTree = async (force = false) => {
     regionTreeData.value = convertToTreeData(regionTree.value)
     regionLoaded.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载行政区划树失败', error)
     message.error('加载行政区划树失败')
     regionLoaded.value = false
   } finally {
@@ -320,12 +321,15 @@ const submitType = async () => {
     typeModalVisible.value = false
     await loadDictTypes()
   } catch (error) {
-    console.error(error)
+    logger.error('保存字典类型失败', error)
     message.error('保存字典类型失败')
   } finally {
     submitTypeLoading.value = false
   }
 }
+
+const getDictTypeId = (row: DictTypeRecord): number | null => row.dictId ?? null
+const getDictDataId = (row: DictDataRecord): number | null => row.dataId ?? null
 
 const handleDeleteType = (row: DictTypeRecord) => {
   dialog.warning({
@@ -334,8 +338,13 @@ const handleDeleteType = (row: DictTypeRecord) => {
     positiveText: '删除',
     negativeText: '取消',
     async onPositiveClick() {
+      const dictId = getDictTypeId(row)
+      if (dictId === null) {
+        message.warning('字典类型缺少有效 ID，无法删除')
+        return
+      }
       try {
-        await deleteDictTypeAdmin(row.dictId!)
+        await deleteDictTypeAdmin(dictId)
         message.success('删除成功')
         if (selectedType.value?.dictType === row.dictType) {
           selectedType.value = null
@@ -343,7 +352,7 @@ const handleDeleteType = (row: DictTypeRecord) => {
         }
         await loadDictTypes()
       } catch (error) {
-        console.error(error)
+        logger.error('删除字典类型失败', error)
         message.error('删除失败')
       }
     }
@@ -395,7 +404,7 @@ const submitData = async () => {
     dataModalVisible.value = false
     await loadDictData(selectedType.value.dictType)
   } catch (error) {
-    console.error(error)
+    logger.error('保存字典项失败', error)
     message.error('保存字典项失败')
   } finally {
     submitDataLoading.value = false
@@ -409,14 +418,19 @@ const handleDeleteData = (row: DictDataRecord) => {
     positiveText: '删除',
     negativeText: '取消',
     async onPositiveClick() {
+      const dataId = getDictDataId(row)
+      if (dataId === null) {
+        message.warning('字典项缺少有效 ID，无法删除')
+        return
+      }
       try {
-        await deleteDictDataAdmin(row.dataId!)
+        await deleteDictDataAdmin(dataId)
         message.success('删除成功')
         if (selectedType.value) {
           await loadDictData(selectedType.value.dictType)
         }
       } catch (error) {
-        console.error(error)
+        logger.error('删除字典项失败', error)
         message.error('删除失败')
       }
     }

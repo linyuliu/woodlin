@@ -29,6 +29,7 @@ import {
   type RoleTreeNode,
   type SysRole
 } from '@/api/role'
+import { logger } from '@/utils/logger'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -74,7 +75,7 @@ const loadRoleTree = async () => {
     const tree = await getRoleTree()
     roleTree.value = buildTreeOptions(tree)
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色树失败', error)
     message.error('加载角色树失败')
   } finally {
     treeLoading.value = false
@@ -87,7 +88,7 @@ const loadRoleDetail = async (roleId: number) => {
     selectedRole.value = await getRoleById(roleId)
     permissions.value = await getRoleAllPermissions(roleId)
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色详情失败', error)
     message.error('加载角色详情失败')
   } finally {
     loading.value = false
@@ -165,7 +166,7 @@ const submitRole = async () => {
       selectedKeys.value = [payload.roleId]
     }
   } catch (error) {
-    console.error(error)
+    logger.error('保存角色失败', error)
     message.error('保存角色失败')
   } finally {
     loading.value = false
@@ -191,7 +192,7 @@ const handleDeleteRole = () => {
         permissions.value = []
         await loadRoleTree()
       } catch (error) {
-        console.error(error)
+        logger.error('删除角色失败', error)
         message.error('删除失败')
       }
     }

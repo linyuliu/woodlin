@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import { 
-  NCard, NButton, NSpace, NTable, NDescriptions, 
-  NDescriptionsItem, NTag, NPopconfirm, useMessage, NSpin 
+  NCard, NButton, NSpace, NDataTable, NDescriptions, 
+  NDescriptionsItem, NTag, NPopconfirm, useMessage, NSpin, type DataTableColumns
 } from 'naive-ui'
-import axios from 'axios'
+import {
+  evictAllDictionaryCache as evictAllDictionaryCacheApi,
+  evictDictionaryCache as evictDictionaryCacheApi,
+  getCacheConfig,
+  warmupDictionaryCache as warmupDictionaryCacheApi,
+  type CacheConfig as ApiCacheConfig
+} from '@/api/cache'
+import { logger } from '@/utils/logger'
 
-interface CacheConfig {
+interface CacheConfigView {
   redisEnabled: boolean
   dictionary: {
     enabled: boolean
@@ -17,13 +24,14 @@ interface CacheConfig {
 
 const message = useMessage()
 const loading = ref(false)
-const config = ref<CacheConfig>({
+const defaultDictionaryConfig: CacheConfigView['dictionary'] = {
+  enabled: true,
+  expireSeconds: 3600,
+  refreshIntervalSeconds: 1800
+}
+const config = ref<CacheConfigView>({
   redisEnabled: true,
-  dictionary: {
-    enabled: true,
-    expireSeconds: 3600,
-    refreshIntervalSeconds: 1800
-  }
+  dictionary: defaultDictionaryConfig
 })
 
 // 常见的字典类型示例
@@ -37,42 +45,49 @@ const commonDictTypes = [
 const loadCacheConfig = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/cache/config')
-    config.value = response.data
+    const response = await getCacheConfig()
+    applyCacheConfig(response)
   } catch (error) {
-    console.error('获取缓存配置失败:', error)
+    logger.error('获取缓存配置失败', error)
     message.error('获取缓存配置失败')
   } finally {
     loading.value = false
   }
 }
 
+const applyCacheConfig = (response: ApiCacheConfig) => {
+  config.value = {
+    redisEnabled: response.redisEnabled,
+    dictionary: response.dictionary ?? defaultDictionaryConfig
+  }
+}
+
 const evictDictionaryCache = async (dictType: string) => {
   try {
-    await axios.delete(`/api/cache/dictionary/${dictType}`)
+    await evictDictionaryCacheApi(dictType)
     message.success(`字典缓存清除成功: ${dictType}`)
   } catch (error) {
-    console.error('清除字典缓存失败:', error)
+    logger.error('清除字典缓存失败', error)
     message.error('清除字典缓存失败')
   }
 }
 
 const evictAllDictionaryCache = async () => {
   try {
-    await axios.delete('/api/cache/dictionary/all')
+    await evictAllDictionaryCacheApi()
     message.success('所有字典缓存清除成功')
   } catch (error) {
-    console.error('清除所有字典缓存失败:', error)
+    logger.error('清除所有字典缓存失败', error)
     message.error('清除所有字典缓存失败')
   }
 }
 
 const warmupDictionaryCache = async (dictType: string) => {
   try {
-    await axios.post(`/api/cache/dictionary/${dictType}/warmup`)
+    await warmupDictionaryCacheApi(dictType)
     message.success(`字典缓存预热成功: ${dictType}`)
   } catch (error) {
-    console.error('预热字典缓存失败:', error)
+    logger.error('预热字典缓存失败', error)
     message.error('预热字典缓存失败')
   }
 }
@@ -83,7 +98,7 @@ const formatTime = (seconds: number) => {
   return `${Math.floor(seconds / 3600)}小时`
 }
 
-const columns = [
+const columns: DataTableColumns<{ type: string; name: string }> = [
   {
     title: '字典类型',
     key: 'type',
@@ -176,7 +191,7 @@ onMounted(() => {
           </NSpace>
         </template>
 
-        <NTable 
+        <NDataTable 
           :columns="columns" 
           :data="commonDictTypes" 
           :pagination="false"

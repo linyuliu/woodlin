@@ -42,6 +42,7 @@ import {
   type SysRole
 } from '@/api/role'
 import { getMenuTree, type SysMenu } from '@/api/menu'
+import { logger } from '@/utils/logger'
 import { useUserStore } from '@/stores'
 import {PERMISSIONS} from '@/constants/permission-keys'
 
@@ -286,7 +287,7 @@ const loadRoleList = async () => {
     roleList.value = result.data || []
     total.value = result.total || 0
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色列表失败', error)
     message.error('加载角色列表失败')
   } finally {
     loading.value = false
@@ -301,7 +302,7 @@ const loadRoleTree = async () => {
   try {
     roleTree.value = await getRoleTree()
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色树失败', error)
     message.error('加载角色树失败')
   }
 }
@@ -358,7 +359,7 @@ const openEdit = async (role: SysRole) => {
     }
     roleModalVisible.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色详情失败', error)
     message.error('加载角色详情失败')
   } finally {
     loading.value = false
@@ -398,7 +399,7 @@ const submitRole = async () => {
     roleModalVisible.value = false
     await Promise.all([loadRoleList(), loadRoleTree()])
   } catch (error) {
-    console.error(error)
+    logger.error('保存角色失败', error)
     message.error('保存失败')
   } finally {
     loading.value = false
@@ -424,7 +425,7 @@ const handleDelete = async (role: SysRole) => {
     message.success('删除成功')
     await Promise.all([loadRoleList(), loadRoleTree()])
   } catch (error) {
-    console.error(error)
+    logger.error('删除角色失败', error)
     message.error('删除失败')
   } finally {
     loading.value = false
@@ -449,7 +450,7 @@ const openPermission = async (role: SysRole) => {
     currentPermissionRole.value = role
     permissionModalVisible.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色权限数据失败', error)
     message.error('加载权限数据失败')
   } finally {
     loading.value = false
@@ -477,7 +478,7 @@ const submitPermissions = async () => {
     message.success('权限分配成功')
     permissionModalVisible.value = false
   } catch (error) {
-    console.error(error)
+    logger.error('分配角色权限失败', error)
     message.error('权限分配失败')
   } finally {
     loading.value = false

@@ -8,16 +8,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * Redis配置测试类
  *
  * @author mumu
- * @description 测试Redis FastJSON2序列化功能
+ * @description 测试 Redis fastjson2 序列化功能
  * @since 2025-01-01
  */
 class RedisConfigTest {
 
     @Test
-    void testFastJson2RedisSerializerString() {
+    void testFastjson2RedisSerializerString() {
         // 创建序列化器实例
-        RedisConfig.FastJson2RedisSerializer<String> serializer =
-            new RedisConfig.FastJson2RedisSerializer<>(String.class);
+        RedisConfig.Fastjson2RedisSerializer<String> serializer =
+            new RedisConfig.Fastjson2RedisSerializer<>(String.class);
 
         // 测试字符串序列化
         String original = "Hello World";
@@ -33,8 +33,8 @@ class RedisConfigTest {
 
     @Test
     void testNullSerialization() {
-        RedisConfig.FastJson2RedisSerializer<Object> serializer =
-            new RedisConfig.FastJson2RedisSerializer<>(Object.class);
+        RedisConfig.Fastjson2RedisSerializer<Object> serializer =
+            new RedisConfig.Fastjson2RedisSerializer<>(Object.class);
 
         // 测试null值序列化
         byte[] serialized = serializer.serialize(null);
@@ -52,8 +52,8 @@ class RedisConfigTest {
 
     @Test
     void testSimpleObjectSerialization() {
-        RedisConfig.FastJson2RedisSerializer<TestObject> serializer =
-            new RedisConfig.FastJson2RedisSerializer<>(TestObject.class);
+        RedisConfig.Fastjson2RedisSerializer<TestObject> serializer =
+            new RedisConfig.Fastjson2RedisSerializer<>(TestObject.class);
 
         TestObject original = new TestObject("test", 123);
 

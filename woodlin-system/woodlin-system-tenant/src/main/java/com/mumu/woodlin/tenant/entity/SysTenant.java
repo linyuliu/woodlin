@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -42,6 +44,7 @@ public class SysTenant extends BaseEntity {
      * 租户名称
      */
     @TableField("tenant_name")
+    @NotBlank(message = "租户名称不能为空")
     @Schema(description = "租户名称")
     private String tenantName;
     
@@ -49,6 +52,7 @@ public class SysTenant extends BaseEntity {
      * 租户编码
      */
     @TableField("tenant_code")
+    @NotBlank(message = "租户编码不能为空")
     @Schema(description = "租户编码")
     private String tenantCode;
     
@@ -70,6 +74,7 @@ public class SysTenant extends BaseEntity {
      * 联系邮箱
      */
     @TableField("contact_email")
+    @Email(message = "联系邮箱格式不正确")
     @Schema(description = "联系邮箱")
     private String contactEmail;
     

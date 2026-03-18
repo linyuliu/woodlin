@@ -91,8 +91,8 @@ public class SysUserController {
     )
     public R<Void> add(@Valid @RequestBody SysUser user) {
         requirePermission("system:user:add");
-        boolean result = userBusinessService.createUser(user);
-        return result ? R.ok("新增用户成功") : R.fail("新增用户失败");
+        ensureSuccess(userBusinessService.createUser(user), "新增用户失败");
+        return R.ok("新增用户成功");
     }
     
     /**
@@ -105,8 +105,8 @@ public class SysUserController {
     )
     public R<Void> edit(@Valid @RequestBody SysUser user) {
         requirePermission("system:user:edit");
-        boolean result = userBusinessService.updateUser(user);
-        return result ? R.ok("修改用户成功") : R.fail("修改用户失败");
+        ensureSuccess(userBusinessService.updateUser(user), "修改用户失败");
+        return R.ok("修改用户成功");
     }
     
     /**
@@ -121,8 +121,8 @@ public class SysUserController {
             @Parameter(description = "用户ID，多个用逗号分隔", required = true, example = "1,2,3") @PathVariable String userIds) {
         requirePermission("system:user:remove");
         List<String> ids = Arrays.asList(userIds.split(","));
-        boolean result = userBusinessService.deleteUsers(ids);
-        return result ? R.ok("删除用户成功") : R.fail("删除用户失败");
+        ensureSuccess(userBusinessService.deleteUsers(ids), "删除用户失败");
+        return R.ok("删除用户成功");
     }
     
     /**
@@ -137,8 +137,8 @@ public class SysUserController {
             @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "新密码") @RequestParam String password) {
         requirePermission("system:user:resetPwd");
-        boolean result = userBusinessService.resetUserPassword(userId, password);
-        return result ? R.ok("重置密码成功") : R.fail("重置密码失败");
+        ensureSuccess(userBusinessService.resetUserPassword(userId, password), "重置密码失败");
+        return R.ok("重置密码成功");
     }
     
     /**
@@ -148,8 +148,8 @@ public class SysUserController {
     @Operation(summary = "状态修改")
     public R<Void> changeStatus(@RequestBody SysUser user) {
         requirePermission("system:user:edit");
-        boolean result = userBusinessService.changeUserStatus(user);
-        return result ? R.ok("修改状态成功") : R.fail("修改状态失败");
+        ensureSuccess(userBusinessService.changeUserStatus(user), "修改状态失败");
+        return R.ok("修改状态成功");
     }
     
     /**
@@ -193,6 +193,18 @@ public class SysUserController {
     private void requirePermission(String permission) {
         if (!SecurityUtil.hasPermission(permission)) {
             throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
+        }
+    }
+
+    /**
+     * 成功状态校验
+     *
+     * @param result 操作结果
+     * @param failureMessage 失败消息
+     */
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
         }
     }
 }

@@ -408,33 +408,50 @@ const handlePrevStep = () => {
   if (currentStep.value > 1) {currentStep.value -= 1}
 }
 
+const canSubmit = () => validateStep1() && validateStep2() && validateStep3()
+
+const normalizeOptionalText = (value?: string) => value?.trim() || undefined
+
+const buildScheduleConfig = () => ({
+  cronExpression: normalizeOptionalText(step2.cronExpression),
+  status: step2.autoStart ? '1' : '0',
+  concurrent: step2.allowConcurrent ? '1' : '0',
+  retryCount: step2.retryCount,
+  retryInterval: step2.retryInterval
+})
+
+const buildSourceTargetConfig = () => ({
+  sourceDatasource: step1.sourceDatasource,
+  sourceSchema: step3.sourceSchema || undefined,
+  sourceTable: step3.sourceTable,
+  targetDatasource: step1.targetDatasource,
+  targetSchema: step3.targetSchema || undefined,
+  targetTable: step3.targetTable
+})
+
+const buildSyncConfig = () => ({
+  syncMode: step2.syncMode,
+  incrementalColumn: step2.syncMode === 'INCREMENTAL' ? step3.incrementalColumn : undefined,
+  filterCondition: normalizeOptionalText(step3.filterCondition),
+  batchSize: step2.batchSize,
+  transformRules: buildTransformRules()
+})
+
+const buildSubmitPayload = (): EtlJob => ({
+  jobName: step1.jobName.trim(),
+  jobGroup: 'OFFLINE_SYNC',
+  jobDescription: normalizeOptionalText(step2.jobDescription),
+  ...buildSourceTargetConfig(),
+  ...buildSyncConfig(),
+  ...buildScheduleConfig(),
+  remark: normalizeOptionalText(step3.remark),
+})
+
 const handleSubmit = async () => {
-  if (!validateStep1() || !validateStep2() || !validateStep3()) {return}
-  const payload: EtlJob = {
-    jobName: step1.jobName.trim(),
-    jobGroup: 'OFFLINE_SYNC',
-    jobDescription: step2.jobDescription?.trim() || undefined,
-    sourceDatasource: step1.sourceDatasource,
-    sourceSchema: step3.sourceSchema || undefined,
-    sourceTable: step3.sourceTable,
-    targetDatasource: step1.targetDatasource,
-    targetSchema: step3.targetSchema || undefined,
-    targetTable: step3.targetTable,
-    syncMode: step2.syncMode,
-    incrementalColumn: step2.syncMode === 'INCREMENTAL' ? step3.incrementalColumn : undefined,
-    filterCondition: step3.filterCondition?.trim() || undefined,
-    batchSize: step2.batchSize,
-    cronExpression: step2.cronExpression?.trim() || undefined,
-    status: step2.autoStart ? '1' : '0',
-    concurrent: step2.allowConcurrent ? '1' : '0',
-    retryCount: step2.retryCount,
-    retryInterval: step2.retryInterval,
-    transformRules: buildTransformRules(),
-    remark: step3.remark?.trim() || undefined,
-  }
+  if (!canSubmit()) {return}
   submitting.value = true
   try {
-    await createEtlJob(payload)
+    await createEtlJob(buildSubmitPayload())
     message.success('离线同步任务创建成功')
     router.push('/etl/offline')
   } finally {
