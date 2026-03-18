@@ -1,20 +1,47 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NLayoutContent, NSpin } from 'naive-ui'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
+import { getConfig } from '@/config'
 import { useAppStore } from '@/stores'
 
 const appStore = useAppStore()
 const loading = computed(() => appStore.loading)
 const loadingText = computed(() => appStore.loadingText)
+const transitionName = computed(() => getConfig().router.transitionName)
+const enableRouteCache = computed(() => getConfig().router.enableCache)
+
+const isCacheableRoute = (route: RouteLocationNormalizedLoaded) => {
+  return enableRouteCache.value && route.meta?.keepAlive === true && typeof route.name === 'string'
+}
+
+const getCachedRouteKey = (route: RouteLocationNormalizedLoaded) => {
+  return String(route.name || route.path)
+}
+
+const getTransientRouteKey = (route: RouteLocationNormalizedLoaded) => {
+  return route.fullPath || route.path
+}
 </script>
 
 <template>
   <NLayoutContent class="app-content">
     <div class="content-wrapper">
       <NSpin :show="loading" size="large" :description="loadingText">
-        <router-view v-slot="{ Component }">
-          <transition name="fade-slide" mode="out-in">
-            <component :is="Component" />
+        <router-view v-slot="{ Component, route }">
+          <transition :name="transitionName" mode="out-in">
+            <KeepAlive>
+              <component
+                :is="Component"
+                v-if="isCacheableRoute(route)"
+                :key="getCachedRouteKey(route)"
+              />
+            </KeepAlive>
+            <component
+              :is="Component"
+              v-if="!isCacheableRoute(route)"
+              :key="getTransientRouteKey(route)"
+            />
           </transition>
         </router-view>
       </NSpin>

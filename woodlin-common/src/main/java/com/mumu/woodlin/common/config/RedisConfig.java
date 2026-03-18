@@ -32,7 +32,7 @@ import com.alibaba.fastjson2.JSONWriter;
 public class RedisConfig {
     
     /**
-     * 自定义RedisTemplate配置，使用FastJSON2序列化
+     * 自定义RedisTemplate配置，使用 fastjson2 序列化
      * 
      * 注意：推荐使用RedissonClient或RedisUtil工具类进行Redis操作，
      * RedisTemplate主要用于Spring生态兼容（如Spring Session等）
@@ -45,17 +45,17 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
-        // 使用FastJSON2序列化器
-        FastJson2RedisSerializer<Object> serializer = new FastJson2RedisSerializer<>(Object.class);
+        // 使用 fastjson2 序列化器
+        Fastjson2RedisSerializer<Object> serializer = new Fastjson2RedisSerializer<>(Object.class);
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
         
         // key采用String的序列化方式
         template.setKeySerializer(stringSerializer);
         // hash的key也采用String的序列化方式
         template.setHashKeySerializer(stringSerializer);
-        // value序列化方式采用FastJSON2
+         // value 序列化方式采用 fastjson2
         template.setValueSerializer(serializer);
-        // hash的value序列化方式采用FastJSON2
+         // hash 的 value 序列化方式采用 fastjson2
         template.setHashValueSerializer(serializer);
         
         template.afterPropertiesSet();
@@ -78,16 +78,16 @@ public class RedisConfig {
     }
     
     /**
-     * FastJSON2 Redis序列化器
+     * fastjson2 Redis序列化器
      * 
      * @param <T> 对象类型
      */
-    public static class FastJson2RedisSerializer<T> implements RedisSerializer<T> {
+    public static class Fastjson2RedisSerializer<T> implements RedisSerializer<T> {
         
         private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
         private final Class<T> clazz;
         
-        public FastJson2RedisSerializer(Class<T> clazz) {
+        public Fastjson2RedisSerializer(Class<T> clazz) {
             super();
             this.clazz = clazz;
         }

@@ -98,10 +98,32 @@ export function deleteUser(userIds: string | number[]) {
  * @param params 查询参数
  */
 export function exportUser(params: UserListParams) {
-  return request({
-    url: '/system/user/export',
-    method: 'get',
-    params,
+  return request.post<Blob, Blob>('/system/user/export', params, {
+    responseType: 'blob'
+  })
+}
+
+/**
+ * 导入用户列表
+ * @param file Excel文件
+ * @param updateSupport 是否覆盖已存在用户
+ */
+export function importUserData(file: File, updateSupport = false) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('updateSupport', String(updateSupport))
+  return request.post<string, string>('/system/user/importData', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+/**
+ * 下载用户导入模板
+ */
+export function downloadUserImportTemplate() {
+  return request.post<Blob, Blob>('/system/user/importTemplate', null, {
     responseType: 'blob'
   })
 }

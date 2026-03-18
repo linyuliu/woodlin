@@ -84,8 +84,7 @@ public class SysMenuController {
     public R<SysPermission> getInfo(
             @Parameter(description = "菜单ID", required = true, example = "1") @PathVariable Long menuId) {
         requirePermission("system:menu:list");
-        SysPermission menu = permissionService.getById(menuId);
-        return R.ok(menu);
+        return R.ok(requireMenu(permissionService.getById(menuId)));
     }
 
     /**
@@ -98,14 +97,14 @@ public class SysMenuController {
         normalizeMenuParent(menu);
 
         if (!checkMenuNameUnique(menu)) {
-            return R.fail("菜单名称已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "菜单名称已存在");
         }
         if (StrUtil.isNotBlank(menu.getPermissionCode()) && !checkPermissionCodeUnique(menu)) {
-            return R.fail("权限编码已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "权限编码已存在");
         }
 
-        boolean result = permissionService.save(menu);
-        return result ? R.ok("新增成功") : R.fail("新增失败");
+        ensureSuccess(permissionService.save(menu), "新增失败");
+        return R.ok("新增成功");
     }
 
     /**
@@ -116,23 +115,23 @@ public class SysMenuController {
     public R<Void> edit(@Valid @RequestBody SysPermission menu) {
         requirePermission("system:menu:edit");
         if (ObjectUtil.isNull(menu.getPermissionId())) {
-            return R.fail("菜单ID不能为空");
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "菜单ID不能为空");
         }
         if (ObjectUtil.equals(menu.getPermissionId(), menu.getParentId())) {
-            return R.fail("上级菜单不能选择自己");
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "上级菜单不能选择自己");
         }
 
         normalizeMenuParent(menu);
 
         if (!checkMenuNameUnique(menu)) {
-            return R.fail("菜单名称已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "菜单名称已存在");
         }
         if (StrUtil.isNotBlank(menu.getPermissionCode()) && !checkPermissionCodeUnique(menu)) {
-            return R.fail("权限编码已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "权限编码已存在");
         }
 
-        boolean result = permissionService.updateById(menu);
-        return result ? R.ok("修改成功") : R.fail("修改失败");
+        ensureSuccess(permissionService.updateById(menu), "修改失败");
+        return R.ok("修改成功");
     }
 
     /**
@@ -145,23 +144,20 @@ public class SysMenuController {
         requirePermission("system:menu:remove");
 
         if (hasChildByMenuId(menuId)) {
-            return R.fail("存在子菜单，不允许删除");
+            throw BusinessException.of(ResultCode.CONFLICT, "存在子菜单，不允许删除");
         }
 
         LambdaQueryWrapper<SysRolePermission> rolePermWrapper = new LambdaQueryWrapper<>();
         rolePermWrapper.eq(SysRolePermission::getPermissionId, menuId);
         if (rolePermissionMapper.selectCount(rolePermWrapper) > 0) {
-            return R.fail("菜单已分配给角色，不允许删除");
+            throw BusinessException.of(ResultCode.CONFLICT, "菜单已分配给角色，不允许删除");
         }
 
-        boolean result = permissionService.removeById(menuId);
-        if (result) {
-            LambdaQueryWrapper<SysRoleInheritedPermission> inheritedWrapper = new LambdaQueryWrapper<>();
-            inheritedWrapper.eq(SysRoleInheritedPermission::getPermissionId, menuId);
-            inheritedPermissionMapper.delete(inheritedWrapper);
-            return R.ok("删除成功");
-        }
-        return R.fail("删除失败");
+        ensureSuccess(permissionService.removeById(menuId), "删除失败");
+        LambdaQueryWrapper<SysRoleInheritedPermission> inheritedWrapper = new LambdaQueryWrapper<>();
+        inheritedWrapper.eq(SysRoleInheritedPermission::getPermissionId, menuId);
+        inheritedPermissionMapper.delete(inheritedWrapper);
+        return R.ok("删除成功");
     }
 
     /**
@@ -276,6 +272,19 @@ public class SysMenuController {
     private void normalizeMenuParent(SysPermission menu) {
         if (ObjectUtil.isNull(menu.getParentId())) {
             menu.setParentId(0L);
+        }
+    }
+
+    private SysPermission requireMenu(SysPermission menu) {
+        if (menu == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "菜单不存在");
+        }
+        return menu;
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
         }
     }
 

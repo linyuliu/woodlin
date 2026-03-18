@@ -1,5 +1,7 @@
 package com.mumu.woodlin.admin.controller;
 
+import com.mumu.woodlin.common.enums.ResultCode;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.security.dto.ChangePasswordRequest;
 import com.mumu.woodlin.security.dto.ForgotPasswordRequest;
@@ -142,11 +144,8 @@ public class AuthController {
     )
     public R<Void> sendSmsCode(@NotBlank(message = "手机号不能为空") @RequestParam String mobile) {
         boolean success = smsService.sendSmsCode(mobile);
-        if (success) {
-            return R.ok("短信验证码已发送");
-        } else {
-            return R.fail("短信验证码发送失败");
-        }
+        ensureSuccess(success, ResultCode.EXTERNAL_SERVICE_ERROR, "短信验证码发送失败");
+        return R.ok("短信验证码已发送");
     }
 
     /**
@@ -160,10 +159,16 @@ public class AuthController {
     public R<List<RouteVO>> getUserRoutes() {
         Long userId = SecurityUtil.getUserId();
         if (userId == null) {
-            return R.fail("用户未登录");
+            throw BusinessException.of(ResultCode.UNAUTHORIZED, "用户未登录");
         }
         List<RouteVO> routes = permissionService.selectRoutesByUserId(userId);
         return R.ok(routes);
+    }
+
+    private void ensureSuccess(boolean result, ResultCode resultCode, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(resultCode, failureMessage);
+        }
     }
 
 }

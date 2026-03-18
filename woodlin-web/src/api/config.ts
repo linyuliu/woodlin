@@ -33,10 +33,31 @@ export interface ConfigUpdateDto {
  * 构建信息
  */
 export interface BuildInfo {
-  version: string
+  buildTime: string
+  buildUser?: string
+  buildHost?: string
+  buildVersion: string
+  gitBranch?: string
+  gitCommitId?: string
+  gitCommitIdAbbrev?: string
+  gitCommitTime?: string
+  gitCommitMessage?: string
+  gitCommitMessageShort?: string
+  gitCommitUserName?: string
+  gitCommitUserEmail?: string
+  gitTags?: string
+  gitTotalCommitCount?: string
+  gitDirty?: string
+  gitRemoteOriginUrl?: string
+}
+
+/**
+ * 向后兼容的构建信息视图
+ */
+export interface BuildInfoView extends BuildInfo {
+  version?: string
   buildTime: string
   gitCommit?: string
-  gitBranch?: string
   remoteUrl?: string
 }
 
@@ -67,7 +88,7 @@ export function getConfigValueByKey(configKey: string): Promise<string> {
  * 根据配置分类获取配置列表
  * @param category 配置分类（如：api.encryption, password.policy）
  */
-export function getConfigsByCategory(category: string): Promise<SysConfig[]> {
+export function getConfigsByCategory(category: string): Promise<Record<string, string>> {
   return request.get(`/system/config/category/${category}`)
 }
 
@@ -142,4 +163,3 @@ export function evictConfigCache(): Promise<void> {
 export function warmupConfigCache(): Promise<void> {
   return request.post('/system/config/cache/warmup')
 }
-

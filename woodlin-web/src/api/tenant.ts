@@ -1,18 +1,7 @@
-/**
- * 租户管理API服务
- * 
- * @author mumu
- * @description 租户管理相关的API接口调用
- * @since 2025-01-01
- */
-
 import request from '@/utils/request'
 
-/**
- * 租户数据类型
- */
 export interface SysTenant {
-  tenantId?: number
+  tenantId?: string
   tenantName: string
   tenantCode: string
   contactName?: string
@@ -20,15 +9,12 @@ export interface SysTenant {
   contactEmail?: string
   status?: string
   expireTime?: string
-  maxUsers?: number
+  userLimit?: number
   remark?: string
   createTime?: string
   updateTime?: string
 }
 
-/**
- * 租户列表查询参数
- */
 export interface TenantListParams {
   pageNum?: number
   pageSize?: number
@@ -37,73 +23,60 @@ export interface TenantListParams {
   status?: string
 }
 
-/**
- * 分页查询租户列表
- * @param params 查询参数
- */
-export function getTenantList(params: TenantListParams) {
+export interface PageResult<T> {
+  code?: number
+  message?: string
+  data: T[]
+  current: number
+  size: number
+  total: number
+  pages: number
+  hasPrevious?: boolean
+  hasNext?: boolean
+}
+
+export function getTenantList(params: TenantListParams): Promise<PageResult<SysTenant>> {
   return request({
     url: '/system/tenant/list',
     method: 'get',
     params
-  })
+  }) as Promise<PageResult<SysTenant>>
 }
 
-/**
- * 根据租户ID获取详细信息
- * @param tenantId 租户ID
- */
-export function getTenantById(tenantId: number) {
+export function getTenantById(tenantId: string): Promise<SysTenant> {
   return request({
     url: `/system/tenant/${tenantId}`,
     method: 'get'
-  })
+  }) as Promise<SysTenant>
 }
 
-/**
- * 新增租户
- * @param data 租户数据
- */
-export function addTenant(data: SysTenant) {
+export function addTenant(data: SysTenant): Promise<void> {
   return request({
     url: '/system/tenant',
     method: 'post',
     data
-  })
+  }) as Promise<void>
 }
 
-/**
- * 修改租户
- * @param data 租户数据
- */
-export function updateTenant(data: SysTenant) {
+export function updateTenant(data: SysTenant): Promise<void> {
   return request({
     url: '/system/tenant',
     method: 'put',
     data
-  })
+  }) as Promise<void>
 }
 
-/**
- * 删除租户
- * @param tenantIds 租户ID，多个用逗号分隔
- */
-export function deleteTenant(tenantIds: string) {
+export function deleteTenant(tenantIds: string): Promise<void> {
   return request({
     url: `/system/tenant/${tenantIds}`,
     method: 'delete'
-  })
+  }) as Promise<void>
 }
 
-/**
- * 启用/禁用租户
- * @param tenantId 租户ID
- * @param status 状态 (0-停用, 1-启用)
- */
-export function changeTenantStatus(tenantId: number, status: string) {
+export function changeTenantStatus(tenantId: string, status: string): Promise<void> {
   return request({
     url: `/system/tenant/changeStatus`,
     method: 'put',
     data: { tenantId, status }
-  })
+  }) as Promise<void>
 }

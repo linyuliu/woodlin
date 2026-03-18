@@ -1,158 +1,177 @@
-import { ref, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
+import { onMounted, onUnmounted, ref, type Ref } from 'vue'
+import { getConfig } from '@/config'
+import {
+  getActivityMonitoringConfig,
+  getActivityStatus,
+  recordUserInteraction,
+  type ActivityMonitoringConfig
+} from '@/api/security'
+import { logger } from '@/utils/logger'
 
-/**
- * 用户活动监控组合式函数
- * @description 监控用户的键盘、鼠标等交互活动，自动记录活动状态
- */
-export function useActivityMonitoring() {
-  const isEnabled = ref(false)
-  const config = ref({
-    enabled: true,
-    timeoutSeconds: 1800,
-    checkIntervalSeconds: 60,
-    monitorApiRequests: true,
-    monitorUserInteractions: true,
-    warningBeforeTimeoutSeconds: 300
+type ActivityMonitoringState = {
+  statusCheckTimer: number | null
+  lastActivityTime: number
+}
+
+const MONITORED_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'] as const
+const THROTTLE_DELAY = 5000
+const DEFAULT_CONFIG: ActivityMonitoringConfig = {
+  enabled: true,
+  timeoutSeconds: 1800,
+  checkIntervalSeconds: 60,
+  monitorApiRequests: true,
+  monitorUserInteractions: true,
+  warningBeforeTimeoutSeconds: 300
+}
+
+function createState(): ActivityMonitoringState {
+  return {
+    statusCheckTimer: null,
+    lastActivityTime: Date.now()
+  }
+}
+
+function createThrottledAction(action: () => void, delay: number): () => void {
+  let lastTime = 0
+
+  return () => {
+    const now = Date.now()
+    if (now - lastTime < delay) {
+      return
+    }
+
+    lastTime = now
+    action()
+  }
+}
+
+function toggleEventListeners(handler: () => void, action: 'add' | 'remove'): void {
+  MONITORED_EVENTS.forEach((eventName) => {
+    const method = action === 'add' ? 'addEventListener' : 'removeEventListener'
+    document[method](eventName, handler, true)
   })
+}
 
-  let statusCheckTimer: number | null = null
-  let lastActivityTime = Date.now()
+async function loadActivityConfig(
+  config: Ref<ActivityMonitoringConfig>,
+  isEnabled: Ref<boolean>
+): Promise<void> {
+  try {
+    const response = await getActivityMonitoringConfig()
+    config.value = response
+    isEnabled.value = response.enabled
+  } catch (error) {
+    logger.error('获取活动监控配置失败:', error)
+    isEnabled.value = false
+  }
+}
 
-  /**
-   * 记录用户交互活动
-   */
-  const recordInteraction = async () => {
+function createRecordInteraction(config: Ref<ActivityMonitoringConfig>, state: ActivityMonitoringState): () => Promise<void> {
+  return async () => {
     if (!config.value.enabled || !config.value.monitorUserInteractions) {
       return
     }
 
     try {
-      lastActivityTime = Date.now()
-      await axios.post('/api/security/activity-monitoring/record-interaction')
+      state.lastActivityTime = Date.now()
+      await recordUserInteraction()
     } catch (error) {
-      console.error('记录用户活动失败:', error)
+      logger.error('记录用户活动失败:', error)
     }
   }
+}
 
-  /**
-   * 节流函数,避免频繁调用
-   */
-  const throttleRecordInteraction = (() => {
-    let lastTime = 0
-    const delay = 5000
-
-    return () => {
-      const now = Date.now()
-      if (now - lastTime >= delay) {
-        lastTime = now
-        recordInteraction()
-      }
-    }
-  })()
-
-  /**
-   * 检查活动状态
-   */
-  const checkActivityStatus = async () => {
+function createStatusChecker(config: Ref<ActivityMonitoringConfig>): () => Promise<void> {
+  return async () => {
     if (!config.value.enabled) {
       return
     }
 
     try {
-      await axios.get('/api/security/activity-monitoring/status')
-    } catch (error: unknown) {
-      const err = error as { response?: { status?: number } }
-      if (err.response?.status === 401) {
-        window.location.href = '/login?reason=timeout'
+      const response = await getActivityStatus()
+      if (response.status === 'timeout') {
+        window.location.href = `${getConfig().router.loginPath}?reason=timeout`
       }
-    }
-  }
-
-  /**
-   * 获取配置信息
-   */
-  const loadConfig = async () => {
-    try {
-      const response = await axios.get('/api/security/activity-monitoring/config')
-      config.value = response.data
-      isEnabled.value = config.value.enabled
     } catch (error) {
-      console.error('获取活动监控配置失败:', error)
-      isEnabled.value = false
+      logger.error('检查用户活动状态失败:', error)
     }
   }
+}
 
-  // 开始监控
-  const startMonitoring = () => {
+function createMonitoringController(
+  config: Ref<ActivityMonitoringConfig>,
+  isEnabled: Ref<boolean>,
+  state: ActivityMonitoringState,
+  recordInteraction: () => void,
+  checkActivityStatus: () => Promise<void>
+) {
+  const startMonitoring = (): void => {
     if (!isEnabled.value) {
       return
     }
 
-    // 监听用户交互事件
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart']
-    
-    events.forEach(event => {
-      document.addEventListener(event, throttleRecordInteraction, true)
-    })
-
-    // 定期检查状态
+    toggleEventListeners(recordInteraction, 'add')
     if (config.value.checkIntervalSeconds > 0) {
-      statusCheckTimer = window.setInterval(
-        checkActivityStatus, 
-        config.value.checkIntervalSeconds * 1000
-      )
+      state.statusCheckTimer = window.setInterval(checkActivityStatus, config.value.checkIntervalSeconds * 1000)
     }
   }
 
-  // 停止监控
-  const stopMonitoring = () => {
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart']
-    
-    events.forEach(event => {
-      document.removeEventListener(event, throttleRecordInteraction, true)
-    })
-
-    if (statusCheckTimer) {
-      clearInterval(statusCheckTimer)
-      statusCheckTimer = null
+  const stopMonitoring = (): void => {
+    toggleEventListeners(recordInteraction, 'remove')
+    if (state.statusCheckTimer !== null) {
+      clearInterval(state.statusCheckTimer)
+      state.statusCheckTimer = null
     }
   }
 
-  // 获取剩余时间（秒）
-  const getRemainingTime = () => {
+  return { startMonitoring, stopMonitoring }
+}
+
+function createRemainingTimeGetter(config: Ref<ActivityMonitoringConfig>, state: ActivityMonitoringState): () => number {
+  return () => {
     if (!config.value.enabled || config.value.timeoutSeconds <= 0) {
       return -1
     }
 
-    const elapsed = Math.floor((Date.now() - lastActivityTime) / 1000)
-    const remaining = config.value.timeoutSeconds - elapsed
-    return Math.max(0, remaining)
+    const elapsed = Math.floor((Date.now() - state.lastActivityTime) / 1000)
+    return Math.max(0, config.value.timeoutSeconds - elapsed)
   }
+}
 
-  // 检查是否需要警告
+export function useActivityMonitoring() {
+  const isEnabled = ref(false)
+  const config = ref<ActivityMonitoringConfig>({ ...DEFAULT_CONFIG })
+  const state = createState()
+  const recordInteraction = createRecordInteraction(config, state)
+  const throttledRecordInteraction = createThrottledAction(() => void recordInteraction(), THROTTLE_DELAY)
+  const checkActivityStatus = createStatusChecker(config)
+  const { startMonitoring, stopMonitoring } = createMonitoringController(
+    config,
+    isEnabled,
+    state,
+    throttledRecordInteraction,
+    checkActivityStatus
+  )
+  const getRemainingTime = createRemainingTimeGetter(config, state)
   const shouldShowWarning = () => {
     const remaining = getRemainingTime()
     return remaining > 0 && remaining <= config.value.warningBeforeTimeoutSeconds
   }
 
   onMounted(async () => {
-    await loadConfig()
+    await loadActivityConfig(config, isEnabled)
     if (isEnabled.value) {
       startMonitoring()
     }
   })
-
-  onUnmounted(() => {
-    stopMonitoring()
-  })
+  onUnmounted(() => stopMonitoring())
 
   return {
     isEnabled,
     config,
     getRemainingTime,
     shouldShowWarning,
-    recordInteraction: throttleRecordInteraction,
+    recordInteraction: throttledRecordInteraction,
     startMonitoring,
     stopMonitoring
   }

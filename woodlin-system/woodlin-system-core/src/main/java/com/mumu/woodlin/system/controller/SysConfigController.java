@@ -23,7 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.entity.BuildInfo;
 import com.mumu.woodlin.common.service.BuildInfoService;
 import com.mumu.woodlin.system.dto.ConfigBatchUpdateDto;
@@ -73,10 +75,7 @@ public class SysConfigController {
             @Parameter(description = "配置键名", required = true, example = "api.encryption.enabled") 
             @PathVariable String configKey) {
         SysConfig config = configService.getByKeyWithCache(configKey);
-        if (config == null) {
-            return R.fail("配置不存在");
-        }
-        return R.ok(config);
+        return R.ok(requireConfig(config));
     }
     
     /**
@@ -92,7 +91,7 @@ public class SysConfigController {
             @PathVariable String configKey) {
         String value = configService.getConfigValueByKey(configKey);
         if (value == null) {
-            return R.fail("配置不存在");
+            throw BusinessException.of(ResultCode.NOT_FOUND, "配置不存在");
         }
         return R.ok(value);
     }
@@ -134,10 +133,7 @@ public class SysConfigController {
             @Parameter(description = "配置ID", required = true, example = "1") 
             @PathVariable Long configId) {
         SysConfig config = configService.getById(configId);
-        if (config == null) {
-            return R.fail("配置不存在");
-        }
-        return R.ok(config);
+        return R.ok(requireConfig(config));
     }
     
     /**
@@ -155,16 +151,12 @@ public class SysConfigController {
         wrapper.eq(SysConfig::getDeleted, "0");
         long count = configService.count(wrapper);
         if (count > 0) {
-            return R.fail("配置键名已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "配置键名已存在");
         }
         
-        boolean result = configService.save(config);
-        if (result) {
-            // 清除缓存
-            configService.evictCache();
-            return R.ok("新增配置成功");
-        }
-        return R.fail("新增配置失败");
+        ensureSuccess(configService.save(config), "新增配置失败");
+        configService.evictCache();
+        return R.ok("新增配置成功");
     }
     
     /**
@@ -177,14 +169,12 @@ public class SysConfigController {
     )
     public R<Void> update(@Valid @RequestBody SysConfig config) {
         if (config.getConfigId() == null) {
-            return R.fail("配置ID不能为空");
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "配置ID不能为空");
         }
         
         // 检查配置是否存在
         SysConfig existConfig = configService.getById(config.getConfigId());
-        if (existConfig == null) {
-            return R.fail("配置不存在");
-        }
+        requireConfig(existConfig);
         
         // 检查配置键名唯一性（排除自己）
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
@@ -193,16 +183,12 @@ public class SysConfigController {
         wrapper.eq(SysConfig::getDeleted, "0");
         long count = configService.count(wrapper);
         if (count > 0) {
-            return R.fail("配置键名已存在");
+            throw BusinessException.of(ResultCode.CONFLICT, "配置键名已存在");
         }
         
-        boolean result = configService.updateById(config);
-        if (result) {
-            // 清除缓存
-            configService.evictCache();
-            return R.ok("修改配置成功");
-        }
-        return R.fail("修改配置失败");
+        ensureSuccess(configService.updateById(config), "修改配置失败");
+        configService.evictCache();
+        return R.ok("修改配置成功");
     }
     
     /**
@@ -220,18 +206,12 @@ public class SysConfigController {
             @RequestParam String configValue) {
         
         SysConfig config = configService.getByKeyWithCache(configKey);
-        if (config == null) {
-            return R.fail("配置不存在");
-        }
+        requireConfig(config);
         
         config.setConfigValue(configValue);
-        boolean result = configService.updateById(config);
-        if (result) {
-            // 清除缓存
-            configService.evictCache();
-            return R.ok("更新配置成功");
-        }
-        return R.fail("更新配置失败");
+        ensureSuccess(configService.updateById(config), "更新配置失败");
+        configService.evictCache();
+        return R.ok("更新配置成功");
     }
     
     /**
@@ -244,7 +224,7 @@ public class SysConfigController {
     )
     public R<Void> batchUpdate(@Valid @RequestBody ConfigBatchUpdateDto dto) {
         if (dto.getConfigs() == null || dto.getConfigs().isEmpty()) {
-            return R.fail("配置项不能为空");
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "配置项不能为空");
         }
         
         int successCount = 0;
@@ -314,14 +294,9 @@ public class SysConfigController {
             @PathVariable String configIds) {
         
         List<String> idList = Arrays.asList(configIds.split(","));
-        boolean result = configService.removeByIds(idList);
-        
-        if (result) {
-            // 清除缓存
-            configService.evictCache();
-            return R.ok("删除配置成功");
-        }
-        return R.fail("删除配置失败");
+        ensureSuccess(configService.removeByIds(idList), "删除配置失败");
+        configService.evictCache();
+        return R.ok("删除配置成功");
     }
     
     /**
@@ -364,5 +339,18 @@ public class SysConfigController {
     public R<BuildInfo> getBuildInfo() {
         BuildInfo buildInfo = buildInfoService.getBuildInfo();
         return R.ok(buildInfo);
+    }
+
+    private SysConfig requireConfig(SysConfig config) {
+        if (config == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "配置不存在");
+        }
+        return config;
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
+        }
     }
 }

@@ -2,6 +2,8 @@ package com.mumu.woodlin.system.controller;
 
 import java.util.List;
 
+import com.mumu.woodlin.common.enums.ResultCode;
+import com.mumu.woodlin.common.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +62,8 @@ public class SysDictController {
     @Operation(summary = "删除字典类型")
     public R<Void> removeType(@PathVariable Long dictId) {
         boolean removed = dictionaryService.removeDictType(dictId);
-        return removed ? R.ok("删除成功") : R.fail("字典类型不存在");
+        ensureSuccess(removed, "字典类型不存在");
+        return R.ok("删除成功");
     }
 
     @GetMapping("/data")
@@ -86,6 +89,13 @@ public class SysDictController {
     @Operation(summary = "删除字典项")
     public R<Void> removeData(@PathVariable Long dataId) {
         boolean removed = dictionaryService.removeDictData(dataId);
-        return removed ? R.ok("删除成功") : R.fail("字典数据不存在");
+        ensureSuccess(removed, "字典数据不存在");
+        return R.ok("删除成功");
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, failureMessage);
+        }
     }
 }

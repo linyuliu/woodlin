@@ -40,6 +40,12 @@
             <artifactId>woodlin-common</artifactId>
         </dependency>
 
+        <!-- Woodlin Security -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-security</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

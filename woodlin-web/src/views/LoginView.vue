@@ -58,6 +58,38 @@ const handleToggleTheme = () => {
   appStore.toggleThemeMode()
 }
 
+const getRedirectPath = () => (route.query.redirect as string) || '/'
+
+const buildLoginRequest = (): LoginRequest => ({
+  loginType: 'password',
+  username: loginForm.value.username,
+  password: loginForm.value.password,
+  rememberMe: loginForm.value.rememberMe
+})
+
+const resolveLoginErrorMessage = (error: unknown): string => {
+  const err = error as { response?: { data?: { message?: string } }; message?: string }
+  return err.response?.data?.message || err.message || '登录失败，请检查用户名和密码'
+}
+
+const handleLoginSuccess = async (data: Awaited<ReturnType<typeof authStore.doLogin>>) => {
+  if (data.requirePasswordChange) {
+    passwordChangeRequired.value = true
+    passwordChangeMessage.value = data.message || '需要修改密码'
+    passwordChangeMessageType.value = 'warning'
+    showPasswordChange.value = true
+    return
+  }
+
+  if (data.passwordExpiringSoon) {
+    message.warning(`${data.message}，建议及时修改密码`)
+  } else {
+    message.success('登录成功')
+  }
+
+  await router.push(getRedirectPath())
+}
+
 const handleLogin = async () => {
   if (!loginForm.value.username || !loginForm.value.password) {
     message.error('请输入用户名和密码')
@@ -67,55 +99,26 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-    const loginRequest: LoginRequest = {
-      loginType: 'password',
-      username: loginForm.value.username,
-      password: loginForm.value.password,
-      rememberMe: loginForm.value.rememberMe
-    }
-
-    const data = await authStore.doLogin(loginRequest)
-
-    if (data.requirePasswordChange) {
-      passwordChangeRequired.value = true
-      passwordChangeMessage.value = data.message || '需要修改密码'
-      passwordChangeMessageType.value = 'warning'
-      showPasswordChange.value = true
-    } else if (data.passwordExpiringSoon) {
-      message.warning(`${data.message}，建议及时修改密码`)
-      const redirect = (route.query.redirect as string) || '/'
-      router.push(redirect)
-    } else {
-      message.success('登录成功')
-      const redirect = (route.query.redirect as string) || '/'
-      router.push(redirect)
-    }
+    const data = await authStore.doLogin(buildLoginRequest())
+    await handleLoginSuccess(data)
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } }; message?: string }
-    if (err.response?.data?.message) {
-      message.error(err.response.data.message)
-    } else if (err.message) {
-      message.error(err.message)
-    } else {
-      message.error('登录失败，请检查用户名和密码')
-    }
+    message.error(resolveLoginErrorMessage(error))
   } finally {
     loading.value = false
   }
 }
 
 const handlePasswordChangeSuccess = () => {
-  message.success('密码修改成功，正在跳转...')
-  setTimeout(() => {
-    const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
-  }, 1000)
+  passwordChangeRequired.value = false
+  passwordChangeMessage.value = '密码已修改，请使用新密码重新登录'
+  passwordChangeMessageType.value = 'info'
+  loginForm.value.password = ''
+  message.success('密码修改成功，请重新登录')
 }
 
 const handlePasswordChangeCancel = () => {
   if (!passwordChangeRequired.value) {
-    const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
+    router.push(getRedirectPath())
   }
 }
 </script>
@@ -217,7 +220,7 @@ const handlePasswordChangeCancel = () => {
     <PasswordChangeDialog
       v-model:show="showPasswordChange"
       :required="passwordChangeRequired"
-      :message="passwordChangeMessage"
+      :message-text="passwordChangeMessage"
       :messageType="passwordChangeMessageType"
       @success="handlePasswordChangeSuccess"
       @cancel="handlePasswordChangeCancel"

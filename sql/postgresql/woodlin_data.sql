@@ -84,7 +84,6 @@ INSERT INTO sys_permission VALUES
 (201, 3, '角色新增', 'system:role:add', 'F', '', '', '#', 2, '1', '0', '0', '1', '', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 (202, 3, '角色修改', 'system:role:edit', 'F', '', '', '#', 3, '1', '0', '0', '1', '', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 (203, 3, '角色删除', 'system:role:remove', 'F', '', '', '#', 4, '1', '0', '0', '1', '', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
-(204, 3, '角色导出', 'system:role:export', 'F', '', '', '#', 5, '1', '0', '0', '1', '', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 
 -- 菜单管理权限
 (300, 4, '菜单查询', 'system:menu:list', 'F', '', '', '#', 1, '1', '0', '0', '1', '', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
@@ -124,14 +123,18 @@ INSERT INTO sys_permission VALUES
  CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 (2104, 2001, '测试连接', 'datasource:test', 'F', '', '', '#', 4, '1', '0', '0', '1', '测试连接按钮', 'system',
  CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
-(2105, 2001, '元数据访问', 'datasource:metadata', 'F', '', '', '#', 5, '1', '0', '0', '1', '元数据接口权限', 'system',
- CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 
 -- 租户管理
 (3000, 0, '租户管理', 'tenant', 'M', 'tenant', NULL, 'home-outline', 3, '1', '0', '0', '1', '租户管理目录', 'system',
  CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 (3001, 3000, '租户列表', 'tenant:list', 'C', 'list', 'tenant/TenantView', 'list-outline', 1, '1', '0', '0', '1',
  '租户列表页面', 'system', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(3101, 3001, '租户新增', 'tenant:add', 'F', '', '', '#', 1, '1', '0', '0', '1', '新增租户按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(3102, 3001, '租户修改', 'tenant:edit', 'F', '', '', '#', 2, '1', '0', '0', '1', '修改租户按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
+(3103, 3001, '租户删除', 'tenant:remove', 'F', '', '', '#', 3, '1', '0', '0', '1', '删除租户按钮', 'system',
+ CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0'),
 
 -- 文件管理
 (4000, 0, '文件管理', 'file', 'M', 'file', NULL, 'folder-outline', 4, '1', '0', '0', '1', '文件管理目录', 'system',
@@ -178,7 +181,7 @@ INSERT INTO sys_role_permission VALUES
 (1, 7),
 (1, 8),
 (1, 100), (1, 101), (1, 102), (1, 103), (1, 104), (1, 105), (1, 106),
-(1, 200), (1, 201), (1, 202), (1, 203), (1, 204),
+(1, 200), (1, 201), (1, 202), (1, 203),
 (1, 300), (1, 301), (1, 302), (1, 303),
 (1, 400), (1, 401), (1, 402), (1, 403),
 -- 仪表板
@@ -190,10 +193,12 @@ INSERT INTO sys_role_permission VALUES
 (1, 2102),
 (1, 2103),
 (1, 2104),
-(1, 2105),
 -- 租户管理
 (1, 3000),
 (1, 3001),
+(1, 3101),
+(1, 3102),
+(1, 3103),
 -- 文件管理
 (1, 4000),
 (1, 4001),

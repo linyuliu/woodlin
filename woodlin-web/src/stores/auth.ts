@@ -231,7 +231,7 @@ function createDoLogoutAction(deps: AuthDependencies, clearToken: () => void) {
  */
 function createRefreshTokenAction() {
   return async () => {
-    console.warn('TODO: 实现Token刷新逻辑')
+    logger.warn('Token刷新逻辑尚未接入，当前跳过自动刷新')
   }
 }
 

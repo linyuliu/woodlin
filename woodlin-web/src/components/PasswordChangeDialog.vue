@@ -62,9 +62,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
-import { NModal, NForm, NFormItem, NInput, NIcon, useMessage } from 'naive-ui'
+import { NModal, NForm, NFormItem, NInput, NIcon, useMessage, type FormInst } from 'naive-ui'
 import { InformationCircle } from '@vicons/ionicons5'
-import axios, {type AxiosError} from 'axios'
+import { changePassword } from '@/api/auth'
 
 interface Props {
   show: boolean
@@ -90,7 +90,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const message = useMessage()
-const formRef = ref()
+const formRef = ref<FormInst | null>(null)
 
 const visible = computed({
   get: () => props.show,
@@ -206,24 +206,20 @@ const resetForm = () => {
 const handleConfirm = async () => {
   try {
     await formRef.value?.validate()
-    
-    await axios.post('/api/auth/change-password', {
+
+    await changePassword({
       oldPassword: form.oldPassword,
       newPassword: form.newPassword,
       confirmPassword: form.confirmPassword
     })
-    
-    message.success('密码修改成功')
+
+    message.success('密码修改成功，请重新登录')
     resetForm()
     emit('success')
     visible.value = false
   } catch (error) {
-    const axiosError = error as AxiosError<{message?: string}>
-    if (axiosError.response?.data?.message) {
-      message.error(axiosError.response.data.message)
-    } else {
-      message.error('密码修改失败，请重试')
-    }
+    const errorMessage = error instanceof Error ? error.message : '密码修改失败，请重试'
+    message.error(errorMessage)
   }
 }
 

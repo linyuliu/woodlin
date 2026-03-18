@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mumu.woodlin.common.enums.ResultCode;
+import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.file.entity.SysFile;
 import com.mumu.woodlin.file.service.ISysFileService;
@@ -72,10 +74,7 @@ public class FileManageController {
         @Parameter(description = "文件ID") @PathVariable Long fileId
     ) {
         SysFile file = fileService.getById(fileId);
-        if (file == null) {
-            return R.fail("文件不存在");
-        }
-        return R.ok(file);
+        return R.ok(requireFile(file));
     }
     
     /**
@@ -134,7 +133,8 @@ public class FileManageController {
     ) {
         log.info("删除文件: fileId={}", fileId);
         boolean success = fileService.deleteFile(fileId);
-        return success ? R.ok(true) : R.fail("删除失败");
+        ensureSuccess(success, "删除失败");
+        return R.ok(true);
     }
     
     /**
@@ -184,5 +184,18 @@ public class FileManageController {
                 .like(SysFile::getOriginalName, keyword)
         );
         return R.ok(page);
+    }
+
+    private SysFile requireFile(SysFile file) {
+        if (file == null) {
+            throw BusinessException.of(ResultCode.FILE_NOT_FOUND, "文件不存在");
+        }
+        return file;
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
+        }
     }
 }

@@ -14,6 +14,7 @@ withDefaults(defineProps<{
   /** 是否显示搜索区域 */
   showSearch?: boolean
 }>(), {
+  title: '',
   showSearch: true
 })
 </script>

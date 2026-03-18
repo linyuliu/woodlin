@@ -37,6 +37,7 @@ import {
 } from '@/api/menu'
 import { useUserStore } from '@/stores'
 import {PERMISSIONS} from '@/constants/permission-keys'
+import { logger } from '@/utils/logger'
 
 interface MenuSearchForm {
   menuName: string
@@ -162,7 +163,7 @@ const loadMenuTree = async () => {
       selectedKeys.value = []
     }
   } catch (error) {
-    console.error(error)
+    logger.error('加载菜单树失败', error)
     message.error('加载菜单树失败')
   } finally {
     loading.value = false
@@ -236,7 +237,7 @@ const openEdit = async () => {
     }
     modalVisible.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载菜单详情失败', error)
     message.error('加载菜单详情失败')
   } finally {
     loading.value = false
@@ -260,7 +261,7 @@ const handleDelete = async () => {
     selectedKeys.value = []
     await loadMenuTree()
   } catch (error) {
-    console.error(error)
+    logger.error('删除菜单失败', error)
     message.error('删除失败')
   } finally {
     loading.value = false
@@ -313,7 +314,7 @@ const submit = async () => {
     modalVisible.value = false
     await loadMenuTree()
   } catch (error) {
-    console.error(error)
+    logger.error('保存菜单失败', error)
     message.error('保存失败')
   } finally {
     loading.value = false

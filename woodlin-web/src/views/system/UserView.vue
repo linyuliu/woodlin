@@ -21,7 +21,10 @@ import {
 } from 'naive-ui'
 import {
   AddOutline,
+  CloudDownloadOutline,
+  CloudUploadOutline,
   CreateOutline,
+  DocumentTextOutline,
   KeyOutline,
   RefreshOutline,
   SearchOutline,
@@ -32,12 +35,17 @@ import { getRoleTree, type RoleTreeNode } from '@/api/role'
 import {
   addUser,
   deleteUser,
+  downloadUserImportTemplate,
+  exportUser,
   getUserById,
   getUserList,
+  importUserData,
   resetUserPassword,
   updateUser,
-  type SysUser
+  type SysUser,
+  type UserListParams
 } from '@/api/user'
+import { logger } from '@/utils/logger'
 import { useUserStore } from '@/stores'
 import {PERMISSIONS} from '@/constants/permission-keys'
 
@@ -73,6 +81,7 @@ const userList = ref<SysUser[]>([])
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
+const userImportInputRef = ref<HTMLInputElement | null>(null)
 
 const deptOptions = ref<SelectOption[]>([])
 const roleOptions = ref<SelectOption[]>([])
@@ -100,6 +109,8 @@ const canViewUsers = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.S
 const canCreateUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_ADD))
 const canUpdateUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_EDIT))
 const canDeleteUser = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_REMOVE))
+const canExportUsers = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_EXPORT))
+const canImportUsers = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_IMPORT))
 const canResetUserPassword = computed(() => userStore.hasPermission(PERMISSIONS.ACTION.SYSTEM_USER_RESET_PWD))
 const roleNameMap = computed(() => {
   const map = new Map<number, string>()
@@ -263,13 +274,51 @@ const columns: DataTableColumns<SysUser> = [
   }
 ]
 
+const USER_EXPORT_FILENAME = '用户列表.xlsx'
+const USER_IMPORT_TEMPLATE_FILENAME = '用户导入模板.xlsx'
+
+const buildUserListParams = (): UserListParams => ({
+  pageNum: pageNum.value,
+  pageSize: pageSize.value,
+  username: searchForm.value.username.trim() || undefined,
+  nickname: searchForm.value.nickname.trim() || undefined
+})
+
+const downloadBlob = (blob: Blob, fileName: string) => {
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(downloadUrl)
+}
+
+const resolveDownloadBlob = async (blob: Blob): Promise<Blob> => {
+  if (!blob.type.includes('application/json')) {
+    return blob
+  }
+
+  const text = await blob.text()
+  try {
+    const payload = JSON.parse(text) as { message?: string }
+    throw new Error(payload.message || '文件下载失败')
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('文件下载失败')
+  }
+}
+
 const loadBaseOptions = async () => {
   try {
     const [roles, depts] = await Promise.all([getRoleTree(), getDeptTree()])
     roleOptions.value = flattenRoleTree(roles)
     deptOptions.value = flattenDeptTree(depts)
   } catch (error) {
-    console.error(error)
+    logger.error('加载角色/部门选项失败', error)
     message.error('加载角色/部门选项失败')
   }
 }
@@ -282,12 +331,7 @@ const loadUserList = async () => {
   }
   loading.value = true
   try {
-    const result = await getUserList({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-      username: searchForm.value.username.trim() || undefined,
-      nickname: searchForm.value.nickname.trim() || undefined
-    })
+    const result = await getUserList(buildUserListParams())
 
     const users = result.data || []
     const enriched = await enrichUserRoles(users)
@@ -295,11 +339,96 @@ const loadUserList = async () => {
     userList.value = enriched
     total.value = result.total || 0
   } catch (error) {
-    console.error(error)
+    logger.error('加载用户列表失败', error)
     message.error('加载用户列表失败')
   } finally {
     loading.value = false
   }
+}
+
+const handleExportUsers = async () => {
+  if (!canExportUsers.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_EXPORT} 权限`)
+    return
+  }
+
+  loading.value = true
+  try {
+    const blob = await resolveDownloadBlob(await exportUser(buildUserListParams()))
+    downloadBlob(blob, USER_EXPORT_FILENAME)
+    message.success('导出成功')
+  } catch (error) {
+    logger.error('导出用户列表失败', error)
+    message.error('导出失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleDownloadImportTemplate = async () => {
+  if (!canImportUsers.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_IMPORT} 权限`)
+    return
+  }
+
+  loading.value = true
+  try {
+    const blob = await resolveDownloadBlob(await downloadUserImportTemplate())
+    downloadBlob(blob, USER_IMPORT_TEMPLATE_FILENAME)
+    message.success('模板下载成功')
+  } catch (error) {
+    logger.error('下载用户导入模板失败', error)
+    message.error('模板下载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const triggerUserImport = () => {
+  if (!canImportUsers.value) {
+    message.warning(`缺少 ${PERMISSIONS.ACTION.SYSTEM_USER_IMPORT} 权限`)
+    return
+  }
+  userImportInputRef.value?.click()
+}
+
+const resetImportInput = (input: HTMLInputElement | null) => {
+  if (input) {
+    input.value = ''
+  }
+}
+
+const handleImportFileChange = (event: Event) => {
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0]
+  if (!file) {
+    resetImportInput(input)
+    return
+  }
+
+  dialog.warning({
+    title: '导入用户',
+    content: `确认导入文件 ${file.name}？当前按新增模式导入，已存在用户不会覆盖。`,
+    positiveText: '开始导入',
+    negativeText: '取消',
+    async onPositiveClick() {
+      loading.value = true
+      try {
+        const result = await importUserData(file, false)
+        message.success(result || '导入成功')
+        await Promise.all([loadBaseOptions(), loadUserList()])
+      } catch (error) {
+        logger.error('导入用户失败', error)
+        message.error('导入失败')
+      } finally {
+        loading.value = false
+        resetImportInput(input)
+      }
+    },
+    onNegativeClick() {
+      resetImportInput(input)
+    }
+  })
 }
 
 const enrichUserRoles = async (users: SysUser[]): Promise<SysUser[]> => {
@@ -385,7 +514,7 @@ const openEdit = async (row: SysUser) => {
     }
     userModalVisible.value = true
   } catch (error) {
-    console.error(error)
+    logger.error('加载用户详情失败', error)
     message.error('加载用户详情失败')
   } finally {
     loading.value = false
@@ -428,7 +557,7 @@ const submitUser = async () => {
     userModalVisible.value = false
     await loadUserList()
   } catch (error) {
-    console.error(error)
+    logger.error('保存用户失败', error)
     message.error('保存失败')
   } finally {
     loading.value = false
@@ -453,7 +582,7 @@ const openResetPwd = (row: SysUser) => {
         await resetUserPassword(row.userId as number, '12345678')
         message.success('密码重置成功')
       } catch (error) {
-        console.error(error)
+        logger.error('重置用户密码失败', error)
         message.error('密码重置失败')
       }
     }
@@ -475,7 +604,7 @@ const handleDelete = async (row: SysUser) => {
     message.success('删除成功')
     await loadUserList()
   } catch (error) {
-    console.error(error)
+    logger.error('删除用户失败', error)
     message.error('删除失败')
   } finally {
     loading.value = false
@@ -568,6 +697,24 @@ onMounted(async () => {
               </template>
               新增用户
             </NButton>
+            <NButton v-if="canExportUsers" secondary :loading="loading" @click="handleExportUsers">
+              <template #icon>
+                <NIcon><CloudDownloadOutline /></NIcon>
+              </template>
+              导出用户
+            </NButton>
+            <NButton v-if="canImportUsers" secondary :loading="loading" @click="handleDownloadImportTemplate">
+              <template #icon>
+                <NIcon><DocumentTextOutline /></NIcon>
+              </template>
+              下载模板
+            </NButton>
+            <NButton v-if="canImportUsers" type="primary" quaternary :loading="loading" @click="triggerUserImport">
+              <template #icon>
+                <NIcon><CloudUploadOutline /></NIcon>
+              </template>
+              导入用户
+            </NButton>
           </NSpace>
         </NFormItem>
       </NForm>
@@ -583,6 +730,14 @@ onMounted(async () => {
         striped
       />
     </NCard>
+
+    <input
+      ref="userImportInputRef"
+      accept=".xls,.xlsx"
+      class="hidden-file-input"
+      type="file"
+      @change="handleImportFileChange"
+    />
 
     <NModal
       v-model:show="userModalVisible"
@@ -664,6 +819,10 @@ onMounted(async () => {
 
 .hero-card {
   background: linear-gradient(120deg, #8b1e3f 0%, #c1292e 52%, #ea5f55 100%);
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 .hero-content {

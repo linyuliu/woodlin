@@ -306,15 +306,20 @@ function createCacheGuard(router: Router): void {
   router.beforeEach((to, from, next) => {
     const config = getConfig()
 
-    // 如果未启用路由缓存，直接放行
     if (!config.router.enableCache) {
       next()
       return
     }
 
-    // TODO: 实现页面缓存逻辑
-    // 可以使用keep-alive配合路由meta信息
-    // 参考: https://github.com/vbenjs/vue-vben-admin
+    if (to.meta?.keepAlive && !to.name) {
+      logger.warn(`路由 ${to.path} 配置了 keepAlive，但缺少稳定 name，已自动禁用缓存`)
+      to.meta.keepAlive = false
+    }
+
+    if (from.path !== to.path && to.meta?.keepAlive) {
+      logger.debug(`启用页面缓存: ${String(to.name || to.path)}`)
+    }
+
     next()
   })
 }

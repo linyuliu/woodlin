@@ -6,6 +6,8 @@
  * @since 2025-01-01
  */
 
+import {logger} from '@/utils/logger'
+
 /**
  * Base64编码
  * @param str 要编码的字符串
@@ -17,7 +19,7 @@ export function base64Encode(str: string): string {
       return String.fromCharCode(parseInt(p1, 16))
     }))
   } catch (error) {
-    console.error('Base64编码失败:', error)
+    logger.error('Base64编码失败', error)
     return str
   }
 }
@@ -33,7 +35,7 @@ export function base64Decode(str: string): string {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
     }).join(''))
   } catch (error) {
-    console.error('Base64解码失败:', error)
+    logger.error('Base64解码失败', error)
     return str
   }
 }
@@ -58,7 +60,7 @@ export function simpleEncrypt(data: unknown, key: string = 'woodlin_secret_key')
     
     return base64Encode(encrypted)
   } catch (error) {
-    console.error('加密失败:', error)
+    logger.error('加密失败', error)
     return String(data)
   }
 }
@@ -87,7 +89,7 @@ export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_k
       return decrypted
     }
   } catch (error) {
-    console.error('解密失败:', error)
+    logger.error('解密失败', error)
     return encrypted
   }
 }
@@ -123,7 +125,7 @@ export function simpleDecrypt(encrypted: string, key: string = 'woodlin_secret_k
  * @returns 加密后的字符串
  */
 export function rsaEncrypt(data: unknown, _publicKey?: string): string {
-  console.warn('TODO: 实现RSA加密，当前使用简单加密代替')
+  logger.warn('RSA加密尚未接入真实实现，当前回退到 simpleEncrypt')
   return simpleEncrypt(data)
 }
 
@@ -136,6 +138,6 @@ export function rsaEncrypt(data: unknown, _publicKey?: string): string {
  * @returns 解密后的数据
  */
 export function rsaDecrypt(encrypted: string, _privateKey?: string): unknown {
-  console.warn('TODO: 实现RSA解密，当前使用简单解密代替')
+  logger.warn('RSA解密尚未接入真实实现，当前回退到 simpleDecrypt')
   return simpleDecrypt(encrypted)
 }

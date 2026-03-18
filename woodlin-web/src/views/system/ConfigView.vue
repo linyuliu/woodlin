@@ -30,6 +30,7 @@ import {
   type BuildInfo,
   type SysConfig
 } from '@/api/config'
+import { logger } from '@/utils/logger'
 
 const message = useMessage()
 const loading = ref(false)
@@ -122,7 +123,7 @@ const loadConfigList = async () => {
   try {
     configList.value = await getConfigList()
   } catch (error) {
-    console.error(error)
+    logger.error('加载配置列表失败', error)
     message.error('加载配置列表失败')
   } finally {
     loading.value = false
@@ -133,7 +134,7 @@ const loadBuildInfo = async () => {
   try {
     buildInfo.value = await getBuildInfo()
   } catch (error) {
-    console.error(error)
+    logger.error('加载构建信息失败', error)
   }
 }
 
@@ -167,7 +168,7 @@ const handleSave = async () => {
     showEditModal.value = false
     await loadConfigList()
   } catch (error) {
-    console.error(error)
+    logger.error('保存配置失败', error)
     message.error('保存配置失败')
   } finally {
     loading.value = false
@@ -181,7 +182,7 @@ const handleDelete = async (configId: number) => {
     message.success('删除配置成功')
     await loadConfigList()
   } catch (error) {
-    console.error(error)
+    logger.error('删除配置失败', error)
     message.error('删除配置失败')
   } finally {
     loading.value = false
@@ -194,7 +195,7 @@ const handleEvictCache = async () => {
     await evictConfigCache()
     message.success('配置缓存已清除')
   } catch (error) {
-    console.error(error)
+    logger.error('清除配置缓存失败', error)
     message.error('清除配置缓存失败')
   } finally {
     loading.value = false
@@ -207,7 +208,7 @@ const handleWarmupCache = async () => {
     await warmupConfigCache()
     message.success('配置缓存预热完成')
   } catch (error) {
-    console.error(error)
+    logger.error('预热配置缓存失败', error)
     message.error('预热配置缓存失败')
   } finally {
     loading.value = false
@@ -245,7 +246,7 @@ onMounted(() => {
       </n-grid-item>
       <n-grid-item>
         <n-card :bordered="false" class="stat-card">
-          <n-statistic label="当前版本" :value="buildInfo?.version || '-'" />
+          <n-statistic label="当前版本" :value="buildInfo?.buildVersion || '-'" />
         </n-card>
       </n-grid-item>
     </n-grid>
@@ -253,7 +254,7 @@ onMounted(() => {
     <n-card v-if="buildInfo" :bordered="false" title="构建信息">
       <div class="build-info">
         <div class="info-item"><span class="label">构建时间</span><span class="value">{{ buildInfo.buildTime || '-' }}</span></div>
-        <div class="info-item"><span class="label">Git Commit</span><span class="value">{{ buildInfo.gitCommit || '-' }}</span></div>
+        <div class="info-item"><span class="label">Git Commit</span><span class="value">{{ buildInfo.gitCommitIdAbbrev || buildInfo.gitCommitId || '-' }}</span></div>
         <div class="info-item"><span class="label">Git Branch</span><span class="value">{{ buildInfo.gitBranch || '-' }}</span></div>
       </div>
     </n-card>

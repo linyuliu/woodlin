@@ -9,6 +9,7 @@
 import {ref, computed, nextTick, type ComputedRef, type Ref} from 'vue'
 import {defineStore} from 'pinia'
 import {getUserInfo, type UserInfoResponse} from '@/api/auth'
+import {logger} from '@/utils/logger'
 
 /**
  * 用户信息接口
@@ -124,7 +125,7 @@ function persistUserState(info: UserInfo) {
     localStorage.setItem(USER_ROLE_KEY, JSON.stringify(info.roles || []))
     localStorage.setItem(USER_SUPER_ADMIN_KEY, String(Boolean(info.superAdmin)))
   } catch (error) {
-    console.error('保存用户信息到localStorage失败:', error)
+    logger.error('保存用户信息到localStorage失败', error)
   }
 }
 
@@ -152,7 +153,7 @@ function restorePersistedUserState(state: UserStateRefs): boolean {
     state.isUserInfoLoaded.value = true
     return true
   } catch (error) {
-    console.error('从localStorage恢复用户信息失败:', error)
+    logger.error('从localStorage恢复用户信息失败', error)
   }
   return false
 }
@@ -167,7 +168,7 @@ function clearPersistedUserState() {
     localStorage.removeItem(USER_ROLE_KEY)
     localStorage.removeItem(USER_SUPER_ADMIN_KEY)
   } catch (error) {
-    console.error('清除localStorage用户信息失败:', error)
+    logger.error('清除localStorage用户信息失败', error)
   }
 }
 
@@ -231,7 +232,7 @@ function createFetchUserInfoAction(setUserInfo: (info: UserInfo) => void) {
       setUserInfo(info)
       return info
     } catch (error) {
-      console.error('获取用户信息失败:', error)
+      logger.error('获取用户信息失败', error)
       throw error
     }
   }

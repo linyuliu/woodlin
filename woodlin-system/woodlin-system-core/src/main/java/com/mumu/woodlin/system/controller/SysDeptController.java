@@ -69,7 +69,7 @@ public class SysDeptController {
     public R<SysDept> getInfo(
             @Parameter(description = "部门ID", required = true, example = "100") @PathVariable Long deptId) {
         requirePermission("system:dept:list");
-        return R.ok(deptService.selectDeptById(deptId));
+        return R.ok(requireDept(deptService.selectDeptById(deptId)));
     }
 
     /**
@@ -79,8 +79,8 @@ public class SysDeptController {
     @Operation(summary = "新增部门", description = "新增部门")
     public R<Void> add(@Valid @RequestBody SysDept dept) {
         requirePermission("system:dept:add");
-        boolean result = deptService.insertDept(dept);
-        return result ? R.ok("新增成功") : R.fail("新增失败");
+        ensureSuccess(deptService.insertDept(dept), "新增失败");
+        return R.ok("新增成功");
     }
 
     /**
@@ -90,8 +90,8 @@ public class SysDeptController {
     @Operation(summary = "修改部门", description = "修改部门")
     public R<Void> edit(@Valid @RequestBody SysDept dept) {
         requirePermission("system:dept:edit");
-        boolean result = deptService.updateDept(dept);
-        return result ? R.ok("修改成功") : R.fail("修改失败");
+        ensureSuccess(deptService.updateDept(dept), "修改失败");
+        return R.ok("修改成功");
     }
 
     /**
@@ -102,8 +102,8 @@ public class SysDeptController {
     public R<Void> remove(
             @Parameter(description = "部门ID", required = true, example = "100") @PathVariable Long deptId) {
         requirePermission("system:dept:remove");
-        boolean result = deptService.deleteDeptById(deptId);
-        return result ? R.ok("删除成功") : R.fail("删除失败");
+        ensureSuccess(deptService.deleteDeptById(deptId), "删除失败");
+        return R.ok("删除成功");
     }
 
     /**
@@ -112,6 +112,19 @@ public class SysDeptController {
     private void requirePermission(String permission) {
         if (!SecurityUtil.hasPermission(permission)) {
             throw BusinessException.of(ResultCode.PERMISSION_DENIED, "权限不足: " + permission);
+        }
+    }
+
+    private SysDept requireDept(SysDept dept) {
+        if (dept == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "部门不存在");
+        }
+        return dept;
+    }
+
+    private void ensureSuccess(boolean result, String failureMessage) {
+        if (!result) {
+            throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
         }
     }
 }
