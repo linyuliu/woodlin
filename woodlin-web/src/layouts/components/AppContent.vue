@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NLayoutContent, NSpin } from 'naive-ui'
-import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { getConfig } from '@/config'
-import { useAppStore } from '@/stores'
+import {computed} from 'vue'
+import {NLayoutContent, NSpin} from 'naive-ui'
+import type {RouteLocationNormalizedLoaded} from 'vue-router'
+import {getConfig} from '@/config'
+import {useAppStore} from '@/stores'
 
 const appStore = useAppStore()
 const loading = computed(() => appStore.loading)
@@ -30,16 +30,15 @@ const getTransientRouteKey = (route: RouteLocationNormalizedLoaded) => {
       <NSpin :show="loading" size="large" :description="loadingText">
         <router-view v-slot="{ Component, route }">
           <transition :name="transitionName" mode="out-in">
-            <KeepAlive>
+            <KeepAlive v-if="isCacheableRoute(route)">
               <component
                 :is="Component"
-                v-if="isCacheableRoute(route)"
                 :key="getCachedRouteKey(route)"
               />
             </KeepAlive>
             <component
               :is="Component"
-              v-if="!isCacheableRoute(route)"
+              v-else
               :key="getTransientRouteKey(route)"
             />
           </transition>
