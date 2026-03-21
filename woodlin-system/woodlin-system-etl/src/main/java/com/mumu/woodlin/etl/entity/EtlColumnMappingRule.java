@@ -106,6 +106,34 @@ public class EtlColumnMappingRule extends BaseEntity {
     private String mappingAction;
 
     /**
+     * 转换参数(JSON)。
+     */
+    @TableField("transform_params")
+    @Schema(description = "转换参数(JSON)")
+    private String transformParams;
+
+    /**
+     * 常量值。
+     */
+    @TableField("constant_value")
+    @Schema(description = "常量值")
+    private String constantValue;
+
+    /**
+     * 默认值。
+     */
+    @TableField("default_value")
+    @Schema(description = "默认值")
+    private String defaultValue;
+
+    /**
+     * 空值处理策略。
+     */
+    @TableField("empty_value_policy")
+    @Schema(description = "空值处理策略")
+    private String emptyValuePolicy;
+
+    /**
      * 顺序号。
      */
     @TableField("ordinal_position")
