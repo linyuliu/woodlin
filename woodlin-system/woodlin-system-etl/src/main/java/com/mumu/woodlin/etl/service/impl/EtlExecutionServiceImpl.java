@@ -35,6 +35,7 @@ import com.mumu.woodlin.etl.entity.EtlJob;
 import com.mumu.woodlin.etl.entity.EtlSyncCheckpoint;
 import com.mumu.woodlin.etl.entity.EtlTableStructureSnapshot;
 import com.mumu.woodlin.etl.enums.SyncMode;
+import com.mumu.woodlin.etl.model.EtlOfflineRuntimeConfig;
 import com.mumu.woodlin.etl.model.TableColumnMetadata;
 import com.mumu.woodlin.etl.model.TableSchemaMetadata;
 import com.mumu.woodlin.etl.service.EtlTableMetadataInspector;
@@ -65,6 +66,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
     private static final int DEFAULT_BATCH_SIZE = 1000;
     private static final int DEFAULT_BUCKET_SIZE = 64;
     private static final int MAX_IN_CLAUSE_SIZE = 900;
+    private static final Object SKIP_FIELD_SENTINEL = new Object();
 
     private final DynamicRoutingDataSource dynamicRoutingDataSource;
     private final InfraDatasourceService infraDatasourceService;
@@ -99,15 +101,16 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                 );
                 recordSnapshot(job, sourceMetadata, job.getSourceDatasource(), "SOURCE");
                 recordSnapshot(job, targetMetadata, job.getTargetDatasource(), "TARGET");
-                List<MappingSpec> mappings = resolveMappings(job, sourceMetadata, targetMetadata);
+                List<EtlColumnMappingRule> fieldRules = resolveFieldRules(job, sourceMetadata, targetMetadata);
+                EtlOfflineRuntimeConfig runtimeConfig = resolveRuntimeConfig(job);
                 boolean keyless = sourceMetadata.getPrimaryKeyColumns().isEmpty()
                         && targetMetadata.getPrimaryKeyColumns().isEmpty();
-                String sourcePrimaryKey = resolveSourcePrimaryKey(sourceMetadata, mappings);
-                String targetPrimaryKey = resolveTargetPrimaryKey(sourcePrimaryKey, mappings, targetMetadata);
-                adjustTargetSchema(job, sourceMetadata, targetMetadata, mappings, targetConnection, targetDialect);
+                String sourcePrimaryKey = resolveSourcePrimaryKey(sourceMetadata, fieldRules);
+                String targetPrimaryKey = resolveTargetPrimaryKey(sourcePrimaryKey, fieldRules, targetMetadata);
+                adjustTargetSchema(job, sourceMetadata, targetMetadata, fieldRules, runtimeConfig, targetConnection, targetDialect);
                 SyncMode syncMode = SyncMode.fromCode(job.getSyncMode());
                 EtlSyncCheckpoint checkpoint = syncCheckpointService.getOrCreate(job);
-                if (syncMode == SyncMode.FULL) {
+                if (syncMode == SyncMode.FULL && Boolean.TRUE.equals(runtimeConfig.getTruncateTarget())) {
                     clearTargetTable(job, targetConnection, targetDialect);
                 }
                 int bucketSize = resolveBucketSize(job);
@@ -119,7 +122,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                         targetConnection,
                         sourceDialect,
                         targetDialect,
-                        mappings,
+                        fieldRules,
                         sourcePrimaryKey,
                         targetPrimaryKey,
                         checkpoint,
@@ -169,7 +172,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             Connection targetConnection,
             DatabaseDialect sourceDialect,
             DatabaseDialect targetDialect,
-            List<MappingSpec> mappings,
+            List<EtlColumnMappingRule> fieldRules,
             String sourcePrimaryKey,
             String targetPrimaryKey,
             EtlSyncCheckpoint checkpoint,
@@ -178,8 +181,11 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             BucketRetryPolicy retryPolicy,
             boolean keyless
     ) throws SQLException {
-        List<String> sourceColumns = resolveSourceColumns(mappings, sourcePrimaryKey, job.getIncrementalColumn());
-        List<String> targetColumns = mappings.stream().map(MappingSpec::targetColumn).distinct().collect(Collectors.toList());
+        List<String> sourceColumns = resolveSourceColumns(fieldRules, sourcePrimaryKey, job.getIncrementalColumn());
+        List<String> targetColumns = fieldRules.stream()
+                .map(EtlColumnMappingRule::getTargetColumnName)
+                .distinct()
+                .collect(Collectors.toList());
         List<Map<String, Object>> sourceRows = fetchSourceRows(
                 job, syncMode, sourceConnection, sourceDialect, sourceColumns, sourcePrimaryKey, checkpoint
         );
@@ -190,14 +196,14 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
 
         if (keyless) {
-            return runKeylessSync(job, targetConnection, targetDialect, mappings, targetColumns,
+            return runKeylessSync(job, targetConnection, targetDialect, fieldRules, targetColumns,
                     sourceRows, targetTable, executionLogId);
         }
 
         String upsertSql = targetDialect.buildUpsertSql(targetTable, targetColumns, List.of(targetPrimaryKey));
         Map<Integer, List<Map<String, Object>>> buckets = new HashMap<>();
         for (Map<String, Object> sourceRow : sourceRows) {
-            Map<String, Object> transformed = transformRow(sourceRow, mappings);
+            Map<String, Object> transformed = transformRow(sourceRow, fieldRules);
             Object primaryKeyValue = transformed.get(targetPrimaryKey);
             if (primaryKeyValue == null) {
                 log.warn("逻辑主键字段值为空，跳过该行: {}", targetPrimaryKey);
@@ -298,7 +304,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             EtlJob job,
             Connection targetConnection,
             DatabaseDialect targetDialect,
-            List<MappingSpec> mappings,
+            List<EtlColumnMappingRule> fieldRules,
             List<String> targetColumns,
             List<Map<String, Object>> sourceRows,
             String targetTable,
@@ -309,7 +315,7 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         Summary summary = new Summary();
         List<Map<String, Object>> transformed = new ArrayList<>(sourceRows.size());
         for (Map<String, Object> sourceRow : sourceRows) {
-            transformed.add(transformRow(sourceRow, mappings));
+            transformed.add(transformRow(sourceRow, fieldRules));
         }
         upsertRows(targetConnection, insertSql, targetColumns, transformed);
         summary.extractedRows = sourceRows.size();
@@ -438,34 +444,44 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
             EtlJob job,
             TableSchemaMetadata sourceMetadata,
             TableSchemaMetadata targetMetadata,
-            List<MappingSpec> mappings,
+            List<EtlColumnMappingRule> fieldRules,
+            EtlOfflineRuntimeConfig runtimeConfig,
             Connection targetConnection,
             DatabaseDialect targetDialect
     ) throws SQLException {
+        if (!"AUTO_ADD_COLUMNS".equalsIgnoreCase(runtimeConfig.getSchemaSyncMode())) {
+            return;
+        }
         String targetTable = targetDialect.qualifyTable(job.getTargetSchema(), job.getTargetTable());
-        for (MappingSpec mapping : mappings) {
-            boolean exists = targetMetadata.findColumn(mapping.targetColumn()).isPresent();
+        for (EtlColumnMappingRule rule : fieldRules) {
+            String targetColumnName = rule.getTargetColumnName();
+            boolean exists = targetMetadata.findColumn(targetColumnName).isPresent();
             if (exists) {
                 continue;
             }
-            TableColumnMetadata sourceColumn = sourceMetadata.findColumn(mapping.sourceColumn())
-                    .orElseThrow(() -> new BusinessException("源字段不存在: " + mapping.sourceColumn()));
-            String sql = targetDialect.buildAddColumnSql(targetTable, mapping.targetColumn(), sourceColumn.getTypeName());
+            TableColumnMetadata sourceColumn = null;
+            if (StringUtils.hasText(rule.getSourceColumnName())) {
+                sourceColumn = sourceMetadata.findColumn(rule.getSourceColumnName())
+                        .orElseThrow(() -> new BusinessException("源字段不存在: " + rule.getSourceColumnName()));
+            }
+            String columnType = StringUtils.hasText(rule.getTargetColumnType())
+                    ? rule.getTargetColumnType()
+                    : (sourceColumn == null ? "VARCHAR(255)" : sourceColumn.getTypeName());
+            String sql = targetDialect.buildAddColumnSql(targetTable, targetColumnName, columnType);
             try (PreparedStatement statement = targetConnection.prepareStatement(sql)) {
                 statement.execute();
             }
         }
     }
 
-    private List<MappingSpec> resolveMappings(
+    private List<EtlColumnMappingRule> resolveFieldRules(
             EtlJob job,
             TableSchemaMetadata sourceMetadata,
             TableSchemaMetadata targetMetadata
     ) {
         List<EtlColumnMappingRule> rules = columnMappingRuleService.listEnabledRulesByJobId(job.getJobId());
         if (!rules.isEmpty()) {
-            return rules.stream().map(item -> new MappingSpec(item.getSourceColumnName(), item.getTargetColumnName()))
-                    .collect(Collectors.toList());
+            return rules;
         }
         if (StringUtils.hasText(job.getColumnMapping())) {
             try {
@@ -473,16 +489,17 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
                         job.getColumnMapping(), new TypeReference<Map<String, String>>() {
                         }
                 );
-                return mapping.entrySet().stream().map(item -> new MappingSpec(item.getKey(), item.getValue()))
+                return mapping.entrySet().stream()
+                        .map(item -> buildFallbackRule(job, item.getKey(), item.getValue()))
                         .collect(Collectors.toList());
             } catch (Exception exception) {
                 throw new BusinessException("字段映射JSON解析失败");
             }
         }
-        List<MappingSpec> identityMappings = new ArrayList<>();
+        List<EtlColumnMappingRule> identityMappings = new ArrayList<>();
         for (TableColumnMetadata sourceColumn : sourceMetadata.getColumns()) {
             if (targetMetadata.findColumn(sourceColumn.getColumnName()).isPresent()) {
-                identityMappings.add(new MappingSpec(sourceColumn.getColumnName(), sourceColumn.getColumnName()));
+                identityMappings.add(buildFallbackRule(job, sourceColumn.getColumnName(), sourceColumn.getColumnName()));
             }
         }
         return identityMappings;
@@ -491,13 +508,17 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
     /**
      * 解析源表主键字段。对于无主键表，回退到第一个映射字段作为逻辑主键。
      */
-    private String resolveSourcePrimaryKey(TableSchemaMetadata sourceMetadata, List<MappingSpec> mappings) {
+    private String resolveSourcePrimaryKey(TableSchemaMetadata sourceMetadata, List<EtlColumnMappingRule> fieldRules) {
         if (!sourceMetadata.getPrimaryKeyColumns().isEmpty()) {
             return sourceMetadata.getPrimaryKeyColumns().get(0);
         }
         log.warn("源表 {} 无主键定义，回退使用第一个映射字段作为逻辑主键", sourceMetadata.getTableName());
-        if (!mappings.isEmpty()) {
-            return mappings.get(0).sourceColumn();
+        if (!fieldRules.isEmpty()) {
+            return fieldRules.stream()
+                    .map(EtlColumnMappingRule::getSourceColumnName)
+                    .filter(StringUtils::hasText)
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessException("无法解析源主键字段，源表无主键且无有效字段映射"));
         }
         throw new BusinessException("无法解析源主键字段，源表无主键且无字段映射");
     }
@@ -507,15 +528,16 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
      */
     private String resolveTargetPrimaryKey(
             String sourcePrimaryKey,
-            List<MappingSpec> mappings,
+            List<EtlColumnMappingRule> fieldRules,
             TableSchemaMetadata targetMetadata
     ) {
         if (!targetMetadata.getPrimaryKeyColumns().isEmpty()) {
             return targetMetadata.getPrimaryKeyColumns().get(0);
         }
-        String targetPrimaryKey = mappings.stream()
-                .filter(item -> item.sourceColumn().equalsIgnoreCase(sourcePrimaryKey))
-                .map(MappingSpec::targetColumn)
+        String targetPrimaryKey = fieldRules.stream()
+                .filter(item -> StringUtils.hasText(item.getSourceColumnName())
+                        && item.getSourceColumnName().equalsIgnoreCase(sourcePrimaryKey))
+                .map(EtlColumnMappingRule::getTargetColumnName)
                 .findFirst()
                 .orElse(sourcePrimaryKey);
         if (targetMetadata.findColumn(targetPrimaryKey).isEmpty()) {
@@ -525,10 +547,13 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         return targetPrimaryKey;
     }
 
-    private List<String> resolveSourceColumns(List<MappingSpec> mappings, String sourcePrimaryKey, String incrementalColumn) {
+    private List<String> resolveSourceColumns(List<EtlColumnMappingRule> fieldRules, String sourcePrimaryKey,
+                                              String incrementalColumn) {
         Set<String> sourceColumns = new LinkedHashSet<>();
-        for (MappingSpec mapping : mappings) {
-            sourceColumns.add(mapping.sourceColumn());
+        for (EtlColumnMappingRule rule : fieldRules) {
+            if (StringUtils.hasText(rule.getSourceColumnName())) {
+                sourceColumns.add(rule.getSourceColumnName());
+            }
         }
         sourceColumns.add(sourcePrimaryKey);
         if (StringUtils.hasText(incrementalColumn)) {
@@ -537,10 +562,17 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         return new ArrayList<>(sourceColumns);
     }
 
-    private Map<String, Object> transformRow(Map<String, Object> sourceRow, List<MappingSpec> mappings) {
+    private Map<String, Object> transformRow(Map<String, Object> sourceRow, List<EtlColumnMappingRule> fieldRules) {
         Map<String, Object> targetRow = new LinkedHashMap<>();
-        for (MappingSpec mapping : mappings) {
-            targetRow.put(mapping.targetColumn(), sourceRow.get(mapping.sourceColumn()));
+        for (EtlColumnMappingRule rule : fieldRules) {
+            Object sourceValue = StringUtils.hasText(rule.getSourceColumnName())
+                    ? sourceRow.get(rule.getSourceColumnName())
+                    : null;
+            Object transformedValue = transformValue(sourceValue, rule);
+            if (transformedValue == SKIP_FIELD_SENTINEL) {
+                continue;
+            }
+            targetRow.put(rule.getTargetColumnName(), transformedValue);
         }
         return targetRow;
     }
@@ -677,6 +709,215 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         } catch (Exception exception) {
             log.warn("解析 transformRules 失败，按默认策略继续: {}", exception.getMessage());
             return new HashMap<>();
+        }
+    }
+
+    /**
+     * 解析任务运行配置。
+     *
+     * @param job 任务实体
+     * @return 运行配置
+     */
+    private EtlOfflineRuntimeConfig resolveRuntimeConfig(EtlJob job) {
+        Map<String, Object> transformConfig = parseTransformConfig(job.getTransformRules());
+        Object runtimeConfig = transformConfig.get("runtimeConfig");
+        EtlOfflineRuntimeConfig config = runtimeConfig == null
+                ? new EtlOfflineRuntimeConfig()
+                : objectMapper.convertValue(runtimeConfig, EtlOfflineRuntimeConfig.class);
+        if (config.getSyncMode() == null) {
+            config.setSyncMode(job.getSyncMode());
+        }
+        if (config.getBatchSize() == null) {
+            config.setBatchSize(job.getBatchSize());
+        }
+        if (config.getRetryCount() == null) {
+            config.setRetryCount(job.getRetryCount());
+        }
+        if (config.getRetryInterval() == null) {
+            config.setRetryInterval(job.getRetryInterval());
+        }
+        if (config.getCronExpression() == null) {
+            config.setCronExpression(job.getCronExpression());
+        }
+        if (config.getAllowConcurrent() == null) {
+            config.setAllowConcurrent("1".equals(job.getConcurrent()));
+        }
+        if (config.getAutoStart() == null) {
+            config.setAutoStart("1".equals(job.getStatus()));
+        }
+        if (config.getSchemaSyncMode() == null) {
+            config.setSchemaSyncMode("AUTO_ADD_COLUMNS");
+        }
+        if (config.getTruncateTarget() == null) {
+            config.setTruncateTarget(Boolean.FALSE);
+        }
+        if (config.getRecreateTarget() == null) {
+            config.setRecreateTarget(Boolean.FALSE);
+        }
+        return config;
+    }
+
+    /**
+     * 构建回退字段规则。
+     *
+     * @param job        任务实体
+     * @param sourceName 源字段
+     * @param targetName 目标字段
+     * @return 字段规则实体
+     */
+    private EtlColumnMappingRule buildFallbackRule(EtlJob job, String sourceName, String targetName) {
+        return new EtlColumnMappingRule()
+                .setJobId(job.getJobId())
+                .setSourceSchemaName(job.getSourceSchema())
+                .setSourceTableName(job.getSourceTable())
+                .setSourceColumnName(sourceName)
+                .setTargetSchemaName(job.getTargetSchema())
+                .setTargetTableName(job.getTargetTable())
+                .setTargetColumnName(targetName)
+                .setMappingAction("COPY")
+                .setEnabled("1")
+                .setOrdinalPosition(0);
+    }
+
+    /**
+     * 执行单字段转换。
+     *
+     * @param sourceValue 源值
+     * @param rule        字段规则
+     * @return 转换结果
+     */
+    private Object transformValue(Object sourceValue, EtlColumnMappingRule rule) {
+        String action = rule.getMappingAction() == null ? "COPY" : rule.getMappingAction().trim().toUpperCase();
+        String emptyPolicy = rule.getEmptyValuePolicy() == null ? "KEEP" : rule.getEmptyValuePolicy().trim().toUpperCase();
+        if ("CONSTANT".equals(action)) {
+            return resolveSpecialPlaceholder(rule.getConstantValue());
+        }
+        Object workingValue = sourceValue;
+        if (workingValue == null) {
+            if ("SKIP_FIELD".equals(emptyPolicy)) {
+                return SKIP_FIELD_SENTINEL;
+            }
+            if ("DEFAULT".equals(action)) {
+                return fallbackValue(rule);
+            }
+            if ("NULL_IF_EMPTY".equals(action)) {
+                return null;
+            }
+            return applyEmptyValuePolicy(null, emptyPolicy, rule);
+        }
+        if (workingValue instanceof String stringValue) {
+            if ("TRIM".equals(action)) {
+                workingValue = stringValue.trim();
+            } else if ("UPPER".equals(action)) {
+                workingValue = stringValue.toUpperCase();
+            } else if ("LOWER".equals(action)) {
+                workingValue = stringValue.toLowerCase();
+            } else if ("NULL_IF_EMPTY".equals(action) && !StringUtils.hasText(stringValue)) {
+                return null;
+            } else if ("DATE_FORMAT".equals(action)) {
+                workingValue = formatDateValue(stringValue, rule.getTransformParams());
+            } else if ("NUMBER_CAST".equals(action)) {
+                workingValue = castNumberValue(stringValue, rule.getTransformParams());
+            }
+            if ("DEFAULT".equals(action) && !StringUtils.hasText(stringValue)) {
+                return fallbackValue(rule);
+            }
+        }
+        if (workingValue == null) {
+            return fallbackValue(rule);
+        }
+        Object policyValue = applyEmptyValuePolicy(workingValue, emptyPolicy, rule);
+        if (policyValue == SKIP_FIELD_SENTINEL) {
+            return SKIP_FIELD_SENTINEL;
+        }
+        if (policyValue != workingValue) {
+            return policyValue;
+        }
+        return workingValue;
+    }
+
+    /**
+     * 应用空值策略，统一处理 null、空字符串与特殊占位值。
+     *
+     * @param currentValue 当前值
+     * @param emptyPolicy  空值策略
+     * @param rule         字段规则
+     * @return 处理后的值
+     */
+    private Object applyEmptyValuePolicy(Object currentValue, String emptyPolicy, EtlColumnMappingRule rule) {
+        boolean empty = currentValue == null
+                || currentValue instanceof String stringValue && !StringUtils.hasText(stringValue);
+        if (!empty) {
+            return currentValue;
+        }
+        return switch (emptyPolicy) {
+            case "NULL", "KEEP", "KEEP_NULL" -> currentValue;
+            case "DEFAULT" -> fallbackValue(rule);
+            case "EMPTY_STRING" -> "";
+            case "ZERO" -> 0;
+            case "CURRENT_TIME" -> LocalDateTime.now();
+            case "SKIP_FIELD" -> SKIP_FIELD_SENTINEL;
+            default -> currentValue;
+        };
+    }
+
+    /**
+     * 解析默认值兜底。
+     *
+     * @param rule 字段规则
+     * @return 兜底值
+     */
+    private Object fallbackValue(EtlColumnMappingRule rule) {
+        if (StringUtils.hasText(rule.getDefaultValue())) {
+            return resolveSpecialPlaceholder(rule.getDefaultValue());
+        }
+        return resolveSpecialPlaceholder(rule.getConstantValue());
+    }
+
+    /**
+     * 解析特殊占位值，避免运行时把“当前时间”当作普通字符串写入目标库。
+     *
+     * @param value 原始值
+     * @return 实际值
+     */
+    private Object resolveSpecialPlaceholder(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        if ("__CURRENT_TIME__".equalsIgnoreCase(value)) {
+            return LocalDateTime.now();
+        }
+        return value;
+    }
+
+    /**
+     * 格式化日期值。
+     *
+     * @param sourceValue 源值
+     * @param transformParams 转换参数
+     * @return 格式化结果
+     */
+    private Object formatDateValue(String sourceValue, String transformParams) {
+        Map<String, Object> params = parseTransformConfig(transformParams);
+        Object pattern = params.get("pattern");
+        if (pattern == null) {
+            return sourceValue;
+        }
+        return sourceValue;
+    }
+
+    /**
+     * 数字转换值。
+     *
+     * @param sourceValue 源值
+     * @param transformParams 转换参数
+     * @return 转换结果
+     */
+    private Object castNumberValue(String sourceValue, String transformParams) {
+        try {
+            return new java.math.BigDecimal(sourceValue);
+        } catch (Exception exception) {
+            return sourceValue;
         }
     }
 

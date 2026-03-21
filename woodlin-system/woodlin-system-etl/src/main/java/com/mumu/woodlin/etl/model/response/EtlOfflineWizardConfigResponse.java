@@ -3,6 +3,7 @@ package com.mumu.woodlin.etl.model.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,4 +33,22 @@ public class EtlOfflineWizardConfigResponse {
 
     @Schema(description = "默认任务分组", example = "OFFLINE_SYNC")
     private String defaultJobGroup;
+
+    @Schema(description = "默认结构同步模式", example = "AUTO_ADD_COLUMNS")
+    private String defaultSchemaSyncMode;
+
+    @Schema(description = "支持的同步模式")
+    private List<String> supportedSyncModes = new ArrayList<>();
+
+    @Schema(description = "支持的数据校验模式")
+    private List<String> supportedValidationModes = new ArrayList<>();
+
+    @Schema(description = "支持的结构同步模式")
+    private List<String> supportedSchemaSyncModes = new ArrayList<>();
+
+    @Schema(description = "支持的字段动作")
+    private List<String> supportedFieldActions = new ArrayList<>();
+
+    @Schema(description = "支持的空值策略")
+    private List<String> supportedEmptyValuePolicies = new ArrayList<>();
 }

@@ -57,6 +57,13 @@
             <version>${woodlin.version}</version>
         </dependency>
 
+        <!-- Woodlin Security (权限校验复用) -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-system-security</artifactId>
+            <version>${woodlin.version}</version>
+        </dependency>
+
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

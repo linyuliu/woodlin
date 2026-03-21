@@ -29,6 +29,12 @@ const componentAlias: Record<string, string> = {
   'file/storage': '/src/views/file/FileStorage.vue',
   'task/list': '/src/views/task/TaskList.vue',
   'task/log': '/src/views/task/TaskLog.vue',
+  'etl/offlinejob': '/src/views/etl/EtlOfflineTaskList.vue',
+  'etl/offlinelog': '/src/views/etl/EtlOfflineLogList.vue',
+  'etl/offline': '/src/views/etl/EtlOfflineTaskList.vue',
+  'etl/offline/logs': '/src/views/etl/EtlOfflineLogList.vue',
+  'etl/offline/create': '/src/views/etl/EtlOfflineCreate.vue',
+  'etl/offline/edit': '/src/views/etl/EtlOfflineCreate.vue',
   'dev/sql2api': '/src/views/sql2api/SqlApiEditor.vue',
   'dev/generator': '/src/views/dev/CodeGenerator.vue'
 }

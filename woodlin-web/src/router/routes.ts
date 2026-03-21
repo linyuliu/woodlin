@@ -299,7 +299,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: {
           title: '同步任务',
           icon: 'git-compare-outline',
-          permissions: [PERMISSIONS.ROUTE.TASK_LIST],
+          permissions: [PERMISSIONS.ROUTE.ETL, PERMISSIONS.ACTION.ETL_OFFLINE_LIST],
         },
         children: [
           {
@@ -310,7 +310,18 @@ export const asyncRoutes: RouteRecordRaw[] = [
               title: '离线同步',
               icon: 'swap-horizontal-outline',
               keepAlive: true,
-              permissions: [PERMISSIONS.ROUTE.TASK_LIST],
+              permissions: [PERMISSIONS.ROUTE.ETL_OFFLINE, PERMISSIONS.ACTION.ETL_OFFLINE_LIST],
+            },
+          },
+          {
+            path: 'offline/logs',
+            name: 'EtlOfflineLogs',
+            component: () => import('@/views/etl/EtlOfflineLogList.vue'),
+            meta: {
+              title: '执行历史',
+              icon: 'time-outline',
+              keepAlive: true,
+              permissions: [PERMISSIONS.ACTION.ETL_OFFLINE_LOG_LIST],
             },
           },
           {
@@ -321,7 +332,18 @@ export const asyncRoutes: RouteRecordRaw[] = [
               title: '创建离线任务',
               hideInMenu: true,
               activeMenu: '/etl/offline',
-              permissions: [PERMISSIONS.ROUTE.TASK_LIST],
+              permissions: [PERMISSIONS.ROUTE.ETL_OFFLINE, PERMISSIONS.ACTION.ETL_OFFLINE_CREATE],
+            },
+          },
+          {
+            path: 'offline/:jobId/edit',
+            name: 'EtlOfflineEdit',
+            component: () => import('@/views/etl/EtlOfflineCreate.vue'),
+            meta: {
+              title: '编辑离线任务',
+              hideInMenu: true,
+              activeMenu: '/etl/offline',
+              permissions: [PERMISSIONS.ROUTE.ETL_OFFLINE, PERMISSIONS.ACTION.ETL_OFFLINE_EDIT],
             },
           },
         ],

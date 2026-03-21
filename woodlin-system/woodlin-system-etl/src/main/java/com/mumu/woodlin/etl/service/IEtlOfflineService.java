@@ -3,12 +3,13 @@ package com.mumu.woodlin.etl.service;
 import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
 import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.common.response.PageResult;
-import com.mumu.woodlin.etl.entity.EtlJob;
 import com.mumu.woodlin.etl.model.request.EtlOfflineJobCreateRequest;
 import com.mumu.woodlin.etl.model.request.EtlOfflineJobPageRequest;
 import com.mumu.woodlin.etl.model.request.EtlOfflineValidationRequest;
 import com.mumu.woodlin.etl.model.response.EtlOfflineCreateJobResponse;
 import com.mumu.woodlin.etl.model.response.EtlOfflineDatasourceOption;
+import com.mumu.woodlin.etl.model.response.EtlOfflineJobDetailResponse;
+import com.mumu.woodlin.etl.model.response.EtlOfflineJobSummaryResponse;
 import com.mumu.woodlin.etl.model.response.EtlOfflineValidationResult;
 import com.mumu.woodlin.etl.model.response.EtlOfflineWizardConfigResponse;
 
@@ -45,7 +46,15 @@ public interface IEtlOfflineService {
      * @param request 分页请求
      * @return 分页结果
      */
-    PageResult<EtlJob> pageJobs(EtlOfflineJobPageRequest request);
+    PageResult<EtlOfflineJobSummaryResponse> pageJobs(EtlOfflineJobPageRequest request);
+
+    /**
+     * 查询离线任务详情，用于向导回填。
+     *
+     * @param jobId 任务ID
+     * @return 任务详情
+     */
+    EtlOfflineJobDetailResponse getJobDetail(Long jobId);
 
     /**
      * 校验离线任务配置。
