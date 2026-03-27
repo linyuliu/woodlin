@@ -17,6 +17,7 @@
 
 import type {NavigationGuardNext, RouteLocationNormalized, Router} from 'vue-router'
 import {getConfig} from '@/config'
+import {notFoundRoute} from '@/router/routes'
 import {useAppStore, useAuthStore, usePermissionStore, useUserStore} from '@/stores'
 import {logger} from '@/utils/logger'
 
@@ -133,7 +134,6 @@ async function addDynamicRoutes(
     router.addRoute(route)
   })
 
-  const {notFoundRoute} = await import('./routes')
   router.addRoute(notFoundRoute)
   logger.log('404路由已添加')
   permissionStore.markRoutesAdded()
