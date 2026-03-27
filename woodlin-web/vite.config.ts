@@ -6,6 +6,43 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 
+/**
+ * 根据依赖来源拆分 Rollup chunk。
+ *
+ * 这里优先把体积较大的 UI 依赖、图标依赖和基础框架拆开，
+ * 避免入口 chunk 因为共享依赖过多而持续膨胀。
+ *
+ * @param id 模块绝对路径
+ * @returns chunk 名称
+ */
+function resolveManualChunk(id: string): string | undefined {
+  if (!id.includes('node_modules')) {
+    return undefined
+  }
+
+  if (id.includes('node_modules/naive-ui')) {
+    return 'naive-ui'
+  }
+
+  if (id.includes('node_modules/@vicons/ionicons5')) {
+    return 'icon-ionicons'
+  }
+
+  if (id.includes('node_modules/@vicons/antd')) {
+    return 'icon-antd'
+  }
+
+  if (id.includes('node_modules/vue/') || id.includes('node_modules/vue-router/') || id.includes('node_modules/pinia/')) {
+    return 'vue-vendor'
+  }
+
+  if (id.includes('node_modules/axios/')) {
+    return 'http-vendor'
+  }
+
+  return 'app-vendor'
+}
+
 function createPlugins() {
   return [
     vue(),
@@ -72,10 +109,7 @@ function createBuildConfig() {
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'ui-vendor': ['naive-ui']
-        }
+        manualChunks: resolveManualChunk
       }
     },
     chunkSizeWarningLimit: 1000

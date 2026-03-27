@@ -9,14 +9,74 @@
 import { h, type Component } from 'vue'
 import { NIcon, type MenuOption } from 'naive-ui'
 import type { RouteRecordRaw } from 'vue-router'
-import * as Icons from '@vicons/ionicons5'
+import {
+  ArchiveOutline,
+  BookOutline,
+  BusinessOutline,
+  CodeSlashOutline,
+  CogOutline,
+  ConstructOutline,
+  FolderOutline,
+  GitCompareOutline,
+  HomeOutline,
+  KeyOutline,
+  LayersOutline,
+  ListOutline,
+  OptionsOutline,
+  PeopleOutline,
+  ReceiptOutline,
+  ServerOutline,
+  SettingsOutline,
+  ShieldCheckmarkOutline,
+  ShuffleOutline,
+  SpeedometerOutline,
+  StatsChartOutline,
+  SwapHorizontalOutline,
+  TerminalOutline,
+  TimeOutline,
+  TimerOutline
+} from '@vicons/ionicons5'
 type MenuOptionWithRoute = MenuOption & {route?: RouteRecordRaw}
 type IconRenderer = NonNullable<MenuOption['icon']>
 
 /**
+ * 菜单图标注册表。
+ *
+ * 这里显式维护项目当前会用到的菜单图标，
+ * 避免 `import * as Icons` 把整个 ionicons 图标包打进主产物。
+ */
+const ICON_COMPONENTS = {
+  ArchiveOutline,
+  BookOutline,
+  BusinessOutline,
+  CodeSlashOutline,
+  CogOutline,
+  ConstructOutline,
+  FolderOutline,
+  GitCompareOutline,
+  HomeOutline,
+  KeyOutline,
+  LayersOutline,
+  ListOutline,
+  OptionsOutline,
+  PeopleOutline,
+  ReceiptOutline,
+  ServerOutline,
+  SettingsOutline,
+  ShieldCheckmarkOutline,
+  ShuffleOutline,
+  SpeedometerOutline,
+  StatsChartOutline,
+  SwapHorizontalOutline,
+  TerminalOutline,
+  TimeOutline,
+  TimerOutline
+} satisfies Record<string, Component>
+
+/**
  * 内置的图标别名映射，兼容后端返回的简短/旧标识
  */
-const FALLBACK_ICONS: Record<string, keyof typeof Icons> = {
+const FALLBACK_ICONS: Record<string, keyof typeof ICON_COMPONENTS> = {
   dashboard: 'SpeedometerOutline',
   home: 'HomeOutline',
   system: 'SettingsOutline',
@@ -39,7 +99,9 @@ const FALLBACK_ICONS: Record<string, keyof typeof Icons> = {
   dev: 'CodeSlashOutline',
   generator: 'ConstructOutline',
   sql2api: 'TerminalOutline',
-  monitor: 'StatsChartOutline'
+  monitor: 'StatsChartOutline',
+  etl: 'GitCompareOutline',
+  offline: 'SwapHorizontalOutline'
 }
 
 /**
@@ -99,13 +161,13 @@ function resolveStringIcon(candidate: string): Component | undefined {
     return undefined
   }
 
-  const direct = Icons[raw as keyof typeof Icons] as Component | undefined
+  const direct = ICON_COMPONENTS[raw as keyof typeof ICON_COMPONENTS]
   if (direct) {
     return direct
   }
 
   const iconName = toPascalCase(raw)
-  const pascal = Icons[iconName as keyof typeof Icons] as Component | undefined
+  const pascal = ICON_COMPONENTS[iconName as keyof typeof ICON_COMPONENTS]
   if (pascal) {
     return pascal
   }
@@ -114,7 +176,7 @@ function resolveStringIcon(candidate: string): Component | undefined {
   if (!alias) {
     return undefined
   }
-  return Icons[alias] as Component | undefined
+  return ICON_COMPONENTS[alias]
 }
 
 /**

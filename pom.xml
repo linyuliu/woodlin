@@ -20,8 +20,9 @@
     <modules>
         <module>woodlin-dependencies</module>
         <module>woodlin-common</module>
-        <module>woodlin-system</module>
-        <module>woodlin-admin</module>
+        <module>woodlin-modules</module>
+        <module>woodlin-plugins</module>
+        <module>woodlin-apps</module>
     </modules>
 
     <!-- 统一属性配置 -->
@@ -35,8 +36,8 @@
 
         <!-- 版本定义 -->
         <woodlin.version>1.0.0</woodlin.version>
-        <spring-boot.version>3.5.9</spring-boot.version>
-        <lombok.version>1.18.38</lombok.version>
+        <spring-boot.version>3.5.12</spring-boot.version>
+        <lombok.version>1.18.42</lombok.version>
 
         <!-- Maven插件版本 -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>

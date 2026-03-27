@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Woodlin 管理后台应用
+        作者: mumu
+        描述: 管理后台主应用，整合所有功能模块，提供完整的后台管理系统
+    -->
+    <parent>
+        <groupId>com.mumu</groupId>
+        <artifactId>woodlin-apps</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>woodlin-admin</artifactId>
+    <packaging>jar</packaging>
+    <name>Woodlin Admin Application</name>
+    <description>Woodlin 管理后台应用 - 完整的后台管理系统</description>
+
+    <!-- 依赖管理 -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Woodlin BOM -->
+            <dependency>
+                <groupId>com.mumu</groupId>
+                <artifactId>woodlin-dependencies</artifactId>
+                <version>${woodlin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common-db</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common-mp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-common-cloud</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-system</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-task</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-datasource</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-plugin-generator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-plugin-etl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-plugin-z3</artifactId>
+        </dependency>
+
+
+        <!-- Spring Boot Starter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+<!--        &lt;!&ndash; Spring Boot Docker Compose（本地开发依赖） &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-docker-compose</artifactId>-->
+<!--            <optional>true</optional>-->
+<!--        </dependency>-->
+
+        <!-- 配置处理器 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Druid 数据库连接池 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
+        </dependency>
+
+        <!-- Knife4j API文档 -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- 测试依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Spring Boot插件 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Git Commit ID 插件 -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+

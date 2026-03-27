@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mumu</groupId>
+        <artifactId>woodlin</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>woodlin-modules</artifactId>
+    <packaging>pom</packaging>
+    <name>Woodlin Modules Aggregator</name>
+    <description>Woodlin 主业务模块聚合器</description>
+
+    <modules>
+        <module>woodlin-module-security</module>
+        <module>woodlin-module-system</module>
+        <module>woodlin-module-tenant</module>
+        <module>woodlin-module-file</module>
+        <module>woodlin-module-task</module>
+        <module>woodlin-module-datasource</module>
+    </modules>
+</project>
