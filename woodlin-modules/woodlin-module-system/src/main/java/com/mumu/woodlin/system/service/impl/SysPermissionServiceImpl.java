@@ -26,7 +26,10 @@ import java.util.stream.Collectors;
  * 权限信息服务实现
  *
  * @author mumu
- * @description 权限信息服务实现，支持RBAC1权限继承
+ * @description 权限信息服务实现，支持RBAC1权限继承。
+ *              通过统一的 {@link #ensureUserCacheLoaded(Long)} 方法一次性加载并缓存
+ *              用户所有权限（全部权限码、按钮权限、菜单权限、路由树），避免多次独立查库。
+ *              使用分布式锁防止并发场景下缓存击穿（thundering herd）。
  * @since 2025-10-31
  */
 @Slf4j
@@ -82,33 +85,23 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             return Collections.emptyList();
         }
 
-        // 尝试从缓存获取
-        if (permissionCacheService != null) {
-            List<String> cachedPermissions = permissionCacheService.getUserPermissions(userId);
-            if (cachedPermissions != null) {
-                log.debug("从缓存获取用户权限: userId={}, count={}", userId, cachedPermissions.size());
-                return cachedPermissions;
-            }
+        // 使用统一的缓存加载，一次性加载所有权限类型
+        com.mumu.woodlin.security.dto.UserCacheDto cache = ensureUserCacheLoaded(userId);
+        if (cache != null && cache.getPermissions() != null) {
+            return cache.getPermissions();
         }
 
-        // 从数据库查询
+        // 降级：直接查库
         List<SysPermission> permissions = selectPermissionsByUserId(userId);
         if (CollUtil.isEmpty(permissions)) {
             return Collections.emptyList();
         }
 
-        List<String> permissionCodes = permissions.stream()
+        return permissions.stream()
             .map(SysPermission::getPermissionCode)
             .filter(StrUtil::isNotBlank)
             .distinct()
             .toList();
-
-        // 缓存结果
-        if (permissionCacheService != null) {
-            permissionCacheService.cacheUserPermissions(userId, permissionCodes);
-        }
-
-        return permissionCodes;
     }
 
     @Override
@@ -117,35 +110,24 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             return Collections.emptyList();
         }
 
-        // 尝试从缓存获取
-        if (permissionCacheService != null) {
-            List<String> cachedPermissions = permissionCacheService.getUserButtonPermissions(userId);
-            if (cachedPermissions != null) {
-                log.debug("从缓存获取用户按钮权限: userId={}, count={}", userId, cachedPermissions.size());
-                return cachedPermissions;
-            }
+        // 使用统一的缓存加载
+        com.mumu.woodlin.security.dto.UserCacheDto cache = ensureUserCacheLoaded(userId);
+        if (cache != null && cache.getButtonPermissions() != null) {
+            return cache.getButtonPermissions();
         }
 
-        // 从数据库查询
+        // 降级：直接查库
         List<SysPermission> permissions = selectPermissionsByUserId(userId);
         if (CollUtil.isEmpty(permissions)) {
             return Collections.emptyList();
         }
 
-        // 过滤按钮权限
-        List<String> buttonPermissions = permissions.stream()
+        return permissions.stream()
             .filter(p -> "F".equals(p.getPermissionType()))
             .map(SysPermission::getPermissionCode)
             .filter(StrUtil::isNotBlank)
             .distinct()
             .toList();
-
-        // 缓存结果
-        if (permissionCacheService != null) {
-            permissionCacheService.cacheUserButtonPermissions(userId, buttonPermissions);
-        }
-
-        return buttonPermissions;
     }
 
     @Override
@@ -154,35 +136,24 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             return Collections.emptyList();
         }
 
-        // 尝试从缓存获取
-        if (permissionCacheService != null) {
-            List<String> cachedPermissions = permissionCacheService.getUserMenuPermissions(userId);
-            if (cachedPermissions != null) {
-                log.debug("从缓存获取用户菜单权限: userId={}, count={}", userId, cachedPermissions.size());
-                return cachedPermissions;
-            }
+        // 使用统一的缓存加载
+        com.mumu.woodlin.security.dto.UserCacheDto cache = ensureUserCacheLoaded(userId);
+        if (cache != null && cache.getMenuPermissions() != null) {
+            return cache.getMenuPermissions();
         }
 
-        // 从数据库查询
+        // 降级：直接查库
         List<SysPermission> permissions = selectPermissionsByUserId(userId);
         if (CollUtil.isEmpty(permissions)) {
             return Collections.emptyList();
         }
 
-        // 过滤菜单权限（目录和菜单）
-        List<String> menuPermissions = permissions.stream()
+        return permissions.stream()
             .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
             .map(SysPermission::getPermissionCode)
             .filter(StrUtil::isNotBlank)
             .distinct()
             .toList();
-
-        // 缓存结果
-        if (permissionCacheService != null) {
-            permissionCacheService.cacheUserMenuPermissions(userId, menuPermissions);
-        }
-
-        return menuPermissions;
     }
 
     @Override
@@ -191,47 +162,130 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             return Collections.emptyList();
         }
 
-        // 尝试从缓存获取
-        if (permissionCacheService != null) {
-            List<RouteVO> cachedRoutes = permissionCacheService.getUserRoutes(userId);
-            if (cachedRoutes != null) {
-                log.debug("从缓存获取用户路由: userId={}, count={}", userId, cachedRoutes.size());
-                return cachedRoutes;
+        // 使用统一的缓存加载
+        com.mumu.woodlin.security.dto.UserCacheDto cache = ensureUserCacheLoaded(userId);
+        if (cache != null && cache.getRoutes() != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<RouteVO> routes = (List<RouteVO>) cache.getRoutes();
+                if (routes != null) {
+                    return routes;
+                }
+            } catch (ClassCastException e) {
+                log.warn("路由缓存类型转换失败，重新加载: userId={}", userId, e);
             }
         }
 
-        // 从数据库查询用户所有权限（包括继承的权限）
+        // 降级：直接从数据库构建路由
+        return buildRoutesFromDb(userId);
+    }
+
+    /**
+     * 统一加载并缓存用户所有权限数据。
+     * 使用 PermissionCacheService.getOrLoadUserCache() 防止并发缓存击穿：
+     * 同一用户的多个并发请求中只有一个线程执行数据库查询，其他线程等待后读取缓存。
+     * 一次查库同时填充所有权限（全部权限码、按钮权限、菜单权限、路由树）。
+     *
+     * @param userId 用户ID
+     * @return 用户缓存对象
+     */
+    private com.mumu.woodlin.security.dto.UserCacheDto ensureUserCacheLoaded(Long userId) {
+        if (permissionCacheService == null) {
+            return null;
+        }
+
+        return permissionCacheService.getOrLoadUserCache(userId, () -> {
+            log.info("统一加载用户权限: userId={}", userId);
+
+            // 一次性从数据库查询用户所有权限
+            List<SysPermission> allPermissions = selectPermissionsByUserId(userId);
+
+            // 分类提取各种权限码
+            List<String> permissionCodes = Collections.emptyList();
+            List<String> buttonPermissions = Collections.emptyList();
+            List<String> menuPermissions = Collections.emptyList();
+            List<RouteVO> routeTree = Collections.emptyList();
+
+            if (CollUtil.isNotEmpty(allPermissions)) {
+                permissionCodes = allPermissions.stream()
+                    .map(SysPermission::getPermissionCode)
+                    .filter(StrUtil::isNotBlank)
+                    .distinct()
+                    .toList();
+
+                buttonPermissions = allPermissions.stream()
+                    .filter(p -> "F".equals(p.getPermissionType()))
+                    .map(SysPermission::getPermissionCode)
+                    .filter(StrUtil::isNotBlank)
+                    .distinct()
+                    .toList();
+
+                menuPermissions = allPermissions.stream()
+                    .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
+                    .map(SysPermission::getPermissionCode)
+                    .filter(StrUtil::isNotBlank)
+                    .distinct()
+                    .toList();
+
+                // 构建路由树
+                List<SysPermission> menuPerms = allPermissions.stream()
+                    .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
+                    .filter(p -> "1".equals(p.getStatus()))
+                    .sorted((p1, p2) -> {
+                        int order1 = p1.getSortOrder() != null ? p1.getSortOrder() : 0;
+                        int order2 = p2.getSortOrder() != null ? p2.getSortOrder() : 0;
+                        return Integer.compare(order1, order2);
+                    })
+                    .toList();
+
+                List<RouteVO> routes = menuPerms.stream()
+                    .map(this::convertToRouteVO)
+                    .toList();
+
+                routeTree = buildRouteTree(routes, 0L);
+            }
+
+            log.info("统一加载用户权限完成: userId={}, 全部={}, 按钮={}, 菜单={}, 路由={}",
+                userId, permissionCodes.size(), buttonPermissions.size(),
+                menuPermissions.size(), routeTree.size());
+
+            return com.mumu.woodlin.security.dto.UserCacheDto.builder()
+                .userId(userId)
+                .permissions(permissionCodes)
+                .buttonPermissions(buttonPermissions)
+                .menuPermissions(menuPermissions)
+                .routes(routeTree)
+                .build();
+        });
+    }
+
+    /**
+     * 从数据库直接构建路由（降级路径，不使用缓存）
+     *
+     * @param userId 用户ID
+     * @return 路由列表
+     */
+    private List<RouteVO> buildRoutesFromDb(Long userId) {
         List<SysPermission> permissions = selectPermissionsByUserId(userId);
         if (CollUtil.isEmpty(permissions)) {
             return Collections.emptyList();
         }
 
-        // 只保留菜单和目录（M-目录，C-菜单），过滤掉按钮权限（F-按钮）
         List<SysPermission> menuPermissions = permissions.stream()
             .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
-            .filter(p -> "1".equals(p.getStatus())) // 只保留启用的权限
+            .filter(p -> "1".equals(p.getStatus()))
             .sorted((p1, p2) -> {
-                // 按排序字段排序
                 int order1 = p1.getSortOrder() != null ? p1.getSortOrder() : 0;
                 int order2 = p2.getSortOrder() != null ? p2.getSortOrder() : 0;
                 return Integer.compare(order1, order2);
             })
             .toList();
 
-        // 转换为RouteVO并构建树形结构
         List<RouteVO> routes = menuPermissions.stream()
             .map(this::convertToRouteVO)
             .toList();
 
-        // 构建树形结构
-        List<RouteVO> routeTree = buildRouteTree(routes, 0L);
-
-        // 缓存结果
-        if (permissionCacheService != null) {
-            permissionCacheService.cacheUserRoutes(userId, routeTree);
-        }
-
-        return routeTree;
+        return buildRouteTree(routes, 0L);
     }
 
     /**

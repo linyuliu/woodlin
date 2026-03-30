@@ -31,4 +31,9 @@
         SELECT role_id FROM sys_user_role WHERE user_id = #{userId}
     </select>
 
+    <!-- 根据角色ID查询关联的所有用户ID -->
+    <select id="selectUserIdsByRoleId" resultType="long">
+        SELECT user_id FROM sys_user_role WHERE role_id = #{roleId}
+    </select>
+
 </mapper>

@@ -268,6 +268,32 @@ function convertBackendRoutesToVueRouter(backendRoutes: BackendRoute[]): RouteRe
 }
 
 /**
+ * 从后端加载路由（带重试），确保前端动态路由与后端权限对齐
+ */
+async function fetchBackendRoutesWithRetry(maxRetries = 2): Promise<BackendRoute[] | null> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const routes = (await getUserRoutes()) as unknown as BackendRoute[]
+      if (routes && routes.length > 0) {
+        return routes
+      }
+      logger.warn(`后端返回空路由 (第${attempt + 1}次)`)
+      return null
+    } catch (error) {
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 4000)
+        logger.warn(`获取后端路由失败 (第${attempt + 1}次), ${delay}ms后重试:`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        logger.error(`获取后端路由失败 (已重试${maxRetries}次):`, error)
+        throw error
+      }
+    }
+  }
+  return null
+}
+
+/**
  * 从后端或降级逻辑加载可访问路由
  *
  * @param permissions 用户权限
@@ -280,8 +306,8 @@ async function loadAccessedRoutes(
 ): Promise<RouteRecordRaw[]> {
   try {
     logger.log('从后端获取用户路由...')
-    const backendRoutes = (await getUserRoutes()) as unknown as BackendRoute[]
-    if (backendRoutes && backendRoutes.length > 0) {
+    const backendRoutes = await fetchBackendRoutesWithRetry()
+    if (backendRoutes) {
       logger.log('成功获取后端路由:', backendRoutes)
       const routes = convertBackendRoutesToVueRouter(backendRoutes)
       logger.log('路由转换完成:', routes.length, '个')

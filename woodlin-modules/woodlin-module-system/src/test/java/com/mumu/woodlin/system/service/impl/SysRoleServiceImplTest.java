@@ -8,6 +8,7 @@ import com.mumu.woodlin.system.mapper.SysRoleHierarchyMapper;
 import com.mumu.woodlin.system.mapper.SysRoleInheritedPermissionMapper;
 import com.mumu.woodlin.system.mapper.SysRoleMapper;
 import com.mumu.woodlin.system.mapper.SysRolePermissionMapper;
+import com.mumu.woodlin.system.mapper.SysUserRoleMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -49,6 +50,8 @@ class SysRoleServiceImplTest {
     private SysRoleHierarchyMapper hierarchyMapper;
     @Mock
     private SysRoleInheritedPermissionMapper inheritedPermissionMapper;
+    @Mock
+    private SysUserRoleMapper userRoleMapper;
 
     private SysRoleServiceImpl service;
 
@@ -60,7 +63,8 @@ class SysRoleServiceImplTest {
             permissionMapper,
             rolePermissionMapper,
             hierarchyMapper,
-            inheritedPermissionMapper
+            inheritedPermissionMapper,
+            userRoleMapper
         ));
     }
 
