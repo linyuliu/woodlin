@@ -1,5 +1,6 @@
 import { RouterView, type RouteComponent } from 'vue-router'
 import { LAYOUT } from './route-constants'
+import { logger } from '@/utils/logger'
 
 // 自动收集 views 下的页面组件，支持 .vue / .tsx
 const viewModules: Record<string, () => Promise<unknown>> = import.meta.glob('@/views/**/*.{vue,tsx}')
@@ -43,6 +44,12 @@ const componentAlias: Record<string, string> = {
  * 根据后端返回的 component 标识解析为实际组件。
  * 约定：component 传入相对路径（不含后缀），例如 "system/UserView" -> src/views/system/UserView.vue
  * 同时兼容 ruoyi 风格的 "system/user/index" 大小写不敏感写法。
+ *
+ * 解析顺序：
+ * 1. 精确匹配（区分大小写）
+ * 2. 别名映射（忽略大小写，兼容后端路径格式）
+ * 3. 模糊匹配（路径末尾匹配，忽略大小写）
+ * 4. 兜底返回 RouterView（记录警告以便排查）
  */
 export function resolveRouteComponent(component?: string): RouteComponent {
   if (!component) {
@@ -85,6 +92,11 @@ export function resolveRouteComponent(component?: string): RouteComponent {
     return viewModules[looseMatch]
   }
 
-  // 找不到匹配时用 RouterView 兜底，避免路由生成失败
+  // 找不到匹配时用 RouterView 兜底，记录警告以便排查后端路径配置问题
+  logger.warn(
+    `[route-loader] 组件未找到: "${component}"，使用 RouterView 兜底。` +
+    `请检查后端权限表 component 字段是否与前端视图路径匹配。` +
+    `已注册视图: ${Object.keys(viewModules).length} 个`
+  )
   return RouterView
 }

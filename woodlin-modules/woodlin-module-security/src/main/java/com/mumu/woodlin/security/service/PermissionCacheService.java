@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.redisson.api.RBucket;
 import org.redisson.api.RKeys;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +25,9 @@ import lombok.RequiredArgsConstructor;
  * 权限缓存服务
  *
  * @author mumu
- * @description 提供权限相关的缓存管理，支持RBAC1模型的用户权限和角色权限缓存
- *              优化后的缓存结构：用户相关信息合并为一个缓存对象，角色权限单独缓存
+ * @description 提供权限相关的缓存管理，支持RBAC1模型的用户权限和角色权限缓存。
+ *              优化后的缓存结构：用户相关信息合并为一个缓存对象，角色权限单独缓存。
+ *              使用分布式锁防止缓存击穿（thundering herd），确保并发场景下只有一个线程查库。
  * @since 2025-01-04
  */
 @Service
@@ -45,6 +48,21 @@ public class PermissionCacheService {
      * 角色权限缓存key前缀（独立缓存）
      */
     private static final String ROLE_PERMISSION_PREFIX = "auth:role:permissions:";
+
+    /**
+     * 用户缓存加载锁前缀，防止并发查库
+     */
+    private static final String USER_CACHE_LOCK_PREFIX = "lock:auth:user:";
+
+    /**
+     * 分布式锁等待时间（秒）
+     */
+    private static final long LOCK_WAIT_SECONDS = 5;
+
+    /**
+     * 分布式锁租约时间（秒）
+     */
+    private static final long LOCK_LEASE_SECONDS = 10;
 
     /**
      * 获取用户缓存（合并的用户信息、角色、权限等）
@@ -68,6 +86,74 @@ public class PermissionCacheService {
         } catch (Exception e) {
             log.error("获取用户缓存失败: userId={}", userId, e);
             return null;
+        }
+    }
+
+    /**
+     * 获取用户缓存，缓存未命中时使用分布式锁保护数据库查询。
+     * 防止缓存击穿（thundering herd）：同一用户的多个并发请求中，
+     * 只有一个线程执行数据库查询并填充缓存，其他线程等待后直接读取缓存。
+     *
+     * @param userId 用户ID
+     * @param dbLoader 缓存未命中时的数据库加载函数
+     * @return 用户缓存对象，永不返回null（最差情况返回空的UserCacheDto）
+     */
+    public UserCacheDto getOrLoadUserCache(Long userId, Supplier<UserCacheDto> dbLoader) {
+        // 1. 先尝试读缓存（无锁快速路径）
+        UserCacheDto cached = getUserCache(userId);
+        if (cached != null) {
+            return cached;
+        }
+
+        // 缓存未启用时直接查库
+        if (isDisabled()) {
+            return dbLoader.get();
+        }
+
+        // 2. 缓存未命中 → 使用分布式锁防止并发查库
+        String lockKey = USER_CACHE_LOCK_PREFIX + userId;
+        RLock lock = redissonClient.getLock(lockKey);
+
+        try {
+            boolean acquired = lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
+            if (acquired) {
+                try {
+                    // 获得锁后再次检查缓存（双重检查，防止重复查库）
+                    cached = getUserCache(userId);
+                    if (cached != null) {
+                        log.debug("分布式锁双重检查命中缓存: userId={}", userId);
+                        return cached;
+                    }
+
+                    // 真正执行数据库查询
+                    log.info("缓存未命中，执行数据库查询: userId={}", userId);
+                    UserCacheDto loaded = dbLoader.get();
+                    if (loaded != null) {
+                        cacheUser(loaded);
+                    }
+                    return loaded;
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                // 等待锁超时，再尝试读一次缓存
+                log.warn("获取分布式锁超时，尝试读取缓存: userId={}", userId);
+                cached = getUserCache(userId);
+                if (cached != null) {
+                    return cached;
+                }
+                // 降级：无锁直接查库（避免请求完全失败）
+                log.warn("降级直接查库: userId={}", userId);
+                return dbLoader.get();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取分布式锁被中断: userId={}", userId, e);
+            // 降级直接查库
+            return dbLoader.get();
+        } catch (Exception e) {
+            log.error("分布式锁操作异常，降级查库: userId={}", userId, e);
+            return dbLoader.get();
         }
     }
 

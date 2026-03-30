@@ -53,6 +53,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRolePermissionMapper rolePermissionMapper;
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
+    private final com.mumu.woodlin.system.mapper.SysUserRoleMapper userRoleMapper;
 
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
@@ -597,18 +598,29 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
 
     /**
-     * 清除角色相关的缓存
+     * 清除角色相关的缓存（仅清除受影响的用户，避免全量清除引起缓存击穿）
      *
      * @param roleId 角色ID
      */
     private void evictRoleCache(Long roleId) {
         if (permissionCacheService != null) {
+            // 清除角色自身的权限缓存
             permissionCacheService.evictRoleCache(roleId);
-            // 清除所有用户权限缓存，因为角色变更会影响所有拥有该角色的用户
-            permissionCacheService.evictAllUserPermissions();
-            // 清除所有用户路由缓存，因为角色变更会影响所有拥有该角色的用户的路由
-            permissionCacheService.evictAllUserPermissions();
-            log.info("已清除角色缓存并刷新用户权限缓存: roleId={}", roleId);
+
+            // 精准清除：只清除拥有该角色的用户缓存，避免全量清除导致所有用户同时查库
+            try {
+                List<Long> affectedUserIds = userRoleMapper.selectUserIdsByRoleId(roleId);
+                if (CollUtil.isNotEmpty(affectedUserIds)) {
+                    permissionCacheService.evictUserCacheBatch(affectedUserIds);
+                    log.info("已清除角色缓存并刷新受影响的用户缓存: roleId={}, 影响用户数={}",
+                        roleId, affectedUserIds.size());
+                } else {
+                    log.info("已清除角色缓存，无受影响的用户: roleId={}", roleId);
+                }
+            } catch (Exception e) {
+                log.error("精准清除用户缓存失败，降级为全量清除: roleId={}", roleId, e);
+                permissionCacheService.evictAllUserPermissions();
+            }
         }
     }
 }
