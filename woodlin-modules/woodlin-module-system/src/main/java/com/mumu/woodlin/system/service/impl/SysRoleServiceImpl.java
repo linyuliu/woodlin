@@ -21,6 +21,7 @@ import com.mumu.woodlin.system.mapper.SysRoleHierarchyMapper;
 import com.mumu.woodlin.system.mapper.SysRoleInheritedPermissionMapper;
 import com.mumu.woodlin.system.mapper.SysRoleMapper;
 import com.mumu.woodlin.system.mapper.SysRolePermissionMapper;
+import com.mumu.woodlin.system.mapper.SysUserRoleMapper;
 import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.util.RoleHierarchyUtil;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +54,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRolePermissionMapper rolePermissionMapper;
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
-    private final com.mumu.woodlin.system.mapper.SysUserRoleMapper userRoleMapper;
+    private final SysUserRoleMapper userRoleMapper;
 
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）

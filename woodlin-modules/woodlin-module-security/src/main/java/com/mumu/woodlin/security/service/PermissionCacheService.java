@@ -96,7 +96,7 @@ public class PermissionCacheService {
      *
      * @param userId 用户ID
      * @param dbLoader 缓存未命中时的数据库加载函数
-     * @return 用户缓存对象，永不返回null（最差情况返回空的UserCacheDto）
+     * @return 用户缓存对象，如果加载函数返回null则返回null
      */
     public UserCacheDto getOrLoadUserCache(Long userId, Supplier<UserCacheDto> dbLoader) {
         // 1. 先尝试读缓存（无锁快速路径）
