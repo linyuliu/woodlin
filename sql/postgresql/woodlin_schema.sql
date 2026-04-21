@@ -940,3 +940,841 @@ CREATE INDEX idx_sys_etl_bucket_checksum_execution
   ON sys_etl_data_bucket_checksum (execution_log_id, bucket_number);
 CREATE INDEX idx_sys_etl_validation_log_execution
   ON sys_etl_data_validation_log (execution_log_id, validation_status);
+
+-- =============================================
+-- Assessment Module（测评模块）
+-- =============================================
+
+-- sys_assessment_form
+DROP TABLE IF EXISTS sys_assessment_form;
+CREATE TABLE sys_assessment_form
+(
+    form_id            bigint       NOT NULL,
+    form_code          varchar(100) NOT NULL,
+    form_name          varchar(200) NOT NULL,
+    assessment_type    varchar(30)  DEFAULT 'scale',
+    category_code      varchar(100) DEFAULT NULL,
+    description        text         DEFAULT NULL,
+    cover_url          varchar(500) DEFAULT NULL,
+    tags               varchar(500) DEFAULT NULL,
+    current_version_id bigint       DEFAULT NULL,
+    status             smallint     DEFAULT 1,
+    sort_order         int          DEFAULT 0,
+    tenant_id          varchar(64)  DEFAULT NULL,
+    remark             varchar(500) DEFAULT NULL,
+    create_by          varchar(64)  DEFAULT NULL,
+    create_time        timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by          varchar(64)  DEFAULT NULL,
+    update_time        timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted            char(1)      DEFAULT '0',
+    PRIMARY KEY (form_id)
+);
+COMMENT ON TABLE sys_assessment_form IS '测评主体表（量表/试卷/问卷）';
+COMMENT ON COLUMN sys_assessment_form.form_id IS '测评ID';
+COMMENT ON COLUMN sys_assessment_form.form_code IS '唯一编码（业务标识）';
+COMMENT ON COLUMN sys_assessment_form.assessment_type IS '测评类型: scale/exam/survey';
+COMMENT ON COLUMN sys_assessment_form.status IS '启用状态: 1=启用 0=禁用';
+COMMENT ON COLUMN sys_assessment_form.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_form_version
+DROP TABLE IF EXISTS sys_assessment_form_version;
+CREATE TABLE sys_assessment_form_version
+(
+    version_id     bigint       NOT NULL,
+    form_id        bigint       NOT NULL,
+    version_no     varchar(30)  NOT NULL,
+    version_tag    varchar(100) DEFAULT NULL,
+    schema_id      bigint       DEFAULT NULL,
+    schema_hash    varchar(128) DEFAULT NULL,
+    dsl_hash       varchar(128) DEFAULT NULL,
+    status         varchar(30)  DEFAULT 'draft',
+    published_at   timestamp    DEFAULT NULL,
+    published_by   varchar(64)  DEFAULT NULL,
+    change_summary text         DEFAULT NULL,
+    tenant_id      varchar(64)  DEFAULT NULL,
+    create_by      varchar(64)  DEFAULT NULL,
+    create_time    timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by      varchar(64)  DEFAULT NULL,
+    update_time    timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted        char(1)      DEFAULT '0',
+    PRIMARY KEY (version_id)
+);
+COMMENT ON TABLE sys_assessment_form_version IS '测评版本表';
+COMMENT ON COLUMN sys_assessment_form_version.status IS '版本状态: draft/compiled/published/deprecated/archived';
+COMMENT ON COLUMN sys_assessment_form_version.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_schema
+DROP TABLE IF EXISTS sys_assessment_schema;
+CREATE TABLE sys_assessment_schema
+(
+    schema_id        bigint       NOT NULL,
+    form_id          bigint       NOT NULL,
+    version_id       bigint       DEFAULT NULL,
+    status           varchar(30)  DEFAULT 'draft',
+    canonical_schema text         DEFAULT NULL,
+    dsl_source       text         DEFAULT NULL,
+    compiled_schema  text         DEFAULT NULL,
+    compile_error    text         DEFAULT NULL,
+    schema_hash      varchar(128) DEFAULT NULL,
+    tenant_id        varchar(64)  DEFAULT NULL,
+    create_by        varchar(64)  DEFAULT NULL,
+    create_time      timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by        varchar(64)  DEFAULT NULL,
+    update_time      timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted          char(1)      DEFAULT '0',
+    PRIMARY KEY (schema_id)
+);
+COMMENT ON TABLE sys_assessment_schema IS '测评 Schema 表（结构定义）';
+COMMENT ON COLUMN sys_assessment_schema.canonical_schema IS '规范 JSON Schema（后台配置主存）';
+COMMENT ON COLUMN sys_assessment_schema.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_section
+DROP TABLE IF EXISTS sys_assessment_section;
+CREATE TABLE sys_assessment_section
+(
+    section_id    bigint       NOT NULL,
+    version_id    bigint       NOT NULL,
+    form_id       bigint       NOT NULL,
+    section_code  varchar(100) NOT NULL,
+    section_title varchar(200) DEFAULT NULL,
+    section_desc  text         DEFAULT NULL,
+    display_mode  varchar(30)  DEFAULT 'paged',
+    random_strategy varchar(50) DEFAULT 'none',
+    sort_order    int          DEFAULT 0,
+    is_required   smallint     DEFAULT 1,
+    anchor_code   varchar(100) DEFAULT NULL,
+    tenant_id     varchar(64)  DEFAULT NULL,
+    create_by     varchar(64)  DEFAULT NULL,
+    create_time   timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by     varchar(64)  DEFAULT NULL,
+    update_time   timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted       char(1)      DEFAULT '0',
+    PRIMARY KEY (section_id)
+);
+COMMENT ON TABLE sys_assessment_section IS '测评章节/页面表';
+COMMENT ON COLUMN sys_assessment_section.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_item
+DROP TABLE IF EXISTS sys_assessment_item;
+CREATE TABLE sys_assessment_item
+(
+    item_id             bigint        NOT NULL,
+    version_id          bigint        NOT NULL,
+    section_id          bigint        DEFAULT NULL,
+    form_id             bigint        NOT NULL,
+    item_code           varchar(100)  NOT NULL,
+    item_type           varchar(50)   DEFAULT 'single_choice',
+    stem                text          DEFAULT NULL,
+    stem_media_url      varchar(500)  DEFAULT NULL,
+    help_text           varchar(500)  DEFAULT NULL,
+    sort_order          int           DEFAULT 0,
+    is_required         smallint      DEFAULT 1,
+    is_scored           smallint      DEFAULT 1,
+    is_anchor           smallint      DEFAULT 0,
+    is_reverse          smallint      DEFAULT 0,
+    is_demographic      smallint      DEFAULT 0,
+    max_score           numeric(10,4) DEFAULT NULL,
+    min_score           numeric(10,4) DEFAULT NULL,
+    time_limit_seconds  int           DEFAULT 0,
+    demographic_field   varchar(100)  DEFAULT NULL,
+    tenant_id           varchar(64)   DEFAULT NULL,
+    create_by           varchar(64)   DEFAULT NULL,
+    create_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by           varchar(64)   DEFAULT NULL,
+    update_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted             char(1)       DEFAULT '0',
+    PRIMARY KEY (item_id)
+);
+COMMENT ON TABLE sys_assessment_item IS '题目/条目表';
+COMMENT ON COLUMN sys_assessment_item.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_option
+DROP TABLE IF EXISTS sys_assessment_option;
+CREATE TABLE sys_assessment_option
+(
+    option_id           bigint        NOT NULL,
+    item_id             bigint        NOT NULL,
+    option_code         varchar(30)   NOT NULL,
+    display_text        text          DEFAULT NULL,
+    media_url           varchar(500)  DEFAULT NULL,
+    raw_value           varchar(255)  DEFAULT NULL,
+    score_value         numeric(10,4) DEFAULT NULL,
+    score_reverse_value numeric(10,4) DEFAULT NULL,
+    is_exclusive        smallint      DEFAULT 0,
+    is_correct          smallint      DEFAULT 0,
+    sort_order          int           DEFAULT 0,
+    tenant_id           varchar(64)   DEFAULT NULL,
+    create_by           varchar(64)   DEFAULT NULL,
+    create_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by           varchar(64)   DEFAULT NULL,
+    update_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted             char(1)       DEFAULT '0',
+    PRIMARY KEY (option_id)
+);
+COMMENT ON TABLE sys_assessment_option IS '题目选项表';
+COMMENT ON COLUMN sys_assessment_option.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_dimension
+DROP TABLE IF EXISTS sys_assessment_dimension;
+CREATE TABLE sys_assessment_dimension
+(
+    dimension_id        bigint       NOT NULL,
+    form_id             bigint       NOT NULL,
+    version_id          bigint       NOT NULL,
+    parent_dimension_id bigint       DEFAULT NULL,
+    dimension_code      varchar(100) NOT NULL,
+    dimension_name      varchar(200) NOT NULL,
+    dimension_desc      text         DEFAULT NULL,
+    score_mode          varchar(50)  DEFAULT 'sum',
+    score_dsl           text         DEFAULT NULL,
+    norm_set_id         bigint       DEFAULT NULL,
+    sort_order          int          DEFAULT 0,
+    tenant_id           varchar(64)  DEFAULT NULL,
+    create_by           varchar(64)  DEFAULT NULL,
+    create_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by           varchar(64)  DEFAULT NULL,
+    update_time         timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted             char(1)      DEFAULT '0',
+    PRIMARY KEY (dimension_id)
+);
+COMMENT ON TABLE sys_assessment_dimension IS '维度/因子/分量表';
+COMMENT ON COLUMN sys_assessment_dimension.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_dimension_item
+DROP TABLE IF EXISTS sys_assessment_dimension_item;
+CREATE TABLE sys_assessment_dimension_item
+(
+    id           bigint        NOT NULL,
+    dimension_id bigint        NOT NULL,
+    item_id      bigint        NOT NULL,
+    version_id   bigint        NOT NULL,
+    weight       numeric(10,4) DEFAULT 1.0000,
+    score_mode   varchar(50)   DEFAULT NULL,
+    reverse_mode varchar(20)   DEFAULT 'none',
+    tenant_id    varchar(64)   DEFAULT NULL,
+    create_by    varchar(64)   DEFAULT NULL,
+    create_time  timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by    varchar(64)   DEFAULT NULL,
+    update_time  timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted      char(1)       DEFAULT '0',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_assessment_dimension_item IS '题目-维度映射表';
+COMMENT ON COLUMN sys_assessment_dimension_item.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_rule
+DROP TABLE IF EXISTS sys_assessment_rule;
+CREATE TABLE sys_assessment_rule
+(
+    rule_id       bigint       NOT NULL,
+    form_id       bigint       NOT NULL,
+    version_id    bigint       NOT NULL,
+    rule_code     varchar(100) NOT NULL,
+    rule_name     varchar(200) DEFAULT NULL,
+    rule_type     varchar(50)  NOT NULL,
+    target_type   varchar(30)  DEFAULT NULL,
+    target_code   varchar(200) DEFAULT NULL,
+    dsl_source    text         DEFAULT NULL,
+    compiled_rule text         DEFAULT NULL,
+    priority      int          DEFAULT 100,
+    is_active     smallint     DEFAULT 1,
+    compile_error text         DEFAULT NULL,
+    tenant_id     varchar(64)  DEFAULT NULL,
+    create_by     varchar(64)  DEFAULT NULL,
+    create_time   timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by     varchar(64)  DEFAULT NULL,
+    update_time   timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted       char(1)      DEFAULT '0',
+    PRIMARY KEY (rule_id)
+);
+COMMENT ON TABLE sys_assessment_rule IS '规则定义表';
+COMMENT ON COLUMN sys_assessment_rule.rule_type IS '规则类型: display/branch/validation/score/norm_match/report/eligibility/terminate';
+COMMENT ON COLUMN sys_assessment_rule.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_anchor_item
+DROP TABLE IF EXISTS sys_assessment_anchor_item;
+CREATE TABLE sys_assessment_anchor_item
+(
+    anchor_id   bigint       NOT NULL,
+    form_id     bigint       NOT NULL,
+    anchor_code varchar(100) NOT NULL,
+    item_id     bigint       NOT NULL,
+    version_id  bigint       NOT NULL,
+    anchor_type varchar(30)  DEFAULT 'common',
+    note        varchar(500) DEFAULT NULL,
+    tenant_id   varchar(64)  DEFAULT NULL,
+    create_by   varchar(64)  DEFAULT NULL,
+    create_time timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by   varchar(64)  DEFAULT NULL,
+    update_time timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted     char(1)      DEFAULT '0',
+    PRIMARY KEY (anchor_id)
+);
+COMMENT ON TABLE sys_assessment_anchor_item IS '锚题定义表';
+COMMENT ON COLUMN sys_assessment_anchor_item.anchor_type IS '锚题类型: common/equating/calibration';
+COMMENT ON COLUMN sys_assessment_anchor_item.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_publish
+DROP TABLE IF EXISTS sys_assessment_publish;
+CREATE TABLE sys_assessment_publish
+(
+    publish_id              bigint       NOT NULL,
+    form_id                 bigint       NOT NULL,
+    version_id              bigint       NOT NULL,
+    publish_code            varchar(100) DEFAULT NULL,
+    publish_name            varchar(200) NOT NULL,
+    status                  varchar(30)  DEFAULT 'draft',
+    start_time              timestamp    DEFAULT NULL,
+    end_time                timestamp    DEFAULT NULL,
+    time_limit_minutes      int          DEFAULT 0,
+    max_attempts            int          DEFAULT 1,
+    allow_anonymous         smallint     DEFAULT 0,
+    allow_resume            smallint     DEFAULT 1,
+    random_strategy         varchar(50)  DEFAULT 'none',
+    access_policy           text         DEFAULT NULL,
+    device_restriction      text         DEFAULT NULL,
+    show_result_immediately smallint     DEFAULT 0,
+    result_visibility       varchar(30)  DEFAULT 'self',
+    tenant_id               varchar(64)  DEFAULT NULL,
+    remark                  varchar(500) DEFAULT NULL,
+    create_by               varchar(64)  DEFAULT NULL,
+    create_time             timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by               varchar(64)  DEFAULT NULL,
+    update_time             timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted                 char(1)      DEFAULT '0',
+    PRIMARY KEY (publish_id)
+);
+COMMENT ON TABLE sys_assessment_publish IS '发布实例表';
+COMMENT ON COLUMN sys_assessment_publish.status IS '发布状态: draft/under_review/published/paused/closed/archived';
+COMMENT ON COLUMN sys_assessment_publish.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_session
+DROP TABLE IF EXISTS sys_assessment_session;
+CREATE TABLE sys_assessment_session
+(
+    session_id      bigint       NOT NULL,
+    publish_id      bigint       NOT NULL,
+    form_id         bigint       NOT NULL,
+    version_id      bigint       NOT NULL,
+    user_id         bigint       DEFAULT NULL,
+    anonymous_token varchar(200) DEFAULT NULL,
+    status          varchar(30)  DEFAULT 'not_started',
+    display_seed    bigint       DEFAULT NULL,
+    started_at      timestamp    DEFAULT NULL,
+    completed_at    timestamp    DEFAULT NULL,
+    elapsed_seconds int          DEFAULT 0,
+    client_ip       varchar(128) DEFAULT NULL,
+    user_agent      varchar(500) DEFAULT NULL,
+    device_type     varchar(20)  DEFAULT NULL,
+    attempt_number  int          DEFAULT 1,
+    tenant_id       varchar(64)  DEFAULT NULL,
+    create_by       varchar(64)  DEFAULT NULL,
+    create_time     timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by       varchar(64)  DEFAULT NULL,
+    update_time     timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted         char(1)      DEFAULT '0',
+    PRIMARY KEY (session_id)
+);
+COMMENT ON TABLE sys_assessment_session IS '作答会话表';
+COMMENT ON COLUMN sys_assessment_session.status IS '会话状态: not_started/in_progress/paused/completed/expired/abandoned/invalidated';
+COMMENT ON COLUMN sys_assessment_session.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_session_snapshot
+DROP TABLE IF EXISTS sys_assessment_session_snapshot;
+CREATE TABLE sys_assessment_session_snapshot
+(
+    snapshot_id            bigint       NOT NULL,
+    session_id             bigint       NOT NULL,
+    current_section_code   varchar(100) DEFAULT NULL,
+    current_item_code      varchar(100) DEFAULT NULL,
+    item_order_snapshot    text         DEFAULT NULL,
+    option_order_snapshot  text         DEFAULT NULL,
+    answered_cache         text         DEFAULT NULL,
+    elapsed_seconds        int          DEFAULT 0,
+    snapshot_at            timestamp    DEFAULT CURRENT_TIMESTAMP,
+    tenant_id              varchar(64)  DEFAULT NULL,
+    create_by              varchar(64)  DEFAULT NULL,
+    create_time            timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by              varchar(64)  DEFAULT NULL,
+    update_time            timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted                char(1)      DEFAULT '0',
+    PRIMARY KEY (snapshot_id)
+);
+COMMENT ON TABLE sys_assessment_session_snapshot IS '作答断点快照表';
+COMMENT ON COLUMN sys_assessment_session_snapshot.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_response
+DROP TABLE IF EXISTS sys_assessment_response;
+CREATE TABLE sys_assessment_response
+(
+    response_id                    bigint       NOT NULL,
+    session_id                     bigint       NOT NULL,
+    form_id                        bigint       NOT NULL,
+    item_id                        bigint       NOT NULL,
+    item_code                      varchar(100) NOT NULL,
+    display_order                  int          DEFAULT NULL,
+    raw_answer                     text         DEFAULT NULL,
+    selected_option_codes          text         DEFAULT NULL,
+    selected_option_display_orders text         DEFAULT NULL,
+    text_answer                    text         DEFAULT NULL,
+    answered_at                    timestamp    DEFAULT NULL,
+    time_spent_seconds             int          DEFAULT NULL,
+    is_skipped                     smallint     DEFAULT 0,
+    tenant_id                      varchar(64)  DEFAULT NULL,
+    create_by                      varchar(64)  DEFAULT NULL,
+    create_time                    timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by                      varchar(64)  DEFAULT NULL,
+    update_time                    timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted                        char(1)      DEFAULT '0',
+    PRIMARY KEY (response_id)
+);
+COMMENT ON TABLE sys_assessment_response IS '逐题作答记录表';
+COMMENT ON COLUMN sys_assessment_response.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_result
+DROP TABLE IF EXISTS sys_assessment_result;
+CREATE TABLE sys_assessment_result
+(
+    result_id            bigint        NOT NULL,
+    session_id           bigint        NOT NULL,
+    form_id              bigint        NOT NULL,
+    publish_id           bigint        NOT NULL,
+    user_id              bigint        DEFAULT NULL,
+    raw_total_score      numeric(10,4) DEFAULT NULL,
+    weighted_total_score numeric(10,4) DEFAULT NULL,
+    standard_score       numeric(10,4) DEFAULT NULL,
+    norm_score_type      varchar(30)   DEFAULT NULL,
+    percentile           numeric(6,2)  DEFAULT NULL,
+    grade_label          varchar(100)  DEFAULT NULL,
+    norm_set_id          bigint        DEFAULT NULL,
+    norm_segment_id      bigint        DEFAULT NULL,
+    risk_level           varchar(20)   DEFAULT 'none',
+    answered_count       int           DEFAULT 0,
+    total_item_count     int           DEFAULT 0,
+    report_json          text          DEFAULT NULL,
+    tenant_id            varchar(64)   DEFAULT NULL,
+    create_by            varchar(64)   DEFAULT NULL,
+    create_time          timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by            varchar(64)   DEFAULT NULL,
+    update_time          timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted              char(1)       DEFAULT '0',
+    PRIMARY KEY (result_id)
+);
+COMMENT ON TABLE sys_assessment_result IS '测评总结果表';
+COMMENT ON COLUMN sys_assessment_result.risk_level IS '综合风险等级: none/low/medium/high/confirmed';
+COMMENT ON COLUMN sys_assessment_result.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_result_dimension
+DROP TABLE IF EXISTS sys_assessment_result_dimension;
+CREATE TABLE sys_assessment_result_dimension
+(
+    id              bigint        NOT NULL,
+    result_id       bigint        NOT NULL,
+    session_id      bigint        NOT NULL,
+    dimension_id    bigint        NOT NULL,
+    dimension_code  varchar(100)  DEFAULT NULL,
+    raw_score       numeric(10,4) DEFAULT NULL,
+    mean_score      numeric(10,4) DEFAULT NULL,
+    standard_score  numeric(10,4) DEFAULT NULL,
+    percentile      numeric(6,2)  DEFAULT NULL,
+    grade_label     varchar(100)  DEFAULT NULL,
+    norm_segment_id bigint        DEFAULT NULL,
+    item_count      int           DEFAULT 0,
+    tenant_id       varchar(64)   DEFAULT NULL,
+    create_by       varchar(64)   DEFAULT NULL,
+    create_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by       varchar(64)   DEFAULT NULL,
+    update_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted         char(1)       DEFAULT '0',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_assessment_result_dimension IS '维度得分结果表';
+COMMENT ON COLUMN sys_assessment_result_dimension.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_demographic_profile
+DROP TABLE IF EXISTS sys_assessment_demographic_profile;
+CREATE TABLE sys_assessment_demographic_profile
+(
+    profile_id      bigint        NOT NULL,
+    session_id      bigint        NOT NULL,
+    user_id         bigint        DEFAULT NULL,
+    gender          varchar(10)   DEFAULT NULL,
+    birth_year      int           DEFAULT NULL,
+    age             int           DEFAULT NULL,
+    age_group       varchar(20)   DEFAULT NULL,
+    education_level varchar(30)   DEFAULT NULL,
+    occupation      varchar(50)   DEFAULT NULL,
+    region_code     varchar(30)   DEFAULT NULL,
+    province_code   varchar(10)   DEFAULT NULL,
+    marital_status  varchar(20)   DEFAULT NULL,
+    ethnicity       varchar(30)   DEFAULT NULL,
+    extra_fields    text          DEFAULT NULL,
+    norm_weight     numeric(10,4) DEFAULT 1.0000,
+    tenant_id       varchar(64)   DEFAULT NULL,
+    create_by       varchar(64)   DEFAULT NULL,
+    create_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by       varchar(64)   DEFAULT NULL,
+    update_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted         char(1)       DEFAULT '0',
+    PRIMARY KEY (profile_id)
+);
+COMMENT ON TABLE sys_assessment_demographic_profile IS '人口学档案快照表';
+COMMENT ON COLUMN sys_assessment_demographic_profile.region_code IS '地区编码（关联 sys_region.region_code）';
+COMMENT ON COLUMN sys_assessment_demographic_profile.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_event_log
+DROP TABLE IF EXISTS sys_assessment_event_log;
+CREATE TABLE sys_assessment_event_log
+(
+    event_id        bigint       NOT NULL,
+    session_id      bigint       NOT NULL,
+    event_type      varchar(60)  NOT NULL,
+    item_code       varchar(100) DEFAULT NULL,
+    event_payload   text         DEFAULT NULL,
+    occurred_at     timestamp(3) DEFAULT NULL,
+    elapsed_seconds int          DEFAULT NULL,
+    tenant_id       varchar(64)  DEFAULT NULL,
+    create_by       varchar(64)  DEFAULT NULL,
+    create_time     timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by       varchar(64)  DEFAULT NULL,
+    update_time     timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted         char(1)      DEFAULT '0',
+    PRIMARY KEY (event_id)
+);
+COMMENT ON TABLE sys_assessment_event_log IS '作答事件日志表（行为埋点）';
+COMMENT ON COLUMN sys_assessment_event_log.event_type IS '事件类型: focus/blur/paste/copy_blocked/fullscreen_exit/…';
+COMMENT ON COLUMN sys_assessment_event_log.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_cheat_flag
+DROP TABLE IF EXISTS sys_assessment_cheat_flag;
+CREATE TABLE sys_assessment_cheat_flag
+(
+    flag_id           bigint       NOT NULL,
+    session_id        bigint       NOT NULL,
+    rule_code         varchar(100) NOT NULL,
+    rule_desc         varchar(500) DEFAULT NULL,
+    risk_level        varchar(20)  DEFAULT 'low',
+    evidence          text         DEFAULT NULL,
+    detected_at       timestamp    DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by       varchar(64)  DEFAULT NULL,
+    reviewed_at       timestamp    DEFAULT NULL,
+    review_conclusion varchar(30)  DEFAULT 'pending',
+    review_note       varchar(500) DEFAULT NULL,
+    tenant_id         varchar(64)  DEFAULT NULL,
+    create_by         varchar(64)  DEFAULT NULL,
+    create_time       timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by         varchar(64)  DEFAULT NULL,
+    update_time       timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted           char(1)      DEFAULT '0',
+    PRIMARY KEY (flag_id)
+);
+COMMENT ON TABLE sys_assessment_cheat_flag IS '作弊/风险标记表';
+COMMENT ON COLUMN sys_assessment_cheat_flag.review_conclusion IS '复核结论: confirmed_cheat/false_positive/pending';
+COMMENT ON COLUMN sys_assessment_cheat_flag.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_norm_set
+DROP TABLE IF EXISTS sys_assessment_norm_set;
+CREATE TABLE sys_assessment_norm_set
+(
+    norm_set_id       bigint       NOT NULL,
+    form_id           bigint       NOT NULL,
+    norm_set_name     varchar(200) NOT NULL,
+    norm_set_code     varchar(100) NOT NULL,
+    sample_size       int          DEFAULT NULL,
+    collection_start  date         DEFAULT NULL,
+    collection_end    date         DEFAULT NULL,
+    source_desc       text         DEFAULT NULL,
+    applicability_desc text        DEFAULT NULL,
+    is_default        smallint     DEFAULT 0,
+    status            smallint     DEFAULT 1,
+    tenant_id         varchar(64)  DEFAULT NULL,
+    create_by         varchar(64)  DEFAULT NULL,
+    create_time       timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by         varchar(64)  DEFAULT NULL,
+    update_time       timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted           char(1)      DEFAULT '0',
+    PRIMARY KEY (norm_set_id)
+);
+COMMENT ON TABLE sys_assessment_norm_set IS '常模集表';
+COMMENT ON COLUMN sys_assessment_norm_set.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_norm_segment
+DROP TABLE IF EXISTS sys_assessment_norm_segment;
+CREATE TABLE sys_assessment_norm_segment
+(
+    segment_id         bigint       NOT NULL,
+    norm_set_id        bigint       NOT NULL,
+    segment_code       varchar(100) NOT NULL,
+    segment_name       varchar(200) NOT NULL,
+    gender_filter      varchar(10)  DEFAULT NULL,
+    age_min            int          DEFAULT NULL,
+    age_max            int          DEFAULT NULL,
+    education_filter   varchar(30)  DEFAULT NULL,
+    region_code_filter varchar(30)  DEFAULT NULL,
+    sample_size        int          DEFAULT NULL,
+    extra_filter       text         DEFAULT NULL,
+    sort_priority      int          DEFAULT 100,
+    tenant_id          varchar(64)  DEFAULT NULL,
+    create_by          varchar(64)  DEFAULT NULL,
+    create_time        timestamp    DEFAULT CURRENT_TIMESTAMP,
+    update_by          varchar(64)  DEFAULT NULL,
+    update_time        timestamp    DEFAULT CURRENT_TIMESTAMP,
+    deleted            char(1)      DEFAULT '0',
+    PRIMARY KEY (segment_id)
+);
+COMMENT ON TABLE sys_assessment_norm_segment IS '常模分层表';
+COMMENT ON COLUMN sys_assessment_norm_segment.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_norm_conversion
+DROP TABLE IF EXISTS sys_assessment_norm_conversion;
+CREATE TABLE sys_assessment_norm_conversion
+(
+    conversion_id   bigint        NOT NULL,
+    segment_id      bigint        NOT NULL,
+    dimension_id    bigint        DEFAULT NULL,
+    norm_score_type varchar(30)   NOT NULL,
+    raw_score_min   numeric(10,4) DEFAULT NULL,
+    raw_score_max   numeric(10,4) DEFAULT NULL,
+    raw_score_exact numeric(10,4) DEFAULT NULL,
+    standard_score  numeric(10,4) DEFAULT NULL,
+    percentile      numeric(6,2)  DEFAULT NULL,
+    grade_label     varchar(100)  DEFAULT NULL,
+    sort_order      int           DEFAULT 0,
+    tenant_id       varchar(64)   DEFAULT NULL,
+    create_by       varchar(64)   DEFAULT NULL,
+    create_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by       varchar(64)   DEFAULT NULL,
+    update_time     timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted         char(1)       DEFAULT '0',
+    PRIMARY KEY (conversion_id)
+);
+COMMENT ON TABLE sys_assessment_norm_conversion IS '常模转换映射表';
+COMMENT ON COLUMN sys_assessment_norm_conversion.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_item_stat
+DROP TABLE IF EXISTS sys_assessment_item_stat;
+CREATE TABLE sys_assessment_item_stat
+(
+    stat_id             bigint        NOT NULL,
+    item_id             bigint        NOT NULL,
+    version_id          bigint        NOT NULL,
+    publish_id          bigint        DEFAULT NULL,
+    sample_size         int           DEFAULT 0,
+    item_difficulty     numeric(8,6)  DEFAULT NULL,
+    item_discrimination numeric(8,6)  DEFAULT NULL,
+    missing_rate        numeric(8,6)  DEFAULT NULL,
+    ceiling_rate        numeric(8,6)  DEFAULT NULL,
+    floor_rate          numeric(8,6)  DEFAULT NULL,
+    alpha_if_deleted    numeric(8,6)  DEFAULT NULL,
+    omega_if_deleted    numeric(8,6)  DEFAULT NULL,
+    dif_flag            varchar(10)   DEFAULT 'none',
+    dif_reference_group varchar(100)  DEFAULT NULL,
+    stat_json           text          DEFAULT NULL,
+    computed_at         timestamp     DEFAULT NULL,
+    tenant_id           varchar(64)   DEFAULT NULL,
+    create_by           varchar(64)   DEFAULT NULL,
+    create_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by           varchar(64)   DEFAULT NULL,
+    update_time         timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted             char(1)       DEFAULT '0',
+    PRIMARY KEY (stat_id)
+);
+COMMENT ON TABLE sys_assessment_item_stat IS '题目项目分析统计表';
+COMMENT ON COLUMN sys_assessment_item_stat.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_equating_record
+DROP TABLE IF EXISTS sys_assessment_equating_record;
+CREATE TABLE sys_assessment_equating_record
+(
+    equating_id          bigint        NOT NULL,
+    form_id              bigint        NOT NULL,
+    source_version_id    bigint        NOT NULL,
+    target_version_id    bigint        NOT NULL,
+    equating_method      varchar(50)   NOT NULL,
+    anchor_item_codes    text          DEFAULT NULL,
+    anchor_count         int           DEFAULT 0,
+    slope                numeric(12,6) DEFAULT NULL,
+    intercept            numeric(12,6) DEFAULT NULL,
+    rmsea                numeric(10,6) DEFAULT NULL,
+    equating_result_json text          DEFAULT NULL,
+    computed_at          timestamp     DEFAULT NULL,
+    computed_by          varchar(64)   DEFAULT NULL,
+    tenant_id            varchar(64)   DEFAULT NULL,
+    create_by            varchar(64)   DEFAULT NULL,
+    create_time          timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by            varchar(64)   DEFAULT NULL,
+    update_time          timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted              char(1)       DEFAULT '0',
+    PRIMARY KEY (equating_id)
+);
+COMMENT ON TABLE sys_assessment_equating_record IS '等值/链接记录表';
+COMMENT ON COLUMN sys_assessment_equating_record.equating_method IS '等值方法: mean_sigma/irt_linking/equipercentile/…';
+COMMENT ON COLUMN sys_assessment_equating_record.deleted IS '删除标识（0-正常，1-删除）';
+
+-- sys_assessment_bi_snapshot
+DROP TABLE IF EXISTS sys_assessment_bi_snapshot;
+CREATE TABLE sys_assessment_bi_snapshot
+(
+    snapshot_id            bigint        NOT NULL,
+    form_id                bigint        NOT NULL,
+    publish_id             bigint        DEFAULT NULL,
+    snapshot_type          varchar(30)   NOT NULL,
+    snapshot_date          timestamp     NOT NULL,
+    total_sessions         bigint        DEFAULT 0,
+    completed_sessions     bigint        DEFAULT 0,
+    avg_score              numeric(10,4) DEFAULT NULL,
+    metrics_json           text          DEFAULT NULL,
+    dimension_stats_json   text          DEFAULT NULL,
+    demographic_stats_json text          DEFAULT NULL,
+    tenant_id              varchar(64)   DEFAULT NULL,
+    create_by              varchar(64)   DEFAULT NULL,
+    create_time            timestamp     DEFAULT CURRENT_TIMESTAMP,
+    update_by              varchar(64)   DEFAULT NULL,
+    update_time            timestamp     DEFAULT CURRENT_TIMESTAMP,
+    deleted                char(1)       DEFAULT '0',
+    PRIMARY KEY (snapshot_id)
+);
+COMMENT ON TABLE sys_assessment_bi_snapshot IS 'BI 预聚合快照表';
+COMMENT ON COLUMN sys_assessment_bi_snapshot.snapshot_type IS '快照类型: daily/weekly/publish_close/manual';
+COMMENT ON COLUMN sys_assessment_bi_snapshot.deleted IS '删除标识（0-正常，1-删除）';
+
+-- =============================================
+-- Assessment indexes
+-- =============================================
+CREATE UNIQUE INDEX uk_assessment_form_code ON sys_assessment_form (form_code, tenant_id, deleted);
+CREATE INDEX idx_assessment_form_tenant ON sys_assessment_form (tenant_id);
+CREATE INDEX idx_assessment_form_status ON sys_assessment_form (status);
+CREATE INDEX idx_assessment_form_type ON sys_assessment_form (assessment_type);
+CREATE INDEX idx_assessment_form_create_time ON sys_assessment_form (create_time);
+
+CREATE INDEX idx_assessment_version_form ON sys_assessment_form_version (form_id);
+CREATE INDEX idx_assessment_version_status ON sys_assessment_form_version (status);
+CREATE INDEX idx_assessment_version_tenant ON sys_assessment_form_version (tenant_id);
+CREATE INDEX idx_assessment_version_published_at ON sys_assessment_form_version (published_at);
+
+CREATE INDEX idx_assessment_schema_form ON sys_assessment_schema (form_id);
+CREATE INDEX idx_assessment_schema_version ON sys_assessment_schema (version_id);
+CREATE INDEX idx_assessment_schema_status ON sys_assessment_schema (status);
+CREATE INDEX idx_assessment_schema_tenant ON sys_assessment_schema (tenant_id);
+
+CREATE INDEX idx_assessment_section_version ON sys_assessment_section (version_id);
+CREATE INDEX idx_assessment_section_form ON sys_assessment_section (form_id);
+CREATE INDEX idx_assessment_section_tenant ON sys_assessment_section (tenant_id);
+CREATE INDEX idx_assessment_section_sort ON sys_assessment_section (version_id, sort_order);
+
+CREATE INDEX idx_assessment_item_version ON sys_assessment_item (version_id);
+CREATE INDEX idx_assessment_item_section ON sys_assessment_item (section_id);
+CREATE INDEX idx_assessment_item_form ON sys_assessment_item (form_id);
+CREATE INDEX idx_assessment_item_code ON sys_assessment_item (version_id, item_code);
+CREATE INDEX idx_assessment_item_tenant ON sys_assessment_item (tenant_id);
+CREATE INDEX idx_assessment_item_sort ON sys_assessment_item (section_id, sort_order);
+
+CREATE INDEX idx_assessment_option_item ON sys_assessment_option (item_id);
+CREATE INDEX idx_assessment_option_sort ON sys_assessment_option (item_id, sort_order);
+CREATE INDEX idx_assessment_option_tenant ON sys_assessment_option (tenant_id);
+
+CREATE INDEX idx_assessment_dimension_form ON sys_assessment_dimension (form_id);
+CREATE INDEX idx_assessment_dimension_version ON sys_assessment_dimension (version_id);
+CREATE INDEX idx_assessment_dimension_parent ON sys_assessment_dimension (parent_dimension_id);
+CREATE INDEX idx_assessment_dimension_tenant ON sys_assessment_dimension (tenant_id);
+
+CREATE UNIQUE INDEX uk_assessment_dim_item ON sys_assessment_dimension_item (dimension_id, item_id, deleted);
+CREATE INDEX idx_assessment_dim_item_version ON sys_assessment_dimension_item (version_id);
+CREATE INDEX idx_assessment_dim_item_item ON sys_assessment_dimension_item (item_id);
+CREATE INDEX idx_assessment_dim_item_tenant ON sys_assessment_dimension_item (tenant_id);
+
+CREATE INDEX idx_assessment_rule_form ON sys_assessment_rule (form_id);
+CREATE INDEX idx_assessment_rule_version ON sys_assessment_rule (version_id);
+CREATE INDEX idx_assessment_rule_type ON sys_assessment_rule (rule_type);
+CREATE INDEX idx_assessment_rule_active ON sys_assessment_rule (is_active);
+CREATE INDEX idx_assessment_rule_tenant ON sys_assessment_rule (tenant_id);
+CREATE INDEX idx_assessment_rule_priority ON sys_assessment_rule (version_id, rule_type, priority);
+
+CREATE INDEX idx_assessment_anchor_form ON sys_assessment_anchor_item (form_id);
+CREATE INDEX idx_assessment_anchor_version ON sys_assessment_anchor_item (version_id);
+CREATE INDEX idx_assessment_anchor_code ON sys_assessment_anchor_item (anchor_code);
+CREATE INDEX idx_assessment_anchor_item ON sys_assessment_anchor_item (item_id);
+CREATE INDEX idx_assessment_anchor_tenant ON sys_assessment_anchor_item (tenant_id);
+
+CREATE UNIQUE INDEX uk_assessment_publish_code ON sys_assessment_publish (publish_code, deleted);
+CREATE INDEX idx_assessment_publish_form ON sys_assessment_publish (form_id);
+CREATE INDEX idx_assessment_publish_version ON sys_assessment_publish (version_id);
+CREATE INDEX idx_assessment_publish_status ON sys_assessment_publish (status);
+CREATE INDEX idx_assessment_publish_tenant ON sys_assessment_publish (tenant_id);
+CREATE INDEX idx_assessment_publish_time ON sys_assessment_publish (start_time, end_time);
+
+CREATE INDEX idx_assessment_session_publish ON sys_assessment_session (publish_id);
+CREATE INDEX idx_assessment_session_form ON sys_assessment_session (form_id);
+CREATE INDEX idx_assessment_session_user ON sys_assessment_session (user_id);
+CREATE INDEX idx_assessment_session_status ON sys_assessment_session (status);
+CREATE INDEX idx_assessment_session_tenant ON sys_assessment_session (tenant_id);
+CREATE INDEX idx_assessment_session_started_at ON sys_assessment_session (started_at);
+CREATE INDEX idx_assessment_session_completed_at ON sys_assessment_session (completed_at);
+
+CREATE INDEX idx_assessment_snapshot_session ON sys_assessment_session_snapshot (session_id);
+CREATE INDEX idx_assessment_snapshot_at ON sys_assessment_session_snapshot (snapshot_at);
+CREATE INDEX idx_assessment_snapshot_tenant ON sys_assessment_session_snapshot (tenant_id);
+
+CREATE INDEX idx_assessment_response_session ON sys_assessment_response (session_id);
+CREATE INDEX idx_assessment_response_form ON sys_assessment_response (form_id);
+CREATE INDEX idx_assessment_response_item ON sys_assessment_response (item_id);
+CREATE INDEX idx_assessment_response_tenant ON sys_assessment_response (tenant_id);
+CREATE INDEX idx_assessment_response_answered_at ON sys_assessment_response (answered_at);
+
+CREATE UNIQUE INDEX uk_assessment_result_session ON sys_assessment_result (session_id, deleted);
+CREATE INDEX idx_assessment_result_form ON sys_assessment_result (form_id);
+CREATE INDEX idx_assessment_result_publish ON sys_assessment_result (publish_id);
+CREATE INDEX idx_assessment_result_user ON sys_assessment_result (user_id);
+CREATE INDEX idx_assessment_result_risk ON sys_assessment_result (risk_level);
+CREATE INDEX idx_assessment_result_tenant ON sys_assessment_result (tenant_id);
+CREATE INDEX idx_assessment_result_create_time ON sys_assessment_result (create_time);
+
+CREATE INDEX idx_assessment_result_dim_result ON sys_assessment_result_dimension (result_id);
+CREATE INDEX idx_assessment_result_dim_session ON sys_assessment_result_dimension (session_id);
+CREATE INDEX idx_assessment_result_dim_dimension ON sys_assessment_result_dimension (dimension_id);
+CREATE INDEX idx_assessment_result_dim_tenant ON sys_assessment_result_dimension (tenant_id);
+
+CREATE UNIQUE INDEX uk_assessment_demographic_session ON sys_assessment_demographic_profile (session_id, deleted);
+CREATE INDEX idx_assessment_demographic_user ON sys_assessment_demographic_profile (user_id);
+CREATE INDEX idx_assessment_demographic_region ON sys_assessment_demographic_profile (region_code);
+CREATE INDEX idx_assessment_demographic_tenant ON sys_assessment_demographic_profile (tenant_id);
+
+CREATE INDEX idx_assessment_event_session ON sys_assessment_event_log (session_id);
+CREATE INDEX idx_assessment_event_type ON sys_assessment_event_log (event_type);
+CREATE INDEX idx_assessment_event_occurred_at ON sys_assessment_event_log (occurred_at);
+CREATE INDEX idx_assessment_event_tenant ON sys_assessment_event_log (tenant_id);
+
+CREATE INDEX idx_assessment_cheat_session ON sys_assessment_cheat_flag (session_id);
+CREATE INDEX idx_assessment_cheat_risk ON sys_assessment_cheat_flag (risk_level);
+CREATE INDEX idx_assessment_cheat_conclusion ON sys_assessment_cheat_flag (review_conclusion);
+CREATE INDEX idx_assessment_cheat_detected_at ON sys_assessment_cheat_flag (detected_at);
+CREATE INDEX idx_assessment_cheat_tenant ON sys_assessment_cheat_flag (tenant_id);
+
+CREATE INDEX idx_assessment_norm_set_form ON sys_assessment_norm_set (form_id);
+CREATE INDEX idx_assessment_norm_set_status ON sys_assessment_norm_set (status);
+CREATE INDEX idx_assessment_norm_set_tenant ON sys_assessment_norm_set (tenant_id);
+
+CREATE INDEX idx_assessment_norm_segment_set ON sys_assessment_norm_segment (norm_set_id);
+CREATE INDEX idx_assessment_norm_segment_priority ON sys_assessment_norm_segment (norm_set_id, sort_priority);
+CREATE INDEX idx_assessment_norm_segment_tenant ON sys_assessment_norm_segment (tenant_id);
+
+CREATE INDEX idx_assessment_norm_conv_segment ON sys_assessment_norm_conversion (segment_id);
+CREATE INDEX idx_assessment_norm_conv_dimension ON sys_assessment_norm_conversion (dimension_id);
+CREATE INDEX idx_assessment_norm_conv_type ON sys_assessment_norm_conversion (segment_id, norm_score_type);
+CREATE INDEX idx_assessment_norm_conv_tenant ON sys_assessment_norm_conversion (tenant_id);
+
+CREATE INDEX idx_assessment_item_stat_item ON sys_assessment_item_stat (item_id);
+CREATE INDEX idx_assessment_item_stat_version ON sys_assessment_item_stat (version_id);
+CREATE INDEX idx_assessment_item_stat_publish ON sys_assessment_item_stat (publish_id);
+CREATE INDEX idx_assessment_item_stat_tenant ON sys_assessment_item_stat (tenant_id);
+
+CREATE INDEX idx_assessment_equating_form ON sys_assessment_equating_record (form_id);
+CREATE INDEX idx_assessment_equating_source_ver ON sys_assessment_equating_record (source_version_id);
+CREATE INDEX idx_assessment_equating_target_ver ON sys_assessment_equating_record (target_version_id);
+CREATE INDEX idx_assessment_equating_tenant ON sys_assessment_equating_record (tenant_id);
+
+CREATE INDEX idx_assessment_bi_snapshot_form ON sys_assessment_bi_snapshot (form_id);
+CREATE INDEX idx_assessment_bi_snapshot_publish ON sys_assessment_bi_snapshot (publish_id);
+CREATE INDEX idx_assessment_bi_snapshot_type ON sys_assessment_bi_snapshot (snapshot_type);
+CREATE INDEX idx_assessment_bi_snapshot_date ON sys_assessment_bi_snapshot (snapshot_date);
+CREATE INDEX idx_assessment_bi_snapshot_tenant ON sys_assessment_bi_snapshot (tenant_id);

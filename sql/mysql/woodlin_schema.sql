@@ -1141,3 +1141,822 @@ CREATE INDEX `idx_etl_bucket_checksum_execution`
 -- ETL数据一致性校验日志索引
 CREATE INDEX `idx_etl_validation_log_execution`
   ON `sys_etl_data_validation_log` (`execution_log_id`, `validation_status`);
+
+-- =============================================
+-- 第N部分：测评模块（Assessment）
+-- =============================================
+
+-- =============================================
+-- 测评主体表（量表/试卷/问卷）
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_form`;
+CREATE TABLE `sys_assessment_form`
+(
+  `form_id`            bigint(20)   NOT NULL COMMENT '测评ID',
+  `form_code`          varchar(100) NOT NULL COMMENT '唯一编码（业务标识）',
+  `form_name`          varchar(200) NOT NULL COMMENT '测评名称',
+  `assessment_type`    varchar(30)  DEFAULT 'scale' COMMENT '测评类型: scale/exam/survey',
+  `category_code`      varchar(100) DEFAULT NULL COMMENT '分类编码（可关联字典）',
+  `description`        text         DEFAULT NULL COMMENT '简介/说明',
+  `cover_url`          varchar(500) DEFAULT NULL COMMENT '封面图URL',
+  `tags`               varchar(500) DEFAULT NULL COMMENT '标签（JSON数组）',
+  `current_version_id` bigint(20)   DEFAULT NULL COMMENT '当前活跃版本ID',
+  `status`             tinyint(1)   DEFAULT 1 COMMENT '启用状态: 1=启用 0=禁用',
+  `sort_order`         int(11)      DEFAULT 0 COMMENT '排序值',
+  `tenant_id`          varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `remark`             varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`          varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`        datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`          varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`        datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`            char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`form_id`),
+  UNIQUE KEY `uk_assessment_form_code` (`form_code`, `tenant_id`, `deleted`),
+  KEY `idx_assessment_form_tenant` (`tenant_id`),
+  KEY `idx_assessment_form_status` (`status`),
+  KEY `idx_assessment_form_type` (`assessment_type`),
+  KEY `idx_assessment_form_create_time` (`create_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='测评主体表（量表/试卷/问卷）';
+
+-- =============================================
+-- 测评版本表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_form_version`;
+CREATE TABLE `sys_assessment_form_version`
+(
+  `version_id`     bigint(20)   NOT NULL COMMENT '版本ID',
+  `form_id`        bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `version_no`     varchar(30)  NOT NULL COMMENT '版本号（如 1.0.0）',
+  `version_tag`    varchar(100) DEFAULT NULL COMMENT '版本标签（如 初稿/正式版/修订版）',
+  `schema_id`      bigint(20)   DEFAULT NULL COMMENT '关联的 Schema ID',
+  `schema_hash`    varchar(128) DEFAULT NULL COMMENT 'Schema 内容哈希（SHA-256）',
+  `dsl_hash`       varchar(128) DEFAULT NULL COMMENT 'DSL 源码哈希',
+  `status`         varchar(30)  DEFAULT 'draft' COMMENT '版本状态: draft/compiled/published/deprecated/archived',
+  `published_at`   datetime     DEFAULT NULL COMMENT '发布时间',
+  `published_by`   varchar(64)  DEFAULT NULL COMMENT '发布人',
+  `change_summary` text         DEFAULT NULL COMMENT '变更说明',
+  `tenant_id`      varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`      varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`    datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`      varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`    datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`        char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`version_id`),
+  KEY `idx_assessment_version_form` (`form_id`),
+  KEY `idx_assessment_version_status` (`status`),
+  KEY `idx_assessment_version_tenant` (`tenant_id`),
+  KEY `idx_assessment_version_published_at` (`published_at`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='测评版本表';
+
+-- =============================================
+-- 测评 Schema 表（结构定义）
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_schema`;
+CREATE TABLE `sys_assessment_schema`
+(
+  `schema_id`        bigint(20)  NOT NULL COMMENT 'Schema ID',
+  `form_id`          bigint(20)  NOT NULL COMMENT '所属测评ID',
+  `version_id`       bigint(20)  DEFAULT NULL COMMENT '所属版本ID',
+  `status`           varchar(30) DEFAULT 'draft' COMMENT 'Schema 状态: draft/compiled/published/deprecated/archived',
+  `canonical_schema` longtext    DEFAULT NULL COMMENT '规范 JSON Schema（后台配置主存）',
+  `dsl_source`       longtext    DEFAULT NULL COMMENT 'DSL 源码（Kotlin DSL）',
+  `compiled_schema`  longtext    DEFAULT NULL COMMENT '编译后运行时 Schema',
+  `compile_error`    text        DEFAULT NULL COMMENT '最近一次编译错误信息',
+  `schema_hash`      varchar(128) DEFAULT NULL COMMENT 'canonical_schema 内容哈希',
+  `tenant_id`        varchar(64) DEFAULT NULL COMMENT '租户ID',
+  `create_by`        varchar(64) DEFAULT NULL COMMENT '创建者',
+  `create_time`      datetime    DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`        varchar(64) DEFAULT NULL COMMENT '更新者',
+  `update_time`      datetime    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`          char(1)     DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`schema_id`),
+  KEY `idx_assessment_schema_form` (`form_id`),
+  KEY `idx_assessment_schema_version` (`version_id`),
+  KEY `idx_assessment_schema_status` (`status`),
+  KEY `idx_assessment_schema_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='测评 Schema 表（结构定义）';
+
+-- =============================================
+-- 测评章节/页面表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_section`;
+CREATE TABLE `sys_assessment_section`
+(
+  `section_id`      bigint(20)   NOT NULL COMMENT '章节ID',
+  `version_id`      bigint(20)   NOT NULL COMMENT '所属版本ID',
+  `form_id`         bigint(20)   NOT NULL COMMENT '所属测评ID（冗余）',
+  `section_code`    varchar(100) NOT NULL COMMENT '章节唯一编码（版本内唯一）',
+  `section_title`   varchar(200) DEFAULT NULL COMMENT '章节标题',
+  `section_desc`    text         DEFAULT NULL COMMENT '章节说明/指导语',
+  `display_mode`    varchar(30)  DEFAULT 'paged' COMMENT '展示模式: paged/continuous',
+  `random_strategy` varchar(50)  DEFAULT 'none' COMMENT '随机化策略: none/random_items/random_options/random_both',
+  `sort_order`      int(11)      DEFAULT 0 COMMENT '章节排序值',
+  `is_required`     tinyint(1)   DEFAULT 1 COMMENT '是否必须完成（0-否，1-是）',
+  `anchor_code`     varchar(100) DEFAULT NULL COMMENT '锚点编码（断点续答定位）',
+  `tenant_id`       varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`       varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`     datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`       varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`     datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`section_id`),
+  KEY `idx_assessment_section_version` (`version_id`),
+  KEY `idx_assessment_section_form` (`form_id`),
+  KEY `idx_assessment_section_tenant` (`tenant_id`),
+  KEY `idx_assessment_section_sort` (`version_id`, `sort_order`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='测评章节/页面表';
+
+-- =============================================
+-- 题目/条目表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_item`;
+CREATE TABLE `sys_assessment_item`
+(
+  `item_id`             bigint(20)    NOT NULL COMMENT '题目ID',
+  `version_id`          bigint(20)    NOT NULL COMMENT '所属版本ID',
+  `section_id`          bigint(20)    DEFAULT NULL COMMENT '所属章节ID',
+  `form_id`             bigint(20)    NOT NULL COMMENT '所属测评ID（冗余）',
+  `item_code`           varchar(100)  NOT NULL COMMENT '逻辑题号（版本内唯一，如 Q01）',
+  `item_type`           varchar(50)   DEFAULT 'single_choice' COMMENT '题型: single_choice/multiple_choice/matrix_single/matrix_multiple/rating/short_text/…',
+  `stem`                mediumtext    DEFAULT NULL COMMENT '题干（支持富文本/Markdown）',
+  `stem_media_url`      varchar(500)  DEFAULT NULL COMMENT '题干附属媒体URL',
+  `help_text`           varchar(500)  DEFAULT NULL COMMENT '帮助提示文本',
+  `sort_order`          int(11)       DEFAULT 0 COMMENT '章节内排序值',
+  `is_required`         tinyint(1)    DEFAULT 1 COMMENT '是否必答（0-否，1-是）',
+  `is_scored`           tinyint(1)    DEFAULT 1 COMMENT '是否计分题（0-否，1-是）',
+  `is_anchor`           tinyint(1)    DEFAULT 0 COMMENT '是否锚题（0-否，1-是）',
+  `is_reverse`          tinyint(1)    DEFAULT 0 COMMENT '是否反向题（0-否，1-是）',
+  `is_demographic`      tinyint(1)    DEFAULT 0 COMMENT '是否人口学信息题（0-否，1-是）',
+  `max_score`           decimal(10,4) DEFAULT NULL COMMENT '单题最高分',
+  `min_score`           decimal(10,4) DEFAULT NULL COMMENT '单题最低分',
+  `time_limit_seconds`  int(11)       DEFAULT 0 COMMENT '单题作答时限（秒，0不限）',
+  `demographic_field`   varchar(100)  DEFAULT NULL COMMENT '人口学字段名（如 gender/age/region_code）',
+  `tenant_id`           varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`           varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`item_id`),
+  KEY `idx_assessment_item_version` (`version_id`),
+  KEY `idx_assessment_item_section` (`section_id`),
+  KEY `idx_assessment_item_form` (`form_id`),
+  KEY `idx_assessment_item_code` (`version_id`, `item_code`),
+  KEY `idx_assessment_item_tenant` (`tenant_id`),
+  KEY `idx_assessment_item_sort` (`section_id`, `sort_order`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='题目/条目表';
+
+-- =============================================
+-- 选项表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_option`;
+CREATE TABLE `sys_assessment_option`
+(
+  `option_id`            bigint(20)    NOT NULL COMMENT '选项ID',
+  `item_id`              bigint(20)    NOT NULL COMMENT '所属题目ID',
+  `option_code`          varchar(30)   NOT NULL COMMENT '选项逻辑编码（题目内唯一，如 A/B/C）',
+  `display_text`         text          DEFAULT NULL COMMENT '展示文本（支持富文本/Markdown）',
+  `media_url`            varchar(500)  DEFAULT NULL COMMENT '选项附属媒体URL',
+  `raw_value`            varchar(255)  DEFAULT NULL COMMENT '原始字符串值',
+  `score_value`          decimal(10,4) DEFAULT NULL COMMENT '正向得分值',
+  `score_reverse_value`  decimal(10,4) DEFAULT NULL COMMENT '反向得分值（TABLE 模式反向计分）',
+  `is_exclusive`         tinyint(1)    DEFAULT 0 COMMENT '是否互斥（0-否，1-是）',
+  `is_correct`           tinyint(1)    DEFAULT 0 COMMENT '是否正确答案（0-否，1-是）',
+  `sort_order`           int(11)       DEFAULT 0 COMMENT '选项排序值',
+  `tenant_id`            varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`            varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`          datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`            varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`          datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`              char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`option_id`),
+  KEY `idx_assessment_option_item` (`item_id`),
+  KEY `idx_assessment_option_sort` (`item_id`, `sort_order`),
+  KEY `idx_assessment_option_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='题目选项表';
+
+-- =============================================
+-- 维度/因子/分量表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_dimension`;
+CREATE TABLE `sys_assessment_dimension`
+(
+  `dimension_id`        bigint(20)   NOT NULL COMMENT '维度ID',
+  `form_id`             bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `version_id`          bigint(20)   NOT NULL COMMENT '所属版本ID',
+  `parent_dimension_id` bigint(20)   DEFAULT NULL COMMENT '父维度ID（为 null 则为顶层维度）',
+  `dimension_code`      varchar(100) NOT NULL COMMENT '维度编码（版本内唯一）',
+  `dimension_name`      varchar(200) NOT NULL COMMENT '维度名称',
+  `dimension_desc`      text         DEFAULT NULL COMMENT '维度说明',
+  `score_mode`          varchar(50)  DEFAULT 'sum' COMMENT '计分模式: sum/mean/max/min/weighted_sum/custom_dsl',
+  `score_dsl`           mediumtext   DEFAULT NULL COMMENT '自定义计分 DSL',
+  `norm_set_id`         bigint(20)   DEFAULT NULL COMMENT '默认关联的常模集ID',
+  `sort_order`          int(11)      DEFAULT 0 COMMENT '排序值',
+  `tenant_id`           varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`           varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`         datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`           varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`         datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`             char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`dimension_id`),
+  KEY `idx_assessment_dimension_form` (`form_id`),
+  KEY `idx_assessment_dimension_version` (`version_id`),
+  KEY `idx_assessment_dimension_parent` (`parent_dimension_id`),
+  KEY `idx_assessment_dimension_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='维度/因子/分量表';
+
+-- =============================================
+-- 题目-维度映射表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_dimension_item`;
+CREATE TABLE `sys_assessment_dimension_item`
+(
+  `id`           bigint(20)    NOT NULL COMMENT '映射ID',
+  `dimension_id` bigint(20)    NOT NULL COMMENT '维度ID',
+  `item_id`      bigint(20)    NOT NULL COMMENT '题目ID',
+  `version_id`   bigint(20)    NOT NULL COMMENT '版本ID（冗余，便于版本内查询）',
+  `weight`       decimal(10,4) DEFAULT 1.0000 COMMENT '计分权重（默认 1.0）',
+  `score_mode`   varchar(50)   DEFAULT NULL COMMENT '该条目在本维度的计分模式（覆盖维度默认值）',
+  `reverse_mode` varchar(20)   DEFAULT 'none' COMMENT '反向计分模式: none/formula/table',
+  `tenant_id`    varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`    varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`  datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`    varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`  datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`      char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_assessment_dim_item` (`dimension_id`, `item_id`, `deleted`),
+  KEY `idx_assessment_dim_item_version` (`version_id`),
+  KEY `idx_assessment_dim_item_item` (`item_id`),
+  KEY `idx_assessment_dim_item_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='题目-维度映射表';
+
+-- =============================================
+-- 规则定义表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_rule`;
+CREATE TABLE `sys_assessment_rule`
+(
+  `rule_id`       bigint(20)   NOT NULL COMMENT '规则ID',
+  `form_id`       bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `version_id`    bigint(20)   NOT NULL COMMENT '所属版本ID',
+  `rule_code`     varchar(100) NOT NULL COMMENT '规则编码（版本内唯一）',
+  `rule_name`     varchar(200) DEFAULT NULL COMMENT '规则名称',
+  `rule_type`     varchar(50)  NOT NULL COMMENT '规则类型: display/branch/validation/score/norm_match/report/eligibility/terminate',
+  `target_type`   varchar(30)  DEFAULT NULL COMMENT '作用目标类型: item/section/dimension/form',
+  `target_code`   varchar(200) DEFAULT NULL COMMENT '作用目标编码',
+  `dsl_source`    mediumtext   DEFAULT NULL COMMENT '规则 DSL 源码',
+  `compiled_rule` mediumtext   DEFAULT NULL COMMENT '编译后的规则表示（JSON）',
+  `priority`      int(11)      DEFAULT 100 COMMENT '执行优先级（数字越小优先级越高）',
+  `is_active`     tinyint(1)   DEFAULT 1 COMMENT '是否启用（0-否，1-是）',
+  `compile_error` text         DEFAULT NULL COMMENT '最近一次编译错误',
+  `tenant_id`     varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`     varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`   datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`     varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`   datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`       char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`rule_id`),
+  KEY `idx_assessment_rule_form` (`form_id`),
+  KEY `idx_assessment_rule_version` (`version_id`),
+  KEY `idx_assessment_rule_type` (`rule_type`),
+  KEY `idx_assessment_rule_active` (`is_active`),
+  KEY `idx_assessment_rule_tenant` (`tenant_id`),
+  KEY `idx_assessment_rule_priority` (`version_id`, `rule_type`, `priority`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='规则定义表';
+
+-- =============================================
+-- 锚题定义表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_anchor_item`;
+CREATE TABLE `sys_assessment_anchor_item`
+(
+  `anchor_id`   bigint(20)   NOT NULL COMMENT '锚题记录ID',
+  `form_id`     bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `anchor_code` varchar(100) NOT NULL COMMENT '锚题逻辑编码（跨版本共享）',
+  `item_id`     bigint(20)   NOT NULL COMMENT '当前版本对应的题目ID',
+  `version_id`  bigint(20)   NOT NULL COMMENT '版本ID',
+  `anchor_type` varchar(30)  DEFAULT 'common' COMMENT '锚题类型: common/equating/calibration',
+  `note`        varchar(500) DEFAULT NULL COMMENT '备注',
+  `tenant_id`   varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`   varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time` datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`   varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time` datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`     char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`anchor_id`),
+  KEY `idx_assessment_anchor_form` (`form_id`),
+  KEY `idx_assessment_anchor_version` (`version_id`),
+  KEY `idx_assessment_anchor_code` (`anchor_code`),
+  KEY `idx_assessment_anchor_item` (`item_id`),
+  KEY `idx_assessment_anchor_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='锚题定义表';
+
+-- =============================================
+-- 发布实例表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_publish`;
+CREATE TABLE `sys_assessment_publish`
+(
+  `publish_id`             bigint(20)   NOT NULL COMMENT '发布ID',
+  `form_id`                bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `version_id`             bigint(20)   NOT NULL COMMENT '绑定的版本ID',
+  `publish_code`           varchar(100) DEFAULT NULL COMMENT '发布编码（可用于生成访问链接）',
+  `publish_name`           varchar(200) NOT NULL COMMENT '发布名称/批次名称',
+  `status`                 varchar(30)  DEFAULT 'draft' COMMENT '发布状态: draft/under_review/published/paused/closed/archived',
+  `start_time`             datetime     DEFAULT NULL COMMENT '开放开始时间',
+  `end_time`               datetime     DEFAULT NULL COMMENT '开放截止时间',
+  `time_limit_minutes`     int(11)      DEFAULT 0 COMMENT '作答总时限（分钟，0不限）',
+  `max_attempts`           int(11)      DEFAULT 1 COMMENT '最大允许作答次数（0不限）',
+  `allow_anonymous`        tinyint(1)   DEFAULT 0 COMMENT '是否允许匿名作答（0-否，1-是）',
+  `allow_resume`           tinyint(1)   DEFAULT 1 COMMENT '是否允许断点续答（0-否，1-是）',
+  `random_strategy`        varchar(50)  DEFAULT 'none' COMMENT '全局随机化策略: none/random_items/random_options/random_both',
+  `access_policy`          text         DEFAULT NULL COMMENT '访问控制策略（JSON）',
+  `device_restriction`     text         DEFAULT NULL COMMENT '设备限制（JSON）',
+  `show_result_immediately` tinyint(1)  DEFAULT 0 COMMENT '完成后是否立即展示结果（0-否，1-是）',
+  `result_visibility`      varchar(30)  DEFAULT 'self' COMMENT '结果可见范围: self/admin/all',
+  `tenant_id`              varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `remark`                 varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`              varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`            datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`              varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`            datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`                char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`publish_id`),
+  UNIQUE KEY `uk_assessment_publish_code` (`publish_code`, `deleted`),
+  KEY `idx_assessment_publish_form` (`form_id`),
+  KEY `idx_assessment_publish_version` (`version_id`),
+  KEY `idx_assessment_publish_status` (`status`),
+  KEY `idx_assessment_publish_tenant` (`tenant_id`),
+  KEY `idx_assessment_publish_time` (`start_time`, `end_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='发布实例表';
+
+-- =============================================
+-- 作答会话表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_session`;
+CREATE TABLE `sys_assessment_session`
+(
+  `session_id`      bigint(20)   NOT NULL COMMENT '会话ID',
+  `publish_id`      bigint(20)   NOT NULL COMMENT '发布实例ID',
+  `form_id`         bigint(20)   NOT NULL COMMENT '测评ID（冗余）',
+  `version_id`      bigint(20)   NOT NULL COMMENT '版本ID（冗余）',
+  `user_id`         bigint(20)   DEFAULT NULL COMMENT '系统用户ID（匿名时为 null）',
+  `anonymous_token` varchar(200) DEFAULT NULL COMMENT '匿名标识 Token',
+  `status`          varchar(30)  DEFAULT 'not_started' COMMENT '会话状态: not_started/in_progress/paused/completed/expired/abandoned/invalidated',
+  `display_seed`    bigint(20)   DEFAULT NULL COMMENT '乱序随机种子',
+  `started_at`      datetime     DEFAULT NULL COMMENT '开始作答时间',
+  `completed_at`    datetime     DEFAULT NULL COMMENT '完成时间',
+  `elapsed_seconds` int(11)      DEFAULT 0 COMMENT '累计用时（秒）',
+  `client_ip`       varchar(128) DEFAULT NULL COMMENT '作答客户端IP',
+  `user_agent`      varchar(500) DEFAULT NULL COMMENT '浏览器 User-Agent',
+  `device_type`     varchar(20)  DEFAULT NULL COMMENT '设备类型: pc/mobile/tablet',
+  `attempt_number`  int(11)      DEFAULT 1 COMMENT '本次是第几次作答（从1开始）',
+  `tenant_id`       varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`       varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`     datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`       varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`     datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`session_id`),
+  KEY `idx_assessment_session_publish` (`publish_id`),
+  KEY `idx_assessment_session_form` (`form_id`),
+  KEY `idx_assessment_session_user` (`user_id`),
+  KEY `idx_assessment_session_status` (`status`),
+  KEY `idx_assessment_session_tenant` (`tenant_id`),
+  KEY `idx_assessment_session_started_at` (`started_at`),
+  KEY `idx_assessment_session_completed_at` (`completed_at`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='作答会话表';
+
+-- =============================================
+-- 作答断点快照表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_session_snapshot`;
+CREATE TABLE `sys_assessment_session_snapshot`
+(
+  `snapshot_id`           bigint(20)  NOT NULL COMMENT '快照ID',
+  `session_id`            bigint(20)  NOT NULL COMMENT '所属会话ID',
+  `current_section_code`  varchar(100) DEFAULT NULL COMMENT '当前所在章节编码',
+  `current_item_code`     varchar(100) DEFAULT NULL COMMENT '当前作答到的题目编码',
+  `item_order_snapshot`   mediumtext   DEFAULT NULL COMMENT '题目展示顺序快照（JSON 数组）',
+  `option_order_snapshot` mediumtext   DEFAULT NULL COMMENT '选项展示顺序快照（JSON Map）',
+  `answered_cache`        mediumtext   DEFAULT NULL COMMENT '已答缓存（JSON Map）',
+  `elapsed_seconds`       int(11)      DEFAULT 0 COMMENT '截至快照时的累计用时（秒）',
+  `snapshot_at`           datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '快照时间',
+  `tenant_id`             varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`             varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`           datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`             varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`           datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`               char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`snapshot_id`),
+  KEY `idx_assessment_snapshot_session` (`session_id`),
+  KEY `idx_assessment_snapshot_at` (`snapshot_at`),
+  KEY `idx_assessment_snapshot_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='作答断点快照表';
+
+-- =============================================
+-- 逐题作答记录表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_response`;
+CREATE TABLE `sys_assessment_response`
+(
+  `response_id`                   bigint(20)   NOT NULL COMMENT '作答记录ID',
+  `session_id`                    bigint(20)   NOT NULL COMMENT '所属会话ID',
+  `form_id`                       bigint(20)   NOT NULL COMMENT '测评ID（冗余）',
+  `item_id`                       bigint(20)   NOT NULL COMMENT '题目ID',
+  `item_code`                     varchar(100) NOT NULL COMMENT '题目逻辑编码',
+  `display_order`                 int(11)      DEFAULT NULL COMMENT '该题在本次作答中的展示序号',
+  `raw_answer`                    mediumtext   DEFAULT NULL COMMENT '原始作答 payload（JSON）',
+  `selected_option_codes`         text         DEFAULT NULL COMMENT '选中的选项逻辑编码（JSON 数组）',
+  `selected_option_display_orders` text        DEFAULT NULL COMMENT '选中选项的展示序号（JSON 数组）',
+  `text_answer`                   mediumtext   DEFAULT NULL COMMENT '文本答案（简答/填空题）',
+  `answered_at`                   datetime     DEFAULT NULL COMMENT '本题作答时间',
+  `time_spent_seconds`            int(11)      DEFAULT NULL COMMENT '本题用时（秒）',
+  `is_skipped`                    tinyint(1)   DEFAULT 0 COMMENT '是否跳过/未作答（0-否，1-是）',
+  `tenant_id`                     varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`                     varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`                   datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`                     varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`                   datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`                       char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`response_id`),
+  KEY `idx_assessment_response_session` (`session_id`),
+  KEY `idx_assessment_response_form` (`form_id`),
+  KEY `idx_assessment_response_item` (`item_id`),
+  KEY `idx_assessment_response_tenant` (`tenant_id`),
+  KEY `idx_assessment_response_answered_at` (`answered_at`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='逐题作答记录表';
+
+-- =============================================
+-- 测评总结果表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_result`;
+CREATE TABLE `sys_assessment_result`
+(
+  `result_id`            bigint(20)    NOT NULL COMMENT '结果ID',
+  `session_id`           bigint(20)    NOT NULL COMMENT '作答会话ID',
+  `form_id`              bigint(20)    NOT NULL COMMENT '测评ID（冗余）',
+  `publish_id`           bigint(20)    NOT NULL COMMENT '发布实例ID（冗余）',
+  `user_id`              bigint(20)    DEFAULT NULL COMMENT '系统用户ID',
+  `raw_total_score`      decimal(10,4) DEFAULT NULL COMMENT '原始总分',
+  `weighted_total_score` decimal(10,4) DEFAULT NULL COMMENT '加权总分',
+  `standard_score`       decimal(10,4) DEFAULT NULL COMMENT '标准分（常模转换后）',
+  `norm_score_type`      varchar(30)   DEFAULT NULL COMMENT '标准分类型: t_score/z_score/percentile/stanine/sten/grade_equivalent/raw_grade',
+  `percentile`           decimal(6,2)  DEFAULT NULL COMMENT '百分位（0-100）',
+  `grade_label`          varchar(100)  DEFAULT NULL COMMENT '综合等级标签',
+  `norm_set_id`          bigint(20)    DEFAULT NULL COMMENT '命中的常模集ID',
+  `norm_segment_id`      bigint(20)    DEFAULT NULL COMMENT '命中的常模分层ID',
+  `risk_level`           varchar(20)   DEFAULT 'none' COMMENT '综合风险等级: none/low/medium/high/confirmed',
+  `answered_count`       int(11)       DEFAULT 0 COMMENT '作答题数',
+  `total_item_count`     int(11)       DEFAULT 0 COMMENT '应答总题数',
+  `report_json`          longtext      DEFAULT NULL COMMENT '生成的报告 JSON',
+  `tenant_id`            varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`            varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`          datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`            varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`          datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`              char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`result_id`),
+  UNIQUE KEY `uk_assessment_result_session` (`session_id`, `deleted`),
+  KEY `idx_assessment_result_form` (`form_id`),
+  KEY `idx_assessment_result_publish` (`publish_id`),
+  KEY `idx_assessment_result_user` (`user_id`),
+  KEY `idx_assessment_result_risk` (`risk_level`),
+  KEY `idx_assessment_result_tenant` (`tenant_id`),
+  KEY `idx_assessment_result_create_time` (`create_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='测评总结果表';
+
+-- =============================================
+-- 维度得分结果表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_result_dimension`;
+CREATE TABLE `sys_assessment_result_dimension`
+(
+  `id`              bigint(20)    NOT NULL COMMENT '记录ID',
+  `result_id`       bigint(20)    NOT NULL COMMENT '总结果ID',
+  `session_id`      bigint(20)    NOT NULL COMMENT '会话ID（冗余）',
+  `dimension_id`    bigint(20)    NOT NULL COMMENT '维度ID',
+  `dimension_code`  varchar(100)  DEFAULT NULL COMMENT '维度编码（冗余）',
+  `raw_score`       decimal(10,4) DEFAULT NULL COMMENT '维度原始分',
+  `mean_score`      decimal(10,4) DEFAULT NULL COMMENT '维度均分',
+  `standard_score`  decimal(10,4) DEFAULT NULL COMMENT '维度标准分（常模转换后）',
+  `percentile`      decimal(6,2)  DEFAULT NULL COMMENT '维度百分位',
+  `grade_label`     varchar(100)  DEFAULT NULL COMMENT '维度等级标签',
+  `norm_segment_id` bigint(20)    DEFAULT NULL COMMENT '命中的常模分层ID',
+  `item_count`      int(11)       DEFAULT 0 COMMENT '参与计分的题数',
+  `tenant_id`       varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`       varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`     datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`       varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`     datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`id`),
+  KEY `idx_assessment_result_dim_result` (`result_id`),
+  KEY `idx_assessment_result_dim_session` (`session_id`),
+  KEY `idx_assessment_result_dim_dimension` (`dimension_id`),
+  KEY `idx_assessment_result_dim_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='维度得分结果表';
+
+-- =============================================
+-- 人口学档案快照表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_demographic_profile`;
+CREATE TABLE `sys_assessment_demographic_profile`
+(
+  `profile_id`      bigint(20)    NOT NULL COMMENT '档案ID',
+  `session_id`      bigint(20)    NOT NULL COMMENT '关联会话ID',
+  `user_id`         bigint(20)    DEFAULT NULL COMMENT '系统用户ID（匿名时为 null）',
+  `gender`          varchar(10)   DEFAULT NULL COMMENT '性别（对应字典值）',
+  `birth_year`      int(11)       DEFAULT NULL COMMENT '出生年份',
+  `age`             int(11)       DEFAULT NULL COMMENT '年龄',
+  `age_group`       varchar(20)   DEFAULT NULL COMMENT '年龄段编码（如 18-25）',
+  `education_level` varchar(30)   DEFAULT NULL COMMENT '学历（对应字典值）',
+  `occupation`      varchar(50)   DEFAULT NULL COMMENT '职业（对应字典值）',
+  `region_code`     varchar(30)   DEFAULT NULL COMMENT '地区编码（关联 sys_region.region_code）',
+  `province_code`   varchar(10)   DEFAULT NULL COMMENT '省级编码（冗余，便于地区常模分层）',
+  `marital_status`  varchar(20)   DEFAULT NULL COMMENT '婚姻状况（对应字典值）',
+  `ethnicity`       varchar(30)   DEFAULT NULL COMMENT '民族（对应字典值）',
+  `extra_fields`    text          DEFAULT NULL COMMENT '扩展人口学字段（JSON Map）',
+  `norm_weight`     decimal(10,4) DEFAULT 1.0000 COMMENT '常模分层权重（默认 1.0）',
+  `tenant_id`       varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`       varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`     datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`       varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`     datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`profile_id`),
+  UNIQUE KEY `uk_assessment_demographic_session` (`session_id`, `deleted`),
+  KEY `idx_assessment_demographic_user` (`user_id`),
+  KEY `idx_assessment_demographic_region` (`region_code`),
+  KEY `idx_assessment_demographic_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='人口学档案快照表';
+
+-- =============================================
+-- 作答事件日志表（行为埋点）
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_event_log`;
+CREATE TABLE `sys_assessment_event_log`
+(
+  `event_id`        bigint(20)   NOT NULL COMMENT '事件ID',
+  `session_id`      bigint(20)   NOT NULL COMMENT '所属会话ID',
+  `event_type`      varchar(60)  NOT NULL COMMENT '事件类型: focus/blur/paste/copy_blocked/fullscreen_exit/visibility_change/…',
+  `item_code`       varchar(100) DEFAULT NULL COMMENT '事件发生时当前题目编码',
+  `event_payload`   text         DEFAULT NULL COMMENT '事件附加数据（JSON）',
+  `occurred_at`     datetime(3)  DEFAULT NULL COMMENT '事件发生时间（毫秒精度）',
+  `elapsed_seconds` int(11)      DEFAULT NULL COMMENT '事件发生时的累计用时（秒）',
+  `tenant_id`       varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`       varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`     datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`       varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`     datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`         char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`event_id`),
+  KEY `idx_assessment_event_session` (`session_id`),
+  KEY `idx_assessment_event_type` (`event_type`),
+  KEY `idx_assessment_event_occurred_at` (`occurred_at`),
+  KEY `idx_assessment_event_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='作答事件日志表（行为埋点）';
+
+-- =============================================
+-- 作弊/风险标记表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_cheat_flag`;
+CREATE TABLE `sys_assessment_cheat_flag`
+(
+  `flag_id`           bigint(20)   NOT NULL COMMENT '标记ID',
+  `session_id`        bigint(20)   NOT NULL COMMENT '关联会话ID',
+  `rule_code`         varchar(100) NOT NULL COMMENT '触发的风控规则编码',
+  `rule_desc`         varchar(500) DEFAULT NULL COMMENT '规则描述',
+  `risk_level`        varchar(20)  DEFAULT 'low' COMMENT '风险等级: none/low/medium/high/confirmed',
+  `evidence`          text         DEFAULT NULL COMMENT '证据/触发详情（JSON）',
+  `detected_at`       datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '检测时间',
+  `reviewed_by`       varchar(64)  DEFAULT NULL COMMENT '人工复核人',
+  `reviewed_at`       datetime     DEFAULT NULL COMMENT '人工复核时间',
+  `review_conclusion` varchar(30)  DEFAULT 'pending' COMMENT '复核结论: confirmed_cheat/false_positive/pending',
+  `review_note`       varchar(500) DEFAULT NULL COMMENT '复核备注',
+  `tenant_id`         varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`         varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`       datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`         varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`       datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`           char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`flag_id`),
+  KEY `idx_assessment_cheat_session` (`session_id`),
+  KEY `idx_assessment_cheat_risk` (`risk_level`),
+  KEY `idx_assessment_cheat_conclusion` (`review_conclusion`),
+  KEY `idx_assessment_cheat_detected_at` (`detected_at`),
+  KEY `idx_assessment_cheat_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='作弊/风险标记表';
+
+-- =============================================
+-- 常模集表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_norm_set`;
+CREATE TABLE `sys_assessment_norm_set`
+(
+  `norm_set_id`       bigint(20)   NOT NULL COMMENT '常模集ID',
+  `form_id`           bigint(20)   NOT NULL COMMENT '所属测评ID',
+  `norm_set_name`     varchar(200) NOT NULL COMMENT '常模集名称',
+  `norm_set_code`     varchar(100) NOT NULL COMMENT '常模集编码',
+  `sample_size`       int(11)      DEFAULT NULL COMMENT '样本量',
+  `collection_start`  date         DEFAULT NULL COMMENT '样本采集开始日期',
+  `collection_end`    date         DEFAULT NULL COMMENT '样本采集结束日期',
+  `source_desc`       text         DEFAULT NULL COMMENT '数据来源说明',
+  `applicability_desc` text        DEFAULT NULL COMMENT '适用范围说明',
+  `is_default`        tinyint(1)   DEFAULT 0 COMMENT '是否为测评默认常模集（0-否，1-是）',
+  `status`            tinyint(1)   DEFAULT 1 COMMENT '状态: 1=启用 0=停用',
+  `tenant_id`         varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`         varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`       datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`         varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`       datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`           char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`norm_set_id`),
+  KEY `idx_assessment_norm_set_form` (`form_id`),
+  KEY `idx_assessment_norm_set_status` (`status`),
+  KEY `idx_assessment_norm_set_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='常模集表';
+
+-- =============================================
+-- 常模分层表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_norm_segment`;
+CREATE TABLE `sys_assessment_norm_segment`
+(
+  `segment_id`         bigint(20)   NOT NULL COMMENT '分层ID',
+  `norm_set_id`        bigint(20)   NOT NULL COMMENT '所属常模集ID',
+  `segment_code`       varchar(100) NOT NULL COMMENT '分层编码（常模集内唯一）',
+  `segment_name`       varchar(200) NOT NULL COMMENT '分层名称（如 男性18-25岁）',
+  `gender_filter`      varchar(10)  DEFAULT NULL COMMENT '性别过滤（null=不限）',
+  `age_min`            int(11)      DEFAULT NULL COMMENT '年龄下限（null=不限）',
+  `age_max`            int(11)      DEFAULT NULL COMMENT '年龄上限（null=不限）',
+  `education_filter`   varchar(30)  DEFAULT NULL COMMENT '学历过滤（null=不限）',
+  `region_code_filter` varchar(30)  DEFAULT NULL COMMENT '地区编码过滤（支持前缀匹配）',
+  `sample_size`        int(11)      DEFAULT NULL COMMENT '本分层样本量',
+  `extra_filter`       text         DEFAULT NULL COMMENT '扩展过滤条件（JSON）',
+  `sort_priority`      int(11)      DEFAULT 100 COMMENT '匹配优先级（数字越小越先匹配）',
+  `tenant_id`          varchar(64)  DEFAULT NULL COMMENT '租户ID',
+  `create_by`          varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`        datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`          varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`        datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`            char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`segment_id`),
+  KEY `idx_assessment_norm_segment_set` (`norm_set_id`),
+  KEY `idx_assessment_norm_segment_priority` (`norm_set_id`, `sort_priority`),
+  KEY `idx_assessment_norm_segment_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='常模分层表';
+
+-- =============================================
+-- 常模转换映射表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_norm_conversion`;
+CREATE TABLE `sys_assessment_norm_conversion`
+(
+  `conversion_id`  bigint(20)    NOT NULL COMMENT '映射ID',
+  `segment_id`     bigint(20)    NOT NULL COMMENT '所属分层ID',
+  `dimension_id`   bigint(20)    DEFAULT NULL COMMENT '所属维度ID（null 表示总分转换）',
+  `norm_score_type` varchar(30)  NOT NULL COMMENT '目标标准分类型: t_score/z_score/percentile/stanine/sten/grade_equivalent/raw_grade',
+  `raw_score_min`  decimal(10,4) DEFAULT NULL COMMENT '原始分区间下限（区间映射时使用）',
+  `raw_score_max`  decimal(10,4) DEFAULT NULL COMMENT '原始分区间上限（区间映射时使用）',
+  `raw_score_exact` decimal(10,4) DEFAULT NULL COMMENT '精确原始分（精确查表时使用）',
+  `standard_score` decimal(10,4) DEFAULT NULL COMMENT '对应的标准分值',
+  `percentile`     decimal(6,2)  DEFAULT NULL COMMENT '对应的百分位（0-100）',
+  `grade_label`    varchar(100)  DEFAULT NULL COMMENT '对应的等级标签',
+  `sort_order`     int(11)       DEFAULT 0 COMMENT '排序值',
+  `tenant_id`      varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`      varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`    datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`      varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`    datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`        char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`conversion_id`),
+  KEY `idx_assessment_norm_conv_segment` (`segment_id`),
+  KEY `idx_assessment_norm_conv_dimension` (`dimension_id`),
+  KEY `idx_assessment_norm_conv_type` (`segment_id`, `norm_score_type`),
+  KEY `idx_assessment_norm_conv_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='常模转换映射表';
+
+-- =============================================
+-- 题目项目分析统计表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_item_stat`;
+CREATE TABLE `sys_assessment_item_stat`
+(
+  `stat_id`              bigint(20)    NOT NULL COMMENT '统计记录ID',
+  `item_id`              bigint(20)    NOT NULL COMMENT '题目ID',
+  `version_id`           bigint(20)    NOT NULL COMMENT '版本ID',
+  `publish_id`           bigint(20)    DEFAULT NULL COMMENT '发布批次ID（null 表示汇总所有批次）',
+  `sample_size`          int(11)       DEFAULT 0 COMMENT '统计样本量',
+  `item_difficulty`      decimal(8,6)  DEFAULT NULL COMMENT '难度系数 P（0-1，CTT）',
+  `item_discrimination`  decimal(8,6)  DEFAULT NULL COMMENT '区分度 D（点二列相关）',
+  `missing_rate`         decimal(8,6)  DEFAULT NULL COMMENT '缺失率（0-1）',
+  `ceiling_rate`         decimal(8,6)  DEFAULT NULL COMMENT '天花板效应比例',
+  `floor_rate`           decimal(8,6)  DEFAULT NULL COMMENT '地板效应比例',
+  `alpha_if_deleted`     decimal(8,6)  DEFAULT NULL COMMENT '删除该题后的量表 alpha 系数',
+  `omega_if_deleted`     decimal(8,6)  DEFAULT NULL COMMENT '删除该题后的量表 omega 系数',
+  `dif_flag`             varchar(10)   DEFAULT 'none' COMMENT 'DIF 标记（A/B/C 或 none）',
+  `dif_reference_group`  varchar(100)  DEFAULT NULL COMMENT 'DIF 参照组描述',
+  `stat_json`            longtext      DEFAULT NULL COMMENT '完整统计结果 JSON（含 IRTparams 等扩展数据）',
+  `computed_at`          datetime      DEFAULT NULL COMMENT '统计计算时间',
+  `tenant_id`            varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`            varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`          datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`            varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`          datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`              char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`stat_id`),
+  KEY `idx_assessment_item_stat_item` (`item_id`),
+  KEY `idx_assessment_item_stat_version` (`version_id`),
+  KEY `idx_assessment_item_stat_publish` (`publish_id`),
+  KEY `idx_assessment_item_stat_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='题目项目分析统计表';
+
+-- =============================================
+-- 等值/链接记录表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_equating_record`;
+CREATE TABLE `sys_assessment_equating_record`
+(
+  `equating_id`          bigint(20)    NOT NULL COMMENT '等值记录ID',
+  `form_id`              bigint(20)    NOT NULL COMMENT '所属测评ID',
+  `source_version_id`    bigint(20)    NOT NULL COMMENT '源版本ID（被等值的旧版本）',
+  `target_version_id`    bigint(20)    NOT NULL COMMENT '目标版本ID（新版本）',
+  `equating_method`      varchar(50)   NOT NULL COMMENT '等值方法: mean_sigma/irt_linking/equipercentile/…',
+  `anchor_item_codes`    text          DEFAULT NULL COMMENT '锚题编码列表（JSON 数组）',
+  `anchor_count`         int(11)       DEFAULT 0 COMMENT '锚题数量',
+  `slope`                decimal(12,6) DEFAULT NULL COMMENT '等值系数 A（线性等值斜率）',
+  `intercept`            decimal(12,6) DEFAULT NULL COMMENT '等值系数 B（线性等值截距）',
+  `rmsea`                decimal(10,6) DEFAULT NULL COMMENT 'RMSEA（拟合指数）',
+  `equating_result_json` longtext      DEFAULT NULL COMMENT '完整等值结果 JSON',
+  `computed_at`          datetime      DEFAULT NULL COMMENT '计算时间',
+  `computed_by`          varchar(64)   DEFAULT NULL COMMENT '操作人',
+  `tenant_id`            varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`            varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`          datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`            varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`          datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`              char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`equating_id`),
+  KEY `idx_assessment_equating_form` (`form_id`),
+  KEY `idx_assessment_equating_source_ver` (`source_version_id`),
+  KEY `idx_assessment_equating_target_ver` (`target_version_id`),
+  KEY `idx_assessment_equating_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='等值/链接记录表';
+
+-- =============================================
+-- BI 预聚合快照表
+-- =============================================
+DROP TABLE IF EXISTS `sys_assessment_bi_snapshot`;
+CREATE TABLE `sys_assessment_bi_snapshot`
+(
+  `snapshot_id`            bigint(20)    NOT NULL COMMENT '快照ID',
+  `form_id`                bigint(20)    NOT NULL COMMENT '测评ID',
+  `publish_id`             bigint(20)    DEFAULT NULL COMMENT '发布批次ID（null 表示全批次汇总）',
+  `snapshot_type`          varchar(30)   NOT NULL COMMENT '快照类型: daily/weekly/publish_close/manual',
+  `snapshot_date`          datetime      NOT NULL COMMENT '快照日期（截止时间）',
+  `total_sessions`         bigint(20)    DEFAULT 0 COMMENT '总会话数',
+  `completed_sessions`     bigint(20)    DEFAULT 0 COMMENT '已完成会话数',
+  `avg_score`              decimal(10,4) DEFAULT NULL COMMENT '平均总分',
+  `metrics_json`           longtext      DEFAULT NULL COMMENT '扩展指标 JSON（由 ETL 模块填充）',
+  `dimension_stats_json`   longtext      DEFAULT NULL COMMENT '分维度统计 JSON',
+  `demographic_stats_json` longtext      DEFAULT NULL COMMENT '人口学分层统计 JSON',
+  `tenant_id`              varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `create_by`              varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`            datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`              varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`            datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`                char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`snapshot_id`),
+  KEY `idx_assessment_bi_snapshot_form` (`form_id`),
+  KEY `idx_assessment_bi_snapshot_publish` (`publish_id`),
+  KEY `idx_assessment_bi_snapshot_type` (`snapshot_type`),
+  KEY `idx_assessment_bi_snapshot_date` (`snapshot_date`),
+  KEY `idx_assessment_bi_snapshot_tenant` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='BI 预聚合快照表';

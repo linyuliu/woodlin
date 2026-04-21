@@ -359,6 +359,64 @@ export const asyncRoutes: RouteRecordRaw[] = [
         ],
       },
 
+      // ===== 测评管理 =====
+      {
+        path: 'assessment',
+        name: 'Assessment',
+        redirect: '/assessment/form',
+        meta: {
+          title: '测评管理',
+          icon: 'clipboard-outline',
+          permissions: [PERMISSIONS.ROUTE.ASSESSMENT],
+        },
+        children: [
+          {
+            path: 'form',
+            name: 'AssessmentForm',
+            component: () => import('@/views/assessment/FormList.vue'),
+            meta: {
+              title: '测评表单',
+              icon: 'document-text-outline',
+              keepAlive: true,
+              permissions: [PERMISSIONS.ROUTE.ASSESSMENT_FORM],
+            },
+          },
+          {
+            path: 'version',
+            name: 'AssessmentVersion',
+            component: () => import('@/views/assessment/VersionList.vue'),
+            meta: {
+              title: '版本管理',
+              icon: 'git-branch-outline',
+              keepAlive: true,
+              permissions: [PERMISSIONS.ROUTE.ASSESSMENT_VERSION],
+            },
+          },
+          {
+            path: 'publish',
+            name: 'AssessmentPublish',
+            component: () => import('@/views/assessment/PublishList.vue'),
+            meta: {
+              title: '发布管理',
+              icon: 'cloud-upload-outline',
+              keepAlive: true,
+              permissions: [PERMISSIONS.ROUTE.ASSESSMENT_PUBLISH],
+            },
+          },
+          {
+            path: 'norm',
+            name: 'AssessmentNorm',
+            component: () => import('@/views/assessment/NormList.vue'),
+            meta: {
+              title: '常模管理',
+              icon: 'bar-chart-outline',
+              keepAlive: true,
+              permissions: [PERMISSIONS.ROUTE.ASSESSMENT_NORM],
+            },
+          },
+        ],
+      },
+
       // ===== 开发工具 =====
       {
         path: 'dev',
