@@ -22,5 +22,6 @@
         <module>woodlin-module-file</module>
         <module>woodlin-module-task</module>
         <module>woodlin-module-datasource</module>
+        <module>woodlin-module-assessment</module>
     </modules>
 </project>

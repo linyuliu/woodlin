@@ -180,6 +180,11 @@
             </dependency>
             <dependency>
                 <groupId>com.mumu</groupId>
+                <artifactId>woodlin-module-assessment</artifactId>
+                <version>${woodlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mumu</groupId>
                 <artifactId>woodlin-plugin-generator</artifactId>
                 <version>${woodlin.version}</version>
             </dependency>

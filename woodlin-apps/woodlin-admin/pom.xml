@@ -80,6 +80,10 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-module-datasource</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-assessment</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.mumu</groupId>
