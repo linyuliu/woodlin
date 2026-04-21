@@ -55,6 +55,7 @@
 
         <!-- 工具库 -->
         <hutool.version>5.8.43</hutool.version>
+        <bouncycastle.version>1.80</bouncycastle.version>
         <lombok.version>1.18.42</lombok.version>
 
         <!-- 数据库驱动 -->
@@ -306,6 +307,12 @@
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-all</artifactId>
                 <version>${hutool.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
 
             <!-- Lombok -->

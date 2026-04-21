@@ -24,7 +24,7 @@ public class SnowflakeIdProperties {
     /**
      * 是否启用 Snowflake 能力。
      */
-    private Boolean enabled = true;
+    private Boolean enabled = false;
 
     /**
      * Snowflake 起始时间戳。
@@ -106,7 +106,7 @@ public class SnowflakeIdProperties {
         /**
          * 是否启用 Nacos 动态分配。
          */
-        private Boolean enabled = true;
+        private Boolean enabled = false;
 
         /**
          * Nacos 锁键前缀。

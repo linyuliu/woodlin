@@ -7,10 +7,9 @@
  * @since 2025-01-01
  */
 
-import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
-import { getConfig } from '@/config'
-import { simpleEncrypt, simpleDecrypt } from './crypto'
-import { logger } from './logger'
+import axios, {type AxiosRequestConfig, type InternalAxiosRequestConfig} from 'axios'
+import {getConfig} from '@/config'
+import {logger} from './logger'
 
 /**
  * 后端统一响应格式
@@ -26,9 +25,9 @@ interface ApiResponse<T = unknown> {
  * 扩展的Axios请求配置
  */
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
-  /** 是否加密请求数据 */
+  /** 已废弃：管理后台请求链不再接入前端自定义加密 */
   encrypt?: boolean
-  /** 是否解密响应数据 */
+  /** 已废弃：管理后台请求链不再接入前端自定义解密 */
   decrypt?: boolean
   /** 是否显示加载提示（当前简化模式暂不处理） */
   showLoading?: boolean
@@ -76,16 +75,6 @@ function parseBusinessCode(code: unknown): number | null {
     return Number.isNaN(parsed) ? null : parsed
   }
   return null
-}
-
-/**
- * 解密响应数据
- */
-function decryptResponsePayload(extConfig: ExtendedAxiosRequestConfig, data: WrappedResponseData) {
-  const encryptedPayload = data.data as { encrypted?: string } | undefined
-  if (extConfig.decrypt && encryptedPayload?.encrypted) {
-    data.data = simpleDecrypt(encryptedPayload.encrypted)
-  }
 }
 
 /**
@@ -191,11 +180,9 @@ function logHttpErrorStatus(status?: number, code?: string): void {
  * 统一响应成功处理
  */
 function handleResponseSuccess(response: { config: InternalAxiosRequestConfig; status: number; data: unknown }): unknown {
-  const extConfig = response.config as ExtendedAxiosRequestConfig
   const traceConfig = response.config as TraceableRequestConfig
   const data = response.data as WrappedResponseData
 
-  decryptResponsePayload(extConfig, data)
   const businessCode = parseBusinessCode(data.code)
   logResponseEnd(traceConfig, response.status, businessCode)
   warnNon200BusinessCode(traceConfig, data, businessCode)
@@ -254,7 +241,7 @@ request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const extConfig = config as ExtendedAxiosRequestConfig
     const traceConfig = config as TraceableRequestConfig
-    
+
     // 添加认证Token
     if (!extConfig.ignoreToken) {
       const token = localStorage.getItem(getConfig().http.tokenKey)
@@ -262,25 +249,18 @@ request.interceptors.request.use(
         config.headers[getConfig().http.tokenHeaderName] = `Bearer ${token}`
       }
     }
-    
+
     // 添加租户ID（如果有）
     const tenantId = localStorage.getItem('tenantId')
     if (tenantId) {
       config.headers['X-Tenant-Id'] = tenantId
     }
-    
+
     // 添加请求ID（用于追踪）
     const traceId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
     traceConfig.__traceId = traceId
     traceConfig.__requestStartAt = Date.now()
     config.headers['X-Request-Id'] = traceId
-    
-    // 加密请求数据
-    if (extConfig.encrypt && config.data) {
-      config.data = {
-        encrypted: simpleEncrypt(config.data)
-      }
-    }
 
     logger.info('[HTTP][START]', {
       traceId,
@@ -289,7 +269,7 @@ request.interceptors.request.use(
       params: config.params,
       data: config.data
     })
-    
+
     return config
   },
   (error) => {
@@ -323,7 +303,7 @@ export const api = {
    */
   get: <T = unknown>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.get<ApiResponse<T>>(url, config).then(res => res as unknown as T),
-  
+
   /**
    * POST请求
    * @param url 请求地址
@@ -333,7 +313,7 @@ export const api = {
    */
   post: <T = unknown>(url: string, data?: unknown, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.post<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
-  
+
   /**
    * PUT请求
    * @param url 请求地址
@@ -343,7 +323,7 @@ export const api = {
    */
   put: <T = unknown>(url: string, data?: unknown, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.put<ApiResponse<T>>(url, data, config).then(res => res as unknown as T),
-  
+
   /**
    * DELETE请求
    * @param url 请求地址
@@ -352,7 +332,7 @@ export const api = {
    */
   delete: <T = unknown>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> =>
     request.delete<ApiResponse<T>>(url, config).then(res => res as unknown as T),
-    
+
   /**
    * PATCH请求
    * @param url 请求地址

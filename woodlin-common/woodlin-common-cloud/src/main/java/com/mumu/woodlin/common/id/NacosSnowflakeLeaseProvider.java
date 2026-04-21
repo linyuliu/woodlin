@@ -2,12 +2,10 @@ package com.mumu.woodlin.common.id;
 
 import com.alibaba.nacos.api.PropertyKeyConst;
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.exception.runtime.NacosRuntimeException;
 import com.alibaba.nacos.api.lock.LockService;
 import com.alibaba.nacos.api.lock.model.LockInstance;
 import com.mumu.woodlin.common.config.SnowflakeIdProperties;
-import com.mumu.woodlin.common.id.SnowflakeLease;
-import com.mumu.woodlin.common.id.SnowflakeLeaseProvider;
-import com.mumu.woodlin.common.id.SnowflakeNodeAssignment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.env.Environment;
@@ -26,6 +24,7 @@ import java.util.UUID;
 public class NacosSnowflakeLeaseProvider implements SnowflakeLeaseProvider, DisposableBean {
 
     public static final int ORDER = 200;
+    private static final int LOCK_FEATURE_UNSUPPORTED_ERROR_CODE = 501;
     private static final String SOURCE = "NACOS";
     private static final String LOCK_TYPE = "NACOS_LOCK";
     private static final String OWNER_TOKEN_PARAM = "ownerToken";
@@ -80,6 +79,12 @@ public class NacosSnowflakeLeaseProvider implements SnowflakeLeaseProvider, Disp
                     return Optional.of(new NacosLease(assignment, lockInstance, ownerToken));
                 }
             } catch (NacosException exception) {
+                throw new IllegalStateException("Nacos Snowflake 节点申请失败", exception);
+            } catch (RuntimeException exception) {
+                if (isLockFeatureUnsupported(exception)) {
+                    log.warn("当前 Nacos 服务端不支持 LockService，跳过 Snowflake Nacos 租约提供者");
+                    return Optional.empty();
+                }
                 throw new IllegalStateException("Nacos Snowflake 节点申请失败", exception);
             }
         }
@@ -172,6 +177,20 @@ public class NacosSnowflakeLeaseProvider implements SnowflakeLeaseProvider, Disp
         if (StringUtils.hasText(value)) {
             properties.setProperty(key, value);
         }
+    }
+
+    private boolean isLockFeatureUnsupported(RuntimeException exception) {
+        if (exception instanceof NacosRuntimeException nacosRuntimeException) {
+            if (nacosRuntimeException.getErrCode() == LOCK_FEATURE_UNSUPPORTED_ERROR_CODE) {
+                return true;
+            }
+            return containsUnsupportedLockMessage(nacosRuntimeException.getMessage());
+        }
+        return containsUnsupportedLockMessage(exception.getMessage());
+    }
+
+    private boolean containsUnsupportedLockMessage(String message) {
+        return StringUtils.hasText(message) && message.contains("not support lock feature");
     }
 
     private final class NacosLease implements SnowflakeLease {

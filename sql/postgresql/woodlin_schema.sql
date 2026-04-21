@@ -190,6 +190,80 @@ CREATE TABLE sys_config (
                           PRIMARY KEY (config_id)
 );
 
+DROP TABLE IF EXISTS sys_open_app CASCADE;
+CREATE TABLE sys_open_app
+(
+  app_id       bigint       NOT NULL,
+  app_code     varchar(100) NOT NULL,
+  app_name     varchar(100) NOT NULL,
+  status       char(1)       DEFAULT '1',
+  tenant_id    varchar(64)   DEFAULT NULL,
+  owner_name   varchar(64)   DEFAULT NULL,
+  ip_whitelist varchar(1000) DEFAULT NULL,
+  remark       varchar(500)  DEFAULT NULL,
+  create_by    varchar(64)   DEFAULT NULL,
+  create_time  timestamp     DEFAULT CURRENT_TIMESTAMP,
+  update_by    varchar(64)   DEFAULT NULL,
+  update_time  timestamp     DEFAULT CURRENT_TIMESTAMP,
+  deleted      char(1)       DEFAULT '0',
+  PRIMARY KEY (app_id),
+  UNIQUE (app_code)
+);
+
+DROP TABLE IF EXISTS sys_open_app_credential CASCADE;
+CREATE TABLE sys_open_app_credential
+(
+  credential_id                bigint       NOT NULL,
+  app_id                       bigint       NOT NULL,
+  credential_name              varchar(100) NOT NULL,
+  access_key                   varchar(100) NOT NULL,
+  secret_key_encrypted         varchar(2000) DEFAULT NULL,
+  secret_key_fingerprint       varchar(64)   DEFAULT NULL,
+  signature_public_key         text,
+  encryption_public_key        text,
+  server_public_key            text,
+  server_private_key_encrypted text,
+  signature_algorithm          varchar(50)   DEFAULT NULL,
+  encryption_algorithm         varchar(50)   DEFAULT NULL,
+  security_mode                varchar(50)   DEFAULT NULL,
+  active_from                  timestamp     DEFAULT NULL,
+  active_to                    timestamp     DEFAULT NULL,
+  last_rotated_time            timestamp     DEFAULT NULL,
+  status                       char(1)       DEFAULT '1',
+  remark                       varchar(500)  DEFAULT NULL,
+  create_by                    varchar(64)   DEFAULT NULL,
+  create_time                  timestamp     DEFAULT CURRENT_TIMESTAMP,
+  update_by                    varchar(64)   DEFAULT NULL,
+  update_time                  timestamp     DEFAULT CURRENT_TIMESTAMP,
+  deleted                      char(1)       DEFAULT '0',
+  PRIMARY KEY (credential_id),
+  UNIQUE (access_key)
+);
+
+DROP TABLE IF EXISTS sys_open_api_policy CASCADE;
+CREATE TABLE sys_open_api_policy
+(
+  policy_id                bigint       NOT NULL,
+  policy_name              varchar(100) NOT NULL,
+  path_pattern             varchar(255) NOT NULL,
+  http_method              varchar(20)  NOT NULL,
+  security_mode            varchar(50)  DEFAULT NULL,
+  signature_algorithm      varchar(50)  DEFAULT NULL,
+  encryption_algorithm     varchar(50)  DEFAULT NULL,
+  timestamp_window_seconds integer      DEFAULT 300,
+  nonce_enabled            char(1)      DEFAULT '1',
+  nonce_ttl_seconds        integer      DEFAULT 300,
+  tenant_required          char(1)      DEFAULT '0',
+  enabled                  char(1)      DEFAULT '1',
+  remark                   varchar(500) DEFAULT NULL,
+  create_by                varchar(64)  DEFAULT NULL,
+  create_time              timestamp    DEFAULT CURRENT_TIMESTAMP,
+  update_by                varchar(64)  DEFAULT NULL,
+  update_time              timestamp    DEFAULT CURRENT_TIMESTAMP,
+  deleted                  char(1)      DEFAULT '0',
+  PRIMARY KEY (policy_id)
+);
+
 DROP TABLE IF EXISTS sys_oper_log CASCADE;
 CREATE TABLE sys_oper_log (
                             oper_id        bigint NOT NULL,

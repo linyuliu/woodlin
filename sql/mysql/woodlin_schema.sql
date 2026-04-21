@@ -286,6 +286,98 @@ CREATE TABLE `sys_config`
   DEFAULT CHARSET = utf8mb4 COMMENT ='参数配置表';
 
 -- =============================================
+-- 开放API应用表
+-- =============================================
+DROP TABLE IF EXISTS `sys_open_app`;
+CREATE TABLE `sys_open_app`
+(
+  `app_id`       bigint(20)   NOT NULL COMMENT '应用ID',
+  `app_code`     varchar(100) NOT NULL COMMENT '应用编码',
+  `app_name`     varchar(100) NOT NULL COMMENT '应用名称',
+  `status`       char(1)       DEFAULT '1' COMMENT '应用状态（1-启用，0-停用）',
+  `tenant_id`    varchar(64)   DEFAULT NULL COMMENT '租户ID',
+  `owner_name`   varchar(64)   DEFAULT NULL COMMENT '负责人',
+  `ip_whitelist` varchar(1000) DEFAULT NULL COMMENT 'IP白名单，逗号分隔',
+  `remark`       varchar(500)  DEFAULT NULL COMMENT '备注',
+  `create_by`    varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`  datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`    varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`  datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`      char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`app_id`),
+  UNIQUE KEY `uk_open_app_code` (`app_code`),
+  KEY `idx_open_app_status` (`status`),
+  KEY `idx_open_app_tenant_id` (`tenant_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='开放API应用表';
+
+-- =============================================
+-- 开放API凭证表
+-- =============================================
+DROP TABLE IF EXISTS `sys_open_app_credential`;
+CREATE TABLE `sys_open_app_credential`
+(
+  `credential_id`                bigint(20)   NOT NULL COMMENT '凭证ID',
+  `app_id`                       bigint(20)   NOT NULL COMMENT '应用ID',
+  `credential_name`              varchar(100) NOT NULL COMMENT '凭证名称',
+  `access_key`                   varchar(100) NOT NULL COMMENT '访问密钥',
+  `secret_key_encrypted`         varchar(2000) DEFAULT NULL COMMENT '加密存储的SK',
+  `secret_key_fingerprint`       varchar(64)   DEFAULT NULL COMMENT 'SK指纹',
+  `signature_public_key`         text COMMENT '签名公钥',
+  `encryption_public_key`        text COMMENT '客户端加密公钥',
+  `server_public_key`            text COMMENT '服务端加密公钥',
+  `server_private_key_encrypted` text COMMENT '加密存储的服务端私钥',
+  `signature_algorithm`          varchar(50)   DEFAULT NULL COMMENT '签名算法',
+  `encryption_algorithm`         varchar(50)   DEFAULT NULL COMMENT '加密算法',
+  `security_mode`                varchar(50)   DEFAULT NULL COMMENT '安全模式',
+  `active_from`                  datetime      DEFAULT NULL COMMENT '生效时间',
+  `active_to`                    datetime      DEFAULT NULL COMMENT '失效时间',
+  `last_rotated_time`            datetime      DEFAULT NULL COMMENT '最近轮换时间',
+  `status`                       char(1)       DEFAULT '1' COMMENT '凭证状态（1-启用，0-吊销）',
+  `remark`                       varchar(500)  DEFAULT NULL COMMENT '备注',
+  `create_by`                    varchar(64)   DEFAULT NULL COMMENT '创建者',
+  `create_time`                  datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`                    varchar(64)   DEFAULT NULL COMMENT '更新者',
+  `update_time`                  datetime      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`                      char(1)       DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`credential_id`),
+  UNIQUE KEY `uk_open_credential_access_key` (`access_key`),
+  KEY `idx_open_credential_app_id` (`app_id`),
+  KEY `idx_open_credential_status` (`status`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='开放API凭证表';
+
+-- =============================================
+-- 开放API策略表
+-- =============================================
+DROP TABLE IF EXISTS `sys_open_api_policy`;
+CREATE TABLE `sys_open_api_policy`
+(
+  `policy_id`                bigint(20)   NOT NULL COMMENT '策略ID',
+  `policy_name`              varchar(100) NOT NULL COMMENT '策略名称',
+  `path_pattern`             varchar(255) NOT NULL COMMENT '路径模式',
+  `http_method`              varchar(20)  NOT NULL COMMENT 'HTTP方法',
+  `security_mode`            varchar(50)  DEFAULT NULL COMMENT '安全模式',
+  `signature_algorithm`      varchar(50)  DEFAULT NULL COMMENT '签名算法',
+  `encryption_algorithm`     varchar(50)  DEFAULT NULL COMMENT '加密算法',
+  `timestamp_window_seconds` int(11)      DEFAULT 300 COMMENT '时间窗秒数',
+  `nonce_enabled`            char(1)      DEFAULT '1' COMMENT '是否启用nonce（1-是，0-否）',
+  `nonce_ttl_seconds`        int(11)      DEFAULT 300 COMMENT 'nonce TTL秒数',
+  `tenant_required`          char(1)      DEFAULT '0' COMMENT '是否要求租户（1-是，0-否）',
+  `enabled`                  char(1)      DEFAULT '1' COMMENT '是否启用（1-是，0-否）',
+  `remark`                   varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by`                varchar(64)  DEFAULT NULL COMMENT '创建者',
+  `create_time`              datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`                varchar(64)  DEFAULT NULL COMMENT '更新者',
+  `update_time`              datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted`                  char(1)      DEFAULT '0' COMMENT '删除标识（0-正常，1-删除）',
+  PRIMARY KEY (`policy_id`),
+  KEY `idx_open_policy_method` (`http_method`),
+  KEY `idx_open_policy_enabled` (`enabled`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='开放API策略表';
+
+-- =============================================
 -- 操作日志表
 -- =============================================
 DROP TABLE IF EXISTS `sys_oper_log`;

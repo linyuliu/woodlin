@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Configuration
 @EnableConfigurationProperties(SnowflakeIdProperties.class)
-@ConditionalOnProperty(prefix = "woodlin.id.snowflake", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "woodlin.id.snowflake", name = "enabled", havingValue = "true")
 public class SnowflakeIdConfiguration {
 
     @Bean

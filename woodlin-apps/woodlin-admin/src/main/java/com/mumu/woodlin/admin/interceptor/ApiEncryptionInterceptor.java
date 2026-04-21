@@ -26,6 +26,7 @@ import java.util.Map;
  * @since 2025-01-01
  */
 @Slf4j
+@Deprecated(forRemoval = false, since = "2026-04-13")
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "woodlin.api.encryption", name = "enabled", havingValue = "true")

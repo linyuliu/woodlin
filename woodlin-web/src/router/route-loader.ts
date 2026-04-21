@@ -1,6 +1,6 @@
-import { RouterView, type RouteComponent } from 'vue-router'
-import { LAYOUT } from './route-constants'
-import { logger } from '@/utils/logger'
+import {type RouteComponent, RouterView} from 'vue-router'
+import {LAYOUT} from './route-constants'
+import {logger} from '@/utils/logger'
 
 // 自动收集 views 下的页面组件，支持 .vue / .tsx
 const viewModules: Record<string, () => Promise<unknown>> = import.meta.glob('@/views/**/*.{vue,tsx}')
@@ -21,6 +21,7 @@ const componentAlias: Record<string, string> = {
   // 历史权限页入口统一并入角色管理页
   'system/permission/index': '/src/views/system/RoleView.vue',
   'system/settings/index': '/src/views/system/SystemSettingsView.vue',
+  'system/openapi/index': '/src/views/system/OpenApiSecurityView.vue',
   'datasource/list': '/src/views/datasource/DatasourceList.vue',
   // 数据源入口统一收敛到列表页，监控/工作台能力迁移到业务模块使用
   'datasource/monitor': '/src/views/datasource/DatasourceList.vue',

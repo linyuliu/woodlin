@@ -1,5 +1,6 @@
 package com.mumu.woodlin.common.id;
 
+import com.alibaba.nacos.api.exception.runtime.NacosRuntimeException;
 import com.alibaba.nacos.api.lock.LockService;
 import com.alibaba.nacos.api.lock.model.LockInstance;
 import com.mumu.woodlin.common.config.SnowflakeIdProperties;
@@ -73,10 +74,27 @@ class NacosSnowflakeLeaseProviderTest {
         verify(lockService, never()).remoteTryLock(any(LockInstance.class));
     }
 
+    @Test
+    void shouldGracefullySkipUnsupportedLockFeature() throws Exception {
+        LockService lockService = mock(LockService.class);
+        when(lockService.remoteTryLock(any(LockInstance.class)))
+            .thenThrow(new NacosRuntimeException(501, "Request Nacos server version is too low, not support lock feature."));
+
+        NacosSnowflakeLeaseProvider provider = new NacosSnowflakeLeaseProvider(
+            newProperties(),
+            newEnvironment(),
+            properties -> lockService
+        );
+
+        assertTrue(provider.acquire().isEmpty());
+        verify(lockService).remoteTryLock(any(LockInstance.class));
+    }
+
     private SnowflakeIdProperties newProperties() {
         SnowflakeIdProperties properties = new SnowflakeIdProperties();
         properties.setSlotCount(1);
         properties.setLeaseTtl(Duration.ofSeconds(5));
+        properties.getNacos().setEnabled(true);
         return properties;
     }
 

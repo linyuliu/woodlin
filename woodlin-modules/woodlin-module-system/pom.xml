@@ -75,6 +75,11 @@
             <artifactId>hutool-all</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
         <!-- Google Guava -->
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -115,4 +120,3 @@
     </dependencies>
 
 </project>
-

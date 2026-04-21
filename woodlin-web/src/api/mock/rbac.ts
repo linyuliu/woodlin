@@ -3,7 +3,7 @@
  * - 纯内存实现，重启页面后重置
  * - 用 Promise + setTimeout 模拟网络
  */
-import { PERMISSIONS } from '@/constants/permission-keys'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
 export type Gender = 'male' | 'female' | 'unknown'
 
@@ -192,6 +192,19 @@ let menuTree: MenuNode[] = [
         path: '/system/menu',
         component: 'system/MenuView',
         perms: PERMISSIONS.ROUTE.SYSTEM_MENU,
+        visible: '1',
+        status: '1'
+      },
+      {
+        menuId: 15,
+        parentId: 1,
+        menuName: '开放API安全',
+        icon: 'key-outline',
+        orderNum: 5,
+        type: 'M',
+        path: '/system/open-api',
+        component: 'system/OpenApiSecurityView',
+        perms: PERMISSIONS.ROUTE.SYSTEM_OPEN_API,
         visible: '1',
         status: '1'
       }

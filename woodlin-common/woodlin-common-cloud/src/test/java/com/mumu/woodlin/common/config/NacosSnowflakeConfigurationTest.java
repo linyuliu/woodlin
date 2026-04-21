@@ -2,11 +2,7 @@ package com.mumu.woodlin.common.config;
 
 import com.alibaba.nacos.api.lock.LockService;
 import com.alibaba.nacos.api.lock.model.LockInstance;
-import com.mumu.woodlin.common.id.NacosLockServiceFactory;
-import com.mumu.woodlin.common.id.NacosSnowflakeLeaseProvider;
-import com.mumu.woodlin.common.id.RedisSnowflakeLeaseProvider;
-import com.mumu.woodlin.common.id.SnowflakeIdGenerator;
-import com.mumu.woodlin.common.id.SnowflakeLeaseManager;
+import com.mumu.woodlin.common.id.*;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RBucket;
 import org.redisson.api.RScript;
@@ -28,15 +24,26 @@ class NacosSnowflakeConfigurationTest {
         .withBean(SnowflakeIdProperties.class, this::newProperties)
         .withPropertyValues(
             "spring.profiles.active=dev",
-            "spring.cloud.nacos.server-addr=127.0.0.1:8848"
+            "spring.cloud.nacos.server-addr=127.0.0.1:8848",
+            "woodlin.id.snowflake.enabled=true"
         );
 
     @Test
-    void shouldRegisterNacosProviderWhenEnabled() {
+    void shouldRegisterNacosProviderWhenExplicitlyEnabled() {
         contextRunner
+            .withPropertyValues("woodlin.id.snowflake.nacos.enabled=true")
             .run(context -> {
                 assertThat(context).hasSingleBean(NacosLockServiceFactory.class);
                 assertThat(context).hasSingleBean(NacosSnowflakeLeaseProvider.class);
+            });
+    }
+
+    @Test
+    void shouldSkipNacosProviderByDefault() {
+        contextRunner
+            .run(context -> {
+                assertThat(context).doesNotHaveBean(NacosLockServiceFactory.class);
+                assertThat(context).doesNotHaveBean(NacosSnowflakeLeaseProvider.class);
             });
     }
 
@@ -73,6 +80,7 @@ class NacosSnowflakeConfigurationTest {
         when(lockServiceFactory.create(any())).thenReturn(lockService);
 
         contextRunner
+            .withPropertyValues("woodlin.id.snowflake.nacos.enabled=true")
             .withBean(
                 "mockNacosLockServiceFactory",
                 NacosLockServiceFactory.class,

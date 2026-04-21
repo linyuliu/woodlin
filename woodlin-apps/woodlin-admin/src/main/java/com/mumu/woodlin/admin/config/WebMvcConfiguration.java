@@ -1,9 +1,7 @@
 package com.mumu.woodlin.admin.config;
 
-import com.mumu.woodlin.admin.interceptor.ApiEncryptionInterceptor;
 import com.mumu.woodlin.admin.interceptor.PageValidationInterceptor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -35,21 +33,11 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
 
     private final PageValidationInterceptor pageValidationInterceptor;
 
-    @Autowired(required = false)
-    private ApiEncryptionInterceptor apiEncryptionInterceptor;
-
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册分页参数校验拦截器
         registry.addInterceptor(pageValidationInterceptor)
             .addPathPatterns("/**")
             .excludePathPatterns(EXCLUDED_PATHS);
-
-        // 注册API加密拦截器（如果启用）
-        if (apiEncryptionInterceptor != null) {
-            registry.addInterceptor(apiEncryptionInterceptor)
-                    .addPathPatterns("/**")
-                .excludePathPatterns(EXCLUDED_PATHS);
-        }
     }
 }

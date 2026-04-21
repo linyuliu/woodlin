@@ -37,7 +37,7 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         String[] excludePatterns = buildExcludePatterns();
-        
+
         log.info("Sa-Token拦截器配置: 排除路径数量={}", excludePatterns.length);
 
         // 注册用户活动监控拦截器
@@ -58,7 +58,7 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
      */
     private String[] buildExcludePatterns() {
         List<String> patterns = new ArrayList<>();
-        
+
         // 认证相关路径
         patterns.addAll(Arrays.asList(
                 "/auth/login",
@@ -68,7 +68,7 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
                 "/auth/forgot-password",
                 "/auth/dev-token"
         ));
-        
+
         // API文档路径
         patterns.addAll(Arrays.asList(
                 "/doc.html",
@@ -79,13 +79,14 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
                 "/webjars/**",
                 "/favicon.ico"
         ));
-        
+
         // 系统路径
         patterns.addAll(Arrays.asList(
                 "/error",
-                "/actuator/**"
+            "/actuator/**",
+            "/openapi/**"
         ));
-        
+
         return patterns.toArray(new String[0]);
     }
 }

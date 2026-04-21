@@ -4,7 +4,6 @@ import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.lock.LockService;
 import com.mumu.woodlin.common.id.NacosLockServiceFactory;
 import com.mumu.woodlin.common.id.NacosSnowflakeLeaseProvider;
-import com.mumu.woodlin.common.config.SnowflakeIdProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -16,15 +15,14 @@ import org.springframework.core.env.Environment;
  */
 @Configuration
 @ConditionalOnClass({NacosFactory.class, LockService.class})
-@ConditionalOnProperty(prefix = "woodlin.id.snowflake", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "woodlin.id.snowflake", name = "enabled", havingValue = "true")
 public class NacosSnowflakeConfiguration {
 
     @Bean
     @ConditionalOnProperty(
         prefix = "woodlin.id.snowflake.nacos",
         name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true
+        havingValue = "true"
     )
     public NacosLockServiceFactory nacosLockServiceFactory() {
         return NacosFactory::createLockService;
@@ -34,8 +32,7 @@ public class NacosSnowflakeConfiguration {
     @ConditionalOnProperty(
         prefix = "woodlin.id.snowflake.nacos",
         name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true
+        havingValue = "true"
     )
     public NacosSnowflakeLeaseProvider nacosSnowflakeLeaseProvider(
         SnowflakeIdProperties properties,

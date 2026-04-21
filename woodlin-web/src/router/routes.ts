@@ -167,6 +167,16 @@ export const asyncRoutes: RouteRecordRaw[] = [
               permissions: [PERMISSIONS.ROUTE.SYSTEM_SETTINGS],
             },
           },
+          {
+            path: 'open-api',
+            name: 'SystemOpenApi',
+            component: () => import('@/views/system/OpenApiSecurityView.vue'),
+            meta: {
+              title: '开放API安全',
+              icon: 'key-outline',
+              permissions: [PERMISSIONS.ROUTE.SYSTEM_OPEN_API],
+            },
+          },
         ],
       },
 
@@ -402,4 +412,3 @@ export const notFoundRoute: RouteRecordRaw = {
  * 所有路由（用于调试和测试）
  */
 export const allRoutes = [...constantRoutes, ...asyncRoutes, notFoundRoute]
-

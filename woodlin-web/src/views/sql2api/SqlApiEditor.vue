@@ -78,9 +78,9 @@
                     type="textarea"
                     :rows="12"
                     placeholder="输入SQL语句，支持动态参数:
-                    
+
 示例:
-SELECT * FROM users 
+SELECT * FROM users
 WHERE status = #{status}
 <if test='username != null'>
   AND username LIKE CONCAT('%', #{username}, '%')
@@ -108,7 +108,7 @@ WHERE status = #{status}
                 </template>
                 添加参数
               </n-button>
-              
+
               <n-card v-for="(param, index) in apiConfig.params" :key="index" size="small">
                 <template #header>
                   参数 {{ index + 1 }}
@@ -118,7 +118,7 @@ WHERE status = #{status}
                     </template>
                   </n-button>
                 </template>
-                
+
                 <n-grid :cols="3" :x-gap="12">
                   <n-gi>
                     <n-input v-model:value="param.name" placeholder="参数名" />
@@ -155,23 +155,13 @@ WHERE status = #{status}
                   </n-form-item>
                 </n-gi>
                 <n-gi>
-                  <n-form-item label="启用加密">
-                    <n-switch v-model:value="apiConfig.encryptEnabled" />
-                  </n-form-item>
-                </n-gi>
-                <n-gi v-if="apiConfig.encryptEnabled">
-                  <n-form-item label="加密算法">
-                    <n-select v-model:value="apiConfig.encryptAlgorithm" :options="encryptAlgorithms" />
+                  <n-form-item label="安全模式">
+                    <n-select v-model:value="apiConfig.securityMode" :options="securityModes"/>
                   </n-form-item>
                 </n-gi>
                 <n-gi>
-                  <n-form-item label="需要认证">
-                    <n-switch v-model:value="apiConfig.authRequired" />
-                  </n-form-item>
-                </n-gi>
-                <n-gi v-if="apiConfig.authRequired">
-                  <n-form-item label="认证类型">
-                    <n-select v-model:value="apiConfig.authType" :options="authTypes" />
+                  <n-form-item label="加密算法">
+                    <n-select v-model:value="apiConfig.encryptAlgorithm" :options="encryptAlgorithms" />
                   </n-form-item>
                 </n-gi>
                 <n-gi>
@@ -204,9 +194,17 @@ WHERE status = #{status}
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { SaveOutline, PlayOutline, AddOutline, TrashOutline } from '@vicons/ionicons5'
-import { useMessage } from 'naive-ui'
+import {computed, onMounted, ref, watch} from 'vue'
+import {AddOutline, PlayOutline, SaveOutline, TrashOutline} from '@vicons/ionicons5'
+import {useMessage} from 'naive-ui'
+import {type DictItem, getDictData} from '@/api/dict'
+import {
+  API_ENCRYPTION_ALGORITHMS,
+  API_SECURITY_MODES,
+  normalizeOpenApiDictOptions,
+  OPEN_API_ENCRYPTION_ALGORITHM_OPTIONS,
+  OPEN_API_SECURITY_MODE_OPTIONS
+} from '@/utils/openapi-security'
 
 const message = useMessage()
 
@@ -233,10 +231,11 @@ const apiConfig = ref({
   resultType: 'list',
   cacheEnabled: false,
   cacheExpire: 300,
+  securityMode: API_SECURITY_MODES.TOKEN,
   encryptEnabled: false,
-  encryptAlgorithm: 'AES',
+  encryptAlgorithm: API_ENCRYPTION_ALGORITHMS.AES_GCM,
   authRequired: true,
-  authType: 'TOKEN',
+  authType: API_SECURITY_MODES.TOKEN,
   flowLimit: 0,
   apiDesc: '',
   enabled: true
@@ -279,21 +278,38 @@ const paramTypes = [
   { label: 'Date', value: 'Date' }
 ]
 
-const encryptAlgorithms = [
-  { label: 'AES', value: 'AES' },
-  { label: 'RSA', value: 'RSA' },
-  { label: 'SM4', value: 'SM4' }
-]
+const securityModes = ref<{ label: string; value: string }[]>(OPEN_API_SECURITY_MODE_OPTIONS)
 
-const authTypes = [
-  { label: 'Token', value: 'TOKEN' },
-  { label: 'API Key', value: 'API_KEY' },
-  { label: '无', value: 'NONE' }
-]
+const encryptAlgorithms = ref<{
+  label: string;
+  value: string
+}[]>(OPEN_API_ENCRYPTION_ALGORITHM_OPTIONS)
 
 const datasources = [
   { label: '主数据源', value: 'master' }
 ]
+
+const syncCompatibilityFields = () => {
+  apiConfig.value.encryptEnabled = apiConfig.value.encryptAlgorithm !== 'NONE'
+  apiConfig.value.authRequired = apiConfig.value.securityMode !== 'NONE'
+  apiConfig.value.authType = apiConfig.value.securityMode
+}
+
+const toOptions = (items: DictItem[], fallbackOptions: { label: string; value: string }[]) =>
+  normalizeOpenApiDictOptions(items, fallbackOptions)
+
+const loadSecurityDicts = async () => {
+  try {
+    const [modeDict, encryptionDict] = await Promise.all([
+      getDictData('api_security_mode'),
+      getDictData('api_encryption_algorithm')
+    ])
+    securityModes.value = toOptions(modeDict, OPEN_API_SECURITY_MODE_OPTIONS)
+    encryptAlgorithms.value = toOptions(encryptionDict, OPEN_API_ENCRYPTION_ALGORITHM_OPTIONS)
+  } catch (error) {
+    message.warning('安全字典加载失败，已回退到默认选项')
+  }
+}
 
 // 数据库树形结构（示例）
 const databaseTree = ref([
@@ -313,13 +329,13 @@ const detectedParams = computed(() => {
   const sql = apiConfig.value.sqlContent
   const paramPattern = /#\{([^}]+)\}|\$\{([^}]+)\}|:([a-zA-Z0-9_]+)/g
   const params = new Set<string>()
-  
+
   let match
   while ((match = paramPattern.exec(sql)) !== null) {
     const param = match[1] || match[2] || match[3]
     if (param) {params.add(param)}
   }
-  
+
   return Array.from(params)
 })
 
@@ -367,6 +383,7 @@ const handleRemoveParam = (index: number) => {
  * 保存配置
  */
 const handleSave = () => {
+  syncCompatibilityFields()
   message.success('保存成功')
 }
 
@@ -385,6 +402,7 @@ const testResult = ref<TestResult | null>(null)
  * 测试API
  */
 const handleTest = () => {
+  syncCompatibilityFields()
   testResult.value = {
     code: 200,
     message: 'Success',
@@ -392,6 +410,18 @@ const handleTest = () => {
   }
   message.info('正在测试...')
 }
+
+watch(
+  () => apiConfig.value.securityMode,
+  () => {
+    syncCompatibilityFields()
+  },
+  {immediate: true}
+)
+
+onMounted(() => {
+  loadSecurityDicts()
+})
 </script>
 
 <style scoped>

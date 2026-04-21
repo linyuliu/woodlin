@@ -138,6 +138,34 @@ VALUES (1, 0, '系统管理', 'system', 'M', 'system', NULL, 'system', 1, '1', '
         '配置管理菜单', 'system', NOW(), 'system', NOW(), '0'),
        (8, 1, '系统设置', 'system:settings', 'C', 'settings', 'system/SystemSettingsView', 'cog-outline', 7, '1', '0',
         '0', '1', '系统设置菜单', 'system', NOW(), 'system', NOW(), '0'),
+       (9, 1, '开放API安全', 'system:openapi', 'C', 'open-api', 'system/OpenApiSecurityView', 'key-outline', 8, '1',
+        '0', '0', '1', '开放API安全中心菜单', 'system', NOW(), 'system', NOW(), '0'),
+       (900, 9, '全局配置', 'system:openapi:settings', 'F', '', '', '#', 1, '1', '0', '0', '1', '开放API全局配置',
+        'system', NOW(), 'system', NOW(), '0'),
+       (901, 9, '应用查询', 'system:openapi:app:list', 'F', '', '', '#', 2, '1', '0', '0', '1', '开放应用查询',
+        'system', NOW(), 'system', NOW(), '0'),
+       (902, 9, '应用新增', 'system:openapi:app:add', 'F', '', '', '#', 3, '1', '0', '0', '1', '开放应用新增',
+        'system', NOW(), 'system', NOW(), '0'),
+       (903, 9, '应用修改', 'system:openapi:app:edit', 'F', '', '', '#', 4, '1', '0', '0', '1', '开放应用修改',
+        'system', NOW(), 'system', NOW(), '0'),
+       (904, 9, '应用删除', 'system:openapi:app:remove', 'F', '', '', '#', 5, '1', '0', '0', '1', '开放应用删除',
+        'system', NOW(), 'system', NOW(), '0'),
+       (905, 9, '凭证查询', 'system:openapi:credential:list', 'F', '', '', '#', 6, '1', '0', '0', '1', '开放凭证查询',
+        'system', NOW(), 'system', NOW(), '0'),
+       (906, 9, '凭证签发', 'system:openapi:credential:create', 'F', '', '', '#', 7, '1', '0', '0', '1', '开放凭证签发',
+        'system', NOW(), 'system', NOW(), '0'),
+       (907, 9, '凭证轮换', 'system:openapi:credential:rotate', 'F', '', '', '#', 8, '1', '0', '0', '1', '开放凭证轮换',
+        'system', NOW(), 'system', NOW(), '0'),
+       (908, 9, '凭证吊销', 'system:openapi:credential:revoke', 'F', '', '', '#', 9, '1', '0', '0', '1', '开放凭证吊销',
+        'system', NOW(), 'system', NOW(), '0'),
+       (909, 9, '策略查询', 'system:openapi:policy:list', 'F', '', '', '#', 10, '1', '0', '0', '1', '开放策略查询',
+        'system', NOW(), 'system', NOW(), '0'),
+       (910, 9, '策略新增', 'system:openapi:policy:add', 'F', '', '', '#', 11, '1', '0', '0', '1', '开放策略新增',
+        'system', NOW(), 'system', NOW(), '0'),
+       (911, 9, '策略修改', 'system:openapi:policy:edit', 'F', '', '', '#', 12, '1', '0', '0', '1', '开放策略修改',
+        'system', NOW(), 'system', NOW(), '0'),
+       (912, 9, '策略删除', 'system:openapi:policy:remove', 'F', '', '', '#', 13, '1', '0', '0', '1', '开放策略删除',
+        'system', NOW(), 'system', NOW(), '0'),
 
 -- 仪表板
        (1000, 0, '仪表板', 'dashboard', 'C', 'dashboard', 'DashboardView', 'dashboard-outline', 1, '1', '0', '0', '1',
@@ -247,6 +275,7 @@ VALUES
 (1, 6),
 (1, 7),
 (1, 8),
+(1, 9),
 (1, 100),
 (1, 101),
 (1, 102),
@@ -266,6 +295,19 @@ VALUES
 (1, 401),
 (1, 402),
 (1, 403),
+(1, 900),
+(1, 901),
+(1, 902),
+(1, 903),
+(1, 904),
+(1, 905),
+(1, 906),
+(1, 907),
+(1, 908),
+(1, 909),
+(1, 910),
+(1, 911),
+(1, 912),
 -- 仪表板
 (1, 1000),
 -- 数据源管理
@@ -400,7 +442,25 @@ VALUES (100, 'API加密-启用开关', 'api.encryption.enabled', 'false', 'Y', '
        (114, 'API加密-加密请求', 'api.encryption.encrypt-request', 'true', 'Y', 'default',
         '是否加密请求体（true加密，false不加密）', 'system', NOW(), 'system', NOW(), '0'),
        (115, 'API加密-加密响应', 'api.encryption.encrypt-response', 'true', 'Y', 'default',
-        '是否加密响应体（true加密，false不加密）', 'system', NOW(), 'system', NOW(), '0');
+        '是否加密响应体（true加密，false不加密）', 'system', NOW(), 'system', NOW(), '0'),
+       (116, '开放API-默认安全模式', 'api.security.default-mode', 'AKSK', 'Y', 'default',
+        '开放API默认安全模式（NONE、TOKEN、AKSK、TOKEN_AND_AKSK）', 'system', NOW(), 'system', NOW(), '0'),
+       (117, '开放API-默认签名算法', 'api.signature.default-algorithm', 'HMAC_SHA256', 'Y', 'default',
+        '开放API默认签名算法', 'system', NOW(), 'system', NOW(), '0'),
+       (118, '开放API-签名时间窗', 'api.signature.timestamp-window-seconds', '300', 'Y', 'default',
+        '开放API签名允许时间窗（秒）', 'system', NOW(), 'system', NOW(), '0'),
+       (119, '开放API-启用Nonce', 'api.signature.nonce-enabled', 'true', 'Y', 'default',
+        '是否启用Nonce防重放', 'system', NOW(), 'system', NOW(), '0'),
+       (120, '开放API-Nonce过期时间', 'api.signature.nonce-ttl-seconds', '300', 'Y', 'default',
+        'Nonce缓存过期时间（秒）', 'system', NOW(), 'system', NOW(), '0'),
+       (121, '开放API-默认加密算法', 'api.encryption.default-algorithm', 'AES_GCM', 'Y', 'default',
+        '开放API默认报文加密算法', 'system', NOW(), 'system', NOW(), '0'),
+       (122, '开放API-强制报文加密', 'api.encryption.required', 'false', 'Y', 'default',
+        '是否强制启用开放API报文加密', 'system', NOW(), 'system', NOW(), '0'),
+       (123, '开放API-国密开关', 'api.gm.enabled', 'true', 'Y', 'default',
+        '是否启用国密算法能力', 'system', NOW(), 'system', NOW(), '0'),
+       (124, '开放API-主密钥', 'api.security.master-key', '', 'Y', 'default',
+        '用于保护AK/SK及私钥，生产环境建议改为环境变量注入', 'system', NOW(), 'system', NOW(), '0');
 
 -- 密码策略配置
 INSERT INTO `sys_config`
@@ -508,7 +568,10 @@ VALUES (1, '性别', 'gender', 'system', '1', 'GB/T 2261.1-2003 标准'),
        (4, '婚姻状况', 'marital', 'system', '1', 'GB/T 2261.2-2003 标准'),
        (5, '政治面貌', 'political', 'system', '1', 'GB/T 4762-1984 标准'),
        (6, '证件类型', 'idtype', 'system', '1', 'GB/T 2261.4 标准'),
-       (7, '用户状态', 'user_status', 'system', '1', '用户账号状态');
+       (7, '用户状态', 'user_status', 'system', '1', '用户账号状态'),
+       (8, 'API安全模式', 'api_security_mode', 'system', '1', 'API 鉴权模式（Token、AK/SK、双因子）'),
+       (9, 'API签名算法', 'api_signature_algorithm', 'system', '1', 'API 请求签名算法（国际 + 国密）'),
+       (10, 'API加密算法', 'api_encryption_algorithm', 'system', '1', 'API 传输加密算法（国际 + 国密）');
 
 -- 性别
 INSERT INTO `sys_dict_data` (`dict_type`, `dict_label`, `dict_value`, `dict_desc`, `dict_sort`, `status`)
@@ -627,6 +690,29 @@ VALUES ('idtype', '居民身份证', '01', 'GB/T 2261.4', 1, '1'),
 INSERT INTO `sys_dict_data` (`dict_type`, `dict_label`, `dict_value`, `dict_desc`, `dict_sort`, `status`)
 VALUES ('user_status', '正常', '1', '用户账号正常', 1, '1'),
        ('user_status', '停用', '0', '用户账号停用', 2, '1');
+
+-- API安全模式
+INSERT INTO `sys_dict_data` (`dict_type`, `dict_label`, `dict_value`, `dict_desc`, `dict_sort`, `status`)
+VALUES ('api_security_mode', '仅 Token', 'TOKEN', '仅校验登录令牌，适合内部管理端', 1, '1'),
+       ('api_security_mode', '仅 AK/SK', 'AKSK', '仅校验 Access Key / Secret Key 签名，适合开放 API', 2, '1'),
+       ('api_security_mode', 'Token + AK/SK', 'TOKEN_AND_AKSK', '同时校验登录令牌与请求签名，适合高敏场景', 3, '1'),
+       ('api_security_mode', '匿名', 'NONE', '不做鉴权，仅适合公开接口', 4, '1');
+
+-- API签名算法
+INSERT INTO `sys_dict_data` (`dict_type`, `dict_label`, `dict_value`, `dict_desc`, `dict_sort`, `status`)
+VALUES ('api_signature_algorithm', 'HMAC-SHA256', 'HMAC_SHA256', '推荐默认，通用性最好', 1, '1'),
+       ('api_signature_algorithm', 'HMAC-SHA512', 'HMAC_SHA512', '更长摘要，适合高安全要求', 2, '1'),
+       ('api_signature_algorithm', 'RSA-SHA256', 'RSA_SHA256', '适合第三方平台非对称签名', 3, '1'),
+       ('api_signature_algorithm', 'SM2 + SM3', 'SM2_SM3', '国密签名方案，适合国产密码合规场景', 4, '1');
+
+-- API加密算法
+INSERT INTO `sys_dict_data` (`dict_type`, `dict_label`, `dict_value`, `dict_desc`, `dict_sort`, `status`)
+VALUES ('api_encryption_algorithm', 'AES-GCM', 'AES_GCM', '推荐默认，支持机密性与完整性保护', 1, '1'),
+       ('api_encryption_algorithm', 'AES-CBC', 'AES_CBC', '兼容历史系统，需配合签名使用', 2, '1'),
+       ('api_encryption_algorithm', 'AES-CTR', 'AES_CTR', '流式场景可选，需配合完整性校验', 3, '1'),
+       ('api_encryption_algorithm', 'RSA-OAEP-SHA256', 'RSA_OAEP_SHA256', '适合小报文或密钥封装', 4, '1'),
+       ('api_encryption_algorithm', 'SM4-CBC', 'SM4_CBC', '国密对称加密，适合国产密码场景', 5, '1'),
+       ('api_encryption_algorithm', 'SM4-ECB', 'SM4_ECB', '仅保留兼容用途，不建议默认启用', 6, '1');
 
 -- =============================================
 -- 行政区划数据（省级）

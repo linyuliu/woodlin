@@ -36,6 +36,9 @@ export * from './cache'
 // 安全配置
 export * from './security'
 
+// 开放API安全中心
+export * from './openApiSecurity'
+
 // 文件管理
 export * from './file'
 
