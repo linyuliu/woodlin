@@ -25,10 +25,14 @@ replay_pid*
 
 # Maven
 target/
+.m2/
 .mvn/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+# Local agent artifacts
+.codex-tmp/
 
 # IDE
 .idea/
