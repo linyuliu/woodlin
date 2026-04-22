@@ -28,6 +28,36 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/assessment/runtime/entry/:publishId',
+    name: 'AssessmentRuntimeEntry',
+    component: () => import('@/views/assessment/runtime/RuntimeEntry.vue'),
+    meta: {
+      title: '开始作答',
+      hideInMenu: true,
+      anonymous: true,
+    },
+  },
+  {
+    path: '/assessment/runtime/player/:sessionId',
+    name: 'AssessmentRuntimePlayer',
+    component: () => import('@/views/assessment/runtime/RuntimePlayer.vue'),
+    meta: {
+      title: '作答中',
+      hideInMenu: true,
+      anonymous: true,
+    },
+  },
+  {
+    path: '/assessment/runtime/complete',
+    name: 'AssessmentRuntimeComplete',
+    component: () => import('@/views/assessment/runtime/RuntimeComplete.vue'),
+    meta: {
+      title: '作答完成',
+      hideInMenu: true,
+      anonymous: true,
+    },
+  },
+  {
     path: '/403',
     name: 'Forbidden',
     component: () => import('@/views/error/403.vue'),

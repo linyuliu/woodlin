@@ -290,8 +290,8 @@ const datasources = [
 ]
 
 const syncCompatibilityFields = () => {
-  apiConfig.value.encryptEnabled = apiConfig.value.encryptAlgorithm !== 'NONE'
-  apiConfig.value.authRequired = apiConfig.value.securityMode !== 'NONE'
+  apiConfig.value.encryptEnabled = String(apiConfig.value.encryptAlgorithm) !== 'NONE'
+  apiConfig.value.authRequired = String(apiConfig.value.securityMode) !== 'NONE'
   apiConfig.value.authType = apiConfig.value.securityMode
 }
 
@@ -306,7 +306,7 @@ const loadSecurityDicts = async () => {
     ])
     securityModes.value = toOptions(modeDict, OPEN_API_SECURITY_MODE_OPTIONS)
     encryptAlgorithms.value = toOptions(encryptionDict, OPEN_API_ENCRYPTION_ALGORITHM_OPTIONS)
-  } catch (error) {
+  } catch {
     message.warning('安全字典加载失败，已回退到默认选项')
   }
 }

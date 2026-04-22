@@ -91,6 +91,18 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
 
+        <!-- Z3 约束求解插件（发布时校验） -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-plugin-z3</artifactId>
+        </dependency>
+
+        <!-- DSL 计分内核（含 ScoringEngine、NormMatchEngine） -->
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-plugin-dsl</artifactId>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

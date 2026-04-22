@@ -107,6 +107,11 @@ export const PERMISSIONS = {
     ASSESSMENT_NORM_ADD: 'assessment:norm:add',
     ASSESSMENT_NORM_EDIT: 'assessment:norm:edit',
     ASSESSMENT_NORM_REMOVE: 'assessment:norm:remove',
+    ASSESSMENT_RUNTIME_PUBLISH_INFO: 'assessment:runtime:publish:info',
+    ASSESSMENT_RUNTIME_SESSION_START: 'assessment:runtime:session:start',
+    ASSESSMENT_RUNTIME_SESSION_LOAD: 'assessment:runtime:session:load',
+    ASSESSMENT_RUNTIME_SNAPSHOT_SAVE: 'assessment:runtime:snapshot:save',
+    ASSESSMENT_RUNTIME_SUBMIT: 'assessment:runtime:submit',
   },
 } as const
 

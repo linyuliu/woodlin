@@ -222,3 +222,132 @@ export function updateNormSet(data: AssessmentNormSet): Promise<void> {
 export function deleteNormSet(normSetId: number | string): Promise<void> {
   return request({ url: `/assessment/norm-set/${normSetId}`, method: 'delete' }) as Promise<void>
 }
+
+// ===== 作答运行时 =====
+
+export interface RuntimePublishVO {
+  publishId: string
+  formId: string
+  versionId: string
+  publishCode: string
+  publishName: string
+  status: string
+  startTime?: string
+  endTime?: string
+  timeLimitMinutes: number
+  maxAttempts: number
+  allowAnonymous: boolean
+  allowResume: boolean
+  randomStrategy: string
+  showResultImmediately: boolean
+}
+
+export interface RuntimeSessionVO {
+  sessionId: string
+  publishId: string
+  formId: string
+  versionId: string
+  status: string
+  displaySeed: number
+  startedAt: string
+  elapsedSeconds: number
+  attemptNumber: number
+  currentSectionCode?: string
+  currentItemCode?: string
+}
+
+export interface RuntimeOptionVO {
+  optionCode: string
+  displayText: string
+  mediaUrl?: string
+  rawValue?: string
+  isExclusive: boolean
+  sortOrder: number
+}
+
+export interface RuntimeItemVO {
+  itemCode: string
+  itemType: string
+  stem: string
+  stemMediaUrl?: string
+  helpText?: string
+  sortOrder: number
+  isRequired: boolean
+  isScored: boolean
+  isAnchor: boolean
+  isReverse: boolean
+  isDemographic: boolean
+  timeLimitSeconds: number
+  demographicField?: string
+  options: RuntimeOptionVO[]
+}
+
+export interface RuntimeSectionVO {
+  sectionCode: string
+  sectionTitle: string
+  sectionDesc?: string
+  displayMode: string
+  sortOrder: number
+  isRequired: boolean
+  anchorCode?: string
+  items: RuntimeItemVO[]
+}
+
+export interface RuntimePayloadVO {
+  publish: RuntimePublishVO
+  session: RuntimeSessionVO
+  sections: RuntimeSectionVO[]
+  totalItems: number
+}
+
+export interface StartSessionDTO {
+  publishId: string
+  anonymousToken?: string
+  clientIp?: string
+  userAgent?: string
+  deviceType?: string
+}
+
+export interface SaveSnapshotDTO {
+  sessionId: string
+  currentSectionCode?: string
+  currentItemCode?: string
+  answeredCache?: string
+  elapsedSeconds?: number
+}
+
+export interface AnswerItemDTO {
+  itemCode: string
+  rawAnswer?: string
+  selectedOptionCodes?: string[]
+  textAnswer?: string
+  timeSpentSeconds?: number
+  isSkipped?: boolean
+  displayOrder?: number
+}
+
+export interface SubmitAnswersDTO {
+  sessionId: string
+  answers: AnswerItemDTO[]
+  elapsedSeconds?: number
+}
+
+export function getRuntimePublishInfo(publishId: string): Promise<RuntimePublishVO> {
+  return request({ url: `/assessment/runtime/publish/${publishId}`, method: 'get' }) as Promise<RuntimePublishVO>
+}
+
+export function startOrResumeSession(data: StartSessionDTO): Promise<RuntimePayloadVO> {
+  return request({ url: '/assessment/runtime/session/start', method: 'post', data }) as Promise<RuntimePayloadVO>
+}
+
+export function loadSessionPayload(sessionId: string): Promise<RuntimePayloadVO> {
+  return request({ url: `/assessment/runtime/session/${sessionId}`, method: 'get' }) as Promise<RuntimePayloadVO>
+}
+
+export function saveSnapshot(data: SaveSnapshotDTO): Promise<void> {
+  return request({ url: '/assessment/runtime/snapshot', method: 'post', data }) as Promise<void>
+}
+
+export function submitSession(data: SubmitAnswersDTO): Promise<void> {
+  return request({ url: '/assessment/runtime/submit', method: 'post', data }) as Promise<void>
+}
