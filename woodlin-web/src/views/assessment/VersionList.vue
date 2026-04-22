@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import {computed, h, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
 import {
+  type DataTableColumns,
+  type FormInst,
   NButton,
   NCard,
   NDataTable,
@@ -16,23 +19,31 @@ import {
   NSpace,
   NTag,
   NText,
-  useMessage,
-  type DataTableColumns,
-  type FormInst
+  useMessage
 } from 'naive-ui'
-import { AddOutline, CreateOutline, RefreshOutline, SearchOutline, TrashOutline } from '@vicons/ionicons5'
+import {
+  AddOutline,
+  CreateOutline,
+  RefreshOutline,
+  SearchOutline,
+  TrashOutline
+} from '@vicons/ionicons5'
 import {
   addFormVersion,
+  type AssessmentFormVersion,
+  compileAssessmentSchema,
   deleteFormVersion,
+  exportAssessmentDsl,
   getFormVersionPage,
   updateFormVersion,
-  type AssessmentFormVersion
+  validateAssessmentSchema
 } from '@/api/assessment'
-import { useUserStore } from '@/stores'
-import { PERMISSIONS } from '@/constants/permission-keys'
+import {useUserStore} from '@/stores'
+import {PERMISSIONS} from '@/constants/permission-keys'
 
 const message = useMessage()
 const userStore = useUserStore()
+const router = useRouter()
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -143,6 +154,47 @@ async function handleDelete(versionId: number | string) {
   }
 }
 
+function handleOpenSchema(row: AssessmentFormVersion) {
+  router.push({name: 'AssessmentSchemaEditor', params: {versionId: row.versionId}})
+}
+
+async function handleCompile(row: AssessmentFormVersion) {
+  try {
+    const result = await compileAssessmentSchema(row.versionId!)
+    if (result.compileError) {
+      message.warning(`编译完成但存在错误：${result.compileError}`)
+    } else {
+      message.success('编译通过')
+    }
+    loadData()
+  } catch {
+    message.error('编译失败')
+  }
+}
+
+async function handleValidate(row: AssessmentFormVersion) {
+  try {
+    const report = await validateAssessmentSchema(row.versionId!)
+    if (report.valid) {
+      message.success('校验通过')
+    } else {
+      message.warning(`校验完成：${report.errorCount} 个错误，${report.warningCount} 个警告`)
+    }
+  } catch {
+    message.error('校验失败')
+  }
+}
+
+async function handleExportDsl(row: AssessmentFormVersion) {
+  try {
+    const dsl = await exportAssessmentDsl(row.versionId!)
+    await navigator.clipboard.writeText(dsl)
+    message.success('DSL 已复制到剪贴板')
+  } catch {
+    message.error('导出失败')
+  }
+}
+
 async function handleSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
@@ -206,9 +258,37 @@ const columns: DataTableColumns<AssessmentFormVersion> = [
   {
     title: '操作',
     key: 'actions',
-    width: 180,
+    width: 420,
     render: row => {
       const btns: ReturnType<typeof h>[] = []
+      btns.push(
+        h(
+          NButton,
+          {size: 'small', tertiary: true, type: 'primary', onClick: () => handleOpenSchema(row)},
+          {default: () => '结构编辑'}
+        )
+      )
+      btns.push(
+        h(
+          NButton,
+          {size: 'small', tertiary: true, onClick: () => handleCompile(row)},
+          {default: () => '编译'}
+        )
+      )
+      btns.push(
+        h(
+          NButton,
+          {size: 'small', tertiary: true, onClick: () => handleValidate(row)},
+          {default: () => '校验'}
+        )
+      )
+      btns.push(
+        h(
+          NButton,
+          {size: 'small', tertiary: true, onClick: () => handleExportDsl(row)},
+          {default: () => '导出DSL'}
+        )
+      )
       if (canEdit.value) {
         btns.push(
           h(

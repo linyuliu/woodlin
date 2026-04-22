@@ -1,60 +1,26 @@
 package com.mumu.woodlin.assessment.service.impl;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mumu.woodlin.assessment.mapper.*;
+import com.mumu.woodlin.assessment.model.dto.ScoringRequest;
+import com.mumu.woodlin.assessment.model.entity.*;
+import com.mumu.woodlin.assessment.model.vo.DimensionScoreVO;
+import com.mumu.woodlin.assessment.model.vo.ScoringResultVO;
+import com.mumu.woodlin.assessment.service.IAssessmentScoringService;
+import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.dsl.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.mumu.woodlin.assessment.mapper.AssessmentDemographicProfileMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentDimensionItemMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentDimensionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentItemMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormConversionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormSegmentMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormSetMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentOptionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResponseMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResultDimensionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResultMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentSessionMapper;
-import com.mumu.woodlin.assessment.model.dto.ScoringRequest;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDemographicProfile;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimensionItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentNormConversion;
-import com.mumu.woodlin.assessment.model.entity.AssessmentNormSegment;
-import com.mumu.woodlin.assessment.model.entity.AssessmentNormSet;
-import com.mumu.woodlin.assessment.model.entity.AssessmentOption;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResponse;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResult;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResultDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSession;
-import com.mumu.woodlin.assessment.model.vo.DimensionScoreVO;
-import com.mumu.woodlin.assessment.model.vo.ScoringResultVO;
-import com.mumu.woodlin.assessment.service.IAssessmentScoringService;
-import com.mumu.woodlin.common.exception.BusinessException;
-import com.mumu.woodlin.dsl.Dimension;
-import com.mumu.woodlin.dsl.NormMatchEngine;
-import com.mumu.woodlin.dsl.Option;
-import com.mumu.woodlin.dsl.Question;
-import com.mumu.woodlin.dsl.QuestionType;
-import com.mumu.woodlin.dsl.Questionnaire;
-import com.mumu.woodlin.dsl.ReverseMode;
-import com.mumu.woodlin.dsl.ScoreMode;
-import com.mumu.woodlin.dsl.ScoringEngine;
-import com.mumu.woodlin.dsl.Section;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 计分服务实现
@@ -239,10 +205,6 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
 
     /**
      * 从数据库实体构建 DSL {@code Questionnaire} 供 {@code ScoringEngine} 使用。
-     *
-     * <p>若同一题目属于多个维度（通过 dimItemsByItemId 有多条映射），
-     * 则以 {@code sortPriority} 最小（或首条）映射的维度编码作为主维度，
-     * 用于 {@code ScoringEngine} 的维度聚合。多维度精确评分可在后续迭代中扩展。
      */
     private Questionnaire buildQuestionnaire(
             String formId,
@@ -278,25 +240,42 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
             if (item.getMinScore() != null) {
                 question.setMinScore(item.getMinScore().doubleValue());
             }
+            if (Boolean.TRUE.equals(item.getIsReverse())) {
+                question.setReverseMode(ReverseMode.FORMULA);
+            }
 
-            // Assign primary dimension and reverse mode from dimension-item mapping
             List<AssessmentDimensionItem> mappings = dimItemsByItemId.getOrDefault(item.getItemId(), List.of());
             if (!mappings.isEmpty()) {
-                AssessmentDimensionItem primaryMapping = mappings.get(0);
-                Long dimId = primaryMapping.getDimensionId();
-                dimensions.stream()
-                        .filter(d -> d.getDimensionId().equals(dimId))
+                for (int mappingIndex = 0; mappingIndex < mappings.size(); mappingIndex++) {
+                    AssessmentDimensionItem mapping = mappings.get(mappingIndex);
+                    if (mappingIndex == 0) {
+                        if (mapping.getWeight() != null) {
+                            question.setItemWeight(mapping.getWeight().doubleValue());
+                        }
+                        if (mapping.getReverseMode() != null) {
+                            question.setReverseMode(parseReverseMode(mapping.getReverseMode()));
+                        }
+                    }
+                    AssessmentDimension mappedDimension = dimensions.stream()
+                        .filter(d -> d.getDimensionId().equals(mapping.getDimensionId()))
                         .findFirst()
-                        .ifPresent(d -> question.setDimensionCode(d.getDimensionCode()));
+                        .orElse(null);
+                    if (mappedDimension == null) {
+                        continue;
+                    }
+                    DimensionBinding binding = new DimensionBinding(mappedDimension.getDimensionCode());
+                    binding.setWeight(mapping.getWeight() != null ? mapping.getWeight().doubleValue() : 1.0D);
+                    binding.setScoreModeOverride(parseNullableScoreMode(mapping.getScoreMode()));
+                    binding.setReverseModeOverride(parseNullableReverseMode(mapping.getReverseMode()));
+                    question.getDimensionBindings().add(binding);
 
-                if (primaryMapping.getReverseMode() != null) {
-                    question.setReverseMode(parseReverseMode(primaryMapping.getReverseMode()));
-                } else if (Boolean.TRUE.equals(item.getIsReverse())) {
-                    // Default reverse formula when item is marked reverse but no explicit mode set
-                    question.setReverseMode(ReverseMode.FORMULA);
-                }
-                if (primaryMapping.getWeight() != null) {
-                    question.setItemWeight(primaryMapping.getWeight().doubleValue());
+                    if (mappingIndex == 0) {
+                        question.setDimensionCode(mappedDimension.getDimensionCode());
+                        question.setItemWeight(binding.getWeight());
+                        question.setReverseMode(Objects.requireNonNullElse(
+                            binding.getReverseModeOverride(),
+                            Boolean.TRUE.equals(item.getIsReverse()) ? ReverseMode.FORMULA : ReverseMode.NONE));
+                    }
                 }
             }
 
@@ -530,6 +509,7 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
         entity.setAnsweredCount(answeredCount);
         entity.setTotalItemCount(scoredItemCount);
         entity.setTenantId(session.getTenantId());
+        entity.setScoreTraceJson(buildScoreTraceJson(engineResult, totalNorm));
 
         if (totalNorm != null) {
             if (normSet != null) {
@@ -681,6 +661,13 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
         };
     }
 
+    private ScoreMode parseNullableScoreMode(String mode) {
+        if (mode == null) {
+            return null;
+        }
+        return parseScoreMode(mode);
+    }
+
     private ReverseMode parseReverseMode(String mode) {
         if (mode == null) return ReverseMode.NONE;
         return switch (mode.toLowerCase()) {
@@ -688,6 +675,13 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
             case "table" -> ReverseMode.TABLE;
             default -> ReverseMode.NONE;
         };
+    }
+
+    private ReverseMode parseNullableReverseMode(String mode) {
+        if (mode == null) {
+            return null;
+        }
+        return parseReverseMode(mode);
     }
 
     private QuestionType parseQuestionType(String type) {
@@ -703,5 +697,32 @@ public class AssessmentScoringServiceImpl implements IAssessmentScoringService {
             case "statement" -> QuestionType.STATEMENT;
             default -> QuestionType.SINGLE_CHOICE;
         };
+    }
+
+    private String buildScoreTraceJson(
+        ScoringEngine.ScoringResult engineResult,
+        NormApplyResult totalNorm) {
+        Map<String, Object> trace = new LinkedHashMap<>();
+        trace.put("totalRawScore", engineResult.getTotalRawScore());
+        trace.put("totalWeightedScore", engineResult.getTotalWeightedScore());
+        trace.put("itemScores", engineResult.getItemScores());
+        trace.put("dimensionContributions", engineResult.getDimensionContributions());
+        trace.put("dimensionScores", engineResult.getDimensionScores());
+        if (totalNorm != null) {
+            Map<String, Object> normTrace = new LinkedHashMap<>();
+            normTrace.put("segmentId", totalNorm.segmentId());
+            normTrace.put("standardScore", totalNorm.standardScore());
+            normTrace.put("normScoreType", totalNorm.normScoreType());
+            normTrace.put("percentile", totalNorm.percentile());
+            normTrace.put("gradeLabel", totalNorm.gradeLabel());
+            normTrace.put("matchPath", totalNorm.matchPath());
+            trace.put("totalNorm", normTrace);
+        }
+        try {
+            return objectMapper.writeValueAsString(trace);
+        } catch (JsonProcessingException exception) {
+            log.warn("计分轨迹序列化失败，将忽略 score_trace_json", exception);
+            return null;
+        }
     }
 }

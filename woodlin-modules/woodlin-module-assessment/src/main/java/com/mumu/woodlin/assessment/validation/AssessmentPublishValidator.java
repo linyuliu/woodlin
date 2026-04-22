@@ -1,33 +1,20 @@
 package com.mumu.woodlin.assessment.validation;
 
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntExpr;
 import com.mumu.woodlin.assessment.enums.ReverseMode;
 import com.mumu.woodlin.assessment.enums.ScoreMode;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimensionItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentOption;
-import com.mumu.woodlin.assessment.model.entity.AssessmentPublish;
-import com.mumu.woodlin.assessment.model.entity.AssessmentRule;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSection;
+import com.mumu.woodlin.assessment.model.entity.*;
 import com.mumu.woodlin.z3.model.ConstraintResult;
 import com.mumu.woodlin.z3.service.Z3SolverService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Z3-backed publish-time validator for assessment versions.
+ * 测评发布前校验器
  *
  * <p>Accepts a {@link VersionContext} snapshot of all domain data and returns a
  * {@link ValidationReport} with structured {@link ValidationIssue} entries.
@@ -59,23 +46,14 @@ import java.util.stream.Collectors;
  * @since 2025-01-01
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class AssessmentPublishValidator {
-
-    private static final Logger log = LoggerFactory.getLogger(AssessmentPublishValidator.class);
 
     /** Fallback max-score used when an item omits {@code max_score}. */
     private static final int DEFAULT_MAX_SCORE = 1000;
 
     private final Z3SolverService z3SolverService;
-
-    /**
-     * Constructs the validator.
-     *
-     * @param z3SolverService Z3 constraint solver
-     */
-    public AssessmentPublishValidator(Z3SolverService z3SolverService) {
-        this.z3SolverService = z3SolverService;
-    }
 
     /**
      * Validates the supplied version context and returns a structured report.
@@ -93,11 +71,12 @@ public class AssessmentPublishValidator {
         checkReverseScoring(ctx, issues);
         checkRuleTargets(ctx, issues);
         checkSectionStructure(ctx, issues);
+        checkDemographicConstraints(ctx, issues);
         checkAnchorConsistency(ctx, issues);
         checkPublishTimeWindow(ctx, issues);
 
         ValidationReport report = ValidationReport.of(ctx.getVersionId(), issues);
-        log.info("Assessment validation complete – versionId={}, valid={}, errors={}, warnings={}",
+        log.info("测评发布校验完成, versionId={}, valid={}, errors={}, warnings={}",
                 ctx.getVersionId(), report.isValid(), report.getErrorCount(), report.getWarningCount());
         return report;
     }
@@ -433,6 +412,53 @@ public class AssessmentPublishValidator {
                     String.valueOf(publish.getPublishId()),
                     "Publish start_time (" + publish.getStartTime() + ") must be before end_time ("
                             + publish.getEndTime() + ")."));
+        }
+    }
+
+    private void checkDemographicConstraints(VersionContext ctx, List<ValidationIssue> issues) {
+        Map<Long, AssessmentSection> sectionById = ctx.getSections().stream()
+            .collect(Collectors.toMap(AssessmentSection::getSectionId, section -> section, (left, right) -> left));
+
+        AssessmentSection demographicSection = ctx.getSections().stream()
+            .filter(section -> "DEMOGRAPHIC".equalsIgnoreCase(section.getSectionCode()))
+            .findFirst()
+            .orElse(null);
+        Integer minSortOrder = ctx.getSections().stream()
+            .map(AssessmentSection::getSortOrder)
+            .filter(Objects::nonNull)
+            .min(Integer::compareTo)
+            .orElse(null);
+
+        if (demographicSection != null) {
+            if (demographicSection.getRandomStrategy() != null
+                && !"none".equalsIgnoreCase(demographicSection.getRandomStrategy())) {
+                issues.add(error("DEMOGRAPHIC_SECTION_RANDOMIZED", "section", demographicSection.getSectionCode(),
+                    "人口学章节禁止开启乱序，必须固定在正式题前。"));
+            }
+            if (minSortOrder != null
+                && demographicSection.getSortOrder() != null
+                && !Objects.equals(minSortOrder, demographicSection.getSortOrder())) {
+                issues.add(error("DEMOGRAPHIC_SECTION_NOT_FIRST", "section", demographicSection.getSectionCode(),
+                    "人口学章节必须排在正式题之前。"));
+            }
+        }
+
+        for (AssessmentItem item : ctx.getItems()) {
+            AssessmentSection section = sectionById.get(item.getSectionId());
+            boolean inDemographicSection = section != null
+                && "DEMOGRAPHIC".equalsIgnoreCase(section.getSectionCode());
+            if (Boolean.TRUE.equals(item.getIsDemographic()) && !inDemographicSection) {
+                issues.add(error("DEMOGRAPHIC_ITEM_WRONG_SECTION", "item", item.getItemCode(),
+                    "人口学题必须放在 DEMOGRAPHIC 章节中。"));
+            }
+            if (inDemographicSection && !Boolean.TRUE.equals(item.getIsDemographic())) {
+                issues.add(error("DEMOGRAPHIC_SECTION_HAS_FORMAL_ITEM", "item", item.getItemCode(),
+                    "DEMOGRAPHIC 章节只能包含人口学题。"));
+            }
+            if (Boolean.TRUE.equals(item.getIsDemographic()) && Boolean.TRUE.equals(item.getIsScored())) {
+                issues.add(error("DEMOGRAPHIC_ITEM_SCORED", "item", item.getItemCode(),
+                    "人口学题不能参与计分。"));
+            }
         }
     }
 

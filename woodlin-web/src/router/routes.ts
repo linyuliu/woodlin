@@ -423,6 +423,17 @@ export const asyncRoutes: RouteRecordRaw[] = [
             },
           },
           {
+            path: 'version/:versionId/schema',
+            name: 'AssessmentSchemaEditor',
+            component: () => import('@/views/assessment/SchemaEditor.vue'),
+            meta: {
+              title: '结构编辑',
+              hideInMenu: true,
+              activeMenu: '/assessment/version',
+              permissions: [PERMISSIONS.ROUTE.ASSESSMENT_VERSION],
+            },
+          },
+          {
             path: 'publish',
             name: 'AssessmentPublish',
             component: () => import('@/views/assessment/PublishList.vue'),

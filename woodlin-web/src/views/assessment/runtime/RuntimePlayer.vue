@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 import {
   NButton,
   NCard,
@@ -14,8 +14,8 @@ import {
   useDialog,
   useMessage
 } from 'naive-ui'
-import { loadSessionPayload, saveSnapshot, submitSession } from '@/api/assessment'
-import { useAssessmentRuntimeStore } from '@/stores/assessmentRuntime'
+import {loadSessionPayload, saveSnapshot, submitSession} from '@/api/assessment'
+import {useAssessmentRuntimeStore} from '@/stores/assessmentRuntime'
 import RuntimeItemCard from './components/RuntimeItemCard.vue'
 import RuntimeSectionNav from './components/RuntimeSectionNav.vue'
 
@@ -118,8 +118,7 @@ function handleAnswer(itemCode: string, value: string[] | string | null, rawAnsw
     selectedOptionCodes: Array.isArray(value) ? value : typeof value === 'string' && isOptionItem ? [value] : [],
     textAnswer: typeof value === 'string' && !isOptionItem ? value : undefined,
     rawAnswer,
-    isSkipped: false,
-    displayOrder: currentSection.value?.items.findIndex(currentItem => currentItem.itemCode === itemCode) ?? 0
+    isSkipped: false
   })
 }
 

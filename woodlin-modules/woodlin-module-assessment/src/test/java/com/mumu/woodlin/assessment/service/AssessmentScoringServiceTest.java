@@ -1,50 +1,28 @@
 package com.mumu.woodlin.assessment.service;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mumu.woodlin.assessment.mapper.*;
+import com.mumu.woodlin.assessment.model.dto.ScoringRequest;
+import com.mumu.woodlin.assessment.model.entity.*;
+import com.mumu.woodlin.assessment.model.vo.DimensionScoreVO;
+import com.mumu.woodlin.assessment.model.vo.ScoringResultVO;
+import com.mumu.woodlin.assessment.service.impl.AssessmentScoringServiceImpl;
+import com.mumu.woodlin.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.mumu.woodlin.assessment.mapper.AssessmentDemographicProfileMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentDimensionItemMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentDimensionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentItemMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormConversionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormSegmentMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentNormSetMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentOptionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResponseMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResultDimensionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResultMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentSessionMapper;
-import com.mumu.woodlin.assessment.model.dto.ScoringRequest;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimensionItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentOption;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResponse;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResult;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResultDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSession;
-import com.mumu.woodlin.assessment.model.vo.ScoringResultVO;
-import com.mumu.woodlin.assessment.service.impl.AssessmentScoringServiceImpl;
-import com.mumu.woodlin.common.exception.BusinessException;
+import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * AssessmentScoringServiceImpl 单元测试
@@ -242,6 +220,40 @@ class AssessmentScoringServiceTest {
         assertThat(result.getDimensionScores().get(0).getItemCount()).isEqualTo(2);
     }
 
+    @Test
+    void scoreSession_multiDimensionItem_contributesToEachDimensionAndWritesTrace() {
+        when(sessionMapper.selectById(SESSION_ID)).thenReturn(session());
+        when(resultMapper.selectOne(any())).thenReturn(null);
+        when(responseMapper.selectList(any())).thenReturn(twoResponses());
+        when(itemMapper.selectList(any())).thenReturn(twoItems());
+        when(optionMapper.selectList(any())).thenReturn(optionsForTwoItems());
+        when(dimensionMapper.selectList(any())).thenReturn(twoDimensions());
+        when(dimensionItemMapper.selectList(any())).thenReturn(dimItemsForMultiDimension());
+        when(normSetMapper.selectOne(any())).thenReturn(null);
+        when(demographicProfileMapper.selectOne(any())).thenReturn(null);
+        when(resultMapper.insert(any(AssessmentResult.class))).thenAnswer(invocation -> {
+            AssessmentResult entity = invocation.getArgument(0);
+            entity.setResultId(1000L);
+            return 1;
+        });
+        when(resultDimensionMapper.insert(any(AssessmentResultDimension.class))).thenReturn(1);
+
+        ScoringResultVO result = service.scoreSession(request(SESSION_ID));
+
+        assertThat(result.getDimensionScores()).hasSize(2);
+        assertThat(result.getDimensionScores())
+            .extracting(DimensionScoreVO::getDimensionCode)
+            .containsExactlyInAnyOrder("depression", "anxiety");
+        assertThat(result.getDimensionScores())
+            .filteredOn(score -> "anxiety".equals(score.getDimensionCode()))
+            .first()
+            .extracting(DimensionScoreVO::getRawScore)
+            .isEqualTo(BigDecimal.valueOf(1.0).setScale(4));
+        ArgumentCaptor<AssessmentResult> captor = ArgumentCaptor.forClass(AssessmentResult.class);
+        verify(resultMapper).insert(captor.capture());
+        assertThat(captor.getValue().getScoreTraceJson()).contains("dimensionContributions");
+    }
+
     // -----------------------------------------------------------------------
     // Force rescore
     // -----------------------------------------------------------------------
@@ -405,6 +417,25 @@ class AssessmentScoringServiceTest {
         return List.of(dim);
     }
 
+    private List<AssessmentDimension> twoDimensions() {
+        AssessmentDimension dep = new AssessmentDimension();
+        dep.setDimensionId(10L);
+        dep.setFormId(FORM_ID);
+        dep.setVersionId(VERSION_ID);
+        dep.setDimensionCode("depression");
+        dep.setDimensionName("抑郁");
+        dep.setScoreMode("sum");
+
+        AssessmentDimension anx = new AssessmentDimension();
+        anx.setDimensionId(11L);
+        anx.setFormId(FORM_ID);
+        anx.setVersionId(VERSION_ID);
+        anx.setDimensionCode("anxiety");
+        anx.setDimensionName("焦虑");
+        anx.setScoreMode("sum");
+        return List.of(dep, anx);
+    }
+
     /** Both q1 and q2 belong to dimension "depression". */
     private List<AssessmentDimensionItem> dimItemsForTwoItems() {
         AssessmentDimensionItem di1 = new AssessmentDimensionItem();
@@ -424,6 +455,33 @@ class AssessmentScoringServiceTest {
         di2.setWeight(BigDecimal.ONE);
 
         return List.of(di1, di2);
+    }
+
+    private List<AssessmentDimensionItem> dimItemsForMultiDimension() {
+        AssessmentDimensionItem di1 = new AssessmentDimensionItem();
+        di1.setId(1L);
+        di1.setDimensionId(10L);
+        di1.setItemId(1L);
+        di1.setVersionId(VERSION_ID);
+        di1.setReverseMode("none");
+        di1.setWeight(BigDecimal.ONE);
+
+        AssessmentDimensionItem di2 = new AssessmentDimensionItem();
+        di2.setId(2L);
+        di2.setDimensionId(11L);
+        di2.setItemId(1L);
+        di2.setVersionId(VERSION_ID);
+        di2.setReverseMode("none");
+        di2.setWeight(BigDecimal.ONE);
+
+        AssessmentDimensionItem di3 = new AssessmentDimensionItem();
+        di3.setId(3L);
+        di3.setDimensionId(10L);
+        di3.setItemId(2L);
+        di3.setVersionId(VERSION_ID);
+        di3.setReverseMode("none");
+        di3.setWeight(BigDecimal.ONE);
+        return List.of(di1, di2, di3);
     }
 
     // ---------------------------------------------------------------------------

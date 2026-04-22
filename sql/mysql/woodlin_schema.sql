@@ -1625,6 +1625,7 @@ CREATE TABLE `sys_assessment_result`
   `answered_count`       int(11)       DEFAULT 0 COMMENT '作答题数',
   `total_item_count`     int(11)       DEFAULT 0 COMMENT '应答总题数',
   `report_json`          longtext      DEFAULT NULL COMMENT '生成的报告 JSON',
+  `score_trace_json` longtext DEFAULT NULL COMMENT '计分审计轨迹 JSON',
   `tenant_id`            varchar(64)   DEFAULT NULL COMMENT '租户ID',
   `create_by`            varchar(64)   DEFAULT NULL COMMENT '创建者',
   `create_time`          datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

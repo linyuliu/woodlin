@@ -1,10 +1,12 @@
 package com.mumu.woodlin.assessment.model.vo;
 
-import java.util.List;
-
+import com.mumu.woodlin.assessment.model.dto.AnswerItemDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.experimental.Accessors;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 作答运行时完整载荷
@@ -28,4 +30,7 @@ public class RuntimePayloadVO {
 
     @Schema(description = "总题数")
     private int totalItems;
+
+    @Schema(description = "断点续答答案快照")
+    private Map<String, AnswerItemDTO> answerSnapshot;
 }

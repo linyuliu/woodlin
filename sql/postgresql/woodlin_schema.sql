@@ -1352,6 +1352,7 @@ CREATE TABLE sys_assessment_result
     answered_count       int           DEFAULT 0,
     total_item_count     int           DEFAULT 0,
     report_json          text          DEFAULT NULL,
+    score_trace_json text DEFAULT NULL,
     tenant_id            varchar(64)   DEFAULT NULL,
     create_by            varchar(64)   DEFAULT NULL,
     create_time          timestamp     DEFAULT CURRENT_TIMESTAMP,

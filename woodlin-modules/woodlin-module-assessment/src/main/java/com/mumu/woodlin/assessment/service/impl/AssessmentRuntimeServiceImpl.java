@@ -1,19 +1,21 @@
 package com.mumu.woodlin.assessment.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.stream.Collectors;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mumu.woodlin.assessment.enums.PublicationStatus;
+import com.mumu.woodlin.assessment.enums.RandomStrategy;
+import com.mumu.woodlin.assessment.enums.SessionStatus;
+import com.mumu.woodlin.assessment.mapper.*;
+import com.mumu.woodlin.assessment.model.dto.AnswerItemDTO;
+import com.mumu.woodlin.assessment.model.dto.SaveSnapshotDTO;
+import com.mumu.woodlin.assessment.model.dto.StartSessionDTO;
+import com.mumu.woodlin.assessment.model.dto.SubmitAnswersDTO;
+import com.mumu.woodlin.assessment.model.entity.*;
+import com.mumu.woodlin.assessment.model.vo.*;
+import com.mumu.woodlin.assessment.service.IAssessmentRuntimeService;
+import com.mumu.woodlin.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,35 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import com.mumu.woodlin.assessment.enums.PublicationStatus;
-import com.mumu.woodlin.assessment.enums.RandomStrategy;
-import com.mumu.woodlin.assessment.enums.SessionStatus;
-import com.mumu.woodlin.assessment.mapper.AssessmentItemMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentOptionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentPublishMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentResponseMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentSectionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentSessionMapper;
-import com.mumu.woodlin.assessment.mapper.AssessmentSessionSnapshotMapper;
-import com.mumu.woodlin.assessment.model.dto.AnswerItemDTO;
-import com.mumu.woodlin.assessment.model.dto.SaveSnapshotDTO;
-import com.mumu.woodlin.assessment.model.dto.StartSessionDTO;
-import com.mumu.woodlin.assessment.model.dto.SubmitAnswersDTO;
-import com.mumu.woodlin.assessment.model.entity.AssessmentItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentOption;
-import com.mumu.woodlin.assessment.model.entity.AssessmentPublish;
-import com.mumu.woodlin.assessment.model.entity.AssessmentResponse;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSection;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSession;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSessionSnapshot;
-import com.mumu.woodlin.assessment.model.vo.RuntimeItemVO;
-import com.mumu.woodlin.assessment.model.vo.RuntimeOptionVO;
-import com.mumu.woodlin.assessment.model.vo.RuntimePayloadVO;
-import com.mumu.woodlin.assessment.model.vo.RuntimePublishVO;
-import com.mumu.woodlin.assessment.model.vo.RuntimeSectionVO;
-import com.mumu.woodlin.assessment.model.vo.RuntimeSessionVO;
-import com.mumu.woodlin.assessment.service.IAssessmentRuntimeService;
-import com.mumu.woodlin.common.exception.BusinessException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 作答运行时服务实现
@@ -69,6 +46,7 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
     private final AssessmentItemMapper itemMapper;
     private final AssessmentOptionMapper optionMapper;
     private final AssessmentResponseMapper responseMapper;
+    private final AssessmentDemographicProfileMapper demographicProfileMapper;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -112,6 +90,7 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 .setAttemptNumber(attemptCount + 1)
                 .setTenantId(publish.getTenantId());
         sessionMapper.insert(session);
+        insertSnapshot(session, null, null, null, 0);
         return buildRuntimePayload(publish, session);
     }
 
@@ -166,9 +145,7 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                         .setFormId(session.getFormId())
                         .setItemId(item.getItemId())
                         .setItemCode(item.getItemCode())
-                        .setDisplayOrder(answer.getDisplayOrder() != null
-                                ? answer.getDisplayOrder()
-                                : assembly.itemDisplayOrders.get(item.getItemCode()))
+                    .setDisplayOrder(assembly.itemDisplayOrders.get(item.getItemCode()))
                         .setRawAnswer(answer.getRawAnswer())
                         .setSelectedOptionCodes(toJsonOrNull(answer.getSelectedOptionCodes()))
                         .setSelectedOptionDisplayOrders(toJsonOrNull(resolveOptionDisplayOrders(
@@ -182,6 +159,9 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
             }
         }
 
+        Map<String, AnswerItemDTO> answerMap = toAnswerMap(dto.getAnswers());
+        persistDemographicProfile(session, itemMap, answerMap);
+
         LocalDateTime completedAt = LocalDateTime.now();
         AssessmentSession update = new AssessmentSession()
                 .setSessionId(session.getSessionId())
@@ -190,12 +170,15 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 .setElapsedSeconds(dto.getElapsedSeconds() != null ? dto.getElapsedSeconds() : session.getElapsedSeconds());
         sessionMapper.updateById(update);
 
-        insertSnapshot(session, null, null, buildAnsweredCache(dto.getAnswers()), update.getElapsedSeconds());
+        insertSnapshot(session, null, null, buildAnsweredCache(answerMap), update.getElapsedSeconds());
     }
 
     private RuntimePayloadVO buildRuntimePayload(AssessmentPublish publish, AssessmentSession session) {
         RuntimeAssembly assembly = assembleRuntime(publish, session);
         AssessmentSessionSnapshot latestSnapshot = assembly.latestSnapshot;
+        Map<String, AnswerItemDTO> answerSnapshot = parseAnswerSnapshot(latestSnapshot != null
+            ? latestSnapshot.getAnsweredCache()
+            : null);
 
         RuntimeSessionVO sessionVO = new RuntimeSessionVO()
                 .setSessionId(session.getSessionId())
@@ -205,7 +188,9 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 .setStatus(session.getStatus())
                 .setDisplaySeed(session.getDisplaySeed())
                 .setStartedAt(session.getStartedAt())
-                .setElapsedSeconds(session.getElapsedSeconds())
+            .setElapsedSeconds(latestSnapshot != null && latestSnapshot.getElapsedSeconds() != null
+                ? latestSnapshot.getElapsedSeconds()
+                : session.getElapsedSeconds())
                 .setAttemptNumber(session.getAttemptNumber())
                 .setCurrentSectionCode(latestSnapshot != null ? latestSnapshot.getCurrentSectionCode() : null)
                 .setCurrentItemCode(latestSnapshot != null ? latestSnapshot.getCurrentItemCode() : null);
@@ -260,12 +245,23 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 .setPublish(toPublishVO(publish))
                 .setSession(sessionVO)
                 .setSections(sectionVOS)
-                .setTotalItems(assembly.totalItems);
+            .setTotalItems(assembly.totalItems)
+            .setAnswerSnapshot(answerSnapshot);
     }
 
     private RuntimeAssembly assembleRuntime(AssessmentPublish publish, AssessmentSession session) {
         RuntimeAssembly assembly = new RuntimeAssembly();
         assembly.latestSnapshot = getLatestSnapshot(session.getSessionId());
+        List<String> snapshotItemOrder = parseStringList(assembly.latestSnapshot != null
+            ? assembly.latestSnapshot.getItemOrderSnapshot()
+            : null);
+        Map<String, Integer> snapshotItemOrderIndex = new LinkedHashMap<>();
+        for (int index = 0; index < snapshotItemOrder.size(); index++) {
+            snapshotItemOrderIndex.put(snapshotItemOrder.get(index), index);
+        }
+        Map<String, List<String>> snapshotOptionOrders = parseOptionOrderSnapshot(assembly.latestSnapshot != null
+            ? assembly.latestSnapshot.getOptionOrderSnapshot()
+            : null);
 
         List<AssessmentSection> sections = sectionMapper.selectList(new LambdaQueryWrapper<AssessmentSection>()
                 .eq(AssessmentSection::getVersionId, session.getVersionId())
@@ -278,7 +274,9 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
             List<AssessmentItem> items = new ArrayList<>(itemMapper.selectList(new LambdaQueryWrapper<AssessmentItem>()
                     .eq(AssessmentItem::getSectionId, section.getSectionId())
                     .orderByAsc(AssessmentItem::getSortOrder, AssessmentItem::getItemId)));
-            if (shouldShuffleItems(strategy)) {
+            if (!snapshotItemOrderIndex.isEmpty()) {
+                items.sort(Comparator.comparing(item -> snapshotItemOrderIndex.getOrDefault(item.getItemCode(), Integer.MAX_VALUE)));
+            } else if (shouldShuffleItems(strategy)) {
                 items = shuffleItemsKeepAnchors(items, new Random(seed + sectionIndex));
             }
 
@@ -289,7 +287,9 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 List<AssessmentOption> options = new ArrayList<>(optionMapper.selectList(new LambdaQueryWrapper<AssessmentOption>()
                         .eq(AssessmentOption::getItemId, item.getItemId())
                         .orderByAsc(AssessmentOption::getSortOrder, AssessmentOption::getOptionId)));
-                if (shouldShuffleOptions(strategy)) {
+                if (snapshotOptionOrders.containsKey(item.getItemCode())) {
+                    options = reorderOptionsBySnapshot(options, snapshotOptionOrders.get(item.getItemCode()));
+                } else if (shouldShuffleOptions(strategy)) {
                     options = shuffleList(options, new Random(seed + (sectionIndex + 1L) * 1000L + itemIndex));
                 }
 
@@ -535,24 +535,248 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
         return displayOrders;
     }
 
-    private String buildAnsweredCache(List<AnswerItemDTO> answers) {
+    private List<AssessmentOption> reorderOptionsBySnapshot(List<AssessmentOption> options, List<String> optionCodes) {
+        if (CollectionUtils.isEmpty(options) || CollectionUtils.isEmpty(optionCodes)) {
+            return options;
+        }
+        Map<String, Integer> orderIndex = new LinkedHashMap<>();
+        for (int index = 0; index < optionCodes.size(); index++) {
+            orderIndex.put(optionCodes.get(index), index);
+        }
+        return options.stream()
+            .sorted(Comparator.comparing(option -> orderIndex.getOrDefault(option.getOptionCode(), Integer.MAX_VALUE)))
+            .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private Map<String, List<String>> parseOptionOrderSnapshot(String optionOrderSnapshot) {
+        if (!StringUtils.hasText(optionOrderSnapshot)) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return objectMapper.readValue(optionOrderSnapshot, new TypeReference<LinkedHashMap<String, List<String>>>() {
+            });
+        } catch (Exception exception) {
+            log.warn("解析选项顺序快照失败，将退回种子乱序", exception);
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private List<String> parseStringList(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (Exception exception) {
+            log.warn("解析题目顺序快照失败，将退回种子乱序", exception);
+            return List.of();
+        }
+    }
+
+    private Map<String, AnswerItemDTO> parseAnswerSnapshot(String answeredCache) {
+        if (!StringUtils.hasText(answeredCache)) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            Map<String, AnswerItemDTO> snapshot = objectMapper.readValue(
+                answeredCache,
+                new TypeReference<LinkedHashMap<String, AnswerItemDTO>>() {
+                });
+            snapshot.values().forEach(answer -> {
+                if (!StringUtils.hasText(answer.getItemCode())) {
+                    answer.setItemCode(resolveAnswerItemCode(snapshot, answer));
+                }
+            });
+            return snapshot;
+        } catch (Exception ignored) {
+            log.debug("尝试按新版答案快照解析失败，开始兼容旧版 answered_cache");
+        }
+
+        try {
+            Map<String, Object> legacy = objectMapper.readValue(
+                answeredCache,
+                new TypeReference<LinkedHashMap<String, Object>>() {
+                });
+            Map<String, AnswerItemDTO> snapshot = new LinkedHashMap<>();
+            legacy.forEach((itemCode, value) -> snapshot.put(itemCode, legacyValueToAnswer(itemCode, value)));
+            return snapshot;
+        } catch (Exception exception) {
+            log.warn("解析答案快照失败，将返回空快照", exception);
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private String resolveAnswerItemCode(Map<String, AnswerItemDTO> snapshot, AnswerItemDTO answer) {
+        for (Map.Entry<String, AnswerItemDTO> entry : snapshot.entrySet()) {
+            if (entry.getValue() == answer) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private AnswerItemDTO legacyValueToAnswer(String itemCode, Object value) {
+        AnswerItemDTO answer = new AnswerItemDTO().setItemCode(itemCode).setIsSkipped(Boolean.FALSE);
+        if (value instanceof List<?> list) {
+            List<String> selected = list.stream().map(String::valueOf).collect(Collectors.toCollection(ArrayList::new));
+            answer.setSelectedOptionCodes(selected).setRawAnswer(toJsonOrNull(selected));
+            return answer;
+        }
+        if (value instanceof String text) {
+            if (text.startsWith("[") || text.startsWith("\"")) {
+                answer.setRawAnswer(text);
+                if (text.startsWith("\"")) {
+                    answer.setTextAnswer(readJsonString(text));
+                }
+            } else {
+                answer.setTextAnswer(text).setRawAnswer(toJsonOrNull(text));
+            }
+            return answer;
+        }
+        answer.setRawAnswer(toJsonOrNull(value));
+        return answer;
+    }
+
+    private String readJsonString(String json) {
+        try {
+            return objectMapper.readValue(json, String.class);
+        } catch (Exception exception) {
+            return json;
+        }
+    }
+
+    private Map<String, AnswerItemDTO> toAnswerMap(List<AnswerItemDTO> answers) {
+        Map<String, AnswerItemDTO> answerMap = new LinkedHashMap<>();
+        if (CollectionUtils.isEmpty(answers)) {
+            return answerMap;
+        }
+        for (AnswerItemDTO answer : answers) {
+            if (!StringUtils.hasText(answer.getItemCode())) {
+                continue;
+            }
+            answerMap.put(answer.getItemCode(), new AnswerItemDTO()
+                .setItemCode(answer.getItemCode())
+                .setRawAnswer(answer.getRawAnswer())
+                .setSelectedOptionCodes(answer.getSelectedOptionCodes())
+                .setTextAnswer(answer.getTextAnswer())
+                .setTimeSpentSeconds(answer.getTimeSpentSeconds())
+                .setIsSkipped(answer.getIsSkipped()));
+        }
+        return answerMap;
+    }
+
+    private void persistDemographicProfile(
+        AssessmentSession session,
+        Map<String, AssessmentItem> itemMap,
+        Map<String, AnswerItemDTO> answerMap) {
+        if (CollectionUtils.isEmpty(answerMap)) {
+            return;
+        }
+
+        AssessmentDemographicProfile profile = new AssessmentDemographicProfile()
+            .setSessionId(session.getSessionId())
+            .setUserId(session.getUserId())
+            .setTenantId(session.getTenantId())
+            .setNormWeight(BigDecimal.ONE);
+        Map<String, Object> extraFields = new LinkedHashMap<>();
+
+        answerMap.forEach((itemCode, answer) -> {
+            AssessmentItem item = itemMap.get(itemCode);
+            if (item == null || !Boolean.TRUE.equals(item.getIsDemographic()) || Boolean.TRUE.equals(answer.getIsSkipped())) {
+                return;
+            }
+            Object rawValue = extractAnswerValue(answer);
+            if (rawValue == null) {
+                return;
+            }
+            String field = normalizeDemographicField(item.getDemographicField(), itemCode);
+            String textValue = rawValue instanceof List<?> list && !list.isEmpty() ? String.valueOf(list.get(0)) : String.valueOf(rawValue);
+            switch (field) {
+                case "gender" -> profile.setGender(textValue);
+                case "birth_year" -> profile.setBirthYear(parseInteger(textValue));
+                case "age" -> profile.setAge(parseInteger(textValue));
+                case "age_group" -> profile.setAgeGroup(textValue);
+                case "education_level" -> profile.setEducationLevel(textValue);
+                case "occupation" -> profile.setOccupation(textValue);
+                case "region_code" -> profile.setRegionCode(textValue);
+                case "province_code" -> profile.setProvinceCode(textValue);
+                case "marital_status" -> profile.setMaritalStatus(textValue);
+                case "ethnicity" -> profile.setEthnicity(textValue);
+                default -> extraFields.put(field, rawValue);
+            }
+        });
+
+        if (!hasDemographicContent(profile, extraFields)) {
+            return;
+        }
+        profile.setExtraFields(toJsonOrNull(extraFields));
+        demographicProfileMapper.delete(new LambdaQueryWrapper<AssessmentDemographicProfile>()
+            .eq(AssessmentDemographicProfile::getSessionId, session.getSessionId()));
+        demographicProfileMapper.insert(profile);
+    }
+
+    private boolean hasDemographicContent(AssessmentDemographicProfile profile, Map<String, Object> extraFields) {
+        return StringUtils.hasText(profile.getGender())
+            || profile.getBirthYear() != null
+            || profile.getAge() != null
+            || StringUtils.hasText(profile.getAgeGroup())
+            || StringUtils.hasText(profile.getEducationLevel())
+            || StringUtils.hasText(profile.getOccupation())
+            || StringUtils.hasText(profile.getRegionCode())
+            || StringUtils.hasText(profile.getProvinceCode())
+            || StringUtils.hasText(profile.getMaritalStatus())
+            || StringUtils.hasText(profile.getEthnicity())
+            || !CollectionUtils.isEmpty(extraFields);
+    }
+
+    private Object extractAnswerValue(AnswerItemDTO answer) {
+        if (!CollectionUtils.isEmpty(answer.getSelectedOptionCodes())) {
+            return answer.getSelectedOptionCodes().size() == 1
+                ? answer.getSelectedOptionCodes().get(0)
+                : answer.getSelectedOptionCodes();
+        }
+        if (StringUtils.hasText(answer.getTextAnswer())) {
+            return answer.getTextAnswer();
+        }
+        if (!StringUtils.hasText(answer.getRawAnswer()) || "null".equals(answer.getRawAnswer())) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(answer.getRawAnswer(), Object.class);
+        } catch (Exception exception) {
+            return answer.getRawAnswer();
+        }
+    }
+
+    private String normalizeDemographicField(String demographicField, String itemCode) {
+        if (!StringUtils.hasText(demographicField)) {
+            return itemCode;
+        }
+        return switch (demographicField.toLowerCase()) {
+            case "education" -> "education_level";
+            case "region" -> "region_code";
+            case "province" -> "province_code";
+            default -> demographicField.toLowerCase();
+        };
+    }
+
+    private Integer parseInteger(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private String buildAnsweredCache(Map<String, AnswerItemDTO> answers) {
         if (CollectionUtils.isEmpty(answers)) {
             return null;
         }
-
-        Map<String, Object> answeredCache = new LinkedHashMap<>();
-        for (AnswerItemDTO answer : answers) {
-            if (StringUtils.hasText(answer.getRawAnswer())) {
-                answeredCache.put(answer.getItemCode(), answer.getRawAnswer());
-            } else if (!CollectionUtils.isEmpty(answer.getSelectedOptionCodes())) {
-                answeredCache.put(answer.getItemCode(), answer.getSelectedOptionCodes());
-            } else if (StringUtils.hasText(answer.getTextAnswer())) {
-                answeredCache.put(answer.getItemCode(), answer.getTextAnswer());
-            } else {
-                answeredCache.put(answer.getItemCode(), null);
-            }
-        }
-        return toJsonOrNull(answeredCache);
+        return toJsonOrNull(answers);
     }
 
     private String toJsonOrNull(Object value) {

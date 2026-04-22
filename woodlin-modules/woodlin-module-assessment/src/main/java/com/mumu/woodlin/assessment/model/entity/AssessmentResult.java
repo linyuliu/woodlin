@@ -1,18 +1,17 @@
 package com.mumu.woodlin.assessment.model.entity;
 
-import java.io.Serial;
-import java.math.BigDecimal;
-
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mumu.woodlin.common.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
-import com.mumu.woodlin.common.entity.BaseEntity;
+import java.io.Serial;
+import java.math.BigDecimal;
 
 /**
  * 测评总结果
@@ -100,6 +99,10 @@ public class AssessmentResult extends BaseEntity {
     @TableField("report_json")
     @Schema(description = "生成的报告 JSON（LONGTEXT）")
     private String reportJson;
+
+    @TableField("score_trace_json")
+    @Schema(description = "计分审计轨迹 JSON（LONGTEXT）")
+    private String scoreTraceJson;
 
     @TableField("tenant_id")
     @Schema(description = "租户ID")

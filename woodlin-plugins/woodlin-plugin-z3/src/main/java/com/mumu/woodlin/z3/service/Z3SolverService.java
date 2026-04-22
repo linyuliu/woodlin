@@ -1,18 +1,8 @@
 package com.mumu.woodlin.z3.service;
 
-import com.microsoft.z3.ArithExpr;
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.Expr;
-import com.microsoft.z3.FuncDecl;
-import com.microsoft.z3.IntExpr;
-import com.microsoft.z3.Model;
-import com.microsoft.z3.RealExpr;
-import com.microsoft.z3.Solver;
-import com.microsoft.z3.Status;
+import com.microsoft.z3.*;
 import com.mumu.woodlin.z3.model.ConstraintResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -31,9 +21,8 @@ import java.util.Map;
  * @since 2025-10-28
  */
 @Service
+@Slf4j
 public class Z3SolverService {
-
-    private static final Logger log = LoggerFactory.getLogger(Z3SolverService.class);
 
     /**
      * 使用回调方式进行约束求解.

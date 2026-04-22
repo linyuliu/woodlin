@@ -120,6 +120,178 @@ export function deleteFormVersion(versionId: number | string): Promise<void> {
   return request({ url: `/assessment/form-version/${versionId}`, method: 'delete' }) as Promise<void>
 }
 
+// ===== 结构化 Schema =====
+
+export interface SchemaDimensionBindingDTO {
+  dimensionCode: string
+  weight?: number
+  scoreMode?: string
+  reverseMode?: string
+}
+
+export interface SchemaOptionDTO {
+  optionCode: string
+  displayText: string
+  mediaUrl?: string
+  rawValue?: string
+  scoreValue?: number
+  scoreReverseValue?: number
+  isExclusive?: boolean
+  isCorrect?: boolean
+  sortOrder?: number
+}
+
+export interface SchemaItemDTO {
+  itemCode: string
+  itemType: string
+  stem?: string
+  stemMediaUrl?: string
+  helpText?: string
+  sortOrder?: number
+  isRequired?: boolean
+  isScored?: boolean
+  isAnchor?: boolean
+  isReverse?: boolean
+  isDemographic?: boolean
+  maxScore?: number
+  minScore?: number
+  timeLimitSeconds?: number
+  demographicField?: string
+  options: SchemaOptionDTO[]
+  dimensionBindings: SchemaDimensionBindingDTO[]
+}
+
+export interface SchemaSectionDTO {
+  sectionCode: string
+  sectionTitle: string
+  sectionDesc?: string
+  displayMode?: string
+  randomStrategy?: string
+  sortOrder?: number
+  isRequired?: boolean
+  anchorCode?: string
+  items: SchemaItemDTO[]
+}
+
+export interface SchemaDimensionDTO {
+  dimensionCode: string
+  dimensionName: string
+  dimensionDesc?: string
+  parentDimensionCode?: string
+  scoreMode?: string
+  scoreDsl?: string
+  normSetId?: number | string
+  sortOrder?: number
+}
+
+export interface SchemaRuleDTO {
+  ruleCode: string
+  ruleName?: string
+  ruleType?: string
+  targetType?: string
+  targetCode?: string
+  dslSource?: string
+  compiledRule?: string
+  priority?: number
+  isActive?: boolean
+}
+
+export interface AssessmentSchemaAggregateDTO {
+  schemaId?: number | string
+  formId?: number | string
+  versionId?: number | string
+  status?: string
+  assessmentType?: string
+  randomStrategy?: string
+  description?: string
+  contextFields?: Record<string, unknown>
+  sections: SchemaSectionDTO[]
+  dimensions: SchemaDimensionDTO[]
+  rules: SchemaRuleDTO[]
+  dslSource?: string
+  compiledSchema?: string
+  compileError?: string
+  schemaHash?: string
+  dslHash?: string
+}
+
+export interface AssessmentSchemaCompileResultDTO {
+  versionId: number | string
+  schemaId?: number | string
+  status?: string
+  schemaHash?: string
+  dslHash?: string
+  compiledSchema?: string
+  compileError?: string
+}
+
+export interface ValidationIssue {
+  severity: string
+  code: string
+  message: string
+  targetType: string
+  targetCode: string
+}
+
+export interface ValidationReport {
+  versionId?: number | string
+  valid: boolean
+  issues: ValidationIssue[]
+  errorCount: number
+  warningCount: number
+}
+
+export function getAssessmentSchema(versionId: number | string): Promise<AssessmentSchemaAggregateDTO> {
+  return request({
+    url: `/assessment/schema/version/${versionId}`,
+    method: 'get'
+  }) as Promise<AssessmentSchemaAggregateDTO>
+}
+
+export function saveAssessmentSchema(
+  versionId: number | string,
+  data: AssessmentSchemaAggregateDTO
+): Promise<AssessmentSchemaAggregateDTO> {
+  return request({
+    url: `/assessment/schema/version/${versionId}`,
+    method: 'put',
+    data
+  }) as Promise<AssessmentSchemaAggregateDTO>
+}
+
+export function compileAssessmentSchema(versionId: number | string): Promise<AssessmentSchemaCompileResultDTO> {
+  return request({
+    url: `/assessment/schema/version/${versionId}/compile`,
+    method: 'post'
+  }) as Promise<AssessmentSchemaCompileResultDTO>
+}
+
+export function validateAssessmentSchema(versionId: number | string): Promise<ValidationReport> {
+  return request({
+    url: `/assessment/schema/version/${versionId}/validate`,
+    method: 'post'
+  }) as Promise<ValidationReport>
+}
+
+export function importAssessmentDsl(
+  versionId: number | string,
+  dslSource: string
+): Promise<AssessmentSchemaAggregateDTO> {
+  return request({
+    url: `/assessment/schema/version/${versionId}/import-dsl`,
+    method: 'post',
+    data: {dslSource}
+  }) as Promise<AssessmentSchemaAggregateDTO>
+}
+
+export async function exportAssessmentDsl(versionId: number | string): Promise<string> {
+  const res = (await request({
+    url: `/assessment/schema/version/${versionId}/export-dsl`,
+    method: 'get'
+  })) as { dslSource?: string }
+  return res.dslSource ?? ''
+}
+
 // ===== 发布实例 =====
 
 export interface AssessmentPublish {
@@ -298,6 +470,7 @@ export interface RuntimePayloadVO {
   session: RuntimeSessionVO
   sections: RuntimeSectionVO[]
   totalItems: number
+  answerSnapshot?: Record<string, AnswerItemDTO>
 }
 
 export interface StartSessionDTO {

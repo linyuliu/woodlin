@@ -1,6 +1,11 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import type { AnswerItemDTO, RuntimeItemVO, RuntimePayloadVO, RuntimeSectionVO } from '@/api/assessment'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import type {
+  AnswerItemDTO,
+  RuntimeItemVO,
+  RuntimePayloadVO,
+  RuntimeSectionVO
+} from '@/api/assessment'
 
 export const useAssessmentRuntimeStore = defineStore('assessmentRuntime', () => {
   const payload = ref<RuntimePayloadVO | null>(null)
@@ -25,6 +30,7 @@ export const useAssessmentRuntimeStore = defineStore('assessmentRuntime', () => 
   function setPayload(p: RuntimePayloadVO) {
     payload.value = p
     elapsedSeconds.value = p.session.elapsedSeconds ?? 0
+    answers.value = {...(p.answerSnapshot ?? {})}
     if (p.session.currentSectionCode) {
       const idx = p.sections.findIndex(section => section.sectionCode === p.session.currentSectionCode)
       if (idx >= 0) {

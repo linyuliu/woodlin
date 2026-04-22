@@ -142,6 +142,21 @@ class Dimension(val code: String, val name: String) {
 }
 
 /**
+ * 题目对维度的贡献映射
+ */
+@QuestionnaireDsl
+class DimensionBinding(val dimensionCode: String) {
+    /** 该维度映射的题目权重 */
+    var weight: Double = 1.0
+
+    /** 维度内计分模式覆盖 */
+    var scoreModeOverride: ScoreMode? = null
+
+    /** 反向模式覆盖 */
+    var reverseModeOverride: ReverseMode? = null
+}
+
+/**
  * 人口学字段声明
  */
 @QuestionnaireDsl
@@ -226,6 +241,9 @@ class Question {
     var dimensionCode: String? = null
     /** 题目在加权求和时的权重 */
     var itemWeight: Double = 1.0
+
+    /** 一题多维映射 */
+    val dimensionBindings = mutableListOf<DimensionBinding>()
     /** 单题作答时限（秒，0 表示不限） */
     var timeLimitSeconds: Int = 0
     /** 是否人口学信息题 */
@@ -241,12 +259,20 @@ class Question {
         validations += ValidationRule().apply(block)
     }
 
+    fun dimensionBinding(code: String, block: DimensionBinding.() -> Unit = {}) {
+        dimensionBindings += DimensionBinding(code).apply(block)
+    }
+
     operator fun Option.unaryPlus() {
         this@Question.options += this
     }
 
     operator fun ValidationRule.unaryPlus() {
         this@Question.validations += this
+    }
+
+    operator fun DimensionBinding.unaryPlus() {
+        this@Question.dimensionBindings += this
     }
 }
 

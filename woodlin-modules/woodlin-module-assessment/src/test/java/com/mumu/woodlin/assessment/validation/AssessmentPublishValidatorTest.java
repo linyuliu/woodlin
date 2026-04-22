@@ -1,14 +1,6 @@
 package com.mumu.woodlin.assessment.validation;
 
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimension;
-import com.mumu.woodlin.assessment.model.entity.AssessmentDimensionItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentFormVersion;
-import com.mumu.woodlin.assessment.model.entity.AssessmentItem;
-import com.mumu.woodlin.assessment.model.entity.AssessmentOption;
-import com.mumu.woodlin.assessment.model.entity.AssessmentPublish;
-import com.mumu.woodlin.assessment.model.entity.AssessmentRule;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSchema;
-import com.mumu.woodlin.assessment.model.entity.AssessmentSection;
+import com.mumu.woodlin.assessment.model.entity.*;
 import com.mumu.woodlin.z3.service.Z3SolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,10 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link AssessmentPublishValidator}.
@@ -569,6 +558,68 @@ class AssessmentPublishValidatorTest {
                     .dimensions(List.of()).dimensionItems(List.of())
                     .sections(List.of(section)).rules(List.of()).build();
             assertTrue(validator.validate(ctx).isValid());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Demographic constraints
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("demographic section checks")
+    class DemographicTests {
+
+        @Test
+        @DisplayName("demographic item outside DEMOGRAPHIC section produces error")
+        void demographicItemOutsideDemographicSection() {
+            AssessmentSection section = new AssessmentSection();
+            section.setSectionId(1L);
+            section.setSectionCode("S01");
+            section.setSortOrder(2);
+
+            AssessmentItem item = new AssessmentItem();
+            item.setItemId(1L);
+            item.setItemCode("D01");
+            item.setSectionId(1L);
+            item.setIsDemographic(true);
+            item.setIsScored(false);
+
+            VersionContext ctx = new VersionContext.Builder()
+                .versionId(1L).version(compiledVersion(1L)).schema(cleanSchema())
+                .items(List.of(item)).options(List.of())
+                .dimensions(List.of()).dimensionItems(List.of())
+                .sections(List.of(section)).rules(List.of()).build();
+
+            ValidationReport report = validator.validate(ctx);
+            assertFalse(report.isValid());
+            assertTrue(hasCode(report, "DEMOGRAPHIC_ITEM_WRONG_SECTION"));
+        }
+
+        @Test
+        @DisplayName("randomized DEMOGRAPHIC section produces blocking error")
+        void demographicSectionCannotRandomize() {
+            AssessmentSection section = new AssessmentSection();
+            section.setSectionId(1L);
+            section.setSectionCode("DEMOGRAPHIC");
+            section.setSortOrder(1);
+            section.setRandomStrategy("random_items");
+
+            AssessmentItem item = new AssessmentItem();
+            item.setItemId(1L);
+            item.setItemCode("D01");
+            item.setSectionId(1L);
+            item.setIsDemographic(true);
+            item.setIsScored(false);
+
+            VersionContext ctx = new VersionContext.Builder()
+                .versionId(1L).version(compiledVersion(1L)).schema(cleanSchema())
+                .items(List.of(item)).options(List.of())
+                .dimensions(List.of()).dimensionItems(List.of())
+                .sections(List.of(section)).rules(List.of()).build();
+
+            ValidationReport report = validator.validate(ctx);
+            assertFalse(report.isValid());
+            assertTrue(hasCode(report, "DEMOGRAPHIC_SECTION_RANDOMIZED"));
         }
     }
 

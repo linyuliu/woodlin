@@ -59,6 +59,7 @@ class QuestionnaireSerializer {
         minScore = minScore,
         dimensionCode = dimensionCode,
         itemWeight = itemWeight,
+        dimensionBindings = dimensionBindings.map { it.toDto() },
         timeLimitSeconds = timeLimitSeconds,
         isDemographic = isDemographic,
         demographicField = demographicField
@@ -84,6 +85,13 @@ class QuestionnaireSerializer {
         parentCode = parentCode,
         normRef = normRef,
         sortOrder = sortOrder
+    )
+
+    private fun DimensionBinding.toDto() = DimensionBindingDto(
+        dimensionCode = dimensionCode,
+        weight = weight,
+        scoreModeOverride = scoreModeOverride?.name,
+        reverseModeOverride = reverseModeOverride?.name
     )
 
     private fun DemographicField.toDto() = DemographicFieldDto(
@@ -144,6 +152,17 @@ class QuestionnaireSerializer {
                             minScore = questionDto.minScore
                             dimensionCode = questionDto.dimensionCode
                             itemWeight = questionDto.itemWeight
+                            questionDto.dimensionBindings.forEach { bindingDto ->
+                                dimensionBinding(bindingDto.dimensionCode) {
+                                    weight = bindingDto.weight
+                                    scoreModeOverride = bindingDto.scoreModeOverride?.let {
+                                        runCatching { ScoreMode.valueOf(it) }.getOrNull()
+                                    }
+                                    reverseModeOverride = bindingDto.reverseModeOverride?.let {
+                                        runCatching { ReverseMode.valueOf(it) }.getOrNull()
+                                    }
+                                }
+                            }
                             timeLimitSeconds = questionDto.timeLimitSeconds
                             isDemographic = questionDto.isDemographic
                             demographicField = questionDto.demographicField
@@ -237,9 +256,17 @@ class QuestionnaireSerializer {
         val minScore: Double? = null,
         val dimensionCode: String? = null,
         val itemWeight: Double = 1.0,
+        val dimensionBindings: List<DimensionBindingDto> = emptyList(),
         val timeLimitSeconds: Int = 0,
         val isDemographic: Boolean = false,
         val demographicField: String? = null
+    )
+
+    data class DimensionBindingDto(
+        val dimensionCode: String,
+        val weight: Double = 1.0,
+        val scoreModeOverride: String? = null,
+        val reverseModeOverride: String? = null
     )
 
     data class OptionDto(
