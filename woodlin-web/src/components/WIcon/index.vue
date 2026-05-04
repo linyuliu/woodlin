@@ -5,7 +5,7 @@
   @since 2026-05-04
 -->
 <script setup lang="ts">
-import { computed, h, type Component } from 'vue'
+import { computed, type Component } from 'vue'
 import { NIcon } from 'naive-ui'
 import * as Antd from '@vicons/antd'
 import * as Ionicons from '@vicons/ionicons5'
@@ -19,7 +19,7 @@ const props = withDefaults(
     /** 颜色 */
     color?: string
   }>(),
-  { size: 18 },
+  { size: 18, color: undefined },
 )
 
 const AntdMap = Antd as unknown as Record<string, Component>
@@ -27,7 +27,7 @@ const IoniconsMap = Ionicons as unknown as Record<string, Component>
 
 /** 解析为具体组件 */
 const resolved = computed<Component | null>(() => {
-  if (!props.icon) return null
+  if (!props.icon) {return null}
   const parts = props.icon.split(':')
   let pack = 'antd'
   let name = props.icon

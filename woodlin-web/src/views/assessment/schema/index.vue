@@ -130,7 +130,7 @@ function openAdd(): void {
 }
 
 async function openEdit(row: AssessmentSchema): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   isEdit.value = true
   drawerTitle.value = '编辑评估方案'
   const detail = await getSchema(row.id)
@@ -183,7 +183,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: AssessmentSchema): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除方案 ${row.schemaName}？`,

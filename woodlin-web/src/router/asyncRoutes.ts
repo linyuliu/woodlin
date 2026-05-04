@@ -31,8 +31,8 @@ const NotFound: ViewLoader = () => import('@/views/error/404.vue')
  * @param component 后端字符串
  */
 function resolveComponent(component: string | undefined): ViewLoader {
-  if (!component || component === 'Layout') return Layout
-  if (component === 'ParentView') return ParentView
+  if (!component || component === 'Layout') {return Layout}
+  if (component === 'ParentView') {return ParentView}
   const key = `/src/views/${component.replace(/^\/+/, '')}.vue`
   const loader = modules[key]
   if (!loader) {
@@ -44,7 +44,7 @@ function resolveComponent(component: string | undefined): ViewLoader {
 
 /** 单节点转换；按钮节点返回 null 以便上层过滤 */
 function toRecord(item: RouteItem): RouteRecordRaw | null {
-  if (item.type === MenuType.BUTTON) return null
+  if (item.type === MenuType.BUTTON) {return null}
   const record: RouteRecordRaw = {
     path: item.path,
     name: item.name,

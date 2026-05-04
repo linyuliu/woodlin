@@ -187,7 +187,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除用户 */
 function handleDelete(row: SysUser): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除用户 ${row.username} ？`,
@@ -203,7 +203,7 @@ function handleDelete(row: SysUser): void {
 
 /** 切换用户状态 */
 async function handleStatus(row: SysUser, val: string): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   await changeUserStatus(row.id, val)
   row.status = val
   message.success('状态已更新')
@@ -211,7 +211,7 @@ async function handleStatus(row: SysUser, val: string): Promise<void> {
 
 /** 打开重置密码 */
 function openReset(row: SysUser): void {
-  if (!row.id) return
+  if (!row.id) {return}
   resetForm.id = row.id
   resetForm.password = ''
   resetVisible.value = true

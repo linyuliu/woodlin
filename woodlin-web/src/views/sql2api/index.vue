@@ -166,7 +166,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: Sql2Api): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除 API ${row.apiName} ？`,
@@ -188,7 +188,7 @@ function openTest(row: Sql2Api): void {
 }
 
 async function runTest(): Promise<void> {
-  if (!testTarget.value?.id) return
+  if (!testTarget.value?.id) {return}
   let params: Record<string, unknown> = {}
   try {
     params = testParamsText.value.trim() ? JSON.parse(testParamsText.value) : {}

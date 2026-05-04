@@ -37,7 +37,7 @@ export function setUnauthorizedHandler(handler: () => void): void {
 function getTenantId(): string | null {
   try {
     const raw = localStorage.getItem('woodlin_tenant')
-    if (!raw) return null
+    if (!raw) {return null}
     const parsed = JSON.parse(raw) as { tenantId?: string }
     return parsed?.tenantId ?? null
   } catch {
@@ -72,7 +72,7 @@ service.interceptors.response.use(
     if (response.config.responseType === 'blob') {
       return response as unknown as AxiosResponse
     }
-    if (!body || typeof body !== 'object') return response
+    if (!body || typeof body !== 'object') {return response}
     if ('code' in body) {
       if (body.code === 200) {
         return body.data as never

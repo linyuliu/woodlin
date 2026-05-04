@@ -47,8 +47,8 @@ export const useTabsStore = defineStore('tabs', {
     addTab(route: RouteLocationNormalized): void {
       const path = route.fullPath
       this.active = path
-      if ((route.meta as Record<string, unknown>)?.showInTabs === false) return
-      if (this.tabs.find((t) => t.fullPath === path)) return
+      if ((route.meta as Record<string, unknown>)?.showInTabs === false) {return}
+      if (this.tabs.find((t) => t.fullPath === path)) {return}
       this.tabs.push({
         path: route.path,
         fullPath: path,

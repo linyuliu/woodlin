@@ -37,15 +37,15 @@ async function refresh(): Promise<void> {
 }
 
 function pct(used?: number, total?: number): number {
-  if (!used || !total || total <= 0) return 0
+  if (!used || !total || total <= 0) {return 0}
   return Math.round((used / total) * 10000) / 100
 }
 
 const cpuUsed = computed(() => {
   const cpu = info.value.cpu
-  if (!cpu) return 0
-  if (cpu.used != null) return Math.round(cpu.used * 100) / 100
-  if (cpu.sys != null && cpu.free != null) {
+  if (!cpu) {return 0}
+  if (cpu.used !== undefined && cpu.used !== null) {return Math.round(cpu.used * 100) / 100}
+  if (cpu.sys !== undefined && cpu.sys !== null && cpu.free !== undefined && cpu.free !== null) {
     return Math.round((100 - cpu.free) * 100) / 100
   }
   return 0
@@ -53,15 +53,15 @@ const cpuUsed = computed(() => {
 
 const memUsage = computed(() => {
   const mem = info.value.mem
-  if (!mem) return 0
-  if (mem.usage != null) return Math.round(mem.usage * 100) / 100
+  if (!mem) {return 0}
+  if (mem.usage !== undefined && mem.usage !== null) {return Math.round(mem.usage * 100) / 100}
   return pct(mem.used, mem.total)
 })
 
 const jvmUsage = computed(() => {
   const jvm = info.value.jvm
-  if (!jvm) return 0
-  if (jvm.usage != null) return Math.round(jvm.usage * 100) / 100
+  if (!jvm) {return 0}
+  if (jvm.usage !== undefined && jvm.usage !== null) {return Math.round(jvm.usage * 100) / 100}
   return pct(jvm.used, jvm.total)
 })
 

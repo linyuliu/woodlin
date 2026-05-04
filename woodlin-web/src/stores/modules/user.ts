@@ -93,7 +93,7 @@ export const useUserStore = defineStore('user', {
      * @param perm 权限标识
      */
     hasPermission(perm: string): boolean {
-      if (!perm) return true
+      if (!perm) {return true}
       return this.permissions.includes('*:*:*') || this.permissions.includes(perm)
     },
     /**
@@ -101,7 +101,7 @@ export const useUserStore = defineStore('user', {
      * @param role 角色标识
      */
     hasRole(role: string): boolean {
-      if (!role) return true
+      if (!role) {return true}
       return this.roles.includes('admin') || this.roles.includes(role)
     },
   },

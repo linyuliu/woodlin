@@ -55,10 +55,10 @@ watch(
 /** 在菜单树中查找 key 对应的路径 */
 function findPath(items: RouteItem[], key: string): string | null {
   for (const it of items) {
-    if ((it.name || it.path) === key) return it.path
+    if ((it.name || it.path) === key) {return it.path}
     if (it.children) {
       const r = findPath(it.children, key)
-      if (r) return r
+      if (r) {return r}
     }
   }
   return null
@@ -67,7 +67,7 @@ function findPath(items: RouteItem[], key: string): string | null {
 /** 菜单点击 */
 function handleSelect(key: string): void {
   const path = findPath(routeStore.menuItems, key)
-  if (path) void router.push(path)
+  if (path) {void router.push(path)}
 }
 </script>
 

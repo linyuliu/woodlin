@@ -143,7 +143,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除 */
 function handleDelete(row: SysConfig): void {
-  if (!row.id) return
+  if (!row.id) {return}
   if (row.configType === 'Y') {
     message.warning('系统内置参数不可删除')
     return

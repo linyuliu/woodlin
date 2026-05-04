@@ -143,7 +143,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: OpenApiApp): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除应用 ${row.appName} ？`,

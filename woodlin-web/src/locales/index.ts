@@ -29,6 +29,6 @@ export function setupI18n(app: App): I18n {
 
 /** 获取实例 */
 export function getI18n(): I18n {
-  if (!i18n) throw new Error('i18n not initialized')
+  if (!i18n) {throw new Error('i18n not initialized')}
   return i18n
 }

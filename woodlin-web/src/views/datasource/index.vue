@@ -156,7 +156,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: DataSource): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除数据源 ${row.dsName} ？`,
@@ -171,7 +171,7 @@ function handleDelete(row: DataSource): void {
 }
 
 async function handleTest(row: DataSource): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   const reactiveMsg = message.loading('正在测试连接...', { duration: 0 })
   try {
     const res = await testDataSource(row.id)

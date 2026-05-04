@@ -151,13 +151,13 @@ async function handleSubmit(): Promise<void> {
 }
 
 async function openDetail(row: AssessmentRuntime): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   detailData.value = await getRuntime(row.id)
   detailVisible.value = true
 }
 
 function handleSubmitRuntime(row: AssessmentRuntime): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提交评估',
     content: `提交后将无法修改，确认提交？`,
@@ -172,7 +172,7 @@ function handleSubmitRuntime(row: AssessmentRuntime): void {
 }
 
 function handleDelete(row: AssessmentRuntime): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: '确认删除该评估实例？',
@@ -187,14 +187,14 @@ function handleDelete(row: AssessmentRuntime): void {
 }
 
 function statusTagType(s?: string): 'default' | 'success' | 'warning' | 'info' {
-  if (s === '2') return 'success'
-  if (s === '1') return 'info'
+  if (s === '2') {return 'success'}
+  if (s === '1') {return 'info'}
   return 'warning'
 }
 
 function statusLabel(s?: string): string {
-  if (s === '2') return '已完成'
-  if (s === '1') return '已提交'
+  if (s === '2') {return '已完成'}
+  if (s === '1') {return '已提交'}
   return '草稿'
 }
 

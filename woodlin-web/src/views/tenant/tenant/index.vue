@@ -177,7 +177,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除租户 */
 function handleDelete(row: SysTenant): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除租户 ${row.tenantName} ？`,
@@ -193,7 +193,7 @@ function handleDelete(row: SysTenant): void {
 
 /** 切换租户状态 */
 async function handleStatus(row: SysTenant, val: string): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   await updateTenantStatus(row.id, val)
   row.status = val
   message.success('状态已更新')

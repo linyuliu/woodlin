@@ -68,6 +68,6 @@ export function setupRouter(app: App): Router {
 
 /** 获取已创建的路由实例 */
 export function getRouter(): Router {
-  if (!router) throw new Error('Router not initialized')
+  if (!router) {throw new Error('Router not initialized')}
   return router
 }

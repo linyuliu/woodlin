@@ -19,7 +19,6 @@ import {
   NPopconfirm,
   NRadioButton,
   NRadioGroup,
-  NSelect,
   NSpace,
   NSwitch,
   NTreeSelect,
@@ -28,7 +27,6 @@ import {
   type DataTableColumns,
   type FormInst,
   type FormRules,
-  type SelectOption,
   type TreeSelectOption,
 } from 'naive-ui'
 import {
@@ -97,12 +95,6 @@ const rules: FormRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   type: [{ required: true, message: '请选择类型', type: 'number' as never }],
 }
-
-const typeOptions: SelectOption[] = [
-  { label: '目录', value: 1 },
-  { label: '菜单', value: 2 },
-  { label: '按钮', value: 3 },
-]
 
 /** 树 -> n-tree-select options（含根） */
 function mapToSelect(list: RouteItem[]): TreeSelectOption[] {

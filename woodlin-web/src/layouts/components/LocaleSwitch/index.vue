@@ -8,8 +8,7 @@
 import { useI18n } from 'vue-i18n'
 import { NButton, NDropdown, type DropdownOption } from 'naive-ui'
 import WIcon from '@/components/WIcon/index.vue'
-import { useAppStore } from '@/stores/modules/app'
-import type { AppLocale } from '@/stores/modules/app'
+import { useAppStore, type AppLocale } from '@/stores/modules/app'
 
 const appStore = useAppStore()
 const i18n = useI18n()

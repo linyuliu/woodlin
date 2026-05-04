@@ -135,7 +135,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除 */
 function handleDelete(row: SysDictType): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除字典 ${row.dictName} ？`,

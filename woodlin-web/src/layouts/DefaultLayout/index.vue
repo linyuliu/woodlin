@@ -18,7 +18,7 @@ const appStore = useAppStore()
 const collapsed = computed<boolean>({
   get: () => appStore.sidebarCollapsed,
   set: (v) => {
-    if (v !== appStore.sidebarCollapsed) appStore.toggleSidebar()
+    if (v !== appStore.sidebarCollapsed) {appStore.toggleSidebar()}
   },
 })
 </script>

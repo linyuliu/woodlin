@@ -29,7 +29,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export function downloadByUrl(url: string, filename?: string): void {
   const link = document.createElement('a')
   link.href = url
-  if (filename) link.download = filename
+  if (filename) {link.download = filename}
   link.target = '_blank'
   document.body.appendChild(link)
   link.click()

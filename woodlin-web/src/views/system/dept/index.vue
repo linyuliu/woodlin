@@ -84,7 +84,7 @@ function mapTree(list: SysDept[]): TreeOption[] {
 function collectKeys(list: TreeOption[], acc: Array<string | number> = []): Array<string | number> {
   list.forEach((n) => {
     acc.push(n.key as number)
-    if (n.children) collectKeys(n.children as TreeOption[], acc)
+    if (n.children) {collectKeys(n.children as TreeOption[], acc)}
   })
   return acc
 }
@@ -109,7 +109,7 @@ function handleSelect(_keys: Array<string | number>, option: Array<TreeOption | 
     return
   }
   const dept = (opt.raw as SysDept) ?? null
-  if (!dept) return
+  if (!dept) {return}
   Object.assign(formData, defaultForm(), dept)
   mode.value = 'edit'
 }
@@ -155,7 +155,7 @@ async function handleSubmit(): Promise<void> {
 /** 删除部门 */
 function handleDelete(): void {
   const id = formData.deptId ?? formData.id
-  if (!id) return
+  if (!id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除部门 ${formData.deptName} ？`,

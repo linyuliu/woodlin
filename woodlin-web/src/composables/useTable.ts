@@ -47,7 +47,7 @@ export function useTable<T extends Record<string, unknown>, P extends Record<str
 
   /** 提交搜索（重置到第一页） */
   function handleSearch(params?: Partial<P>): void {
-    if (params) Object.assign(search, params)
+    if (params) {Object.assign(search, params)}
     pagination.page = 1
     void refresh()
   }

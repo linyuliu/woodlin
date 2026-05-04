@@ -188,7 +188,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: EtlOfflineJob): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除作业 ${row.jobName}？`,
@@ -203,7 +203,7 @@ function handleDelete(row: EtlOfflineJob): void {
 }
 
 function handleRun(row: EtlOfflineJob): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.info({
     title: '立即执行',
     content: `确认立即执行作业 ${row.jobName}？`,
@@ -218,7 +218,7 @@ function handleRun(row: EtlOfflineJob): void {
 }
 
 async function handlePreview(row: EtlOfflineJob): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   previewVisible.value = true
   previewLoading.value = true
   previewData.value = []

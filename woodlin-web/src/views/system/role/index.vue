@@ -157,7 +157,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除 */
 function handleDelete(row: SysRole): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除角色 ${row.roleName} ？`,
@@ -182,7 +182,7 @@ function mapMenuTree(list: RouteItem[]): TreeOption[] {
 
 /** 打开菜单分配 */
 async function openMenuAssign(row: SysRole): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   currentRoleId.value = row.id
   menuModalVisible.value = true
   menuLoading.value = true

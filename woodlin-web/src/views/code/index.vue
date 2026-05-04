@@ -69,7 +69,7 @@ async function loadDataSources(): Promise<void> {
   const res = await pageDataSources({ page: 1, size: 100 })
   dataSources.value = res?.records ?? []
   dataSourceOptions.value = dataSources.value
-    .filter((d) => d.id != null)
+    .filter((d) => d.id !== null && d.id !== undefined)
     .map((d) => ({ label: d.dsName, value: d.id as number }))
   if (!currentDataSourceId.value && dataSourceOptions.value.length > 0) {
     currentDataSourceId.value = dataSourceOptions.value[0].value as number
@@ -131,7 +131,7 @@ function getCheckedTable(): string | null {
 
 async function handlePreview(): Promise<void> {
   const tableName = getCheckedTable()
-  if (!tableName) return
+  if (!tableName) {return}
   previewVisible.value = true
   previewLoading.value = true
   previewFiles.value = []
@@ -149,7 +149,7 @@ async function handlePreview(): Promise<void> {
 
 async function handleDownload(): Promise<void> {
   const tableName = getCheckedTable()
-  if (!tableName) return
+  if (!tableName) {return}
   const blob = await downloadCode(buildConfig(tableName))
   downloadBlob(blob, `${tableName}.zip`)
   message.success('下载已开始')
@@ -157,18 +157,18 @@ async function handleDownload(): Promise<void> {
 
 async function handleImport(): Promise<void> {
   const tableName = getCheckedTable()
-  if (!tableName) return
+  if (!tableName) {return}
   await importCode(buildConfig(tableName))
   message.success('导入成功')
 }
 
 function detectLang(name: string): string {
-  if (name.endsWith('.java')) return 'java'
-  if (name.endsWith('.xml')) return 'xml'
-  if (name.endsWith('.vue')) return 'html'
-  if (name.endsWith('.ts') || name.endsWith('.js')) return 'javascript'
-  if (name.endsWith('.sql')) return 'sql'
-  if (name.endsWith('.yml') || name.endsWith('.yaml')) return 'yaml'
+  if (name.endsWith('.java')) {return 'java'}
+  if (name.endsWith('.xml')) {return 'xml'}
+  if (name.endsWith('.vue')) {return 'html'}
+  if (name.endsWith('.ts') || name.endsWith('.js')) {return 'javascript'}
+  if (name.endsWith('.sql')) {return 'sql'}
+  if (name.endsWith('.yml') || name.endsWith('.yaml')) {return 'yaml'}
   return 'text'
 }
 

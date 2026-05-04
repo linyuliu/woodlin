@@ -86,12 +86,12 @@ const fileTypeLabel: Record<string, string> = {
 const uploadHeaders = computed<Record<string, string>>(() => {
   const headers: Record<string, string> = {}
   const token = getToken()
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (token) {headers['Authorization'] = `Bearer ${token}`}
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.TENANT)
     if (raw) {
       const parsed = JSON.parse(raw) as { tenantId?: string }
-      if (parsed?.tenantId) headers['X-Tenant-Id'] = parsed.tenantId
+      if (parsed?.tenantId) {headers['X-Tenant-Id'] = parsed.tenantId}
     }
   } catch {
     /* ignore */
@@ -164,13 +164,13 @@ function handlePreview(row: FileInfo): void {
 
 function handleDownload(row: FileInfo): void {
   const id = row.id ?? row.fileId
-  if (id == null) return
+  if (id === null || id === undefined) {return}
   downloadByUrl(getDownloadUrl(id), row.fileName)
 }
 
 function handleDelete(row: FileInfo): void {
   const id = row.id ?? row.fileId
-  if (id == null) return
+  if (id === null || id === undefined) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除文件 ${row.fileName} ？`,
@@ -199,7 +199,7 @@ function openShare(row: FileInfo): void {
 
 async function submitShare(): Promise<void> {
   const id = shareTarget.value?.id ?? shareTarget.value?.fileId
-  if (id == null) return
+  if (id === null || id === undefined) {return}
   shareSubmitting.value = true
   try {
     const res = await shareFile(id, shareExpireDays.value)
@@ -211,7 +211,7 @@ async function submitShare(): Promise<void> {
 }
 
 async function copyShareUrl(): Promise<void> {
-  if (!shareUrl.value) return
+  if (!shareUrl.value) {return}
   try {
     await navigator.clipboard.writeText(shareUrl.value)
     message.success('已复制到剪贴板')

@@ -144,7 +144,7 @@ async function handleUpdatePassword(): Promise<void> {
 function handleAvatarChange(options: { fileList: UploadFileInfo[] }): void {
   const file = options.fileList[0]
   const url = file?.url || (file?.file ? URL.createObjectURL(file.file) : '')
-  if (url) profile.avatar = url
+  if (url) {profile.avatar = url}
 }
 
 onMounted(loadProfile)

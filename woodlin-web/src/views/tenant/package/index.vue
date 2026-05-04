@@ -102,7 +102,7 @@ function mapMenuTree(list: RouteItem[]): TreeOption[] {
 
 /** 拉取菜单树 */
 async function loadMenuTree(): Promise<void> {
-  if (menuTreeData.value.length) return
+  if (menuTreeData.value.length) {return}
   menuLoading.value = true
   try {
     const tree = await getMenuTree()
@@ -180,7 +180,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除套餐 */
 function handleDelete(row: SysTenantPackage): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除套餐 ${row.packageName} ？`,

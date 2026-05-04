@@ -100,14 +100,14 @@ function handleClean(): void {
 }
 
 function statusTagType(s: string): 'default' | 'success' | 'error' | 'warning' {
-  if (s === '0') return 'success'
-  if (s === '1') return 'error'
+  if (s === '0') {return 'success'}
+  if (s === '1') {return 'error'}
   return 'warning'
 }
 
 function statusLabel(s: string): string {
-  if (s === '0') return '成功'
-  if (s === '1') return '失败'
+  if (s === '0') {return '成功'}
+  if (s === '1') {return '失败'}
   return '运行中'
 }
 

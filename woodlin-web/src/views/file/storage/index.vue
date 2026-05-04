@@ -162,7 +162,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: StorageConfig): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除存储 ${row.storageName} ？`,
@@ -177,7 +177,7 @@ function handleDelete(row: StorageConfig): void {
 }
 
 async function handleTest(row: StorageConfig): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   const reactiveMsg = message.loading('正在测试连接...', { duration: 0 })
   try {
     const res = await testStorage(row.id)
@@ -194,7 +194,7 @@ async function handleTest(row: StorageConfig): Promise<void> {
 }
 
 async function handleSetDefault(row: StorageConfig): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   await setDefaultStorage(row.id)
   message.success('已设为默认')
   void refresh()

@@ -99,7 +99,7 @@ function handleReset(): void {
 }
 
 function handleDelete(row: ScheduleLog): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: '确认删除该条日志？',

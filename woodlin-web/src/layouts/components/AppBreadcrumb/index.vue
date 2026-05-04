@@ -21,10 +21,10 @@ const crumbs = computed<Crumb[]>(() => {
   const list: Crumb[] = []
   for (const m of route.matched) {
     const meta = (m.meta ?? {}) as Record<string, unknown>
-    if (meta.hidden) continue
+    if (meta.hidden) {continue}
     const title = (meta.title as string) || (m.name as string) || ''
-    if (!title) continue
-    if (list.length && list[list.length - 1]!.title === title) continue
+    if (!title) {continue}
+    if (list.length && list[list.length - 1]!.title === title) {continue}
     list.push({ title, path: m.path })
   }
   return list

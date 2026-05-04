@@ -48,14 +48,14 @@ async function loadList(): Promise<void> {
 }
 
 async function handleRead(item: SysNotice): Promise<void> {
-  if (!item.id || item.status === '1') return
+  if (!item.id || item.status === '1') {return}
   await readNotice(item.id)
   item.status = '1'
   message.success('已标记为已读')
 }
 
 function truncate(text: string | undefined, len = 80): string {
-  if (!text) return ''
+  if (!text) {return ''}
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 

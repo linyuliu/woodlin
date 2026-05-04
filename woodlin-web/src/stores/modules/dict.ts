@@ -19,7 +19,7 @@ export const useDictStore = defineStore('dict', {
   actions: {
     /** 加载字典（带缓存） */
     async loadDict(code: string, force = false): Promise<DictItem[]> {
-      if (!force && this.cache[code]) return this.cache[code]
+      if (!force && this.cache[code]) {return this.cache[code]}
       const items = await getDictItems(code)
       this.cache[code] = items ?? []
       return this.cache[code]

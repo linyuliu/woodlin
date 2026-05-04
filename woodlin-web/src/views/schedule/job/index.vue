@@ -150,7 +150,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: ScheduleJob): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除任务 ${row.jobName} ？`,
@@ -165,7 +165,7 @@ function handleDelete(row: ScheduleJob): void {
 }
 
 async function handleToggleStatus(row: ScheduleJob): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   const next = row.status === '1' ? '0' : '1'
   await changeJobStatus(row.id, next)
   message.success(next === '1' ? '已恢复' : '已暂停')
@@ -173,7 +173,7 @@ async function handleToggleStatus(row: ScheduleJob): Promise<void> {
 }
 
 async function handleRun(row: ScheduleJob): Promise<void> {
-  if (!row.id) return
+  if (!row.id) {return}
   await runJobOnce(row.id)
   message.success('已触发执行')
 }

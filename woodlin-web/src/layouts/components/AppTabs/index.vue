@@ -24,8 +24,8 @@ const active = computed<string>({
 watch(
   () => route.fullPath,
   () => {
-    if ((route.meta as Record<string, unknown>)?.showInTabs === false) return
-    if (!route.name) return
+    if ((route.meta as Record<string, unknown>)?.showInTabs === false) {return}
+    if (!route.name) {return}
     tabsStore.addTab(route)
   },
   { immediate: true },
@@ -34,14 +34,14 @@ watch(
 /** 切换标签 */
 function handleChange(key: string | number): void {
   const target = tabs.value.find((t) => t.fullPath === key)
-  if (target) void router.push(target.fullPath)
+  if (target) {void router.push(target.fullPath)}
 }
 
 /** 关闭某个标签 */
 function handleClose(key: string | number): void {
   const fullPath = String(key)
   const target = tabs.value.find((t) => t.fullPath === fullPath)
-  if (!target || target.affix) return
+  if (!target || target.affix) {return}
   tabsStore.removeTab(fullPath)
   if (active.value === fullPath) {
     const next = tabs.value[tabs.value.length - 1]

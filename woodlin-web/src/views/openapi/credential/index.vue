@@ -85,7 +85,7 @@ const issuedVisible = ref(false)
 const issuedKey = ref<OpenApiCredential | null>(null)
 
 function maskKey(key?: string): string {
-  if (!key) return '-'
+  if (!key) {return '-'}
   return key.length <= 8 ? `${key}***` : `${key.slice(0, 8)}***`
 }
 
@@ -149,7 +149,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleRevoke(row: OpenApiCredential): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: '撤销后该凭证将立即失效，确定吗？',
@@ -164,7 +164,7 @@ function handleRevoke(row: OpenApiCredential): void {
 }
 
 function handleDelete(row: OpenApiCredential): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: '确认删除该凭证？',
@@ -179,7 +179,7 @@ function handleDelete(row: OpenApiCredential): void {
 }
 
 async function copyText(text?: string): Promise<void> {
-  if (!text) return
+  if (!text) {return}
   try {
     await navigator.clipboard.writeText(text)
     message.success('已复制')

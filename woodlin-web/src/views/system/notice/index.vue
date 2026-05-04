@@ -146,7 +146,7 @@ async function handleSubmit(): Promise<void> {
 
 /** 删除 */
 function handleDelete(row: SysNotice): void {
-  if (!row.id) return
+  if (!row.id) {return}
   dialog.warning({
     title: '提示',
     content: `确认删除通知 ${row.noticeTitle} ？`,

@@ -46,10 +46,10 @@ export function findPath<T extends TreeNode>(
   predicate: (node: T) => boolean,
 ): T[] | null {
   for (const node of tree) {
-    if (predicate(node)) return [node]
+    if (predicate(node)) {return [node]}
     if (node.children && node.children.length) {
       const sub = findPath(node.children as T[], predicate)
-      if (sub) return [node, ...sub]
+      if (sub) {return [node, ...sub]}
     }
   }
   return null
