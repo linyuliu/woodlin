@@ -1,0 +1,56 @@
+/**
+ * @file styles/global.css
+ * @description 基础重置与公用工具类
+ * @author yulin
+ * @since 2026-05-04
+ */
+@import './variables.css';
+@import './naive-overrides.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  color: var(--w-color-text);
+  background-color: var(--w-color-bg);
+}
+
+a {
+  color: var(--w-color-primary);
+  text-decoration: none;
+}
+
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-1 {
+  flex: 1;
+}
+.items-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-4 {
+  gap: 16px;
+}
+.text-center {
+  text-align: center;
+}

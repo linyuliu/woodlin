@@ -1,50 +1,51 @@
+<!--
+  @file App.vue
+  @description 根组件，提供 Naive UI Provider 与全局消息处理
+  @author yulin
+  @since 2026-05-04
+-->
 <script setup lang="ts">
+import { computed, defineComponent, h, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
-import { computed } from 'vue'
 import {
-  darkTheme,
-  dateZhCN,
   NConfigProvider,
   NDialogProvider,
   NLoadingBarProvider,
   NMessageProvider,
-  zhCN
+  NNotificationProvider,
+  darkTheme,
+  useMessage,
 } from 'naive-ui'
-import { storeToRefs } from 'pinia'
-import { useAppStore } from '@/stores'
+import { useAppStore } from '@/stores/modules/app'
+import { themeOverrides } from '@/config/theme'
+import { setRequestErrorHandler } from '@/utils/request'
 
 const appStore = useAppStore()
-const { themeMode } = storeToRefs(appStore)
-const naiveTheme = computed(() => (themeMode.value === 'dark' ? darkTheme : null))
+const theme = computed(() => (appStore.isDark ? darkTheme : null))
+
+/** 内部 Shell：在 Provider 树内部调用 useMessage，注入到 axios 拦截器 */
+const AppShell = defineComponent({
+  name: 'AppShell',
+  setup() {
+    const msg = useMessage()
+    onMounted(() => {
+      setRequestErrorHandler((m: string) => msg.error(m))
+    })
+    return () => h(RouterView)
+  },
+})
 </script>
 
 <template>
-  <NConfigProvider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN">
-    <NMessageProvider>
-      <NDialogProvider>
-        <NLoadingBarProvider>
-          <div class="app">
-            <RouterView />
-          </div>
-        </NLoadingBarProvider>
-      </NDialogProvider>
-    </NMessageProvider>
+  <NConfigProvider :theme="theme" :theme-overrides="themeOverrides">
+    <NLoadingBarProvider>
+      <NMessageProvider>
+        <NDialogProvider>
+          <NNotificationProvider>
+            <AppShell />
+          </NNotificationProvider>
+        </NDialogProvider>
+      </NMessageProvider>
+    </NLoadingBarProvider>
   </NConfigProvider>
 </template>
-
-<style>
-#app {
-  height: 100vh;
-  font-family: var(--font-family),serif;
-}
-
-.app {
-  height: 100%;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-</style>

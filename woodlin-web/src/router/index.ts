@@ -1,42 +1,66 @@
 /**
- * Vue Router路由配置
- * 
- * @author mumu
- * @description 定义应用的路由结构和导航配置，包括页面路由、权限路由等
- *              使用优雅的路由守卫系统，参考vue-vben-admin设计
- * @since 2025-01-01
+ * @file router/index.ts
+ * @description 路由实例与静态路由
+ * @author yulin
+ * @since 2026-05-04
  */
+import type { App } from 'vue'
+import { createRouter, createWebHashHistory, type Router, type RouteRecordRaw } from 'vue-router'
+import { settings } from '@/config/settings'
 
-import { createRouter, createWebHistory } from 'vue-router'
-import { setupRouterGuards } from './guards'
-import { constantRoutes } from './routes'
+/** 静态路由（始终存在） */
+export const staticRoutes: RouteRecordRaw[] = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/login/index.vue'),
+    meta: { title: '登录', hidden: true },
+  },
+  {
+    path: '/',
+    redirect: settings.homePath,
+  },
+  {
+    path: '/dashboard/workplace',
+    name: 'Workplace',
+    component: () => import('@/views/dashboard/workplace/index.vue'),
+    meta: { title: '工作台' },
+  },
+  {
+    path: '/403',
+    name: 'Forbidden',
+    component: () => import('@/views/error/403.vue'),
+    meta: { title: '无权限', hidden: true },
+  },
+  {
+    path: '/500',
+    name: 'ServerError',
+    component: () => import('@/views/error/500.vue'),
+    meta: { title: '服务异常', hidden: true },
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/error/404.vue'),
+    meta: { title: '页面不存在', hidden: true },
+  },
+]
 
-/**
- * 创建路由实例
- * 使用HTML5 History模式进行路由管理
- * 
- * 注意：动态路由会在用户登录后根据权限动态添加
- */
-const router = createRouter({
-  // 使用HTML5历史模式，需要服务器配置支持
-  history: createWebHistory(import.meta.env.BASE_URL),
-  // 初始只加载静态路由（登录页、错误页等）
-  routes: constantRoutes,
-  // 滚动行为：切换路由时滚动到顶部
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition
-    } else {
-      return { top: 0 }
-    }
-  }
-})
+let router: Router | null = null
 
-/**
- * 配置路由守卫
- * 
- * 包括登录验证、权限检查、页面标题设置、动态路由加载等
- */
-setupRouterGuards(router)
+/** 安装路由 */
+export function setupRouter(app: App): Router {
+  router = createRouter({
+    history: createWebHashHistory(),
+    routes: staticRoutes,
+    scrollBehavior: () => ({ top: 0 }),
+  })
+  app.use(router)
+  return router
+}
 
-export default router
+/** 获取已创建的路由实例 */
+export function getRouter(): Router {
+  if (!router) throw new Error('Router not initialized')
+  return router
+}

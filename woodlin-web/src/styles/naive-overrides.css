@@ -1,0 +1,9 @@
+/**
+ * @file styles/naive-overrides.css
+ * @description Naive UI 相关的 CSS 变量覆盖
+ * @author yulin
+ * @since 2026-05-04
+ */
+.n-card {
+  border-radius: var(--w-radius);
+}

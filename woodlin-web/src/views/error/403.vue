@@ -1,70 +1,19 @@
-<template>
-  <div class="error-page">
-    <div class="error-content">
-      <div class="error-code">403</div>
-      <div class="error-title">抱歉，您无权访问此页面</div>
-      <div class="error-description">
-        您没有访问该页面的权限，请联系管理员获取相应权限。
-      </div>
-      <div class="error-actions">
-        <n-space>
-          <n-button type="primary" @click="goHome">返回首页</n-button>
-          <n-button @click="goBack">返回上一页</n-button>
-        </n-space>
-      </div>
-    </div>
-  </div>
-</template>
-
+<!--
+  @file views/error/403.vue
+  @description 403 无权限页
+  @author yulin
+  @since 2026-05-04
+-->
 <script setup lang="ts">
+import { NButton, NResult } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import { NButton, NSpace } from 'naive-ui'
-
 const router = useRouter()
-
-const goHome = () => {
-  router.push('/')
-}
-
-const goBack = () => {
-  router.back()
-}
 </script>
 
-<style scoped>
-.error-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 70vh;
-}
-
-.error-content {
-  text-align: center;
-}
-
-.error-code {
-  font-size: 120px;
-  font-weight: bold;
-  color: #f5222d;
-  line-height: 1;
-}
-
-.error-title {
-  font-size: 24px;
-  font-weight: 500;
-  margin: 20px 0;
-  color: #333;
-}
-
-.error-description {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 30px;
-}
-
-.error-actions {
-  display: flex;
-  justify-content: center;
-}
-</style>
+<template>
+  <NResult status="403" title="403" description="抱歉，您无权访问该页面">
+    <template #footer>
+      <NButton @click="router.push('/')">返回首页</NButton>
+    </template>
+  </NResult>
+</template>
