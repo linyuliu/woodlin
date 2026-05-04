@@ -61,3 +61,45 @@ export function getRoleMenus(id: number): Promise<number[]> {
 export function assignRoleMenus(id: number, permissionIds: number[]): Promise<void> {
   return put(`/system/role/menu/${id}`, { permissionIds })
 }
+
+/** 获取角色树（RBAC1） */
+export function getRoleTree(tenantId?: string): Promise<RoleTreeNode[]> {
+  return get('/system/role/tree', tenantId ? { tenantId } : {})
+}
+
+/** 角色树节点 */
+export interface RoleTreeNode {
+  id: number
+  label: string
+  parentId?: number
+  children?: RoleTreeNode[]
+}
+
+/** 获取角色下的用户列表 */
+export interface RoleUserQuery {
+  page?: number
+  size?: number
+  roleId: number
+}
+
+export interface RoleUser {
+  userId: number
+  username: string
+  nickname: string
+  deptName?: string
+}
+
+export function getRoleUsers(params: RoleUserQuery): Promise<PageResult<RoleUser>> {
+  return get(`/system/role/${params.roleId}/users`, { page: params.page, size: params.size } as Record<string, unknown>)
+}
+
+/** 数据权限范围 */
+export interface DataScopeRequest {
+  dataScope: string
+  deptIds?: number[]
+}
+
+/** 保存角色数据权限 */
+export function assignRoleDataScope(roleId: number, data: DataScopeRequest): Promise<void> {
+  return post(`/system/role/${roleId}/data-scope`, data)
+}

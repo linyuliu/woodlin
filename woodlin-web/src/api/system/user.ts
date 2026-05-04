@@ -104,3 +104,8 @@ export function updateProfile(data: UserProfile): Promise<void> {
 export function updatePassword(data: { oldPassword: string; newPassword: string }): Promise<void> {
   return post('/system/user/password', data)
 }
+
+/** 分配角色给用户 */
+export function assignUserRoles(userId: number, roleIds: number[]): Promise<void> {
+  return put(`/system/user/${userId}/roles`, { roleIds })
+}
