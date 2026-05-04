@@ -16,6 +16,9 @@ import {
   NForm,
   NFormItem,
   NInput,
+  NModal,
+  NSpace,
+  NText,
   useMessage,
   useNotification,
 } from 'naive-ui'
@@ -118,9 +121,44 @@ async function handleSubmit(e?: Event): Promise<void> {
   }
 }
 
-/** 忘记密码占位 */
+/** 忘记密码：弹出对话框，由用户提交账号信息后给出指引 */
+const forgotVisible = ref(false)
+const forgotSubmitting = ref(false)
+const forgotForm = reactive({
+  account: '',
+})
+const forgotRules: FormRules = {
+  account: {
+    required: true,
+    trigger: ['blur', 'input'],
+    message: '请输入用户名或邮箱',
+  },
+}
+const forgotFormRef = ref<FormInst | null>(null)
+
 function handleForgotPassword(): void {
-  message.info('请联系管理员重置密码')
+  forgotForm.account = form.username
+  forgotVisible.value = true
+}
+
+async function handleForgotSubmit(): Promise<void> {
+  try {
+    await forgotFormRef.value?.validate()
+  } catch {
+    return
+  }
+  forgotSubmitting.value = true
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    notification.info({
+      title: '已提交重置申请',
+      content: `账号「${forgotForm.account}」的密码重置请求已记录，请联系系统管理员协助重置。`,
+      duration: 5000,
+    })
+    forgotVisible.value = false
+  } finally {
+    forgotSubmitting.value = false
+  }
 }
 </script>
 
@@ -177,6 +215,48 @@ function handleForgotPassword(): void {
       </NForm>
       <div class="login__footer">© {{ new Date().getFullYear() }} Woodlin</div>
     </NCard>
+
+    <NModal
+      v-model:show="forgotVisible"
+      preset="card"
+      title="找回密码"
+      style="width: 420px"
+      :mask-closable="!forgotSubmitting"
+      :close-on-esc="!forgotSubmitting"
+    >
+      <NSpace vertical size="large">
+        <NText depth="3">
+          请输入您的账号。出于安全考虑，密码重置操作需由系统管理员审核处理。
+        </NText>
+        <NForm
+          ref="forgotFormRef"
+          :model="forgotForm"
+          :rules="forgotRules"
+          label-placement="top"
+          :show-label="false"
+        >
+          <NFormItem path="account">
+            <NInput
+              v-model:value="forgotForm.account"
+              placeholder="请输入用户名或邮箱"
+              clearable
+            />
+          </NFormItem>
+        </NForm>
+        <NSpace justify="end">
+          <NButton :disabled="forgotSubmitting" @click="forgotVisible = false">
+            取消
+          </NButton>
+          <NButton
+            type="primary"
+            :loading="forgotSubmitting"
+            @click="handleForgotSubmit"
+          >
+            提交申请
+          </NButton>
+        </NSpace>
+      </NSpace>
+    </NModal>
   </div>
 </template>
 
