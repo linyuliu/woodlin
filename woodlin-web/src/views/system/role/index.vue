@@ -1,54 +1,48 @@
 <!--
   @file views/system/role/index.vue
-  @description 角色管理：列表 + 搜索 + 新增/编辑抽屉 + 菜单/权限分配模态框
+  @module 角色管理
+  @description 生产级角色管理：列表+搜索+新增编辑+菜单权限+数据权限+用户列表+RBAC1层级
   @author yulin
-  @since 2026-01-01
+  @since 2026-05
 -->
 <script setup lang="ts">
-import { h, onMounted, reactive, ref, type Ref } from 'vue'
+import { h, onMounted, reactive, ref, computed, type Ref } from 'vue'
 import {
   NButton,
   NCard,
   NDataTable,
-  NDrawer,
-  NDrawerContent,
-  NForm,
-  NFormItem,
   NInput,
-  NInputNumber,
-  NModal,
-  NPagination,
-  NPopconfirm,
   NSelect,
   NSpace,
-  NTree,
-  useDialog,
+  NTag,
+  NSwitch,
+  NPopconfirm,
   useMessage,
   type DataTableColumns,
-  type FormInst,
-  type FormRules,
   type SelectOption,
-  type TreeOption,
 } from 'naive-ui'
+import { PlusOutlined, ReloadOutlined } from '@vicons/antd'
+import dayjs from 'dayjs'
 import {
-  assignRoleMenus,
-  createRole,
-  deleteRole,
-  getRoleMenus,
   pageRoles,
-  updateRole,
-  type RoleQuery,
+  deleteRole,
   type SysRole,
+  type RoleQuery,
 } from '@/api/system/role'
-import { getMenuTree } from '@/api/system/menu'
-import type { RouteItem } from '@/types/global'
+import RoleFormDrawer from './components/RoleFormDrawer.vue'
+import MenuPermissionDrawer from './components/MenuPermissionDrawer.vue'
+import DataScopeDrawer from './components/DataScopeDrawer.vue'
+import RoleUsersModal from './components/RoleUsersModal.vue'
+import WIcon from '@/components/WIcon/index.vue'
 
 const message = useMessage()
-const dialog = useDialog()
 
 const tableData: Ref<SysRole[]> = ref([])
 const loading = ref(false)
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(10)
+
 const query = reactive<RoleQuery>({
   page: 1,
   size: 10,
@@ -57,51 +51,89 @@ const query = reactive<RoleQuery>({
   status: undefined,
 })
 
-const drawerVisible = ref(false)
-const drawerTitle = ref('')
-const submitLoading = ref(false)
-const isEdit = ref(false)
-const formRef = ref<FormInst | null>(null)
-const formData = reactive<SysRole>({
-  roleName: '',
-  roleCode: '',
-  status: '1',
-  remark: '',
-  sort: 0,
-})
-
-const rules: FormRules = {
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-}
+const roleFormDrawerRef = ref<InstanceType<typeof RoleFormDrawer> | null>(null)
+const menuPermissionDrawerRef = ref<InstanceType<typeof MenuPermissionDrawer> | null>(null)
+const dataScopeDrawerRef = ref<InstanceType<typeof DataScopeDrawer> | null>(null)
+const roleUsersModalRef = ref<InstanceType<typeof RoleUsersModal> | null>(null)
 
 const statusOptions: SelectOption[] = [
+  { label: '全部', value: '' },
   { label: '启用', value: '1' },
   { label: '禁用', value: '0' },
 ]
 
-const menuModalVisible = ref(false)
-const menuTreeData: Ref<TreeOption[]> = ref([])
-const checkedMenuKeys: Ref<Array<string | number>> = ref([])
-const currentRoleId = ref<number>(0)
-const menuLoading = ref(false)
-
-/** 拉取列表 */
-async function refresh(): Promise<void> {
-  loading.value = true
-  try {
-    const res = await pageRoles(query)
-    tableData.value = res?.records ?? []
-    total.value = res?.total ?? 0
-  } finally {
-    loading.value = false
-  }
+const dataScopeMap: Record<string, string> = {
+  '1': '全部',
+  '2': '本部门',
+  '3': '本部门及以下',
+  '4': '仅本人',
+  '5': '自定义',
 }
+
+const columns = computed<DataTableColumns<SysRole>>(() => [
+  { key: 'id', title: '角色ID', width: 80 },
+  { key: 'roleName', title: '角色名称', width: 150 },
+  { key: 'roleCode', title: '角色编码', width: 150 },
+  {
+    key: 'sort',
+    title: '排序',
+    width: 80,
+  },
+  {
+    key: 'dataScope',
+    title: '数据权限',
+    width: 120,
+    render: (row: SysRole) =>
+      row.dataScope
+        ? h(NTag, { size: 'small', type: 'info' }, { default: () => dataScopeMap[row.dataScope] || row.dataScope })
+        : '-',
+  },
+  {
+    key: 'status',
+    title: '状态',
+    width: 100,
+    render: (row: SysRole) => h(NTag, { size: 'small', type: row.status === '1' ? 'success' : 'default' }, { default: () => (row.status === '1' ? '启用' : '禁用') }),
+  },
+  {
+    key: 'createTime',
+    title: '创建时间',
+    width: 160,
+    render: (row: SysRole) => (row.createTime ? dayjs(row.createTime).format('YYYY-MM-DD HH:mm') : '-'),
+  },
+  {
+    key: 'action',
+    title: '操作',
+    width: 320,
+    fixed: 'right',
+    render: (row: SysRole) =>
+      h(
+        NSpace,
+        { size: 4 },
+        {
+          default: () => [
+            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' }),
+            h(NButton, { text: true, type: 'info', size: 'small', onClick: () => handleMenuPermission(row) }, { default: () => '菜单权限' }),
+            h(NButton, { text: true, type: 'warning', size: 'small', onClick: () => handleDataScope(row) }, { default: () => '数据权限' }),
+            h(NButton, { text: true, size: 'small', onClick: () => handleViewUsers(row) }, { default: () => '用户列表' }),
+            h(
+              NPopconfirm,
+              { onPositiveClick: () => handleDelete(row.id!) },
+              {
+                trigger: () => h(NButton, { text: true, type: 'error', size: 'small' }, { default: () => '删除' }),
+                default: () => '确认删除该角色？',
+              }
+            ),
+          ],
+        }
+      ),
+  },
+])
 
 /** 搜索 */
 function handleSearch(): void {
+  page.value = 1
   query.page = 1
-  void refresh()
+  loadData()
 }
 
 /** 重置搜索 */
@@ -109,270 +141,148 @@ function handleReset(): void {
   query.roleName = ''
   query.roleCode = ''
   query.status = undefined
-  query.page = 1
-  void refresh()
+  handleSearch()
 }
 
-/** 打开新增 */
-function openAdd(): void {
-  isEdit.value = false
-  drawerTitle.value = '新增角色'
-  Object.assign(formData, {
-    id: undefined,
-    roleName: '',
-    roleCode: '',
-    status: '1',
-    remark: '',
-    sort: 0,
-  })
-  drawerVisible.value = true
-}
-
-/** 打开编辑 */
-function openEdit(row: SysRole): void {
-  isEdit.value = true
-  drawerTitle.value = '编辑角色'
-  Object.assign(formData, row)
-  drawerVisible.value = true
-}
-
-/** 提交 */
-async function handleSubmit(): Promise<void> {
-  await formRef.value?.validate()
-  submitLoading.value = true
+/** 加载数据 */
+async function loadData(): Promise<void> {
+  loading.value = true
+  query.page = page.value
+  query.size = pageSize.value
   try {
-    if (isEdit.value && formData.id) {
-      await updateRole(formData.id, formData)
-      message.success('更新成功')
-    } else {
-      await createRole(formData)
-      message.success('新增成功')
-    }
-    drawerVisible.value = false
-    void refresh()
+    const res = await pageRoles(query)
+    tableData.value = res.records
+    total.value = res.total
+  } catch (error: any) {
+    message.error(error?.message || '加载数据失败')
   } finally {
-    submitLoading.value = false
+    loading.value = false
   }
+}
+
+/** 分页变化 */
+function handlePageChange(newPage: number): void {
+  page.value = newPage
+  loadData()
+}
+
+function handlePageSizeChange(newSize: number): void {
+  pageSize.value = newSize
+  page.value = 1
+  loadData()
+}
+
+/** 新增 */
+function handleAdd(): void {
+  roleFormDrawerRef.value?.open()
+}
+
+/** 编辑 */
+function handleEdit(row: SysRole): void {
+  roleFormDrawerRef.value?.open(row)
+}
+
+/** 菜单权限 */
+function handleMenuPermission(row: SysRole): void {
+  menuPermissionDrawerRef.value?.open(row)
+}
+
+/** 数据权限 */
+function handleDataScope(row: SysRole): void {
+  dataScopeDrawerRef.value?.open(row)
+}
+
+/** 查看用户列表 */
+function handleViewUsers(row: SysRole): void {
+  roleUsersModalRef.value?.open(row)
 }
 
 /** 删除 */
-function handleDelete(row: SysRole): void {
-  if (!row.id) {return}
-  dialog.warning({
-    title: '提示',
-    content: `确认删除角色 ${row.roleName} ？`,
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      await deleteRole(row.id as number)
-      message.success('删除成功')
-      void refresh()
-    },
-  })
-}
-
-/** 菜单树转 TreeOption */
-function mapMenuTree(list: RouteItem[]): TreeOption[] {
-  return list.map((m) => ({
-    key: m.id,
-    label: m.title,
-    children: m.children && m.children.length ? mapMenuTree(m.children) : undefined,
-  }))
-}
-
-/** 打开菜单分配 */
-async function openMenuAssign(row: SysRole): Promise<void> {
-  if (!row.id) {return}
-  currentRoleId.value = row.id
-  menuModalVisible.value = true
-  menuLoading.value = true
+async function handleDelete(id: number): Promise<void> {
   try {
-    const [tree, assigned] = await Promise.all([
-      getMenuTree(),
-      getRoleMenus(row.id),
-    ])
-    menuTreeData.value = mapMenuTree(tree)
-    checkedMenuKeys.value = assigned ?? []
-  } finally {
-    menuLoading.value = false
+    await deleteRole(id)
+    message.success('删除成功')
+    loadData()
+  } catch (error: any) {
+    message.error(error?.message || '删除失败')
   }
 }
 
-/** 提交菜单分配 */
-async function submitMenuAssign(): Promise<void> {
-  await assignRoleMenus(currentRoleId.value, checkedMenuKeys.value as number[])
-  message.success('保存成功')
-  menuModalVisible.value = false
+/** 表单成功回调 */
+function handleFormSuccess(): void {
+  loadData()
 }
 
-const columns: DataTableColumns<SysRole> = [
-  { title: '角色名称', key: 'roleName', width: 160 },
-  { title: '角色编码', key: 'roleCode', width: 160 },
-  {
-    title: '状态',
-    key: 'status',
-    width: 90,
-    render: (row) => (row.status === '1' ? '启用' : '禁用'),
-  },
-  { title: '备注', key: 'remark' },
-  { title: '创建时间', key: 'createTime', width: 170 },
-  {
-    title: '操作',
-    key: 'action',
-    width: 240,
-    fixed: 'right',
-    render: (row) =>
-      h(NSpace, { size: 'small' }, () => [
-        h(
-          NButton,
-          { size: 'small', text: true, type: 'primary', onClick: () => openEdit(row) },
-          { default: () => '编辑' },
-        ),
-        h(
-          NButton,
-          { size: 'small', text: true, type: 'info', onClick: () => openMenuAssign(row) },
-          { default: () => '分配菜单' },
-        ),
-        h(
-          NPopconfirm,
-          { onPositiveClick: () => handleDelete(row) },
-          {
-            default: () => '确认删除？',
-            trigger: () =>
-              h(NButton, { size: 'small', text: true, type: 'error' }, { default: () => '删除' }),
-          },
-        ),
-      ]),
-  },
-]
-
 onMounted(() => {
-  void refresh()
+  loadData()
 })
 </script>
 
 <template>
-  <div class="page-role">
-    <n-card size="small">
-      <n-form inline label-placement="left" :model="query">
-        <n-form-item label="角色名称">
-          <n-input v-model:value="query.roleName" placeholder="角色名称" clearable />
-        </n-form-item>
-        <n-form-item label="角色编码">
-          <n-input v-model:value="query.roleCode" placeholder="角色编码" clearable />
-        </n-form-item>
-        <n-form-item label="状态">
-          <n-select
-            v-model:value="query.status"
-            :options="statusOptions"
-            placeholder="状态"
-            clearable
-            style="min-width: 120px"
-          />
-        </n-form-item>
-        <n-form-item>
-          <n-space>
-            <n-button type="primary" @click="handleSearch">查询</n-button>
-            <n-button @click="handleReset">重置</n-button>
-          </n-space>
-        </n-form-item>
-      </n-form>
-    </n-card>
+  <NCard>
+    <NSpace vertical :size="16">
+      <!-- 搜索栏 -->
+      <NSpace :size="12" :wrap="false">
+        <NInput
+          v-model:value="query.roleName"
+          placeholder="角色名称"
+          clearable
+          style="width: 160px"
+        />
+        <NInput
+          v-model:value="query.roleCode"
+          placeholder="角色编码"
+          clearable
+          style="width: 160px"
+        />
+        <NSelect
+          v-model:value="query.status"
+          :options="statusOptions"
+          placeholder="状态"
+          clearable
+          style="width: 120px"
+        />
+        <NButton type="primary" @click="handleSearch">查询</NButton>
+        <NButton @click="handleReset">重置</NButton>
 
-    <n-card size="small">
-      <div class="toolbar">
-        <n-button v-permission="'system:role:add'" type="primary" @click="openAdd">
-          新增
-        </n-button>
-      </div>
-      <n-data-table
+        <div style="margin-left: auto; display: flex; gap: 8px">
+          <NButton type="primary" @click="handleAdd">
+            <template #icon>
+              <WIcon icon="vicons:antd:PlusOutlined" />
+            </template>
+            新增
+          </NButton>
+          <NButton @click="loadData">
+            <template #icon>
+              <WIcon icon="vicons:antd:ReloadOutlined" />
+            </template>
+          </NButton>
+        </div>
+      </NSpace>
+
+      <!-- 表格 -->
+      <NDataTable
         :columns="columns"
         :data="tableData"
         :loading="loading"
-        :row-key="(row: SysRole) => row.id as number"
-        :scroll-x="1100"
-        striped
+        :row-key="(row: SysRole) => row.id!"
+        :pagination="{
+          page: page,
+          pageSize: pageSize,
+          itemCount: total,
+          showSizePicker: true,
+          pageSizes: [10, 20, 30, 50],
+          onUpdatePage: handlePageChange,
+          onUpdatePageSize: handlePageSizeChange,
+        }"
+        :scroll-x="1300"
+        size="small"
       />
-      <div class="pagination">
-        <n-pagination
-          v-model:page="query.page"
-          v-model:page-size="query.size"
-          :item-count="total"
-          show-size-picker
-          :page-sizes="[10, 20, 50, 100]"
-          @update:page="refresh"
-          @update:page-size="refresh"
-        />
-      </div>
-    </n-card>
+    </NSpace>
+  </NCard>
 
-    <n-drawer v-model:show="drawerVisible" :width="520">
-      <n-drawer-content :title="drawerTitle" closable>
-        <n-form ref="formRef" :model="formData" :rules="rules" label-placement="top">
-          <n-form-item label="角色名称" path="roleName">
-            <n-input v-model:value="formData.roleName" />
-          </n-form-item>
-          <n-form-item label="角色编码" path="roleCode">
-            <n-input v-model:value="formData.roleCode" />
-          </n-form-item>
-          <n-form-item label="状态" path="status">
-            <n-select v-model:value="formData.status" :options="statusOptions" />
-          </n-form-item>
-          <n-form-item label="排序" path="sort">
-            <n-input-number v-model:value="formData.sort" :min="0" />
-          </n-form-item>
-          <n-form-item label="备注" path="remark">
-            <n-input v-model:value="formData.remark" type="textarea" />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="drawerVisible = false">取消</n-button>
-            <n-button type="primary" :loading="submitLoading" @click="handleSubmit">
-              确定
-            </n-button>
-          </n-space>
-        </template>
-      </n-drawer-content>
-    </n-drawer>
-
-    <n-modal
-      v-model:show="menuModalVisible"
-      preset="card"
-      title="分配菜单"
-      style="width: 480px"
-    >
-      <n-tree
-        v-model:checked-keys="checkedMenuKeys"
-        :data="menuTreeData"
-        checkable
-        cascade
-        :selectable="false"
-        block-line
-        :loading="menuLoading"
-      />
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="menuModalVisible = false">取消</n-button>
-          <n-button type="primary" @click="submitMenuAssign">保存</n-button>
-        </n-space>
-      </template>
-    </n-modal>
-  </div>
+  <RoleFormDrawer ref="roleFormDrawerRef" @success="handleFormSuccess" />
+  <MenuPermissionDrawer ref="menuPermissionDrawerRef" />
+  <DataScopeDrawer ref="dataScopeDrawerRef" />
+  <RoleUsersModal ref="roleUsersModalRef" />
 </template>
-
-<style scoped>
-.page-role {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.toolbar {
-  margin-bottom: 12px;
-}
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-</style>
