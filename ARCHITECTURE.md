@@ -421,3 +421,30 @@ woodlin-web/
 - **crypto-js**: https://www.npmjs.com/package/crypto-js
 - **jsencrypt**: https://www.npmjs.com/package/jsencrypt
 - **nprogress**: https://www.npmjs.com/package/nprogress
+
+
+## Backend Module Surface (2026-06 Update)
+
+Newly added/wired controllers exposed through `woodlin-admin`:
+
+| Controller | Base Path | Module | Purpose |
+| --- | --- | --- | --- |
+| `MonitorController` | `/monitor/*` | `woodlin-module-system` | Facade aggregating online users, server info, cache, and operation logs |
+| `SysNoticeController` | `/system/notice` | `woodlin-module-system` | System notice/announcement CRUD |
+| `SysRegionController` | `/system/region` | `woodlin-module-system` | Administrative region tree lookups |
+| `ScheduleJobController` | `/schedule/job` | `woodlin-module-task` | Quartz schedule job management |
+| `ScheduleJobLogController` | `/schedule/log` | `woodlin-module-task` | Schedule job execution logs |
+| `SysTenantPackageController` | `/system/tenant/package` | `woodlin-module-tenant` | Tenant package definition CRUD |
+| `CodeGenController` | `/gen/*` | `woodlin-module-system` (codegen) | Code generation preview / download |
+
+### Path Mismatch Status
+
+The path mismatches previously tracked between the frontend and backend have been resolved for the modules listed above:
+
+- ✅ Online user / monitor endpoints now mounted at `/monitor/*`.
+- ✅ Notice, region, schedule, tenant package and code-gen endpoints aligned with the frontend API layer.
+
+### Code Generation Approach
+
+`CodeGenController` and the `codegen` subpackage rely on plain Java string templates rather than a third-party template engine (Velocity/Freemarker are intentionally not used). This keeps the dependency graph small and avoids reflection-heavy template processing in native-image builds.
+
