@@ -57,5 +57,5 @@ public interface SystemConstant {
     /**
      * 默认密码
      */
-    String DEFAULT_PASSWORD = "12345678";
+    String DEFAULT_PASSWORD = "Aa@12345";
 }

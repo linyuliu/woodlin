@@ -47,12 +47,12 @@ VALUES (100, 0, '0', '木林科技', 'woodlin', 0, '木林', '15888888888', 'woo
 -- =============================================
 
 -- 初始化用户数据
--- 密码为 Passw0rd，已使用BCrypt加密
+-- 密码为 Aa@12345，已使用BCrypt加密
 INSERT INTO `sys_user`
-VALUES (1, 'admin', '超级管理员', '木林', '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu',
+VALUES (1, 'admin', '超级管理员', '木林', '$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS',
         'admin@woodlin.com', '15888888888', '', 1, NOW(), '1', 'default', 103, NOW(), '127.0.0.1', 0, 0, NULL, NOW(), 0,
         NULL, '管理员', 'system', NOW(), 'system', NOW(), '0'),
-       (2, 'demo', '演示用户', '演示', '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu',
+       (2, 'demo', '演示用户', '演示', '$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS',
         'demo@woodlin.com', '15666666666', '', 1, NOW(), '1', 'default', 105, NOW(), '127.0.0.1', 0, 0, NULL, NOW(), 0,
         NULL, '演示用户', 'system', NOW(), 'system', NOW(), '0');
 

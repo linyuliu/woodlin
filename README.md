@@ -226,7 +226,7 @@ spring:
           driver-class-name: com.mysql.cj.jdbc.Driver
           url: jdbc:mysql://localhost:3306/woodlin
           username: root
-          password: Passw0rd
+          password: Aa@12345
           druid:
             initial-size: 5
             min-idle: 5

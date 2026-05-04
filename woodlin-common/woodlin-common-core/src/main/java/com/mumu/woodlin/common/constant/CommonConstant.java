@@ -97,7 +97,7 @@ public interface CommonConstant {
     /**
      * 默认密码
      */
-    String DEFAULT_PASSWORD = "123456";
+    String DEFAULT_PASSWORD = "Aa@12345";
     
     /**
      * UTF-8 编码

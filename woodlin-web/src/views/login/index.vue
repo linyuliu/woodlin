@@ -64,7 +64,7 @@ onMounted(() => {
     form.remember = true
   } else {
     form.username = 'admin'
-    form.password = 'Passw0rd'
+    form.password = 'Aa@12345'
   }
   if (route.query.logout === 'true') {
     notification.info({

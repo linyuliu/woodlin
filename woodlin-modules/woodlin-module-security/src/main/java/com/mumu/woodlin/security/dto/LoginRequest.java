@@ -40,7 +40,7 @@ public class LoginRequest {
     /**
      * 密码（用于密码登录）
      */
-    @Schema(description = "密码", example = "Passw0rd")
+    @Schema(description = "密码", example = "Aa@12345")
     @Size(max = 100, message = "密码长度不能超过100个字符")
     private String password;
     

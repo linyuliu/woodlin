@@ -51,7 +51,7 @@ const service: AxiosInstance = axios.create({
 })
 
 service.interceptors.request.use(
-  (config: InternalAxaxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getToken()
     if (token) {
       // 主要使用 Authorization Bearer（Sa-Token 已配置读取此头）

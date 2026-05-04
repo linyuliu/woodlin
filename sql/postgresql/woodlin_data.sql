@@ -35,14 +35,14 @@ INSERT INTO sys_dept VALUES
 -- =============================================
 
 -- 初始化用户数据
--- 密码为 Passw0rd，已使用BCrypt加密
+-- 密码为 Aa@12345，已使用BCrypt加密
 INSERT INTO sys_user VALUES (1, 'admin', '超级管理员', '木林',
-                             '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu', 'admin@woodlin.com',
+                             '$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS', 'admin@woodlin.com',
                              '15888888888', '', 1, CURRENT_TIMESTAMP, '1', 'default', 103, CURRENT_TIMESTAMP,
                              '127.0.0.1', 0, 0, NULL, CURRENT_TIMESTAMP, 0, NULL, '管理员', 'system', CURRENT_TIMESTAMP,
                              'system', CURRENT_TIMESTAMP, '0'),
                             (2, 'demo', '演示用户', '演示',
-                             '$2a$10$7JB720yubVSO6yk5rYYepOkLHlD7VKXfMsZHVsGLQvAgvAG.1dONu', 'demo@woodlin.com',
+                             '$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS', 'demo@woodlin.com',
                              '15666666666', '', 1, CURRENT_TIMESTAMP, '1', 'default', 105, CURRENT_TIMESTAMP,
                              '127.0.0.1', 0, 0, NULL, CURRENT_TIMESTAMP, 0, NULL, '演示用户', 'system',
                              CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, '0');
@@ -501,8 +501,8 @@ VALUES (2, '图片上传策略', 'image', 1,
 -- =============================================
 -- 说明：
 -- 1. 本脚本包含所有初始化数据，支持RBAC1角色继承功能
--- 2. 默认管理员账号：admin / Passw0rd
--- 3. 默认演示账号：demo / Passw0rd
+-- 2. 默认管理员账号：admin / Aa@12345
+-- 3. 默认演示账号：demo / Aa@12345
 -- 4. 所有配置项都已初始化，可根据需要修改
 -- 5. OSS存储默认使用本地存储，可后续配置云存储
 -- 6. RBAC1角色继承功能已初始化，可在Java层实现继承逻辑
