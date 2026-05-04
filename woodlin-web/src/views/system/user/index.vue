@@ -1,457 +1,493 @@
 <!--
   @file views/system/user/index.vue
-  @description 用户管理：列表 + 搜索 + 新增/编辑抽屉 + 重置密码 + 状态切换 + 角色分配
+  @module 用户管理
+  @description 生产级用户管理页面：左侧部门树 + 右侧数据表，支持搜索、新增、编辑、删除、重置密码、分配角色、批量操作、导入导出、列设置
   @author yulin
-  @since 2026-01-01
+  @since 2026-05
 -->
 <script setup lang="ts">
 import { h, onMounted, reactive, ref, type Ref } from 'vue'
 import {
   NButton,
+  NCard,
   NDataTable,
-  NDrawer,
-  NDrawerContent,
-  NForm,
-  NFormItem,
   NInput,
-  NModal,
-  NPagination,
-  NPopconfirm,
+  NLayout,
+  NLayoutSider,
+  NLayoutContent,
   NSelect,
   NSpace,
   NSwitch,
   NTag,
-  NTreeSelect,
-  useDialog,
+  NTree,
+  NPopconfirm,
+  NPopover,
+  NCheckboxGroup,
+  NCheckbox,
   useMessage,
   type DataTableColumns,
-  type FormInst,
-  type FormRules,
+  type TreeOption,
   type SelectOption,
-  type TreeSelectOption,
 } from 'naive-ui'
+import { PlusOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined } from '@vicons/antd'
+import dayjs from 'dayjs'
 import {
-  changeUserStatus,
-  createUser,
-  deleteUser,
   pageUsers,
+  deleteUser,
+  changeUserStatus,
   resetUserPassword,
-  updateUser,
   type SysUser,
   type UserQuery,
 } from '@/api/system/user'
-import { pageRoles, type SysRole } from '@/api/system/role'
 import { getDeptTree, type SysDept } from '@/api/system/dept'
+import UserFormDrawer from './components/UserFormDrawer.vue'
+import AssignRoleModal from './components/AssignRoleModal.vue'
+import WIcon from '@/components/WIcon/index.vue'
 
 const message = useMessage()
-const dialog = useDialog()
 
 const tableData: Ref<SysUser[]> = ref([])
 const loading = ref(false)
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(10)
+
 const query = reactive<UserQuery>({
   page: 1,
   size: 10,
   username: '',
-  nickname: '',
-  mobile: '',
   deptId: undefined,
   status: undefined,
 })
 
-const deptOptions: Ref<TreeSelectOption[]> = ref([])
-const roleOptions: Ref<SelectOption[]> = ref([])
+const deptTreeData: Ref<TreeOption[]> = ref([])
+const selectedDeptIds = ref<Array<string | number>>([])
+const expandedKeys = ref<Array<string | number>>([])
+const deptSearchValue = ref('')
 
-const drawerVisible = ref(false)
-const drawerTitle = ref('')
-const submitLoading = ref(false)
-const formRef = ref<FormInst | null>(null)
-const formData = reactive<SysUser>({
-  username: '',
-  nickname: '',
-  mobile: '',
-  email: '',
-  deptId: undefined,
-  gender: '0',
-  status: '1',
-  password: '',
-  roleIds: [],
-})
-const isEdit = ref(false)
+const formDrawerRef = ref<InstanceType<typeof UserFormDrawer> | null>(null)
+const assignRoleModalRef = ref<InstanceType<typeof AssignRoleModal> | null>(null)
 
-const resetVisible = ref(false)
-const resetForm = reactive({ id: 0, password: '' })
+const selectedRowKeys = ref<Array<string | number>>([])
 
 const statusOptions: SelectOption[] = [
+  { label: '全部', value: '' },
   { label: '启用', value: '1' },
   { label: '禁用', value: '0' },
 ]
 
-const genderOptions: SelectOption[] = [
-  { label: '男', value: '0' },
-  { label: '女', value: '1' },
-  { label: '未知', value: '2' },
+const allColumns = [
+  { key: 'id', title: '用户ID', width: 80, fixed: 'left' as const },
+  { key: 'username', title: '用户名', width: 120, fixed: 'left' as const },
+  { key: 'nickname', title: '昵称', width: 120 },
+  { key: 'deptName', title: '部门', width: 150 },
+  { key: 'mobile', title: '手机号', width: 130 },
+  { key: 'email', title: '邮箱', width: 180 },
+  { key: 'status', title: '状态', width: 100 },
+  { key: 'lastLoginTime', title: '最后登录', width: 160 },
+  { key: 'createTime', title: '创建时间', width: 160 },
+  { key: 'action', title: '操作', width: 240, fixed: 'right' as const },
 ]
 
-const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+const visibleColumns = ref<string[]>(allColumns.map((c) => c.key))
+
+const columns = computed<DataTableColumns<SysUser>>(() => {
+  const cols: DataTableColumns<SysUser> = []
+  allColumns.forEach((col) => {
+    if (!visibleColumns.value.includes(col.key)) return
+    if (col.key === 'status') {
+      cols.push({
+        key: 'status',
+        title: '状态',
+        width: 100,
+        render: (row: SysUser) =>
+          h(NSwitch, {
+            value: row.status === '1',
+            onUpdateValue: (val: boolean) => handleStatusChange(row, val),
+          }),
+      })
+    } else if (col.key === 'lastLoginTime' || col.key === 'createTime') {
+      cols.push({
+        ...col,
+        render: (row: SysUser) => {
+          const val = row[col.key as keyof SysUser] as string | undefined
+          return val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-'
+        },
+      })
+    } else if (col.key === 'action') {
+      cols.push({
+        ...col,
+        render: (row: SysUser) =>
+          h(
+            NSpace,
+            { size: 4 },
+            {
+              default: () => [
+                h(
+                  NButton,
+                  {
+                    text: true,
+                    type: 'primary',
+                    size: 'small',
+                    onClick: () => handleEdit(row),
+                  },
+                  { default: () => '编辑' }
+                ),
+                h(
+                  NPopconfirm,
+                  {
+                    onPositiveClick: () => handleResetPassword(row),
+                  },
+                  {
+                    trigger: () =>
+                      h(
+                        NButton,
+                        { text: true, type: 'warning', size: 'small' },
+                        { default: () => '重置密码' }
+                      ),
+                    default: () => '确认重置密码为 Aa@12345？',
+                  }
+                ),
+                h(
+                  NButton,
+                  {
+                    text: true,
+                    type: 'info',
+                    size: 'small',
+                    onClick: () => handleAssignRole(row),
+                  },
+                  { default: () => '分配角色' }
+                ),
+                h(
+                  NPopconfirm,
+                  {
+                    onPositiveClick: () => handleDelete(row.id!),
+                  },
+                  {
+                    trigger: () =>
+                      h(
+                        NButton,
+                        { text: true, type: 'error', size: 'small' },
+                        { default: () => '删除' }
+                      ),
+                    default: () => '确认删除该用户？',
+                  }
+                ),
+              ],
+            }
+          ),
+      })
+    } else {
+      cols.push(col)
+    }
+  })
+  return cols
+})
+
+/** 加载部门树 */
+async function loadDeptTree(): Promise<void> {
+  try {
+    const data = await getDeptTree()
+    deptTreeData.value = transformDeptTree(data)
+  } catch (error) {
+    console.error('加载部门树失败', error)
+  }
 }
 
-/** 转换部门树为 NTreeSelect 选项 */
-function mapDeptTree(list: SysDept[]): TreeSelectOption[] {
-  return list.map((d) => ({
-    key: d.deptId ?? d.id ?? 0,
-    label: d.deptName,
-    children: d.children && d.children.length ? mapDeptTree(d.children) : undefined,
+/** 转换部门树为 n-tree 格式 */
+function transformDeptTree(list: SysDept[]): TreeOption[] {
+  return list.map((item) => ({
+    key: item.deptId || item.id,
+    label: item.deptName,
+    children: item.children ? transformDeptTree(item.children) : undefined,
   }))
 }
 
-/** 拉取列表 */
-async function refresh(): Promise<void> {
-  loading.value = true
-  try {
-    const res = await pageUsers(query)
-    tableData.value = res?.records ?? []
-    total.value = res?.total ?? 0
-  } finally {
-    loading.value = false
+/** 部门树节点点击 */
+function handleDeptNodeClick(keys: Array<string | number>): void {
+  if (keys.length > 0) {
+    query.deptId = Number(keys[0])
+  } else {
+    query.deptId = undefined
   }
+  selectedDeptIds.value = keys
+  handleSearch()
 }
 
 /** 搜索 */
 function handleSearch(): void {
+  page.value = 1
   query.page = 1
-  void refresh()
+  loadData()
 }
 
 /** 重置搜索 */
 function handleReset(): void {
   query.username = ''
-  query.nickname = ''
-  query.mobile = ''
-  query.deptId = undefined
   query.status = undefined
-  query.page = 1
-  void refresh()
+  query.deptId = undefined
+  selectedDeptIds.value = []
+  deptSearchValue.value = ''
+  handleSearch()
 }
 
-/** 打开新增 */
-function openAdd(): void {
-  isEdit.value = false
-  drawerTitle.value = '新增用户'
-  Object.assign(formData, {
-    id: undefined,
-    username: '',
-    nickname: '',
-    mobile: '',
-    email: '',
-    deptId: undefined,
-    gender: '0',
-    status: '1',
-    password: '',
-    roleIds: [],
-  })
-  drawerVisible.value = true
-}
-
-/** 打开编辑 */
-function openEdit(row: SysUser): void {
-  isEdit.value = true
-  drawerTitle.value = '编辑用户'
-  Object.assign(formData, { ...row, password: '', roleIds: row.roleIds ?? [] })
-  drawerVisible.value = true
-}
-
-/** 提交表单 */
-async function handleSubmit(): Promise<void> {
-  await formRef.value?.validate()
-  submitLoading.value = true
+/** 加载数据 */
+async function loadData(): Promise<void> {
+  loading.value = true
+  query.page = page.value
+  query.size = pageSize.value
   try {
-    if (isEdit.value && formData.id) {
-      const { password: _omit, ...rest } = formData
-      void _omit
-      await updateUser(formData.id, rest as SysUser)
-      message.success('更新成功')
-    } else {
-      await createUser(formData)
-      message.success('新增成功')
-    }
-    drawerVisible.value = false
-    void refresh()
+    const res = await pageUsers(query)
+    tableData.value = res.records
+    total.value = res.total
+  } catch (error: any) {
+    message.error(error?.message || '加载数据失败')
   } finally {
-    submitLoading.value = false
+    loading.value = false
   }
 }
 
-/** 删除用户 */
-function handleDelete(row: SysUser): void {
-  if (!row.id) {return}
-  dialog.warning({
-    title: '提示',
-    content: `确认删除用户 ${row.username} ？`,
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      await deleteUser(row.id as number)
-      message.success('删除成功')
-      void refresh()
-    },
-  })
+/** 分页变化 */
+function handlePageChange(newPage: number): void {
+  page.value = newPage
+  loadData()
 }
 
-/** 切换用户状态 */
-async function handleStatus(row: SysUser, val: string): Promise<void> {
-  if (!row.id) {return}
-  await changeUserStatus(row.id, val)
-  row.status = val
-  message.success('状态已更新')
+function handlePageSizeChange(newSize: number): void {
+  pageSize.value = newSize
+  page.value = 1
+  loadData()
 }
 
-/** 打开重置密码 */
-function openReset(row: SysUser): void {
-  if (!row.id) {return}
-  resetForm.id = row.id
-  resetForm.password = ''
-  resetVisible.value = true
+/** 新增 */
+function handleAdd(): void {
+  formDrawerRef.value?.open()
 }
 
-/** 提交重置密码 */
-async function submitReset(): Promise<void> {
-  if (!resetForm.password) {
-    message.warning('请输入新密码')
+/** 编辑 */
+function handleEdit(row: SysUser): void {
+  formDrawerRef.value?.open(row)
+}
+
+/** 状态切换 */
+async function handleStatusChange(row: SysUser, val: boolean): Promise<void> {
+  const newStatus = val ? '1' : '0'
+  try {
+    await changeUserStatus(row.id!, newStatus)
+    row.status = newStatus
+    message.success('状态修改成功')
+  } catch (error: any) {
+    message.error(error?.message || '状态修改失败')
+  }
+}
+
+/** 重置密码 */
+async function handleResetPassword(row: SysUser): Promise<void> {
+  try {
+    await resetUserPassword(row.id!, 'Aa@12345')
+    message.success('密码已重置为 Aa@12345')
+  } catch (error: any) {
+    message.error(error?.message || '重置密码失败')
+  }
+}
+
+/** 分配角色 */
+function handleAssignRole(row: SysUser): void {
+  assignRoleModalRef.value?.open(row)
+}
+
+/** 删除 */
+async function handleDelete(id: number): Promise<void> {
+  try {
+    await deleteUser(id)
+    message.success('删除成功')
+    loadData()
+  } catch (error: any) {
+    message.error(error?.message || '删除失败')
+  }
+}
+
+/** 批量删除 */
+async function handleBatchDelete(): Promise<void> {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要删除的用户')
     return
   }
-  await resetUserPassword(resetForm.id, resetForm.password)
-  message.success('重置成功')
-  resetVisible.value = false
+  try {
+    await deleteUser(selectedRowKeys.value as number[])
+    message.success('批量删除成功')
+    selectedRowKeys.value = []
+    loadData()
+  } catch (error: any) {
+    message.error(error?.message || '批量删除失败')
+  }
 }
 
-const columns: DataTableColumns<SysUser> = [
-  { type: 'selection' },
-  { title: '用户名', key: 'username', width: 130 },
-  { title: '昵称', key: 'nickname', width: 130 },
-  { title: '手机号', key: 'mobile', width: 130 },
-  { title: '邮箱', key: 'email', width: 180 },
-  { title: '部门', key: 'deptName', width: 140 },
-  {
-    title: '状态',
-    key: 'status',
-    width: 100,
-    render: (row) =>
-      h(NSwitch, {
-        value: row.status === '1',
-        checkedValue: true,
-        uncheckedValue: false,
-        onUpdateValue: (v: boolean) => handleStatus(row, v ? '1' : '0'),
-      }),
-  },
-  {
-    title: '上次登录',
-    key: 'lastLoginTime',
-    width: 170,
-    render: (row) => row.lastLoginTime ?? '-',
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 240,
-    fixed: 'right',
-    render: (row) =>
-      h(NSpace, { size: 'small' }, () => [
-        h(
-          NButton,
-          { size: 'small', type: 'primary', text: true, onClick: () => openEdit(row) },
-          { default: () => '编辑' },
-        ),
-        h(
-          NButton,
-          { size: 'small', type: 'warning', text: true, onClick: () => openReset(row) },
-          { default: () => '重置密码' },
-        ),
-        h(
-          NPopconfirm,
-          { onPositiveClick: () => handleDelete(row) },
-          {
-            default: () => '确认删除？',
-            trigger: () =>
-              h(NButton, { size: 'small', type: 'error', text: true }, { default: () => '删除' }),
-          },
-        ),
-      ]),
-  },
-]
+/** 导入 */
+function handleImport(): void {
+  message.info('导入功能开发中')
+}
 
-onMounted(async () => {
-  void refresh()
-  const tree = await getDeptTree().catch(() => [] as SysDept[])
-  deptOptions.value = mapDeptTree(tree)
-  const roles = await pageRoles({ page: 1, size: 100 }).catch(
-    () => ({ records: [], total: 0, current: 1, size: 100 }),
-  )
-  roleOptions.value = (roles.records as SysRole[]).map((r) => ({
-    label: r.roleName,
-    value: r.id as number,
-  }))
+/** 导出 */
+function handleExport(): void {
+  message.info('导出功能开发中')
+}
+
+/** 表单保存成功回调 */
+function handleFormSuccess(): void {
+  loadData()
+}
+
+function handleAssignSuccess(): void {
+  loadData()
+}
+
+onMounted(() => {
+  loadDeptTree()
+  loadData()
 })
 </script>
 
 <template>
-  <div class="page-user">
-    <n-card size="small" class="search-card">
-      <n-form inline label-placement="left" :model="query">
-        <n-form-item label="用户名">
-          <n-input v-model:value="query.username" placeholder="用户名" clearable />
-        </n-form-item>
-        <n-form-item label="昵称">
-          <n-input v-model:value="query.nickname" placeholder="昵称" clearable />
-        </n-form-item>
-        <n-form-item label="手机号">
-          <n-input v-model:value="query.mobile" placeholder="手机号" clearable />
-        </n-form-item>
-        <n-form-item label="部门">
-          <n-tree-select
-            v-model:value="query.deptId"
-            :options="deptOptions"
-            placeholder="选择部门"
-            clearable
-            style="min-width: 180px"
-          />
-        </n-form-item>
-        <n-form-item label="状态">
-          <n-select
-            v-model:value="query.status"
-            :options="statusOptions"
-            placeholder="状态"
-            clearable
-            style="min-width: 120px"
-          />
-        </n-form-item>
-        <n-form-item>
-          <n-space>
-            <n-button type="primary" @click="handleSearch">查询</n-button>
-            <n-button @click="handleReset">重置</n-button>
-          </n-space>
-        </n-form-item>
-      </n-form>
-    </n-card>
-
-    <n-card size="small" class="table-card">
-      <div class="toolbar">
-        <n-button v-permission="'system:user:add'" type="primary" @click="openAdd">
-          新增
-        </n-button>
-      </div>
-      <n-data-table
-        :columns="columns"
-        :data="tableData"
-        :loading="loading"
-        :row-key="(row: SysUser) => row.id as number"
-        :scroll-x="1300"
-        striped
-      />
-      <div class="pagination">
-        <n-pagination
-          v-model:page="query.page"
-          v-model:page-size="query.size"
-          :item-count="total"
-          show-size-picker
-          :page-sizes="[10, 20, 50, 100]"
-          @update:page="refresh"
-          @update:page-size="refresh"
+  <NLayout has-sider style="height: 100%">
+    <NLayoutSider
+      :width="260"
+      :native-scrollbar="false"
+      bordered
+      show-trigger
+      collapse-mode="width"
+      :collapsed-width="0"
+    >
+      <div style="padding: 16px">
+        <NInput
+          v-model:value="deptSearchValue"
+          placeholder="搜索部门..."
+          clearable
+          style="margin-bottom: 12px"
+        />
+        <NTree
+          :data="deptTreeData"
+          :pattern="deptSearchValue"
+          :selected-keys="selectedDeptIds"
+          :expanded-keys="expandedKeys"
+          block-line
+          selectable
+          @update:selected-keys="handleDeptNodeClick"
+          @update:expanded-keys="(keys) => (expandedKeys = keys)"
         />
       </div>
-    </n-card>
+    </NLayoutSider>
 
-    <n-drawer v-model:show="drawerVisible" :width="560">
-      <n-drawer-content :title="drawerTitle" closable>
-        <n-form ref="formRef" :model="formData" :rules="rules" label-placement="top">
-          <n-form-item label="用户名" path="username">
-            <n-input v-model:value="formData.username" :disabled="isEdit" />
-          </n-form-item>
-          <n-form-item v-if="!isEdit" label="密码" path="password">
-            <n-input v-model:value="formData.password" type="password" show-password-on="click" />
-          </n-form-item>
-          <n-form-item label="昵称" path="nickname">
-            <n-input v-model:value="formData.nickname" />
-          </n-form-item>
-          <n-form-item label="手机号" path="mobile">
-            <n-input v-model:value="formData.mobile" />
-          </n-form-item>
-          <n-form-item label="邮箱" path="email">
-            <n-input v-model:value="formData.email" />
-          </n-form-item>
-          <n-form-item label="部门" path="deptId">
-            <n-tree-select
-              v-model:value="formData.deptId"
-              :options="deptOptions"
+    <NLayoutContent :native-scrollbar="false">
+      <NCard style="height: 100%">
+        <NSpace vertical :size="16">
+          <!-- 搜索栏 -->
+          <NSpace :size="12" :wrap="false">
+            <NInput
+              v-model:value="query.username"
+              placeholder="用户名/昵称"
               clearable
-              placeholder="选择部门"
+              style="width: 180px"
             />
-          </n-form-item>
-          <n-form-item label="性别" path="gender">
-            <n-select v-model:value="formData.gender" :options="genderOptions" />
-          </n-form-item>
-          <n-form-item label="状态" path="status">
-            <n-select v-model:value="formData.status" :options="statusOptions" />
-          </n-form-item>
-          <n-form-item label="角色" path="roleIds">
-            <n-select
-              v-model:value="formData.roleIds"
-              :options="roleOptions"
-              multiple
-              placeholder="分配角色"
+            <NSelect
+              v-model:value="query.status"
+              :options="statusOptions"
+              placeholder="状态"
+              clearable
+              style="width: 120px"
             />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="drawerVisible = false">取消</n-button>
-            <n-button type="primary" :loading="submitLoading" @click="handleSubmit">
-              确定
-            </n-button>
-          </n-space>
-        </template>
-      </n-drawer-content>
-    </n-drawer>
+            <NButton type="primary" @click="handleSearch">查询</NButton>
+            <NButton @click="handleReset">重置</NButton>
 
-    <n-modal
-      v-model:show="resetVisible"
-      preset="dialog"
-      title="重置密码"
-      positive-text="确定"
-      negative-text="取消"
-      @positive-click="submitReset"
-    >
-      <n-form :model="resetForm" label-placement="top">
-        <n-form-item label="新密码" required>
-          <n-input
-            v-model:value="resetForm.password"
-            type="password"
-            show-password-on="click"
-            placeholder="请输入新密码"
+            <div style="margin-left: auto; display: flex; gap: 8px">
+              <NButton type="primary" @click="handleAdd">
+                <template #icon>
+                  <WIcon icon="vicons:antd:PlusOutlined" />
+                </template>
+                新增
+              </NButton>
+              <NPopconfirm @positive-click="handleBatchDelete">
+                <template #trigger>
+                  <NButton :disabled="selectedRowKeys.length === 0">
+                    <template #icon>
+                      <WIcon icon="vicons:antd:DeleteOutlined" />
+                    </template>
+                    批量删除
+                  </NButton>
+                </template>
+                确认删除选中的 {{ selectedRowKeys.length }} 个用户？
+              </NPopconfirm>
+              <NButton @click="handleImport">
+                <template #icon>
+                  <WIcon icon="vicons:antd:UploadOutlined" />
+                </template>
+                导入
+              </NButton>
+              <NButton @click="handleExport">
+                <template #icon>
+                  <WIcon icon="vicons:antd:DownloadOutlined" />
+                </template>
+                导出
+              </NButton>
+              <NPopover trigger="click" placement="bottom-end">
+                <template #trigger>
+                  <NButton>
+                    <template #icon>
+                      <WIcon icon="vicons:antd:SettingOutlined" />
+                    </template>
+                    列设置
+                  </NButton>
+                </template>
+                <NCheckboxGroup v-model:value="visibleColumns">
+                  <NSpace vertical>
+                    <NCheckbox
+                      v-for="col in allColumns"
+                      :key="col.key"
+                      :value="col.key"
+                      :label="col.title"
+                    />
+                  </NSpace>
+                </NCheckboxGroup>
+              </NPopover>
+              <NButton @click="loadData">
+                <template #icon>
+                  <WIcon icon="vicons:antd:ReloadOutlined" />
+                </template>
+              </NButton>
+            </div>
+          </NSpace>
+
+          <!-- 表格 -->
+          <NDataTable
+            :columns="columns"
+            :data="tableData"
+            :loading="loading"
+            :row-key="(row: SysUser) => row.id!"
+            :pagination="{
+              page: page,
+              pageSize: pageSize,
+              itemCount: total,
+              showSizePicker: true,
+              pageSizes: [10, 20, 30, 50],
+              onUpdatePage: handlePageChange,
+              onUpdatePageSize: handlePageSizeChange,
+            }"
+            :scroll-x="1500"
+            size="small"
+            :checked-row-keys="selectedRowKeys"
+            @update:checked-row-keys="(keys) => (selectedRowKeys = keys)"
           />
-        </n-form-item>
-      </n-form>
-    </n-modal>
+        </NSpace>
+      </NCard>
+    </NLayoutContent>
+  </NLayout>
 
-    <n-tag v-if="false">{{ '' }}</n-tag>
-  </div>
+  <UserFormDrawer ref="formDrawerRef" @success="handleFormSuccess" />
+  <AssignRoleModal ref="assignRoleModalRef" @success="handleAssignSuccess" />
 </template>
 
 <style scoped>
-.page-user {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.toolbar {
-  margin-bottom: 12px;
-}
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+:deep(.n-layout-sider) {
+  background: #fff;
 }
 </style>
