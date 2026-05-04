@@ -178,7 +178,7 @@ const users = await getUserList({
 ## 默认账号
 
 - 用户名: `admin`
-- 密码: `Passw0rd`
+- 密码: `Aa@12345`
 
 ## 页面路由
 

@@ -126,7 +126,7 @@ case "$COMMAND" in
     echo ""
     log_info "默认登录账号："
     echo "  - 用户名: ${GREEN}admin${NC}"
-    echo "  - 密码: ${GREEN}Passw0rd${NC}"
+    echo "  - 密码: ${GREEN}Aa@12345${NC}"
     echo ""
     log_info "常用命令："
     echo "  - 查看日志: ${YELLOW}./scripts/quick-start.sh logs${NC}"
