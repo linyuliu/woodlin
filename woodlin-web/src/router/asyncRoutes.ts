@@ -1,38 +1,48 @@
 /**
  * @file router/asyncRoutes.ts
- * @description 后端菜单 → Vue Router 路由记录的转换器
+ * @description 后端菜单 → Vue Router 路由记录的转换器，使用 import.meta.glob 动态收集 view 组件
  * @author yulin
- * @since 2026-05-04
+ * @since 2026-01-01
  */
 import type { Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import type { RouteItem } from '@/types/global'
 import { MenuType } from '@/constants'
-import ParentView from '@/components/ParentView/index.vue'
 
-/** 通过 import.meta.glob 收集所有 view */
-const modules = import.meta.glob('@/views/**/*.vue')
-
-/** 占位 Layout：项目实际 Layout 在后续 Commit 中提供 */
-const Layout: Component = ParentView
+/** 视图组件加载器签名 */
+type ViewLoader = () => Promise<Component>
 
 /**
- * 解析 component 字段对应的组件
+ * 收集 src/views 下所有 *.vue 视图。
+ * 键格式：'/src/views/system/user/index.vue'
+ */
+const modules = import.meta.glob('/src/views/**/*.vue') as Record<string, ViewLoader>
+
+/** Layout 与 ParentView 通过静态导入，确保始终可用 */
+const Layout: ViewLoader = () => import('@/layouts/DefaultLayout/index.vue')
+const ParentView: ViewLoader = () => import('@/components/ParentView/index.vue')
+const NotFound: ViewLoader = () => import('@/views/error/404.vue')
+
+/**
+ * 解析 component 字段：
+ * - 'Layout' → DefaultLayout
+ * - 'ParentView' → 嵌套路由占位
+ * - 'system/user/index' → /src/views/system/user/index.vue
  * @param component 后端字符串
  */
-function resolveComponent(component: string): Component | (() => Promise<Component>) {
+function resolveComponent(component: string | undefined): ViewLoader {
   if (!component || component === 'Layout') return Layout
   if (component === 'ParentView') return ParentView
   const key = `/src/views/${component.replace(/^\/+/, '')}.vue`
   const loader = modules[key]
-  if (loader) {
-    return loader as () => Promise<Component>
+  if (!loader) {
+    console.warn(`[asyncRoutes] Component not found: ${key}, fallback to 404`)
+    return NotFound
   }
-  // 兜底：返回 ParentView，避免在菜单尚未对齐时构建失败
-  return ParentView
+  return loader
 }
 
-/** 单个节点转换 */
+/** 单节点转换；按钮节点返回 null 以便上层过滤 */
 function toRecord(item: RouteItem): RouteRecordRaw | null {
   if (item.type === MenuType.BUTTON) return null
   const record: RouteRecordRaw = {
@@ -46,10 +56,11 @@ function toRecord(item: RouteItem): RouteRecordRaw | null {
       hidden: item.isHidden,
       keepAlive: item.isCache,
       isFrame: item.isFrame,
-      permission: item.permission,
-      activeMenu: item.activeMenu,
       showInTabs: item.showInTabs ?? true,
+      activeMenu: item.activeMenu,
+      permission: item.permission,
       sort: item.sort,
+      breadcrumb: true,
     },
   } as RouteRecordRaw
   if (item.children && item.children.length) {
@@ -61,8 +72,9 @@ function toRecord(item: RouteItem): RouteRecordRaw | null {
 }
 
 /**
- * 构建动态路由
- * @param items 后端菜单
+ * 构建动态路由列表
+ * @param items 后端菜单列表
+ * @returns Vue Router 路由记录数组
  */
 export function buildAsyncRoutes(items: RouteItem[]): RouteRecordRaw[] {
   return items.map(toRecord).filter((c): c is RouteRecordRaw => c !== null)
