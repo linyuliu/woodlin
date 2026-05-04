@@ -483,19 +483,6 @@ public class EtlExecutionServiceImpl implements IEtlExecutionService {
         if (!rules.isEmpty()) {
             return rules;
         }
-        if (StringUtils.hasText(job.getColumnMapping())) {
-            try {
-                Map<String, String> mapping = objectMapper.readValue(
-                        job.getColumnMapping(), new TypeReference<Map<String, String>>() {
-                        }
-                );
-                return mapping.entrySet().stream()
-                        .map(item -> buildFallbackRule(job, item.getKey(), item.getValue()))
-                        .collect(Collectors.toList());
-            } catch (Exception exception) {
-                throw new BusinessException("字段映射JSON解析失败");
-            }
-        }
         List<EtlColumnMappingRule> identityMappings = new ArrayList<>();
         for (TableColumnMetadata sourceColumn : sourceMetadata.getColumns()) {
             if (targetMetadata.findColumn(sourceColumn.getColumnName()).isPresent()) {

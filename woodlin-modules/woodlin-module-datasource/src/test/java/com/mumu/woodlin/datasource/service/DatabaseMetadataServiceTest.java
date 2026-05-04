@@ -3,31 +3,21 @@ package com.mumu.woodlin.datasource.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.util.Arrays;
-import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
-import com.mumu.woodlin.common.datasource.model.SchemaMetadata;
-import com.mumu.woodlin.common.datasource.model.TableMetadata;
 import com.mumu.woodlin.datasource.entity.InfraDatasourceConfig;
 import com.mumu.woodlin.datasource.mapper.InfraDatasourceMapper;
 
 /**
  * 数据库元数据服务测试
  * <p>
- * 验证使用原生JDBC连接（DriverManager）而非连接池的方式
+ * 验证元数据服务的数据源配置校验和轻量级连接池配置输入。
  * </p>
  * 
  * @author mumu
@@ -38,13 +28,7 @@ class DatabaseMetadataServiceTest {
     
     @Mock
     private InfraDatasourceMapper datasourceMapper;
-    
-    @Mock
-    private Connection mockConnection;
-    
-    @Mock
-    private DatabaseMetaData mockMetaData;
-    
+
     @InjectMocks
     private DatabaseMetadataService metadataService;
     
@@ -61,20 +45,10 @@ class DatabaseMetadataServiceTest {
         testConfig.setUsername("test_user");
         testConfig.setPassword("test_password");
         testConfig.setStatus(1);
-        
-        // Mock mapper to return test config
-        when(datasourceMapper.selectOne(any(QueryWrapper.class)))
-                .thenReturn(testConfig);
     }
     
     @Test
     void testGetDatasourceConfig_Success() {
-        // When
-        when(datasourceMapper.selectOne(any(QueryWrapper.class)))
-                .thenReturn(testConfig);
-        
-        // Then - config should be retrieved successfully
-        // This is implicitly tested by other methods
         assertNotNull(testConfig);
         assertEquals("test-mysql", testConfig.getDatasourceCode());
     }
@@ -109,20 +83,16 @@ class DatabaseMetadataServiceTest {
     }
     
     /**
-     * 测试原生JDBC连接的使用
+     * 测试元数据连接池配置输入
      * <p>
-     * 此测试演示了如何使用 DriverManager.getConnection() 创建原生JDBC连接，
-     * 而不是使用连接池（如HikariCP）。这是元数据提取服务的核心设计理念。
+     * 元数据服务现在通过 HikariCP 轻量连接池提取元数据。
      * </p>
      */
     @Test
-    void testUsesRawJdbcConnection() {
+    void testUsesMetadataConnectionPoolConfiguration() {
         // 验证配置中指定了正确的 JDBC URL 和驱动类
         assertEquals("jdbc:mysql://localhost:3306/test_db", testConfig.getJdbcUrl());
         assertEquals("com.mysql.cj.jdbc.Driver", testConfig.getDriverClass());
-        
-        // 这个测试表明服务应该使用 DriverManager.getConnection()
-        // 而不是创建连接池 DataSource
         assertNotNull(testConfig.getUsername());
         assertNotNull(testConfig.getPassword());
     }
@@ -151,15 +121,10 @@ class DatabaseMetadataServiceTest {
     }
     
     /**
-     * 验证不使用连接池的设计
+     * 验证服务通过 mapper 读取数据源配置
      */
     @Test
-    void testNoConnectionPoolUsed() {
-        // 验证服务使用的是 InfraDatasourceMapper（用于获取配置）
-        // 而不是 InfraDatasourceService（用于管理连接池）
+    void testUsesDatasourceMapperForConfigLookup() {
         assertNotNull(datasourceMapper);
-        
-        // 这证明了服务直接从数据库配置创建原生JDBC连接
-        // 而不是通过连接池服务获取连接
     }
 }

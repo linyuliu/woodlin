@@ -19,7 +19,7 @@ public class AssessmentFormVersionQuery {
     @Schema(description = "版本号（模糊）")
     private String versionNo;
 
-    @Schema(description = "版本状态: draft/compiled/published/deprecated/archived")
+    @Schema(description = "版本状态: draft/compiled/published/archived")
     private String status;
 
     @Schema(description = "页码", example = "1")

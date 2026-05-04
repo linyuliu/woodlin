@@ -13,8 +13,7 @@ import org.springframework.context.annotation.Import;
 @ComponentScan(basePackages = {
     "com.mumu.woodlin.file.controller",
     "com.mumu.woodlin.file.service",
-    "com.mumu.woodlin.file.storage",
-    "com.mumu.woodlin.file.transcoding"
+    "com.mumu.woodlin.file.storage"
 })
 @MapperScan("com.mumu.woodlin.file.mapper")
 public class FileModuleAutoConfiguration {

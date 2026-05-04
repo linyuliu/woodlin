@@ -90,11 +90,6 @@ public class PasswordEncoderUtil {
             return BCrypt.checkpw(rawPassword, hash);
         }
         
-        // 兼容旧版本没有前缀的BCrypt密码
-        if (encodedPassword.startsWith("$2a$") || encodedPassword.startsWith("$2b$") || encodedPassword.startsWith("$2y$")) {
-            return BCrypt.checkpw(rawPassword, encodedPassword);
-        }
-        
         // 如果都不是，说明密码格式不对
         log.warn("未知的密码编码格式: {}", encodedPassword);
         return false;
@@ -112,10 +107,7 @@ public class PasswordEncoderUtil {
         }
         
         return password.startsWith(BCRYPT_PREFIX) 
-            || password.startsWith(NOOP_PREFIX)
-            || password.startsWith("$2a$") 
-            || password.startsWith("$2b$") 
-            || password.startsWith("$2y$");
+            || password.startsWith(NOOP_PREFIX);
     }
     
     /**
@@ -129,10 +121,7 @@ public class PasswordEncoderUtil {
             return "unknown";
         }
         
-        if (encodedPassword.startsWith(BCRYPT_PREFIX) 
-            || encodedPassword.startsWith("$2a$") 
-            || encodedPassword.startsWith("$2b$") 
-            || encodedPassword.startsWith("$2y$")) {
+        if (encodedPassword.startsWith(BCRYPT_PREFIX)) {
             return "bcrypt";
         }
         

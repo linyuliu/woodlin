@@ -400,8 +400,6 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
         return roles.stream()
             .map(SysRole::getRoleCode)
             .filter(StrUtil::isNotBlank)
-            .anyMatch(roleCode -> StrUtil.equalsAny(roleCode,
-                CommonConstant.SUPER_ADMIN_ROLE_CODE,
-                CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE));
+            .anyMatch(roleCode -> StrUtil.equals(roleCode, CommonConstant.SUPER_ADMIN_ROLE_CODE));
     }
 }

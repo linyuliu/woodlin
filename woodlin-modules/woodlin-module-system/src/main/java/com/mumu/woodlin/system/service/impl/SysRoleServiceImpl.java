@@ -593,9 +593,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return 是否超级管理员角色编码
      */
     private boolean isSuperAdminRoleCode(String roleCode) {
-        return StrUtil.equalsAny(roleCode,
-            CommonConstant.SUPER_ADMIN_ROLE_CODE,
-            CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE);
+        return StrUtil.equals(roleCode, CommonConstant.SUPER_ADMIN_ROLE_CODE);
     }
 
     /**

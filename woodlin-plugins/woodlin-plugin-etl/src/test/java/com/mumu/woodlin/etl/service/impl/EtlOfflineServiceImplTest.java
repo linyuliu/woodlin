@@ -104,7 +104,6 @@ class EtlOfflineServiceImplTest {
         ArgumentCaptor<EtlJob> jobCaptor = ArgumentCaptor.forClass(EtlJob.class);
         verify(etlJobService, times(2)).createJob(jobCaptor.capture());
         EtlJob firstJob = jobCaptor.getAllValues().get(0);
-        assertThat(firstJob.getColumnMapping()).contains("\"id\":\"id\"");
         assertThat(firstJob.getTransformRules()).contains("runtimeConfig");
 
         ArgumentCaptor<List<EtlColumnMappingRule>> ruleCaptor = ArgumentCaptor.forClass(List.class);

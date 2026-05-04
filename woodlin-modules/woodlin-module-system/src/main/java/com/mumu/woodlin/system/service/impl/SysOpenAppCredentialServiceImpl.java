@@ -6,6 +6,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
+import com.mumu.woodlin.common.openapi.OpenApiSecurityKit;
+import com.mumu.woodlin.common.openapi.enums.ApiEncryptionAlgorithm;
+import com.mumu.woodlin.common.openapi.enums.ApiSecurityMode;
+import com.mumu.woodlin.common.openapi.enums.ApiSignatureAlgorithm;
+import com.mumu.woodlin.common.openapi.model.OpenApiAsymmetricKeyPair;
 import com.mumu.woodlin.system.config.OpenApiSecurityProperties;
 import com.mumu.woodlin.system.dto.OpenApiCredentialIssueResponse;
 import com.mumu.woodlin.system.dto.OpenApiCredentialRequest;
@@ -13,21 +18,16 @@ import com.mumu.woodlin.system.dto.OpenApiCredentialView;
 import com.mumu.woodlin.system.entity.SysConfig;
 import com.mumu.woodlin.system.entity.SysOpenApp;
 import com.mumu.woodlin.system.entity.SysOpenAppCredential;
-import com.mumu.woodlin.system.enums.ApiEncryptionAlgorithm;
-import com.mumu.woodlin.system.enums.ApiSecurityMode;
-import com.mumu.woodlin.system.enums.ApiSignatureAlgorithm;
 import com.mumu.woodlin.system.mapper.SysOpenAppCredentialMapper;
 import com.mumu.woodlin.system.service.ISysConfigService;
 import com.mumu.woodlin.system.service.ISysOpenAppCredentialService;
 import com.mumu.woodlin.system.service.ISysOpenAppService;
-import com.mumu.woodlin.system.util.OpenApiCryptoUtil;
 import com.mumu.woodlin.system.util.OpenApiSecurityConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 开放应用凭证服务实现。
@@ -94,12 +94,12 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
 
     @Override
     public String revealSecretKey(SysOpenAppCredential credential) {
-        return OpenApiCryptoUtil.reveal(credential.getSecretKeyEncrypted(), resolveMasterKey());
+        return OpenApiSecurityKit.reveal(credential.getSecretKeyEncrypted(), resolveMasterKey());
     }
 
     @Override
     public String revealServerPrivateKey(SysOpenAppCredential credential) {
-        return OpenApiCryptoUtil.reveal(credential.getServerPrivateKeyEncrypted(), resolveMasterKey());
+        return OpenApiSecurityKit.reveal(credential.getServerPrivateKeyEncrypted(), resolveMasterKey());
     }
 
     private CredentialIssueMaterial fillCredential(SysOpenAppCredential credential, OpenApiCredentialRequest request) {
@@ -115,11 +115,11 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
         ensureGuoMiAllowed(signatureAlgorithm, encryptionAlgorithm);
 
         CredentialIssueMaterial material = new CredentialIssueMaterial();
-        String secretKey = OpenApiCryptoUtil.generateSecretKey();
+        String secretKey = OpenApiSecurityKit.generateSecretKey();
         credential.setCredentialName(request.getCredentialName());
-        credential.setAccessKey(OpenApiCryptoUtil.generateAccessKey());
-        credential.setSecretKeyEncrypted(OpenApiCryptoUtil.protect(secretKey, masterKey));
-        credential.setSecretKeyFingerprint(OpenApiCryptoUtil.fingerprint(secretKey));
+        credential.setAccessKey(OpenApiSecurityKit.generateAccessKey());
+        credential.setSecretKeyEncrypted(OpenApiSecurityKit.protect(secretKey, masterKey));
+        credential.setSecretKeyFingerprint(OpenApiSecurityKit.fingerprint(secretKey));
         credential.setSignatureAlgorithm(signatureAlgorithm.name());
         credential.setEncryptionAlgorithm(encryptionAlgorithm.name());
         credential.setSecurityMode(securityMode.name());
@@ -135,20 +135,20 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
         material.setSecretKey(secretKey);
 
         if (!signatureAlgorithm.isHmacFamily()) {
-            Map<String, String> signingKeyPair = signatureAlgorithm == ApiSignatureAlgorithm.RSA_SHA256
-                ? OpenApiCryptoUtil.generateRsaKeyPair()
-                : OpenApiCryptoUtil.generateSm2KeyPair();
-            credential.setSignaturePublicKey(signingKeyPair.get("publicKey"));
-            material.setSignaturePrivateKey(signingKeyPair.get("privateKey"));
+            OpenApiAsymmetricKeyPair signingKeyPair = signatureAlgorithm == ApiSignatureAlgorithm.RSA_SHA256
+                ? OpenApiSecurityKit.generateRsaKeyPair()
+                : OpenApiSecurityKit.generateSm2KeyPair();
+            credential.setSignaturePublicKey(signingKeyPair.getPublicKey());
+            material.setSignaturePrivateKey(signingKeyPair.getPrivateKey());
         }
 
         if (encryptionAlgorithm == ApiEncryptionAlgorithm.RSA_OAEP_SHA256) {
-            Map<String, String> clientKeyPair = OpenApiCryptoUtil.generateRsaKeyPair();
-            Map<String, String> serverKeyPair = OpenApiCryptoUtil.generateRsaKeyPair();
-            credential.setEncryptionPublicKey(clientKeyPair.get("publicKey"));
-            credential.setServerPublicKey(serverKeyPair.get("publicKey"));
-            credential.setServerPrivateKeyEncrypted(OpenApiCryptoUtil.protect(serverKeyPair.get("privateKey"), masterKey));
-            material.setEncryptionPrivateKey(clientKeyPair.get("privateKey"));
+            OpenApiAsymmetricKeyPair clientKeyPair = OpenApiSecurityKit.generateRsaKeyPair();
+            OpenApiAsymmetricKeyPair serverKeyPair = OpenApiSecurityKit.generateRsaKeyPair();
+            credential.setEncryptionPublicKey(clientKeyPair.getPublicKey());
+            credential.setServerPublicKey(serverKeyPair.getPublicKey());
+            credential.setServerPrivateKeyEncrypted(OpenApiSecurityKit.protect(serverKeyPair.getPrivateKey(), masterKey));
+            material.setEncryptionPrivateKey(clientKeyPair.getPrivateKey());
         }
         return material;
     }

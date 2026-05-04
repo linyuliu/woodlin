@@ -589,18 +589,6 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
                 }
             });
             return snapshot;
-        } catch (Exception ignored) {
-            log.debug("尝试按新版答案快照解析失败，开始兼容旧版 answered_cache");
-        }
-
-        try {
-            Map<String, Object> legacy = objectMapper.readValue(
-                answeredCache,
-                new TypeReference<LinkedHashMap<String, Object>>() {
-                });
-            Map<String, AnswerItemDTO> snapshot = new LinkedHashMap<>();
-            legacy.forEach((itemCode, value) -> snapshot.put(itemCode, legacyValueToAnswer(itemCode, value)));
-            return snapshot;
         } catch (Exception exception) {
             log.warn("解析答案快照失败，将返回空快照", exception);
             return new LinkedHashMap<>();
@@ -614,36 +602,6 @@ public class AssessmentRuntimeServiceImpl implements IAssessmentRuntimeService {
             }
         }
         return null;
-    }
-
-    private AnswerItemDTO legacyValueToAnswer(String itemCode, Object value) {
-        AnswerItemDTO answer = new AnswerItemDTO().setItemCode(itemCode).setIsSkipped(Boolean.FALSE);
-        if (value instanceof List<?> list) {
-            List<String> selected = list.stream().map(String::valueOf).collect(Collectors.toCollection(ArrayList::new));
-            answer.setSelectedOptionCodes(selected).setRawAnswer(toJsonOrNull(selected));
-            return answer;
-        }
-        if (value instanceof String text) {
-            if (text.startsWith("[") || text.startsWith("\"")) {
-                answer.setRawAnswer(text);
-                if (text.startsWith("\"")) {
-                    answer.setTextAnswer(readJsonString(text));
-                }
-            } else {
-                answer.setTextAnswer(text).setRawAnswer(toJsonOrNull(text));
-            }
-            return answer;
-        }
-        answer.setRawAnswer(toJsonOrNull(value));
-        return answer;
-    }
-
-    private String readJsonString(String json) {
-        try {
-            return objectMapper.readValue(json, String.class);
-        } catch (Exception exception) {
-            return json;
-        }
     }
 
     private Map<String, AnswerItemDTO> toAnswerMap(List<AnswerItemDTO> answers) {

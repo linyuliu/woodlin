@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.mumu.woodlin.assessment.mapper.AssessmentOptionMapper;
+import com.mumu.woodlin.assessment.mapper.AssessmentSchemaMapper;
 import com.mumu.woodlin.assessment.model.entity.AssessmentDimension;
 import com.mumu.woodlin.assessment.model.entity.AssessmentDimensionItem;
 import com.mumu.woodlin.assessment.model.entity.AssessmentFormVersion;
@@ -22,7 +23,6 @@ import com.mumu.woodlin.assessment.service.IAssessmentItemService;
 import com.mumu.woodlin.assessment.service.IAssessmentPublishService;
 import com.mumu.woodlin.assessment.service.IAssessmentPublishValidationService;
 import com.mumu.woodlin.assessment.service.IAssessmentRuleService;
-import com.mumu.woodlin.assessment.service.IAssessmentSchemaService;
 import com.mumu.woodlin.assessment.service.IAssessmentSectionService;
 import com.mumu.woodlin.assessment.validation.AssessmentPublishValidator;
 import com.mumu.woodlin.assessment.validation.ValidationReport;
@@ -48,7 +48,7 @@ public class AssessmentPublishValidationServiceImpl implements IAssessmentPublis
 
     private final AssessmentPublishValidator validator;
     private final IAssessmentFormVersionService versionService;
-    private final IAssessmentSchemaService schemaService;
+    private final AssessmentSchemaMapper schemaMapper;
     private final IAssessmentItemService itemService;
     private final AssessmentOptionMapper optionMapper;
     private final IAssessmentDimensionService dimensionService;
@@ -92,7 +92,7 @@ public class AssessmentPublishValidationServiceImpl implements IAssessmentPublis
 
         // Schema (nullable – version might not be compiled yet).
         AssessmentSchema schema = version != null && version.getSchemaId() != null
-                ? schemaService.getById(version.getSchemaId())
+                ? schemaMapper.selectById(version.getSchemaId())
                 : null;
 
         // Items.

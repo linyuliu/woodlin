@@ -81,18 +81,6 @@ class SysRoleServiceImplTest {
     }
 
     @Test
-    void assignRolePermissions_shouldThrow_whenLegacySuperAdminRoleCode() {
-        SysRole superAdminRole = new SysRole();
-        superAdminRole.setRoleId(9L);
-        superAdminRole.setRoleCode("super_admin");
-        doReturn(superAdminRole).when(service).getById(9L);
-
-        assertThrows(BusinessException.class, () -> service.assignRolePermissions(9L, List.of(100L)));
-        verify(rolePermissionMapper, never()).deleteByRoleId(anyLong());
-        verify(rolePermissionMapper, never()).batchInsert(any());
-    }
-
-    @Test
     void deleteRoleByIds_shouldThrow_whenContainsSuperAdminRole() {
         SysRole superAdminRole = new SysRole();
         superAdminRole.setRoleId(1L);

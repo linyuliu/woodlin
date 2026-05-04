@@ -178,8 +178,7 @@ public class LoginUser implements Serializable {
         if (roleCodes == null || roleCodes.isEmpty()) {
             return false;
         }
-        return roleCodes.contains(CommonConstant.SUPER_ADMIN_ROLE_CODE)
-            || roleCodes.contains(CommonConstant.LEGACY_SUPER_ADMIN_ROLE_CODE);
+        return roleCodes.contains(CommonConstant.SUPER_ADMIN_ROLE_CODE);
     }
     
     /**

@@ -6,7 +6,6 @@ spring:
   profiles:
     # 运行环境（dev / test / prod）
     active: ${SPRING_PROFILES_ACTIVE:dev}
-
   cloud:
     nacos:
       # Nacos Server 地址

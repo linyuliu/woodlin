@@ -123,13 +123,6 @@ public class EtlJob extends BaseEntity {
     private String incrementalColumn;
     
     /**
-     * 字段映射配置（JSON格式，源字段->目标字段映射）
-     */
-    @TableField("column_mapping")
-    @Schema(description = "字段映射配置")
-    private String columnMapping;
-    
-    /**
      * 数据转换规则（JSON格式，定义数据转换逻辑）
      */
     @TableField("transform_rules")

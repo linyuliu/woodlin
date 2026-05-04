@@ -62,7 +62,7 @@ public class AssessmentFormVersion extends BaseEntity {
     private String dslHash;
 
     @TableField("status")
-    @Schema(description = "版本状态: draft/compiled/published/deprecated/archived")
+    @Schema(description = "版本状态: draft/compiled/published/archived")
     private String status;
 
     @TableField("published_at")

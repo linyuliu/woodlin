@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Import;
  */
 @AutoConfiguration
 @EnableConfigurationProperties({
-    ApiEncryptionProperties.class,
     BuildInfoProperties.class,
     CorsProperties.class,
     ResponseProperties.class

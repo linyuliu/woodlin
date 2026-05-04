@@ -6,21 +6,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.openapi.OpenApiSecurityKit;
+import com.mumu.woodlin.common.openapi.enums.ApiEncryptionAlgorithm;
+import com.mumu.woodlin.common.openapi.enums.ApiSecurityMode;
+import com.mumu.woodlin.common.openapi.enums.ApiSignatureAlgorithm;
+import com.mumu.woodlin.common.openapi.model.OpenApiCredentialMaterial;
+import com.mumu.woodlin.common.openapi.model.OpenApiEncryptedPayload;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.system.config.OpenApiSecurityProperties;
-import com.mumu.woodlin.system.dto.OpenApiEncryptedPayload;
 import com.mumu.woodlin.system.dto.OpenApiGlobalSettingsDto;
 import com.mumu.woodlin.system.entity.SysOpenApiPolicy;
 import com.mumu.woodlin.system.entity.SysOpenApp;
 import com.mumu.woodlin.system.entity.SysOpenAppCredential;
-import com.mumu.woodlin.system.enums.ApiEncryptionAlgorithm;
-import com.mumu.woodlin.system.enums.ApiSecurityMode;
-import com.mumu.woodlin.system.enums.ApiSignatureAlgorithm;
 import com.mumu.woodlin.system.model.OpenApiRuntimeContext;
 import com.mumu.woodlin.system.service.IOpenApiSecurityService;
 import com.mumu.woodlin.system.service.ISysOpenAppCredentialService;
 import com.mumu.woodlin.system.service.ISysOpenAppService;
-import com.mumu.woodlin.system.util.OpenApiCryptoUtil;
 import com.mumu.woodlin.system.util.OpenApiRequestCanonicalizer;
 import com.mumu.woodlin.system.util.OpenApiSecurityConstants;
 import jakarta.servlet.FilterChain;
@@ -107,8 +107,13 @@ public class OpenApiSecurityFilter extends OncePerRequestFilter {
                 if (encryptedPayload != null) {
                     String plainSecret = credential == null ? null : credentialService.revealSecretKey(credential);
                     String serverPrivateKey = credential == null ? null : credentialService.revealServerPrivateKey(credential);
-                    byte[] plainBody = OpenApiCryptoUtil.decryptPayload(
-                        encryptedPayload, encryptionAlgorithm, plainSecret, serverPrivateKey
+                    byte[] plainBody = OpenApiSecurityKit.decrypt(
+                        encryptedPayload,
+                        encryptionAlgorithm,
+                        new OpenApiCredentialMaterial()
+                            .setSecretKey(plainSecret)
+                            .setServerPrivateKey(serverPrivateKey)
+                            .setEncryptionPrivateKey(serverPrivateKey)
                     );
                     wrappedRequest.replaceBody(plainBody);
                 }
@@ -123,8 +128,13 @@ public class OpenApiSecurityFilter extends OncePerRequestFilter {
                         throw BusinessException.of(ResultCode.BAD_REQUEST, "当前安全模式不支持报文加密");
                     }
                     String plainSecret = credentialService.revealSecretKey(credential);
-                    OpenApiEncryptedPayload payload = OpenApiCryptoUtil.encryptPayload(
-                        responseBody, encryptionAlgorithm, plainSecret, credential.getEncryptionPublicKey()
+                    OpenApiEncryptedPayload payload = OpenApiSecurityKit.encrypt(
+                        responseBody,
+                        encryptionAlgorithm,
+                        new OpenApiCredentialMaterial()
+                            .setSecretKey(plainSecret)
+                            .setServerPublicKey(credential.getEncryptionPublicKey())
+                            .setEncryptionPublicKey(credential.getEncryptionPublicKey())
                     );
                     wrappedResponse.resetBuffer();
                     wrappedResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -156,7 +166,7 @@ public class OpenApiSecurityFilter extends OncePerRequestFilter {
         }
 
         ApiSignatureAlgorithm expectedSignatureAlgorithm = resolveSignatureAlgorithm(policy, credential, globalSettings, request);
-        LocalDateTime requestTime = OpenApiCryptoUtil.parseTimestamp(timestamp);
+        LocalDateTime requestTime = LocalDateTime.ofInstant(OpenApiSecurityKit.parseTimestamp(timestamp), ZoneOffset.UTC);
         int windowSeconds = policy != null && policy.getTimestampWindowSeconds() != null
             ? policy.getTimestampWindowSeconds()
             : globalSettings.getTimestampWindowSeconds();
@@ -179,13 +189,14 @@ public class OpenApiSecurityFilter extends OncePerRequestFilter {
         String canonical = OpenApiRequestCanonicalizer.canonicalize(
             request, rawBody, timestamp, nonce, tenantId, accessKey
         );
-        boolean verified = OpenApiCryptoUtil.verify(
+        boolean verified = OpenApiSecurityKit.verify(
             canonical.getBytes(StandardCharsets.UTF_8),
             signature,
             expectedSignatureAlgorithm,
-            credentialService.revealSecretKey(credential),
-            credential.getSignaturePublicKey()
-        );
+            new OpenApiCredentialMaterial()
+                .setSecretKey(credentialService.revealSecretKey(credential))
+                .setSignaturePublicKey(credential.getSignaturePublicKey())
+        ).isVerified();
         if (!verified) {
             throw BusinessException.of(ResultCode.UNAUTHORIZED, "签名校验失败");
         }

@@ -550,32 +550,6 @@ CREATE TABLE sql2api_execute_log
   PRIMARY KEY (log_id)
 );
 
-DROP TABLE IF EXISTS sys_sensitive_data CASCADE;
-CREATE TABLE sys_sensitive_data
-(
-  data_id                    bigint NOT NULL,
-  real_name                  VARCHAR(500)  DEFAULT NULL,
-  real_name_search_index     TEXT          DEFAULT NULL,
-  id_card                    VARCHAR(500)  DEFAULT NULL,
-  mobile                     VARCHAR(500)  DEFAULT NULL,
-  mobile_search_index        TEXT          DEFAULT NULL,
-  email_address              VARCHAR(500)  DEFAULT NULL,
-  email_address_search_index TEXT          DEFAULT NULL,
-  home_address               VARCHAR(1000) DEFAULT NULL,
-  home_address_search_index  TEXT          DEFAULT NULL,
-  bank_card                  VARCHAR(500)  DEFAULT NULL,
-  data_type                  VARCHAR(50)   DEFAULT NULL,
-  status                     CHAR(1)       DEFAULT '1',
-  tenant_id                  VARCHAR(20)   DEFAULT NULL,
-  remark                     VARCHAR(500)  DEFAULT NULL,
-  create_by                  VARCHAR(64)   DEFAULT NULL,
-  create_time                timestamp     DEFAULT CURRENT_TIMESTAMP,
-  update_by                  VARCHAR(64)   DEFAULT NULL,
-  update_time                timestamp     DEFAULT CURRENT_TIMESTAMP,
-  del_flag                   smallint      DEFAULT 0,
-  PRIMARY KEY (data_id)
-);
-
 DROP TABLE IF EXISTS sys_dict_type CASCADE;
 CREATE TABLE sys_dict_type
 (
@@ -659,7 +633,6 @@ CREATE TABLE sys_etl_job
   target_schema       varchar(100) DEFAULT NULL,
   sync_mode           varchar(20)  DEFAULT 'FULL',
   incremental_column  varchar(100) DEFAULT NULL,
-  column_mapping      text         DEFAULT NULL,
   transform_rules     text         DEFAULT NULL,
   filter_condition    varchar(500) DEFAULT NULL,
   batch_size          integer      DEFAULT 1000,
@@ -906,10 +879,6 @@ CREATE INDEX idx_sql2api_execute_log_api_id ON sql2api_execute_log (api_id);
 CREATE INDEX idx_sql2api_execute_log_orchestration_id ON sql2api_execute_log (orchestration_id);
 CREATE INDEX idx_sql2api_execute_log_execute_status ON sql2api_execute_log (execute_status);
 CREATE INDEX idx_sql2api_execute_log_create_time ON sql2api_execute_log (create_time);
-CREATE INDEX idx_sys_sensitive_data_tenant_id ON sys_sensitive_data (tenant_id);
-CREATE INDEX idx_sys_sensitive_data_status ON sys_sensitive_data (status);
-CREATE INDEX idx_sys_sensitive_data_data_type ON sys_sensitive_data (data_type);
-CREATE INDEX idx_sys_sensitive_data_create_time ON sys_sensitive_data (create_time);
 CREATE UNIQUE INDEX uk_sys_dict_type_dict_type ON sys_dict_type (dict_type, tenant_id, deleted);
 CREATE INDEX idx_sys_dict_type_dict_category ON sys_dict_type (dict_category);
 CREATE INDEX idx_sys_dict_type_status ON sys_dict_type (status);

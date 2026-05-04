@@ -2,7 +2,6 @@ package com.mumu.woodlin.security.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
-import com.mumu.woodlin.security.interceptor.UserActivityInterceptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -27,10 +26,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SaTokenConfiguration implements WebMvcConfigurer {
 
-    private final UserActivityInterceptor userActivityInterceptor;
-
     /**
-     * 配置 Sa-Token 拦截器和用户活动监控拦截器
+     * 配置 Sa-Token 拦截器。
      *
      * @param registry 拦截器注册器
      */
@@ -39,11 +36,6 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
         String[] excludePatterns = buildExcludePatterns();
 
         log.info("Sa-Token拦截器配置: 排除路径数量={}", excludePatterns.length);
-
-        // 注册用户活动监控拦截器
-        registry.addInterceptor(userActivityInterceptor)
-                .addPathPatterns("/**")
-                .excludePathPatterns(excludePatterns);
 
         // 注册 Sa-Token 拦截器，开启注解式鉴权功能
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))

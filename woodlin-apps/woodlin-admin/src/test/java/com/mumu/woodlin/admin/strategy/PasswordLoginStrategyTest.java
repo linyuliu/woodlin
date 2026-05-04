@@ -107,7 +107,7 @@ class PasswordLoginStrategyTest {
         when(passwordPolicyService.validateUserLogin(any())).thenReturn(validationResult);
         
         when(roleService.selectAllRolesByUserId(1L)).thenReturn(Collections.emptyList());
-        when(permissionService.selectPermissionCodesByUserId(1L)).thenReturn(Collections.emptyList());
+        when(permissionService.selectPermissionsByUserId(1L)).thenReturn(Collections.emptyList());
         when(userService.updateById(any())).thenReturn(true);
         
         // 执行登录（注意：Sa-Token需要在Spring环境中才能工作，这里会抛出异常是正常的）
@@ -147,7 +147,7 @@ class PasswordLoginStrategyTest {
         when(passwordPolicyService.validateUserLogin(any())).thenReturn(validationResult);
         
         when(roleService.selectAllRolesByUserId(1L)).thenReturn(Collections.emptyList());
-        when(permissionService.selectPermissionCodesByUserId(1L)).thenReturn(Collections.emptyList());
+        when(permissionService.selectPermissionsByUserId(1L)).thenReturn(Collections.emptyList());
         when(userService.updateById(any())).thenReturn(true);
         
         // 执行登录

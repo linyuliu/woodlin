@@ -49,7 +49,7 @@ public class AssessmentSchema extends BaseEntity {
     private Long versionId;
 
     @TableField("status")
-    @Schema(description = "Schema 状态: draft/compiled/published/deprecated/archived")
+    @Schema(description = "Schema 状态: draft/compiled/published/archived")
     private String status;
 
     @TableField("canonical_schema")

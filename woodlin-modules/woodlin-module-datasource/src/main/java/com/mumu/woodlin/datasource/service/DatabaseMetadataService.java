@@ -1,14 +1,12 @@
 package com.mumu.woodlin.datasource.service;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Properties;
 
 import cn.hutool.core.util.StrUtil;
 import com.zaxxer.hikari.HikariConfig;
@@ -402,54 +400,6 @@ public class DatabaseMetadataService {
             }
         });
         metadataDataSources.clear();
-    }
-
-    /**
-     * 创建原生JDBC连接（已废弃，使用连接池代替）
-     * <p>
-     * 保留此方法仅用于兼容性，新代码应使用 getOrCreateMetadataDataSource
-     * </p>
-     *
-     * @param config 数据源配置
-     * @return JDBC连接
-     * @throws SQLException SQL异常
-     * @deprecated 使用 {@link #getOrCreateMetadataDataSource(InfraDatasourceConfig)} 代替
-     */
-    @Deprecated
-    private Connection createJdbcConnection(InfraDatasourceConfig config) throws SQLException {
-        try {
-            // 加载驱动类
-            String driverClass = resolveDriver(config.getDriverClass(), config.getJdbcUrl());
-            Class.forName(driverClass);
-
-            // 设置连接超时属性
-            Properties props = new Properties();
-            props.setProperty("user", config.getUsername());
-            props.setProperty("password", config.getPassword());
-            props.setProperty("connectTimeout", "10000");  // 10秒连接超时
-            props.setProperty("socketTimeout", "30000");  // 30秒套接字超时
-
-            // 使用DriverManager创建原生JDBC连接
-            DriverManager.setLoginTimeout(10);  // 设置全局登录超时
-            Connection connection = DriverManager.getConnection(
-                    config.getJdbcUrl(),
-                    props
-            );
-
-            // 设置只读模式和查询超时
-            connection.setReadOnly(true);
-            connection.setAutoCommit(false);
-
-            log.debug("成功创建JDBC连接: {}", config.getJdbcUrl());
-            return connection;
-
-        } catch (ClassNotFoundException e) {
-            log.error("找不到JDBC驱动: {}", config.getDriverClass(), e);
-            throw new BusinessException("找不到JDBC驱动: " + config.getDriverClass(), e);
-        } catch (SQLException e) {
-            log.error("创建JDBC连接失败: {}", config.getJdbcUrl(), e);
-            throw new BusinessException("创建数据库连接失败: " + e.getMessage(), e);
-        }
     }
 
     /**

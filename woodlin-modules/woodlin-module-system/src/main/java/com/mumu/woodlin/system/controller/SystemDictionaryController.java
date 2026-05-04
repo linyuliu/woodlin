@@ -52,51 +52,6 @@ public class SystemDictionaryController {
         return R.ok(dictionaryService.getRegionChildren(parentCode));
     }
 
-    // ==================== 兼容性接口（保留旧接口） ====================
-
-    @Operation(summary = "获取所有字典数据（已废弃）", description = "一次性获取所有常用字典数据，已废弃，建议使用分步查询")
-    @GetMapping("/all")
-    @Deprecated
-    public R<Map<String, Object>> getAllDictionaries() {
-        return R.ok(dictionaryService.getAllDictionaries());
-    }
-
-    @Operation(summary = "获取性别字典", description = "GB/T 2261.1-2003 标准")
-    @GetMapping("/gender")
-    public R<List<Map<String, Object>>> getGenderDict() {
-        return R.ok(dictionaryService.getGenderDict());
-    }
-
-    @Operation(summary = "获取民族字典", description = "GB/T 3304-1991 标准，56个民族")
-    @GetMapping("/ethnicity")
-    public R<List<Map<String, Object>>> getEthnicityDict() {
-        return R.ok(dictionaryService.getEthnicityDict());
-    }
-
-    @Operation(summary = "获取学历字典", description = "GB/T 4658-2006 标准")
-    @GetMapping("/education")
-    public R<List<Map<String, Object>>> getEducationLevelDict() {
-        return R.ok(dictionaryService.getEducationLevelDict());
-    }
-
-    @Operation(summary = "获取婚姻状况字典", description = "GB/T 2261.2-2003 标准")
-    @GetMapping("/marital")
-    public R<List<Map<String, Object>>> getMaritalStatusDict() {
-        return R.ok(dictionaryService.getMaritalStatusDict());
-    }
-
-    @Operation(summary = "获取政治面貌字典", description = "GB/T 4762-1984 标准")
-    @GetMapping("/political")
-    public R<List<Map<String, Object>>> getPoliticalStatusDict() {
-        return R.ok(dictionaryService.getPoliticalStatusDict());
-    }
-
-    @Operation(summary = "获取证件类型字典", description = "GB/T 2261.4 标准")
-    @GetMapping("/idtype")
-    public R<List<Map<String, Object>>> getIdTypeDict() {
-        return R.ok(dictionaryService.getIdTypeDict());
-    }
-
     @Operation(summary = "获取省级行政区划", description = "GB/T 2260 标准，34个省级行政区")
     @GetMapping("/region/provinces")
     public R<List<Map<String, Object>>> getProvinces() {

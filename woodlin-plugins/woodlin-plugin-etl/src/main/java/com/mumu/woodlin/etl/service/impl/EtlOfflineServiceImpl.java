@@ -605,7 +605,6 @@ public class EtlOfflineServiceImpl implements IEtlOfflineService {
         etlJob.setStatus(Boolean.TRUE.equals(runtimeConfig.getAutoStart()) ? STATUS_ENABLED : STATUS_DISABLED);
         etlJob.setCronExpression(resolveCronExpression(runtimeConfig.getCronExpression(), runtimeConfig.getAutoStart()));
         etlJob.setRemark(blankToNull(request.getRemark()));
-        etlJob.setColumnMapping(buildCompatibilityColumnMapping(tableMapping.getFieldRules()));
         etlJob.setTransformRules(buildTransformRulesJson(runtimeConfig, tableMapping));
         return etlJob;
     }
@@ -662,36 +661,6 @@ public class EtlOfflineServiceImpl implements IEtlOfflineService {
             rules.add(rule);
         }
         return rules;
-    }
-
-    /**
-     * 构建兼容旧模型的字段映射 JSON。
-     *
-     * @param fieldRules 字段规则
-     * @return JSON 字符串
-     */
-    private String buildCompatibilityColumnMapping(List<EtlOfflineFieldRule> fieldRules) {
-        if (fieldRules == null || fieldRules.isEmpty()) {
-            return null;
-        }
-        Map<String, String> mapping = new LinkedHashMap<>();
-        for (EtlOfflineFieldRule fieldRule : fieldRules) {
-            if (Boolean.FALSE.equals(fieldRule.getEnabled())) {
-                continue;
-            }
-            if (StrUtil.isBlank(fieldRule.getSourceColumnName()) || StrUtil.isBlank(fieldRule.getTargetColumnName())) {
-                continue;
-            }
-            mapping.put(fieldRule.getSourceColumnName(), fieldRule.getTargetColumnName());
-        }
-        if (mapping.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(mapping);
-        } catch (JsonProcessingException exception) {
-            throw new BusinessException("字段映射JSON生成失败", exception);
-        }
     }
 
     /**

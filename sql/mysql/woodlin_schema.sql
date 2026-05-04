@@ -762,44 +762,6 @@ CREATE TABLE `sql2api_execute_log`
   DEFAULT CHARSET = utf8mb4 COMMENT ='API执行日志表';
 
 -- =============================================
--- 第七部分：可搜索加密示例表（可选）
--- =============================================
-
--- =============================================
--- 敏感数据表（可搜索加密示例）
--- =============================================
-DROP TABLE IF EXISTS `sys_sensitive_data`;
-CREATE TABLE `sys_sensitive_data`
-(
-  `data_id`                    BIGINT(20) NOT NULL COMMENT '数据ID',
-  `real_name`                  VARCHAR(500)  DEFAULT NULL COMMENT '真实姓名（加密）',
-  `real_name_search_index`     TEXT          DEFAULT NULL COMMENT '真实姓名搜索索引',
-  `id_card`                    VARCHAR(500)  DEFAULT NULL COMMENT '身份证号（加密）',
-  `mobile`                     VARCHAR(500)  DEFAULT NULL COMMENT '手机号（加密）',
-  `mobile_search_index`        TEXT          DEFAULT NULL COMMENT '手机号搜索索引',
-  `email_address`              VARCHAR(500)  DEFAULT NULL COMMENT '邮箱地址（加密）',
-  `email_address_search_index` TEXT          DEFAULT NULL COMMENT '邮箱搜索索引',
-  `home_address`               VARCHAR(1000) DEFAULT NULL COMMENT '家庭住址（加密）',
-  `home_address_search_index`  TEXT          DEFAULT NULL COMMENT '家庭住址搜索索引',
-  `bank_card`                  VARCHAR(500)  DEFAULT NULL COMMENT '银行卡号（加密）',
-  `data_type`                  VARCHAR(50)   DEFAULT NULL COMMENT '数据类型',
-  `status`                     CHAR(1)       DEFAULT '1' COMMENT '状态（1-正常，0-禁用）',
-  `tenant_id`                  VARCHAR(20)   DEFAULT NULL COMMENT '租户ID',
-  `remark`                     VARCHAR(500)  DEFAULT NULL COMMENT '备注',
-  `create_by`                  VARCHAR(64)   DEFAULT NULL COMMENT '创建者',
-  `create_time`                DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by`                  VARCHAR(64)   DEFAULT NULL COMMENT '更新者',
-  `update_time`                DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag`                   TINYINT(1)    DEFAULT 0 COMMENT '删除标志（0-未删除，1-已删除）',
-  PRIMARY KEY (`data_id`),
-  KEY `idx_tenant_id` (`tenant_id`),
-  KEY `idx_status` (`status`),
-  KEY `idx_data_type` (`data_type`),
-  KEY `idx_create_time` (`create_time`)
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4 COMMENT ='敏感数据表（可搜索加密示例）';
-
--- =============================================
 -- 脚本完成
 -- =============================================
 -- 说明：
@@ -921,7 +883,6 @@ CREATE TABLE `sys_etl_job`
   `target_schema`       varchar(100) DEFAULT NULL COMMENT '目标Schema名',
   `sync_mode`           varchar(20)  DEFAULT 'FULL' COMMENT '同步模式（FULL-全量，INCREMENTAL-增量）',
   `incremental_column`  varchar(100) DEFAULT NULL COMMENT '增量字段',
-  `column_mapping`      text         DEFAULT NULL COMMENT '字段映射配置（JSON格式）',
   `transform_rules`     text         DEFAULT NULL COMMENT '数据转换规则（JSON格式）',
   `filter_condition`    varchar(500) DEFAULT NULL COMMENT '过滤条件',
   `batch_size`          int(11)      DEFAULT 1000 COMMENT '批处理大小',

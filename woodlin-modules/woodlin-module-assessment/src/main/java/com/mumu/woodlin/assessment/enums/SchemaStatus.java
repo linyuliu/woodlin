@@ -16,7 +16,6 @@ public enum SchemaStatus {
     DRAFT("draft", "草稿"),
     COMPILED("compiled", "已编译（DSL/Schema已通过校验）"),
     PUBLISHED("published", "已发布（对应活跃发布实例）"),
-    DEPRECATED("deprecated", "已废弃（不再可引用）"),
     ARCHIVED("archived", "已归档");
 
     private final String code;
