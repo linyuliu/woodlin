@@ -18,13 +18,17 @@ export const staticRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/',
+    name: 'Layout',
+    component: () => import('@/layouts/DefaultLayout/index.vue'),
     redirect: settings.homePath,
-  },
-  {
-    path: '/dashboard/workplace',
-    name: 'Workplace',
-    component: () => import('@/views/dashboard/workplace/index.vue'),
-    meta: { title: '工作台' },
+    children: [
+      {
+        path: 'dashboard/workplace',
+        name: 'Workplace',
+        component: () => import('@/views/dashboard/workplace/index.vue'),
+        meta: { title: '工作台', icon: 'vicons:antd:DashboardOutlined', affix: true },
+      },
+    ],
   },
   {
     path: '/403',
@@ -45,6 +49,9 @@ export const staticRoutes: RouteRecordRaw[] = [
     meta: { title: '页面不存在', hidden: true },
   },
 ]
+
+/** 根布局路由的 name，guard 注入动态路由时作为父节点 */
+export const LAYOUT_ROUTE_NAME = 'Layout'
 
 let router: Router | null = null
 

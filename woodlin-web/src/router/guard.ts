@@ -11,6 +11,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { useRouteStore } from '@/stores/modules/route'
 import { usePermissionStore } from '@/stores/modules/permission'
 import { getUserRoutes } from '@/api/auth'
+import { LAYOUT_ROUTE_NAME } from '@/router'
 
 NProgress.configure({ showSpinner: false })
 
@@ -47,7 +48,7 @@ export function setupGuard(router: Router): void {
         permStore.setRoles(userStore.roles)
         const items = await getUserRoutes().catch(() => [])
         const records = routeStore.generateRoutes(items)
-        records.forEach((r) => router.addRoute(r))
+        records.forEach((r) => router.addRoute(LAYOUT_ROUTE_NAME, r))
         next({ ...to, replace: true })
       } catch (e) {
         console.error('[guard] init routes failed', e)

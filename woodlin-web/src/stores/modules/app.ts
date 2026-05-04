@@ -7,9 +7,12 @@
 import { defineStore } from 'pinia'
 import { settings } from '@/config/settings'
 
+export type AppLocale = 'zh-CN' | 'en-US'
+export type AppTheme = 'light' | 'dark'
+
 interface AppState {
-  theme: 'light' | 'dark'
-  locale: 'zh-CN' | 'en-US'
+  theme: AppTheme
+  locale: AppLocale
   collapsed: boolean
 }
 
@@ -20,20 +23,31 @@ export const useAppStore = defineStore('app', {
     collapsed: false,
   }),
   getters: {
+    /** 是否处于深色模式 */
     isDark: (state) => state.theme === 'dark',
+    /** 侧边栏是否折叠（语义别名） */
+    sidebarCollapsed: (state) => state.collapsed,
   },
   actions: {
     /** 切换深色/浅色主题 */
     toggleTheme(): void {
       this.theme = this.theme === 'dark' ? 'light' : 'dark'
     },
+    /** 切换深色/浅色（语义别名） */
+    toggleDark(): void {
+      this.toggleTheme()
+    },
     /** 设置语言 */
-    setLocale(locale: 'zh-CN' | 'en-US'): void {
+    setLocale(locale: AppLocale): void {
       this.locale = locale
     },
     /** 切换侧边栏折叠 */
     toggleCollapsed(): void {
       this.collapsed = !this.collapsed
+    },
+    /** 切换侧边栏折叠（语义别名） */
+    toggleSidebar(): void {
+      this.toggleCollapsed()
     },
   },
   persist: true,
