@@ -11,7 +11,7 @@ const router = useRouter()
 </script>
 
 <template>
-  <NResult status="403" title="403" description="抱歉，您无权访问该页面">
+  <NResult status="403" title="无权限" description="您没有权限访问此页面" style="margin-top: 10vh">
     <template #footer>
       <NButton @click="router.push('/')">返回首页</NButton>
     </template>

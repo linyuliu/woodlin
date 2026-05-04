@@ -47,3 +47,8 @@ export function updateNotice(id: number, data: SysNotice): Promise<void> {
 export function deleteNotice(id: number): Promise<void> {
   return del(`/system/notice/${id}`)
 }
+
+/** 标记通知为已读 */
+export function readNotice(id: number): Promise<void> {
+  return put(`/system/notice/${id}/read`)
+}

@@ -11,7 +11,7 @@ const router = useRouter()
 </script>
 
 <template>
-  <NResult status="500" title="500" description="服务器异常，请稍后重试">
+  <NResult status="500" title="服务器错误" description="服务器发生了错误，请稍后再试" style="margin-top: 10vh">
     <template #footer>
       <NButton @click="router.push('/')">返回首页</NButton>
     </template>
