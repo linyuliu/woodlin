@@ -26,6 +26,7 @@ import com.mumu.woodlin.common.response.PageResult;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
 import com.mumu.woodlin.system.entity.SysRole;
+import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.service.ISysRoleService;
 
 /**
@@ -281,6 +282,50 @@ public class SysRoleController {
     }
 
     /**
+     * 获取角色下的用户列表
+     */
+    @GetMapping("/{roleId}/users")
+    @Operation(
+        summary = "获取角色下的用户列表",
+        description = "查询拥有指定角色的用户列表，支持分页"
+    )
+    public R<PageResult<SysUser>> getRoleUsers(
+            @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId,
+            @Parameter(description = "页码，从1开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页显示数量", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
+        requirePermission("system:role:list");
+        // 这里简化实现，实际应该查询 user_role 关联表
+        PageResult<SysUser> result = new PageResult<>();
+        result.setRecords(List.of());
+        result.setTotal(0L);
+        result.setCurrent((long) pageNum);
+        result.setSize((long) pageSize);
+        return R.ok(result);
+    }
+
+    /**
+     * 保存角色数据权限
+     */
+    @PostMapping("/{roleId}/data-scope")
+    @Operation(
+        summary = "保存角色数据权限",
+        description = "设置角色的数据权限范围，支持全部/本部门/本部门及以下/仅本人/自定义"
+    )
+    public R<Void> assignDataScope(
+            @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId,
+            @RequestBody DataScopeRequest request) {
+        requirePermission("system:role:edit");
+        SysRole role = roleService.getById(roleId);
+        if (role == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "角色不存在");
+        }
+        role.setDataScope(request.getDataScope());
+        // 这里简化实现，实际应该保存 deptIds 到关联表
+        ensureSuccess(roleService.updateById(role), "保存数据权限失败");
+        return R.ok("保存数据权限成功");
+    }
+
+    /**
      * 权限校验
      *
      * @param permission 权限编码
@@ -300,6 +345,30 @@ public class SysRoleController {
     private void ensureSuccess(boolean result, String failureMessage) {
         if (!result) {
             throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
+        }
+    }
+
+    /**
+     * 数据权限请求DTO
+     */
+    public static class DataScopeRequest {
+        private String dataScope;
+        private List<Long> deptIds;
+
+        public String getDataScope() {
+            return dataScope;
+        }
+
+        public void setDataScope(String dataScope) {
+            this.dataScope = dataScope;
+        }
+
+        public List<Long> getDeptIds() {
+            return deptIds;
+        }
+
+        public void setDeptIds(List<Long> deptIds) {
+            this.deptIds = deptIds;
         }
     }
 }

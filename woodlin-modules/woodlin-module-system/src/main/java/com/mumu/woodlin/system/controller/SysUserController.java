@@ -207,6 +207,27 @@ public class SysUserController {
     }
 
     /**
+     * 分配角色给用户
+     */
+    @PutMapping("/{userId}/roles")
+    @Operation(
+        summary = "分配角色给用户",
+        description = "为指定用户分配角色列表，会覆盖原有角色"
+    )
+    public R<Void> assignRoles(
+            @Parameter(description = "用户ID", required = true, example = "1") @PathVariable Long userId,
+            @RequestBody AssignRolesRequest request) {
+        requirePermission("system:user:edit");
+        SysUser user = userBusinessService.getUserById(userId);
+        if (user == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "用户不存在");
+        }
+        user.setRoleIds(request.getRoleIds());
+        ensureSuccess(userBusinessService.updateUser(user), "分配角色失败");
+        return R.ok("分配角色成功");
+    }
+
+    /**
      * 权限校验
      *
      * @param permission 权限编码
@@ -226,6 +247,21 @@ public class SysUserController {
     private void ensureSuccess(boolean result, String failureMessage) {
         if (!result) {
             throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
+        }
+    }
+
+    /**
+     * 分配角色请求DTO
+     */
+    public static class AssignRolesRequest {
+        private List<Long> roleIds;
+
+        public List<Long> getRoleIds() {
+            return roleIds;
+        }
+
+        public void setRoleIds(List<Long> roleIds) {
+            this.roleIds = roleIds;
         }
     }
 }
