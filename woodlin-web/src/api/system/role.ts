@@ -29,7 +29,7 @@ export interface RoleQuery {
 
 /** 分页查询角色 */
 export function pageRoles(params: RoleQuery): Promise<PageResult<SysRole>> {
-  return get('/system/role', params as Record<string, unknown>)
+  return get('/system/role/list', params as Record<string, unknown>)
 }
 
 /** 获取角色详情 */
@@ -42,22 +42,22 @@ export function createRole(data: SysRole): Promise<void> {
   return post('/system/role', data)
 }
 
-/** 更新角色 */
-export function updateRole(id: number, data: SysRole): Promise<void> {
-  return put(`/system/role/${id}`, data)
+/** 更新角色（后端从 body 读取主键） */
+export function updateRole(_id: number, data: SysRole): Promise<void> {
+  return put('/system/role', data)
 }
 
-/** 删除角色 */
+/** 删除角色（支持单个或批量，逗号拼接） */
 export function deleteRole(id: number | number[]): Promise<void> {
   return del(`/system/role/${Array.isArray(id) ? id.join(',') : id}`)
 }
 
 /** 获取角色已分配的菜单/权限 ID 列表 */
 export function getRoleMenus(id: number): Promise<number[]> {
-  return get(`/system/role/${id}/menus`)
+  return get(`/system/role/menu/${id}`)
 }
 
 /** 保存角色菜单/权限分配 */
 export function assignRoleMenus(id: number, permissionIds: number[]): Promise<void> {
-  return put(`/system/role/${id}/menus`, { permissionIds })
+  return put(`/system/role/menu/${id}`, { permissionIds })
 }

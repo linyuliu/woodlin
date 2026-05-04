@@ -48,22 +48,22 @@ export interface DictDataQuery {
 
 /** 分页查询字典类型 */
 export function pageDictTypes(params: DictTypeQuery): Promise<PageResult<SysDictType>> {
-  return get('/system/dict', params as Record<string, unknown>)
+  return get('/system/dict/types', params as Record<string, unknown>)
 }
 
 /** 新增字典类型 */
 export function createDictType(data: SysDictType): Promise<void> {
-  return post('/system/dict', data)
+  return post('/system/dict/types', data)
 }
 
 /** 更新字典类型 */
 export function updateDictType(id: number, data: SysDictType): Promise<void> {
-  return put(`/system/dict/${id}`, data)
+  return put(`/system/dict/types/${id}`, data)
 }
 
 /** 删除字典类型 */
 export function deleteDictType(id: number): Promise<void> {
-  return del(`/system/dict/${id}`)
+  return del(`/system/dict/types/${id}`)
 }
 
 /** 分页查询字典项 */

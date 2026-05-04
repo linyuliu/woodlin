@@ -38,7 +38,7 @@ export interface UserQuery {
 
 /** 分页查询用户 */
 export function pageUsers(params: UserQuery): Promise<PageResult<SysUser>> {
-  return get('/system/user', params as Record<string, unknown>)
+  return get('/system/user/list', params as Record<string, unknown>)
 }
 
 /** 获取用户详情 */
@@ -51,24 +51,24 @@ export function createUser(data: SysUser): Promise<void> {
   return post('/system/user', data)
 }
 
-/** 更新用户 */
-export function updateUser(id: number, data: SysUser): Promise<void> {
-  return put(`/system/user/${id}`, data)
+/** 更新用户（后端从 body 读取主键） */
+export function updateUser(_id: number, data: SysUser): Promise<void> {
+  return put('/system/user', data)
 }
 
-/** 删除用户 */
+/** 删除用户（支持单个或批量，逗号拼接） */
 export function deleteUser(id: number | number[]): Promise<void> {
   return del(`/system/user/${Array.isArray(id) ? id.join(',') : id}`)
 }
 
 /** 修改用户状态 */
 export function changeUserStatus(id: number, status: string): Promise<void> {
-  return put(`/system/user/${id}/status`, { status })
+  return put('/system/user/changeStatus', { userId: id, status })
 }
 
 /** 重置用户密码 */
 export function resetUserPassword(id: number, password: string): Promise<void> {
-  return put(`/system/user/${id}/reset-password`, { password })
+  return put('/system/user/resetPwd', { userId: id, password })
 }
 
 /** 获取当前用户菜单路由 */

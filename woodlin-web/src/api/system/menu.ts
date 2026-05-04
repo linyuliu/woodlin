@@ -9,20 +9,20 @@ import type { RouteItem } from '@/types/global'
 
 /** 获取权限/菜单树 */
 export function getMenuTree(): Promise<RouteItem[]> {
-  return get('/system/permission/tree')
+  return get('/system/menu/tree')
 }
 
 /** 新增权限/菜单 */
 export function createMenu(data: Partial<RouteItem>): Promise<void> {
-  return post('/system/permission', data)
+  return post('/system/menu', data)
 }
 
-/** 更新权限/菜单 */
-export function updateMenu(id: number, data: Partial<RouteItem>): Promise<void> {
-  return put(`/system/permission/${id}`, data)
+/** 更新权限/菜单（后端从 body 读取主键） */
+export function updateMenu(_id: number, data: Partial<RouteItem>): Promise<void> {
+  return put('/system/menu', data)
 }
 
 /** 删除权限/菜单 */
 export function deleteMenu(id: number): Promise<void> {
-  return del(`/system/permission/${id}`)
+  return del(`/system/menu/${id}`)
 }

@@ -30,7 +30,7 @@ export interface ConfigQuery {
 
 /** 分页查询配置 */
 export function pageConfigs(params: ConfigQuery): Promise<PageResult<SysConfig>> {
-  return get('/system/config', params as Record<string, unknown>)
+  return get('/system/config/list', params as Record<string, unknown>)
 }
 
 /** 新增配置 */
@@ -38,12 +38,12 @@ export function createConfig(data: SysConfig): Promise<void> {
   return post('/system/config', data)
 }
 
-/** 更新配置 */
-export function updateConfig(id: number, data: SysConfig): Promise<void> {
-  return put(`/system/config/${id}`, data)
+/** 更新配置（后端从 body 读取主键） */
+export function updateConfig(_id: number, data: SysConfig): Promise<void> {
+  return put('/system/config', data)
 }
 
-/** 删除配置 */
-export function deleteConfig(id: number): Promise<void> {
-  return del(`/system/config/${id}`)
+/** 删除配置（支持单个或批量，逗号拼接） */
+export function deleteConfig(id: number | number[]): Promise<void> {
+  return del(`/system/config/${Array.isArray(id) ? id.join(',') : id}`)
 }
