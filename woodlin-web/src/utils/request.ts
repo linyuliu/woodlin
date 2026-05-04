@@ -51,10 +51,13 @@ const service: AxiosInstance = axios.create({
 })
 
 service.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config: InternalAxaxiosRequestConfig) => {
     const token = getToken()
     if (token) {
+      // 主要使用 Authorization Bearer（Sa-Token 已配置读取此头）
       config.headers.set('Authorization', `Bearer ${token}`)
+      // 兼容性回退：同时设置 satoken 头（防止配置未生效）
+      config.headers.set('satoken', token)
     }
     const tenantId = getTenantId()
     if (tenantId) {
