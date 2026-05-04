@@ -122,6 +122,27 @@ public class SysPermission extends BaseEntity {
     private String visible;
     
     /**
+     * 是否在标签页显示（1-显示，0-隐藏）
+     */
+    @TableField("show_in_tabs")
+    @Schema(description = "是否在标签页显示")
+    private String showInTabs;
+
+    /**
+     * 高亮菜单路径（用于面包屑等场景，例如 /system/user）
+     */
+    @TableField("active_menu")
+    @Schema(description = "高亮菜单路径")
+    private String activeMenu;
+
+    /**
+     * 重定向路径
+     */
+    @TableField("redirect")
+    @Schema(description = "重定向路径")
+    private String redirect;
+
+    /**
      * 备注
      */
     @TableField("remark")

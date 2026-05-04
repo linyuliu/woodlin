@@ -227,9 +227,8 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
                     .distinct()
                     .toList();
 
-                // 构建路由树
+                // 构建路由树（包含菜单/目录/按钮全部节点，按钮作为叶子挂到菜单下）
                 List<SysPermission> menuPerms = allPermissions.stream()
-                    .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
                     .filter(p -> "1".equals(p.getStatus()))
                     .sorted((p1, p2) -> {
                         int order1 = p1.getSortOrder() != null ? p1.getSortOrder() : 0;
@@ -272,7 +271,6 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
         }
 
         List<SysPermission> menuPermissions = permissions.stream()
-            .filter(p -> "M".equals(p.getPermissionType()) || "C".equals(p.getPermissionType()))
             .filter(p -> "1".equals(p.getStatus()))
             .sorted((p1, p2) -> {
                 int order1 = p1.getSortOrder() != null ? p1.getSortOrder() : 0;
@@ -289,7 +287,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     }
 
     /**
-     * 将SysPermission转换为RouteVO
+     * 将SysPermission转换为RouteVO（扁平结构，与前端 RouteItem 契约对齐）
      *
      * @param permission 权限信息
      * @return 路由VO
@@ -297,44 +295,50 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     private RouteVO convertToRouteVO(SysPermission permission) {
         RouteVO route = new RouteVO();
         route.setId(permission.getPermissionId());
-        route.setParentId(permission.getParentId());
-        route.setName(convertToRouteName(permission.getPermissionCode()));
+        route.setParentId(permission.getParentId() != null ? permission.getParentId() : 0L);
+        route.setName(convertToRouteName(permission.getPermissionName()));
+        route.setTitle(permission.getPermissionName());
         route.setPath(permission.getPath());
         route.setComponent(permission.getComponent());
+        route.setRedirect(permission.getRedirect());
+        route.setIcon(permission.getIcon());
+        route.setPermission(permission.getPermissionCode());
+        route.setIsHidden(!"1".equals(permission.getVisible()));
+        route.setIsCache("1".equals(permission.getIsCache()));
+        route.setIsFrame("1".equals(permission.getIsFrame()));
+        route.setShowInTabs(!"0".equals(permission.getShowInTabs()));
+        route.setActiveMenu(permission.getActiveMenu());
+        route.setSort(permission.getSortOrder());
 
-        // 设置meta信息
-        RouteVO.RouteMeta meta = new RouteVO.RouteMeta();
-        meta.setTitle(permission.getPermissionName());
-        meta.setIcon(permission.getIcon());
-        meta.setHideInMenu("0".equals(permission.getVisible()));
-        meta.setKeepAlive("1".equals(permission.getIsCache()));
-        meta.setIsFrame("1".equals(permission.getIsFrame()));
-        meta.setOrder(permission.getSortOrder());
-
-        // 设置权限标识
-        if (StrUtil.isNotBlank(permission.getPermissionCode())) {
-            meta.setPermissions(Collections.singletonList(permission.getPermissionCode()));
-        }
-
-        route.setMeta(meta);
+        // 节点类型映射：M-目录→1，C-菜单→2，F-按钮→3
+        route.setType(switch (StrUtil.emptyToDefault(permission.getPermissionType(), "C")) {
+            case "M" -> 1;
+            case "F" -> 3;
+            default -> 2;
+        });
 
         return route;
     }
 
     /**
-     * 将权限编码转换为路由名称
-     * 例如: system:user -> SystemUser
+     * 将权限名称转换为 PascalCase 路由名称
+     * 例如: 用户管理 → 用户管理（保留中文），或英文 system-user → SystemUser
      *
-     * @param permissionCode 权限编码
-     * @return 路由名称
+     * <p>若传入包含冒号分隔的权限码（如 system:user），则提取各段首字母大写拼接；
+     * 否则直接 toCamelCase 后首字母大写作为路由名。前端以此区分同名路由。</p>
+     *
+     * @param name 权限名称或权限编码
+     * @return 路由名称（PascalCase）
      */
-    private String convertToRouteName(String permissionCode) {
-        if (StrUtil.isBlank(permissionCode)) {
+    private String convertToRouteName(String name) {
+        if (StrUtil.isBlank(name)) {
             return null;
         }
-
-        // 移除冒号，将每个单词首字母大写
-        return StrUtil.toCamelCase(permissionCode.replace(":", "_"));
+        // 如果含冒号（权限码风格），则按冒号拆分转 PascalCase
+        if (name.contains(":")) {
+            return StrUtil.upperFirst(StrUtil.toCamelCase(name.replace(":", "_")));
+        }
+        return StrUtil.upperFirst(StrUtil.toCamelCase(name));
     }
 
     /**

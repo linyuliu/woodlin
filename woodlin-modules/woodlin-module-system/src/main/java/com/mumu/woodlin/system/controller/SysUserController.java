@@ -28,7 +28,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.mumu.woodlin.common.response.PageResult;
 import com.mumu.woodlin.common.response.R;
+import com.mumu.woodlin.system.dto.RouteVO;
 import com.mumu.woodlin.system.entity.SysUser;
+import com.mumu.woodlin.system.service.ISysPermissionService;
 import com.mumu.woodlin.system.service.ISysUserBusinessService;
 
 /**
@@ -47,6 +49,27 @@ import com.mumu.woodlin.system.service.ISysUserBusinessService;
 public class SysUserController {
     
     private final ISysUserBusinessService userBusinessService;
+    private final ISysPermissionService permissionService;
+
+    /**
+     * 获取当前用户的动态路由菜单树
+     *
+     * <p>登录后前端调用此接口获取菜单树，结构包含目录(type=1)、菜单(type=2)、按钮(type=3)
+     * 三类节点，按角色过滤后以树形返回。前端通过 import.meta.glob 将 component 字段
+     * 映射为实际 Vue 组件。</p>
+     *
+     * @return 当前用户的路由树
+     * @see ISysPermissionService#selectRoutesByUserId(Long)
+     */
+    @GetMapping("/route")
+    @Operation(summary = "获取当前用户动态路由", description = "返回当前登录用户的菜单路由树（含按钮权限），用于前端动态路由注册")
+    public R<List<RouteVO>> getRoutes() {
+        Long userId = SecurityUtil.getUserId();
+        if (userId == null) {
+            throw BusinessException.of(ResultCode.UNAUTHORIZED, "未登录");
+        }
+        return R.ok(permissionService.selectRoutesByUserId(userId));
+    }
     
     /**
      * 分页查询用户列表
