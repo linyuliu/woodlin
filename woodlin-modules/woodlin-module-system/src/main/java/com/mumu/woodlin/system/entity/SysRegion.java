@@ -1,5 +1,6 @@
 package com.mumu.woodlin.system.entity;
 
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
  * @since 2025-12-27
  */
 @Data
+@TableName("sys_region")
 public class SysRegion {
 
     /**
