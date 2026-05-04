@@ -1,5 +1,74 @@
 # 前端架构图 / Frontend Architecture
 
+> 本文档以 ASCII 图表形式描述 `woodlin-web` 前端的运行时架构。下方“当前实现速览”反映了重构后的最新结构，原始图表（保留为历史参考）紧随其后。
+
+## 当前实现速览（Refactored Frontend）
+
+### 技术栈
+
+Vue 3.5 · TypeScript · Naive UI 2.x · Pinia（含 `pinia-plugin-persistedstate`）· Vue Router 4 · vue-i18n 9 · VueUse · Axios · ECharts · dayjs · lodash-es；构建侧使用 Vite + `unplugin-vue-components` + `unplugin-auto-import`。
+
+### Pinia Stores（`src/stores/modules/`）
+
+| Store | 职责 |
+|-------|------|
+| `user` | 登录态、用户信息、权限码、角色码、`hasPermission()` / `hasRole()` |
+| `app`  | 全局 UI 状态：侧边栏折叠、主题、设备类型、加载态、语言切换 |
+| `route` | 由 `/auth/routes` 返回的菜单树生成动态路由（`generateRoutes()`），维护扁平菜单 |
+| `tabs` | 多页签：打开、关闭、关闭其他、关闭右侧、缓存控制 |
+| `permission` | 权限元数据缓存与按钮级权限判定辅助 |
+| `dict` | 字典数据缓存（按字典类型懒加载） |
+| `tenant` | 当前租户上下文与可切换租户列表 |
+
+### 路由守卫流程（`src/router/guard.ts`）
+
+```
+beforeEach
+  ├─ 白名单 (login / 403 / 404 / 500) → 直接放行
+  ├─ 无 token → redirect: /login?redirect=<path>
+  ├─ 有 token 但未加载用户信息：
+  │     GET /auth/info  → userStore.setUserInfo()
+  │     GET /auth/routes → routeStore.generateRoutes()
+  │     router.addRoute() 注入动态路由后 next({ ...to, replace: true })
+  ├─ 已就绪：校验 route.meta.permission（可选）
+  │     不通过 → redirect: /403
+  └─ 通过 → next()
+afterEach
+  ├─ tabsStore.addTab(route)
+  ├─ 设置 document.title
+  └─ NProgress.done()
+```
+
+### 布局系统（`src/layouts/DefaultLayout`）
+
+```
+DefaultLayout
+├── AppSidebar    （根据 routeStore.menuRoutes 渲染，支持折叠）
+├── AppHeader
+│   ├── AppLogo
+│   ├── AppBreadcrumb
+│   ├── LocaleSwitch  （vue-i18n 切换 zh-CN / en-US）
+│   ├── ThemeSwitch   （Naive UI 主题 + appStore 持久化）
+│   └── UserDropdown  （个人中心 / 退出登录）
+├── AppTabs       （多页签 + keep-alive）
+└── <router-view> （业务页面）
+```
+
+### 全局组件（`src/components/`，自动注册）
+
+| 组件 | 用途 |
+|------|------|
+| `WIcon` | 统一图标入口，约定 `icon="vicons:antd:UserOutlined"` 形式调用 `@vicons/antd` 等图标库 |
+| `WTable` | 基于 NDataTable 的二次封装，统一分页、多选、列配置 |
+| `WSearchForm` | 搜索表单容器，统一展开/收起、重置、提交 |
+| `WDictTag` | 根据字典 type + value 渲染带颜色的标签，自动从 `dictStore` 取数 |
+| `PermissionButton` | 内置 `system:xxx` 权限判定的按钮，等价于 `v-permission` 包装 |
+| `ParentView` | 多级菜单中转视图，等价于 `<router-view />`，用于无业务页面的父级路由 |
+
+---
+
+## 历史架构图（保留作为参考）
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            Woodlin Frontend Application                     │

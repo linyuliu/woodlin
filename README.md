@@ -38,6 +38,24 @@ Woodlin 是一个面向后台管理场景的多模块仓库，当前开发基线
 | Snail Job | 1.9.0 |
 | Redisson | 3.52.0 |
 
+### 前端技术栈
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3.5.x | 组合式 API + `<script setup>` |
+| TypeScript | 5.x | 全量 TS，开启 strict |
+| Naive UI | 2.x | 主 UI 组件库 |
+| Pinia | 2.x | 状态管理（含 `pinia-plugin-persistedstate`） |
+| Vue Router | 4.x | 路由 + 动态路由守卫 |
+| vue-i18n | 9.x | 国际化（zh-CN / en-US） |
+| VueUse | 11.x | 组合式工具函数 |
+| Axios | 1.x | HTTP 客户端 |
+| ECharts | 5.x | 图表 |
+| dayjs | 1.x | 日期时间 |
+| lodash-es | 4.x | 工具函数 |
+| unplugin-vue-components | - | 组件按需自动注册 |
+| unplugin-auto-import | - | API 自动导入 |
+
 ## 当前目录结构
 
 ```text
@@ -65,6 +83,22 @@ woodlin
 ├── woodlin-apps
 │   └── woodlin-admin
 ├── woodlin-web
+│   └── src
+│       ├── api          # 后端接口封装（按模块拆分）
+│       ├── assets       # 静态资源
+│       ├── components   # 全局通用组件（W 前缀 + PermissionButton/ParentView）
+│       ├── composables  # 组合式函数
+│       ├── config       # 全局配置（运行时常量、菜单元数据）
+│       ├── constants    # 静态常量、枚举
+│       ├── directives   # 自定义指令（v-permission、v-copy 等）
+│       ├── layouts      # 布局（DefaultLayout 含 Header/Sidebar/Tabs/Breadcrumb）
+│       ├── locales      # vue-i18n 语言包（zh-CN、en-US）
+│       ├── router       # 路由实例、动态路由、全局守卫
+│       ├── stores       # Pinia 模块（user/app/route/tabs/permission/dict/tenant）
+│       ├── styles       # 全局样式与主题变量
+│       ├── types        # 全局 TypeScript 类型
+│       ├── utils        # 通用工具（请求、加密、格式化等）
+│       └── views        # 业务页面（按模块组织）
 ├── sql
 ├── scripts
 └── documentation
@@ -219,9 +253,27 @@ java -jar woodlin-apps/woodlin-admin/target/woodlin-admin-1.0.0.jar
 
 ```bash
 cd woodlin-web
-npm install
+# 部分依赖（如 Naive UI、unplugin-* 系列）peer 范围较严，需要 --legacy-peer-deps
+npm install --legacy-peer-deps
 npm run dev
 ```
+
+前端页面覆盖以下模块：
+
+- `system/`：用户、角色、菜单、部门、字典、参数、通知、地区
+- `tenant/`：租户管理与套餐
+- `openapi/`：开放 API 总览、应用、凭证、策略
+- `datasource/`：数据源管理与连接监控
+- `sql2api/`：SQL → API 在线编排
+- `file/`：文件管理与存储配置
+- `schedule/`：任务调度与日志
+- `code/`：代码生成器
+- `monitor/`：在线用户、缓存、服务器监控
+- `assessment/`：在线考核
+- `etl/`：数据集成 / ETL
+- `user/profile`：个人中心
+- `about`：关于页
+- `dashboard` / `login` / `error`：首页、登录、403/404/500
 
 默认访问地址：
 
@@ -293,11 +345,15 @@ mvn test
 # 单模块测试示例
 mvn -pl woodlin-modules/woodlin-module-system test
 
-# 前端开发
-cd woodlin-web && npm install && npm run dev
+# 前端开发（首次安装使用 --legacy-peer-deps）
+cd woodlin-web && npm install --legacy-peer-deps && npm run dev
 
 # 前端构建
 cd woodlin-web && npm run build
+
+# 前端 Lint / 类型检查
+cd woodlin-web && npm run lint
+cd woodlin-web && npm run type-check
 
 # 代码质量脚本
 ./scripts/quality-check.sh
