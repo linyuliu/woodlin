@@ -42,10 +42,10 @@ public interface AuthenticationService {
     void resetPasswordByCode(ForgotPasswordRequest request);
 
     /**
-     * 获取当前用户信息
+     * 获取当前用户信息，返回统一登录响应结构
      *
-     * @return 用户信息
+     * @return 用户信息（token 为 null，其余字段与登录响应一致）
      */
-    Object getCurrentUserInfo();
+    LoginResponse getCurrentUserInfo();
 
 }

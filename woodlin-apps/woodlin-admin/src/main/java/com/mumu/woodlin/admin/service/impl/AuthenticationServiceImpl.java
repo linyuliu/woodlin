@@ -262,12 +262,29 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     /**
-     * 获取当前用户信息
+     * 获取当前用户信息，返回与登录响应一致的结构（token 为 null）
      *
-     * @return 用户信息
+     * @return 登录响应
      */
     @Override
-    public Object getCurrentUserInfo() {
-        return SecurityUtil.getLoginUser();
+    public com.mumu.woodlin.security.dto.LoginResponse getCurrentUserInfo() {
+        com.mumu.woodlin.security.model.LoginUser loginUser = SecurityUtil.getLoginUser();
+        if (loginUser == null) {
+            throw com.mumu.woodlin.common.exception.BusinessException.of(
+                    ResultCode.UNAUTHORIZED, "用户未登录");
+        }
+        com.mumu.woodlin.security.dto.LoginResponse.UserInfo userInfo =
+                new com.mumu.woodlin.security.dto.LoginResponse.UserInfo()
+                        .setId(loginUser.getUserId())
+                        .setUsername(loginUser.getUsername())
+                        .setNickname(loginUser.getNickname())
+                        .setAvatar(loginUser.getAvatar())
+                        .setDeptId(loginUser.getDeptId())
+                        .setDeptName(loginUser.getDeptName())
+                        .setTenantId(loginUser.getTenantId());
+        return new com.mumu.woodlin.security.dto.LoginResponse()
+                .setUser(userInfo)
+                .setRoles(loginUser.getRoleCodes())
+                .setPermissions(loginUser.getButtonPermissions());
     }
 }

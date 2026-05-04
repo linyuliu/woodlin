@@ -13,6 +13,7 @@ import com.mumu.woodlin.security.service.PasswordPolicyService;
 import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.entity.SysUser;
+import com.mumu.woodlin.system.service.ISysDeptService;
 import com.mumu.woodlin.system.service.ISysPermissionService;
 import com.mumu.woodlin.system.service.ISysRoleService;
 import com.mumu.woodlin.system.service.ISysUserService;
@@ -40,6 +41,7 @@ public class PasswordLoginStrategy implements LoginStrategy {
     private final PasswordPolicyService passwordPolicyService;
     private final ISysRoleService roleService;
     private final ISysPermissionService permissionService;
+    private final ISysDeptService deptService;
     
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
@@ -103,10 +105,21 @@ public class PasswordLoginStrategy implements LoginStrategy {
         StpUtil.getSession().set(SecurityUtil.USER_KEY, loginUser);
         
         // 构建响应
+        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo()
+            .setId(user.getUserId())
+            .setUsername(user.getUsername())
+            .setNickname(user.getNickname())
+            .setAvatar(user.getAvatar())
+            .setDeptId(user.getDeptId())
+            .setDeptName(loginUser.getDeptName())
+            .setTenantId(user.getTenantId());
+
         LoginResponse response = new LoginResponse()
             .setToken(StpUtil.getTokenValue())
-            .setTokenType("Bearer")
-            .setExpiresIn(StpUtil.getTokenTimeout())
+            .setExpire(StpUtil.getTokenTimeout())
+            .setUser(userInfo)
+            .setRoles(loginUser.getRoleCodes())
+            .setPermissions(loginUser.getButtonPermissions())
             .setRequirePasswordChange(validationResult.isRequireChange())
             .setPasswordExpiringSoon(validationResult.isExpiringSoon())
             .setDaysUntilPasswordExpiration(validationResult.getDaysUntilExpiration())
@@ -212,6 +225,8 @@ public class PasswordLoginStrategy implements LoginStrategy {
             .setStatus(user.getStatus())
             .setTenantId(user.getTenantId())
             .setDeptId(user.getDeptId())
+            .setDeptName(user.getDeptId() != null && deptService.selectDeptById(user.getDeptId()) != null
+                    ? deptService.selectDeptById(user.getDeptId()).getDeptName() : null)
             .setRoleIds(roleIds)
             .setRoleCodes(roleCodes)
             .setRoleNames(roleNames)

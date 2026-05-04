@@ -88,8 +88,9 @@ public class CaptchaLoginStrategy implements LoginStrategy {
         // 构建响应
         LoginResponse response = new LoginResponse()
             .setToken(StpUtil.getTokenValue())
-            .setTokenType("Bearer")
-            .setExpiresIn(StpUtil.getTokenTimeout())
+            .setExpire(StpUtil.getTokenTimeout())
+            .setRoles(loginUser.getRoleCodes())
+            .setPermissions(loginUser.getPermissions())
             .setMessage("验证码登录成功");
         
         log.info("验证码登录成功: username={}", user.getUsername());

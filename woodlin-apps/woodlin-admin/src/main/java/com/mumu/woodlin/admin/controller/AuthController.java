@@ -109,15 +109,15 @@ public class AuthController {
     }
 
     /**
-     * 获取当前登录用户信息
+     * 获取当前登录用户信息（与登录响应结构一致，token 为 null）
      */
-    @GetMapping("/userinfo")
+    @GetMapping("/info")
     @Operation(
         summary = "获取当前用户信息",
-        description = "获取当前登录用户的详细信息，包括用户基本信息、角色、权限等"
+        description = "获取当前登录用户的详细信息，包括用户基本信息、角色、权限等，结构与登录响应一致"
     )
-    public R<Object> getUserInfo() {
-        Object userInfo = authenticationService.getCurrentUserInfo();
+    public R<LoginResponse> getUserInfo() {
+        LoginResponse userInfo = authenticationService.getCurrentUserInfo();
         return R.ok(userInfo);
     }
 

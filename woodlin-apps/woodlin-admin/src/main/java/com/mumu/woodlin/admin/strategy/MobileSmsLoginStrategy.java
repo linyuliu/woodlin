@@ -88,8 +88,9 @@ public class MobileSmsLoginStrategy implements LoginStrategy {
         // 构建响应
         LoginResponse response = new LoginResponse()
             .setToken(StpUtil.getTokenValue())
-            .setTokenType("Bearer")
-            .setExpiresIn(StpUtil.getTokenTimeout())
+            .setExpire(StpUtil.getTokenTimeout())
+            .setRoles(loginUser.getRoleCodes())
+            .setPermissions(loginUser.getPermissions())
             .setMessage("手机号登录成功");
 
         log.info("手机号登录成功: mobile={}, username={}", loginRequest.getMobile(), user.getUsername());
