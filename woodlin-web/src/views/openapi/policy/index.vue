@@ -1,6 +1,6 @@
 <!--
   @file views/openapi/policy/index.vue
-  @description OpenAPI 策略管理：列表 + 搜索 + 新增/编辑抽屉
+  @description OpenAPI 策略管理：列表 + 关键字搜索 + 新增/编辑抽屉
   @author yulin
   @since 2026-01-01
 -->
@@ -16,11 +16,9 @@ import {
   NFormItem,
   NInput,
   NInputNumber,
-  NPagination,
   NPopconfirm,
   NSelect,
   NSpace,
-  NSwitch,
   NTag,
   useDialog,
   useMessage,
@@ -31,13 +29,10 @@ import {
 } from 'naive-ui'
 import {
   createPolicy,
-  deletePolicy,
-  pagePolicies,
-  pageApps,
+  deletePolicies,
+  listPolicies,
   updatePolicy,
-  type OpenApiApp,
   type OpenApiPolicy,
-  type PolicyQuery,
 } from '@/api/openapi'
 
 const message = useMessage()
@@ -45,15 +40,7 @@ const dialog = useDialog()
 
 const tableData: Ref<OpenApiPolicy[]> = ref([])
 const loading = ref(false)
-const total = ref(0)
-const query = reactive<PolicyQuery>({
-  page: 1,
-  size: 10,
-  policyName: '',
-  appId: undefined,
-})
-
-const appOptions = ref<SelectOption[]>([])
+const keyword = ref('')
 
 const drawerVisible = ref(false)
 const drawerTitle = ref('')
@@ -64,12 +51,16 @@ const formRef = ref<FormInst | null>(null)
 function defaultForm(): OpenApiPolicy {
   return {
     policyName: '',
-    appId: 0,
-    signRequired: true,
-    encryptEnabled: false,
-    rateLimitPerMin: 0,
-    ipWhitelist: '',
-    status: '0',
+    pathPattern: '',
+    httpMethod: 'GET',
+    securityMode: 'SIGN',
+    signatureAlgorithm: 'HMAC-SHA256',
+    encryptionAlgorithm: '',
+    timestampWindowSeconds: 300,
+    nonceEnabled: '1',
+    nonceTtlSeconds: 600,
+    tenantRequired: '0',
+    enabled: '1',
     remark: '',
   }
 }
@@ -78,42 +69,50 @@ const formData = reactive<OpenApiPolicy>(defaultForm())
 
 const rules: FormRules = {
   policyName: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
-  appId: [{ required: true, type: 'number', message: '请选择应用', trigger: 'change' }],
+  pathPattern: [{ required: true, message: '请输入路径模式', trigger: 'blur' }],
+  httpMethod: [{ required: true, message: '请选择 HTTP 方法', trigger: 'change' }],
 }
 
-const statusOptions: SelectOption[] = [
-  { label: '启用', value: '0' },
-  { label: '禁用', value: '1' },
+const httpMethodOptions: SelectOption[] = [
+  { label: 'GET', value: 'GET' },
+  { label: 'POST', value: 'POST' },
+  { label: 'PUT', value: 'PUT' },
+  { label: 'DELETE', value: 'DELETE' },
+  { label: 'PATCH', value: 'PATCH' },
+  { label: 'ALL', value: '*' },
 ]
 
-async function loadApps(): Promise<void> {
-  const res = await pageApps({ page: 1, size: 200 })
-  appOptions.value = (res?.records ?? []).map((a: OpenApiApp) => ({
-    label: a.appName,
-    value: a.id as number,
-  }))
-}
+const securityModeOptions: SelectOption[] = [
+  { label: '签名', value: 'SIGN' },
+  { label: '签名+加密', value: 'SIGN_ENCRYPT' },
+  { label: '不校验', value: 'NONE' },
+]
+
+const enabledOptions: SelectOption[] = [
+  { label: '启用', value: '1' },
+  { label: '禁用', value: '0' },
+]
+
+const boolFlagOptions: SelectOption[] = [
+  { label: '是', value: '1' },
+  { label: '否', value: '0' },
+]
 
 async function refresh(): Promise<void> {
   loading.value = true
   try {
-    const res = await pagePolicies(query)
-    tableData.value = res?.records ?? []
-    total.value = res?.total ?? 0
+    tableData.value = (await listPolicies(keyword.value || undefined)) ?? []
   } finally {
     loading.value = false
   }
 }
 
 function handleSearch(): void {
-  query.page = 1
   void refresh()
 }
 
 function handleReset(): void {
-  query.policyName = ''
-  query.appId = undefined
-  query.page = 1
+  keyword.value = ''
   void refresh()
 }
 
@@ -135,8 +134,8 @@ async function handleSubmit(): Promise<void> {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    if (isEdit.value && formData.id) {
-      await updatePolicy(formData.id, formData)
+    if (isEdit.value && formData.policyId) {
+      await updatePolicy(formData)
       message.success('更新成功')
     } else {
       await createPolicy(formData)
@@ -150,14 +149,16 @@ async function handleSubmit(): Promise<void> {
 }
 
 function handleDelete(row: OpenApiPolicy): void {
-  if (!row.id) {return}
+  if (!row.policyId) {
+    return
+  }
   dialog.warning({
     title: '提示',
     content: `确认删除策略 ${row.policyName} ？`,
     positiveText: '确定',
     negativeText: '取消',
     onPositiveClick: async () => {
-      await deletePolicy(row.id as number)
+      await deletePolicies(row.policyId as number)
       message.success('删除成功')
       void refresh()
     },
@@ -166,39 +167,19 @@ function handleDelete(row: OpenApiPolicy): void {
 
 const columns: DataTableColumns<OpenApiPolicy> = [
   { title: '策略名称', key: 'policyName', width: 180 },
-  { title: '关联应用', key: 'appName', width: 180 },
+  { title: '路径模式', key: 'pathPattern', width: 220 },
+  { title: 'HTTP方法', key: 'httpMethod', width: 110 },
+  { title: '安全模式', key: 'securityMode', width: 140 },
+  { title: '签名算法', key: 'signatureAlgorithm', width: 140 },
   {
-    title: '签名必需',
-    key: 'signRequired',
-    width: 110,
-    render: (row) =>
-      h(
-        NTag,
-        { size: 'small', type: row.signRequired ? 'success' : 'default' },
-        { default: () => (row.signRequired ? '是' : '否') },
-      ),
-  },
-  {
-    title: '加密',
-    key: 'encryptEnabled',
+    title: '启用',
+    key: 'enabled',
     width: 100,
     render: (row) =>
       h(
         NTag,
-        { size: 'small', type: row.encryptEnabled ? 'success' : 'default' },
-        { default: () => (row.encryptEnabled ? '已开启' : '关闭') },
-      ),
-  },
-  { title: '限流(/分钟)', key: 'rateLimitPerMin', width: 120 },
-  {
-    title: '状态',
-    key: 'status',
-    width: 100,
-    render: (row) =>
-      h(
-        NTag,
-        { size: 'small', type: row.status === '0' ? 'success' : 'error' },
-        { default: () => (row.status === '0' ? '启用' : '禁用') },
+        { size: 'small', type: row.enabled === '1' ? 'success' : 'default' },
+        { default: () => (row.enabled === '1' ? '启用' : '禁用') },
       ),
   },
   {
@@ -231,7 +212,6 @@ const columns: DataTableColumns<OpenApiPolicy> = [
 ]
 
 onMounted(() => {
-  void loadApps()
   void refresh()
 })
 </script>
@@ -239,19 +219,9 @@ onMounted(() => {
 <template>
   <div class="page-openapi-policy">
     <n-card size="small">
-      <n-form inline label-placement="left" :model="query">
-        <n-form-item label="策略名称">
-          <n-input v-model:value="query.policyName" placeholder="策略名称" clearable />
-        </n-form-item>
-        <n-form-item label="应用">
-          <n-select
-            v-model:value="query.appId"
-            :options="appOptions"
-            placeholder="选择应用"
-            clearable
-            filterable
-            style="min-width: 180px"
-          />
+      <n-form inline label-placement="left">
+        <n-form-item label="关键字">
+          <n-input v-model:value="keyword" placeholder="策略名称/路径" clearable />
         </n-form-item>
         <n-form-item>
           <n-space>
@@ -270,21 +240,10 @@ onMounted(() => {
         :columns="columns"
         :data="tableData"
         :loading="loading"
-        :row-key="(row: OpenApiPolicy) => row.id as number"
+        :row-key="(row: OpenApiPolicy) => row.policyId as number"
         :scroll-x="1200"
         striped
       />
-      <div class="pagination">
-        <n-pagination
-          v-model:page="query.page"
-          v-model:page-size="query.size"
-          :item-count="total"
-          show-size-picker
-          :page-sizes="[10, 20, 50, 100]"
-          @update:page="refresh"
-          @update:page-size="refresh"
-        />
-      </div>
     </n-card>
 
     <n-drawer v-model:show="drawerVisible" :width="560">
@@ -293,33 +252,43 @@ onMounted(() => {
           <n-form-item label="策略名称" path="policyName">
             <n-input v-model:value="formData.policyName" />
           </n-form-item>
-          <n-form-item label="关联应用" path="appId">
-            <n-select v-model:value="formData.appId" :options="appOptions" filterable />
+          <n-form-item label="路径模式" path="pathPattern">
+            <n-input v-model:value="formData.pathPattern" placeholder="例如 /open/**" />
           </n-form-item>
-          <n-form-item label="签名必需" path="signRequired">
-            <n-switch v-model:value="formData.signRequired" />
+          <n-form-item label="HTTP 方法" path="httpMethod">
+            <n-select v-model:value="formData.httpMethod" :options="httpMethodOptions" />
           </n-form-item>
-          <n-form-item label="启用加密" path="encryptEnabled">
-            <n-switch v-model:value="formData.encryptEnabled" />
+          <n-form-item label="安全模式" path="securityMode">
+            <n-select v-model:value="formData.securityMode" :options="securityModeOptions" />
           </n-form-item>
-          <n-form-item label="限流(/分钟)" path="rateLimitPerMin">
+          <n-form-item label="签名算法" path="signatureAlgorithm">
+            <n-input v-model:value="formData.signatureAlgorithm" />
+          </n-form-item>
+          <n-form-item label="加密算法" path="encryptionAlgorithm">
+            <n-input v-model:value="formData.encryptionAlgorithm" />
+          </n-form-item>
+          <n-form-item label="时间窗(秒)" path="timestampWindowSeconds">
             <n-input-number
-              v-model:value="formData.rateLimitPerMin"
-              :min="0"
-              placeholder="0 表示不限制"
+              v-model:value="formData.timestampWindowSeconds"
+              :min="1"
               style="width: 100%"
             />
           </n-form-item>
-          <n-form-item label="IP 白名单" path="ipWhitelist">
-            <n-input
-              v-model:value="formData.ipWhitelist"
-              type="textarea"
-              placeholder="多个 IP 用英文逗号分隔"
-              :autosize="{ minRows: 2 }"
+          <n-form-item label="启用 nonce" path="nonceEnabled">
+            <n-select v-model:value="formData.nonceEnabled" :options="boolFlagOptions" />
+          </n-form-item>
+          <n-form-item label="nonce TTL(秒)" path="nonceTtlSeconds">
+            <n-input-number
+              v-model:value="formData.nonceTtlSeconds"
+              :min="1"
+              style="width: 100%"
             />
           </n-form-item>
-          <n-form-item label="状态" path="status">
-            <n-select v-model:value="formData.status" :options="statusOptions" />
+          <n-form-item label="要求租户" path="tenantRequired">
+            <n-select v-model:value="formData.tenantRequired" :options="boolFlagOptions" />
+          </n-form-item>
+          <n-form-item label="状态" path="enabled">
+            <n-select v-model:value="formData.enabled" :options="enabledOptions" />
           </n-form-item>
           <n-form-item label="备注" path="remark">
             <n-input v-model:value="formData.remark" type="textarea" />
@@ -346,10 +315,5 @@ onMounted(() => {
 }
 .toolbar {
   margin-bottom: 12px;
-}
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
 }
 </style>
