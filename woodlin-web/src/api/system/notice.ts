@@ -2,31 +2,48 @@
  * @file api/system/notice.ts
  * @description 通知公告 API
  * @author yulin
- * @since 2026-05-04
+ * @since 2026-01-01
  */
 import { del, get, post, put } from '@/utils/request'
 import type { PageResult } from '@/types/global'
 
+/** 通知公告 */
 export interface SysNotice {
   id?: number
-  title: string
-  content: string
-  type?: string
+  noticeTitle: string
+  /** 1=通知 2=公告 */
+  noticeType: string
+  noticeContent?: string
+  status?: string
+  createBy?: string
+  createTime?: string
+}
+
+/** 通知公告查询参数 */
+export interface NoticeQuery {
+  page?: number
+  size?: number
+  noticeTitle?: string
+  noticeType?: string
   status?: string
 }
 
-export function pageNotices(params: Record<string, unknown>): Promise<PageResult<SysNotice>> {
-  return get('/system/notice/page', params)
+/** 分页查询通知公告 */
+export function pageNotices(params: NoticeQuery): Promise<PageResult<SysNotice>> {
+  return get('/system/notice', params as Record<string, unknown>)
 }
 
+/** 新增通知公告 */
 export function createNotice(data: SysNotice): Promise<void> {
   return post('/system/notice', data)
 }
 
-export function updateNotice(data: SysNotice): Promise<void> {
-  return put('/system/notice', data)
+/** 更新通知公告 */
+export function updateNotice(id: number, data: SysNotice): Promise<void> {
+  return put(`/system/notice/${id}`, data)
 }
 
+/** 删除通知公告 */
 export function deleteNotice(id: number): Promise<void> {
   return del(`/system/notice/${id}`)
 }

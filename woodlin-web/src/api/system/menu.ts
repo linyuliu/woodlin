@@ -1,28 +1,28 @@
 /**
  * @file api/system/menu.ts
- * @description 权限/菜单管理 API
+ * @description 菜单 / 权限管理 API
  * @author yulin
- * @since 2026-05-04
+ * @since 2026-01-01
  */
 import { del, get, post, put } from '@/utils/request'
 import type { RouteItem } from '@/types/global'
 
-export function listMenus(params?: Record<string, unknown>): Promise<RouteItem[]> {
-  return get('/system/permission', params)
+/** 获取权限/菜单树 */
+export function getMenuTree(): Promise<RouteItem[]> {
+  return get('/system/permission/tree')
 }
 
-export function getMenu(id: number): Promise<RouteItem> {
-  return get(`/system/permission/${id}`)
-}
-
+/** 新增权限/菜单 */
 export function createMenu(data: Partial<RouteItem>): Promise<void> {
   return post('/system/permission', data)
 }
 
-export function updateMenu(data: Partial<RouteItem>): Promise<void> {
-  return put('/system/permission', data)
+/** 更新权限/菜单 */
+export function updateMenu(id: number, data: Partial<RouteItem>): Promise<void> {
+  return put(`/system/permission/${id}`, data)
 }
 
+/** 删除权限/菜单 */
 export function deleteMenu(id: number): Promise<void> {
   return del(`/system/permission/${id}`)
 }
