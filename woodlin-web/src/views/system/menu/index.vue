@@ -1,353 +1,338 @@
 <!--
   @file views/system/menu/index.vue
-  @description 菜单 / 权限管理：树形展示 + 新增/编辑抽屉
+  @module 菜单管理
+  @description 生产级菜单管理：树形表格+新增编辑+图标选择+条件字段+展开收起
   @author yulin
-  @since 2026-01-01
+  @since 2026-05
 -->
 <script setup lang="ts">
-import { h, onMounted, reactive, ref, type Ref } from 'vue'
+import { h, onMounted, reactive, ref, computed, type Ref } from 'vue'
 import {
   NButton,
   NCard,
   NDataTable,
-  NDrawer,
-  NDrawerContent,
-  NForm,
-  NFormItem,
   NInput,
-  NInputNumber,
-  NPopconfirm,
-  NRadioButton,
-  NRadioGroup,
+  NSelect,
   NSpace,
+  NTag,
   NSwitch,
-  NTreeSelect,
-  useDialog,
+  NPopconfirm,
   useMessage,
   type DataTableColumns,
-  type FormInst,
-  type FormRules,
-  type TreeSelectOption,
+  type SelectOption,
 } from 'naive-ui'
+import { PlusOutlined, ReloadOutlined, DownOutlined, RightOutlined } from '@vicons/antd'
 import {
-  createMenu,
-  deleteMenu,
   getMenuTree,
+  deleteMenu,
+  createMenu,
   updateMenu,
 } from '@/api/system/menu'
 import type { RouteItem } from '@/types/global'
-
-interface MenuForm {
-  id?: number
-  parentId: number
-  type: 1 | 2 | 3
-  title: string
-  name: string
-  path: string
-  component: string
-  icon: string
-  sort: number
-  isHidden: boolean
-  isCache: boolean
-  isFrame: boolean
-  showInTabs: boolean
-  activeMenu: string
-  redirect: string
-  permission: string
-}
+import MenuFormDrawer from './components/MenuFormDrawer.vue'
+import WIcon from '@/components/WIcon/index.vue'
 
 const message = useMessage()
-const dialog = useDialog()
 
 const treeData: Ref<RouteItem[]> = ref([])
 const loading = ref(false)
+const expandAll = ref(true)
+const expandedRowKeys = ref<Array<string | number>>([])
 
-const drawerVisible = ref(false)
-const drawerTitle = ref('')
-const submitLoading = ref(false)
-const isEdit = ref(false)
-const formRef = ref<FormInst | null>(null)
+const searchKeyword = ref('')
+const searchStatus = ref<string>()
 
-function defaultForm(): MenuForm {
-  return {
-    id: undefined,
-    parentId: 0,
-    type: 2,
-    title: '',
-    name: '',
-    path: '',
-    component: '',
-    icon: '',
-    sort: 0,
-    isHidden: false,
-    isCache: false,
-    isFrame: false,
-    showInTabs: true,
-    activeMenu: '',
-    redirect: '',
-    permission: '',
+const menuFormDrawerRef = ref<InstanceType<typeof MenuFormDrawer> | null>(null)
+
+const statusOptions: SelectOption[] = [
+  { label: '全部', value: '' },
+  { label: '启用', value: '1' },
+  { label: '禁用', value: '0' },
+]
+
+const menuTypeMap: Record<number, { text: string; type: 'info' | 'success' | 'warning' }> = {
+  1: { text: '目录', type: 'info' },
+  2: { text: '菜单', type: 'success' },
+  3: { text: '按钮', type: 'warning' },
+}
+
+/** 过滤后的树数据 */
+const filteredTreeData = computed(() => {
+  let result = treeData.value
+  if (searchKeyword.value) {
+    result = filterTreeByKeyword(result, searchKeyword.value)
+  }
+  if (searchStatus.value) {
+    result = filterTreeByStatus(result, searchStatus.value)
+  }
+  return result
+})
+
+/** 按关键词过滤树 */
+function filterTreeByKeyword(list: RouteItem[], keyword: string): RouteItem[] {
+  const filtered: RouteItem[] = []
+  for (const item of list) {
+    const match = item.title?.toLowerCase().includes(keyword.toLowerCase()) ||
+                  item.name?.toLowerCase().includes(keyword.toLowerCase()) ||
+                  item.permission?.toLowerCase().includes(keyword.toLowerCase())
+    const children = item.children ? filterTreeByKeyword(item.children, keyword) : []
+    if (match || children.length > 0) {
+      filtered.push({ ...item, children: children.length > 0 ? children : item.children })
+    }
+  }
+  return filtered
+}
+
+/** 按状态过滤树 */
+function filterTreeByStatus(list: RouteItem[], status: string): RouteItem[] {
+  const filtered: RouteItem[] = []
+  for (const item of list) {
+    const match = String(item.isHidden) === (status === '0' ? 'true' : 'false')
+    const children = item.children ? filterTreeByStatus(item.children, status) : []
+    if (match || children.length > 0) {
+      filtered.push({ ...item, children: children.length > 0 ? children : item.children })
+    }
+  }
+  return filtered
+}
+
+const columns = computed<DataTableColumns<RouteItem>>(() => [
+  {
+    key: 'title',
+    title: '菜单名称',
+    width: 240,
+    fixed: 'left',
+    render: (row: RouteItem) =>
+      h(
+        NSpace,
+        { size: 4, align: 'center' },
+        {
+          default: () => [
+            row.icon ? h(WIcon, { icon: row.icon, size: 16 }) : null,
+            h('span', {}, row.title),
+          ],
+        }
+      ),
+  },
+  {
+    key: 'type',
+    title: '类型',
+    width: 80,
+    render: (row: RouteItem) => {
+      const config = menuTypeMap[row.type]
+      return h(NTag, { size: 'small', type: config.type }, { default: () => config.text })
+    },
+  },
+  {
+    key: 'permission',
+    title: '权限标识',
+    width: 180,
+  },
+  {
+    key: 'path',
+    title: '路由路径',
+    width: 180,
+  },
+  {
+    key: 'component',
+    title: '组件路径',
+    width: 200,
+  },
+  {
+    key: 'sort',
+    title: '排序',
+    width: 70,
+  },
+  {
+    key: 'isHidden',
+    title: '显示',
+    width: 80,
+    render: (row: RouteItem) =>
+      h(NTag, { size: 'small', type: row.isHidden ? 'default' : 'success' }, { default: () => (row.isHidden ? '隐藏' : '显示') }),
+  },
+  {
+    key: 'status',
+    title: '状态',
+    width: 80,
+    render: (row: RouteItem) => h(NTag, { size: 'small', type: row.isHidden ? 'default' : 'success' }, { default: () => (row.isHidden ? '禁用' : '启用') }),
+  },
+  {
+    key: 'action',
+    title: '操作',
+    width: 240,
+    fixed: 'right',
+    render: (row: RouteItem) =>
+      h(
+        NSpace,
+        { size: 4 },
+        {
+          default: () => [
+            row.type !== 3 ? h(NButton, { text: true, type: 'success', size: 'small', onClick: () => handleAddChild(row) }, { default: () => '新增子菜单' }) : null,
+            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' }),
+            h(
+              NPopconfirm,
+              { onPositiveClick: () => handleDelete(row.id) },
+              {
+                trigger: () => h(NButton, { text: true, type: 'error', size: 'small' }, { default: () => '删除' }),
+                default: () => '确认删除该菜单及其子菜单？',
+              }
+            ),
+          ],
+        }
+      ),
+  },
+])
+
+/** 搜索 */
+function handleSearch(): void {
+  // 搜索时自动展开所有
+  if (searchKeyword.value || searchStatus.value) {
+    expandAll.value = true
+    updateExpandedKeys()
   }
 }
 
-const formData = reactive<MenuForm>(defaultForm())
-
-const rules: FormRules = {
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择类型', type: 'number' as never }],
+/** 重置搜索 */
+function handleReset(): void {
+  searchKeyword.value = ''
+  searchStatus.value = undefined
+  expandAll.value = true
+  updateExpandedKeys()
 }
 
-/** 树 -> n-tree-select options（含根） */
-function mapToSelect(list: RouteItem[]): TreeSelectOption[] {
-  return list.map((m) => ({
-    key: m.id,
-    label: m.title,
-    children: m.children && m.children.length ? mapToSelect(m.children) : undefined,
-  }))
+/** 切换展开/收起 */
+function handleToggleExpand(): void {
+  expandAll.value = !expandAll.value
+  updateExpandedKeys()
 }
 
-const parentOptions = ref<TreeSelectOption[]>([])
+/** 更新展开的keys */
+function updateExpandedKeys(): void {
+  if (expandAll.value) {
+    expandedRowKeys.value = collectAllKeys(treeData.value)
+  } else {
+    expandedRowKeys.value = []
+  }
+}
 
-/** 拉取树 */
-async function refresh(): Promise<void> {
+/** 收集所有节点key */
+function collectAllKeys(list: RouteItem[]): number[] {
+  const keys: number[] = []
+  for (const item of list) {
+    keys.push(item.id)
+    if (item.children) {
+      keys.push(...collectAllKeys(item.children))
+    }
+  }
+  return keys
+}
+
+/** 加载数据 */
+async function loadData(): Promise<void> {
   loading.value = true
   try {
-    const res = await getMenuTree()
-    treeData.value = res ?? []
-    parentOptions.value = [
-      { key: 0, label: '根节点', children: mapToSelect(treeData.value) },
-    ]
+    const data = await getMenuTree()
+    treeData.value = data
+    updateExpandedKeys()
+  } catch (error: any) {
+    message.error(error?.message || '加载数据失败')
   } finally {
     loading.value = false
   }
 }
 
-/** 打开新增 */
-function openAdd(parent?: RouteItem): void {
-  isEdit.value = false
-  drawerTitle.value = '新增菜单'
-  Object.assign(formData, defaultForm(), { parentId: parent?.id ?? 0 })
-  drawerVisible.value = true
+/** 新增 */
+function handleAdd(): void {
+  menuFormDrawerRef.value?.open()
 }
 
-/** 打开编辑 */
-function openEdit(row: RouteItem): void {
-  isEdit.value = true
-  drawerTitle.value = '编辑菜单'
-  Object.assign(formData, defaultForm(), {
-    id: row.id,
-    parentId: row.parentId ?? 0,
-    type: row.type,
-    title: row.title,
-    name: row.name,
-    path: row.path,
-    component: row.component,
-    icon: row.icon ?? '',
-    sort: row.sort ?? 0,
-    isHidden: !!row.isHidden,
-    isCache: !!row.isCache,
-    isFrame: !!row.isFrame,
-    showInTabs: row.showInTabs ?? true,
-    activeMenu: row.activeMenu ?? '',
-    redirect: row.redirect ?? '',
-    permission: row.permission ?? '',
-  })
-  drawerVisible.value = true
+/** 新增子菜单 */
+function handleAddChild(parent: RouteItem): void {
+  menuFormDrawerRef.value?.open(undefined, parent.id)
 }
 
-/** 提交表单 */
-async function handleSubmit(): Promise<void> {
-  await formRef.value?.validate()
-  submitLoading.value = true
+/** 编辑 */
+function handleEdit(row: RouteItem): void {
+  menuFormDrawerRef.value?.open(row)
+}
+
+/** 删除 */
+async function handleDelete(id: number): Promise<void> {
   try {
-    const payload: Partial<RouteItem> = {
-      parentId: formData.parentId,
-      type: formData.type,
-      title: formData.title,
-      name: formData.name,
-      path: formData.path,
-      component: formData.component,
-      icon: formData.icon,
-      sort: formData.sort,
-      isHidden: formData.isHidden,
-      isCache: formData.isCache,
-      isFrame: formData.isFrame,
-      showInTabs: formData.showInTabs,
-      activeMenu: formData.activeMenu,
-      redirect: formData.redirect,
-      permission: formData.permission,
-    }
-    if (isEdit.value && formData.id) {
-      await updateMenu(formData.id, payload)
-      message.success('更新成功')
-    } else {
-      await createMenu(payload)
-      message.success('新增成功')
-    }
-    drawerVisible.value = false
-    void refresh()
-  } finally {
-    submitLoading.value = false
+    await deleteMenu(id)
+    message.success('删除成功')
+    loadData()
+  } catch (error: any) {
+    message.error(error?.message || '删除失败')
   }
 }
 
-/** 删除菜单 */
-function handleDelete(row: RouteItem): void {
-  dialog.warning({
-    title: '提示',
-    content: `确认删除菜单 ${row.title} 及其子项？`,
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      await deleteMenu(row.id)
-      message.success('删除成功')
-      void refresh()
-    },
-  })
+/** 表单成功回调 */
+function handleFormSuccess(): void {
+  loadData()
 }
 
-const columns: DataTableColumns<RouteItem> = [
-  { title: '名称', key: 'title', width: 220, tree: true },
-  {
-    title: '类型',
-    key: 'type',
-    width: 80,
-    render: (row) => (row.type === 1 ? '目录' : row.type === 2 ? '菜单' : '按钮'),
-  },
-  { title: '路由', key: 'path', width: 180 },
-  { title: '组件', key: 'component', width: 200 },
-  { title: '权限标识', key: 'permission', width: 180 },
-  { title: '排序', key: 'sort', width: 70 },
-  {
-    title: '操作',
-    key: 'action',
-    width: 220,
-    render: (row) =>
-      h(NSpace, { size: 'small' }, () => [
-        h(
-          NButton,
-          { size: 'small', text: true, type: 'primary', onClick: () => openAdd(row) },
-          { default: () => '新增子项' },
-        ),
-        h(
-          NButton,
-          { size: 'small', text: true, type: 'info', onClick: () => openEdit(row) },
-          { default: () => '编辑' },
-        ),
-        h(
-          NPopconfirm,
-          { onPositiveClick: () => handleDelete(row) },
-          {
-            default: () => '确认删除？',
-            trigger: () =>
-              h(NButton, { size: 'small', text: true, type: 'error' }, { default: () => '删除' }),
-          },
-        ),
-      ]),
-  },
-]
-
 onMounted(() => {
-  void refresh()
+  loadData()
 })
 </script>
 
 <template>
-  <div class="page-menu">
-    <n-card size="small">
-      <div class="toolbar">
-        <n-button v-permission="'system:menu:add'" type="primary" @click="openAdd()">
-          新增根菜单
-        </n-button>
-      </div>
-      <n-data-table
+  <NCard>
+    <NSpace vertical :size="16">
+      <!-- 搜索栏 -->
+      <NSpace :size="12" :wrap="false">
+        <NInput
+          v-model:value="searchKeyword"
+          placeholder="菜单名称"
+          clearable
+          style="width: 180px"
+        />
+        <NSelect
+          v-model:value="searchStatus"
+          :options="statusOptions"
+          placeholder="显示状态"
+          clearable
+          style="width: 120px"
+        />
+        <NButton type="primary" @click="handleSearch">查询</NButton>
+        <NButton @click="handleReset">重置</NButton>
+
+        <div style="margin-left: auto; display: flex; gap: 8px">
+          <NButton @click="handleToggleExpand">
+            <template #icon>
+              <WIcon :icon="expandAll ? 'vicons:antd:DownOutlined' : 'vicons:antd:RightOutlined'" />
+            </template>
+            {{ expandAll ? '收起全部' : '展开全部' }}
+          </NButton>
+          <NButton type="primary" @click="handleAdd">
+            <template #icon>
+              <WIcon icon="vicons:antd:PlusOutlined" />
+            </template>
+            新增
+          </NButton>
+          <NButton @click="loadData">
+            <template #icon>
+              <WIcon icon="vicons:antd:ReloadOutlined" />
+            </template>
+          </NButton>
+        </div>
+      </NSpace>
+
+      <!-- 树形表格 -->
+      <NDataTable
         :columns="columns"
-        :data="treeData"
+        :data="filteredTreeData"
         :loading="loading"
         :row-key="(row: RouteItem) => row.id"
-        default-expand-all
-        :scroll-x="1200"
-        striped
+        :expanded-row-keys="expandedRowKeys"
+        children-key="children"
+        :scroll-x="1500"
+        size="small"
+        @update:expanded-row-keys="(keys) => (expandedRowKeys = keys)"
       />
-    </n-card>
+    </NSpace>
+  </NCard>
 
-    <n-drawer v-model:show="drawerVisible" :width="600">
-      <n-drawer-content :title="drawerTitle" closable>
-        <n-form ref="formRef" :model="formData" :rules="rules" label-placement="top">
-          <n-form-item label="上级菜单" path="parentId">
-            <n-tree-select
-              v-model:value="formData.parentId"
-              :options="parentOptions"
-              default-expand-all
-            />
-          </n-form-item>
-          <n-form-item label="类型" path="type">
-            <n-radio-group v-model:value="formData.type">
-              <n-radio-button :value="1">目录</n-radio-button>
-              <n-radio-button :value="2">菜单</n-radio-button>
-              <n-radio-button :value="3">按钮</n-radio-button>
-            </n-radio-group>
-          </n-form-item>
-          <n-form-item label="标题" path="title">
-            <n-input v-model:value="formData.title" />
-          </n-form-item>
-          <n-form-item v-if="formData.type !== 3" label="路由 name" path="name">
-            <n-input v-model:value="formData.name" />
-          </n-form-item>
-          <n-form-item v-if="formData.type !== 3" label="路由 path" path="path">
-            <n-input v-model:value="formData.path" />
-          </n-form-item>
-          <n-form-item v-if="formData.type === 2" label="组件路径" path="component">
-            <n-input v-model:value="formData.component" placeholder="如 system/user/index" />
-          </n-form-item>
-          <n-form-item v-if="formData.type !== 3" label="图标" path="icon">
-            <n-input v-model:value="formData.icon" placeholder="如 vicons:antd:UserOutlined" />
-          </n-form-item>
-          <n-form-item label="排序" path="sort">
-            <n-input-number v-model:value="formData.sort" :min="0" />
-          </n-form-item>
-          <n-form-item v-if="formData.type !== 3" label="是否显示" path="isHidden">
-            <n-switch v-model:value="formData.isHidden" />
-            <span class="tip">开启即隐藏</span>
-          </n-form-item>
-          <n-form-item v-if="formData.type === 2" label="是否缓存" path="isCache">
-            <n-switch v-model:value="formData.isCache" />
-          </n-form-item>
-          <n-form-item v-if="formData.type !== 3" label="是否外链" path="isFrame">
-            <n-switch v-model:value="formData.isFrame" />
-          </n-form-item>
-          <n-form-item v-if="formData.type === 2" label="显示在 Tabs" path="showInTabs">
-            <n-switch v-model:value="formData.showInTabs" />
-          </n-form-item>
-          <n-form-item v-if="formData.type === 2" label="激活菜单" path="activeMenu">
-            <n-input v-model:value="formData.activeMenu" />
-          </n-form-item>
-          <n-form-item v-if="formData.type === 1" label="重定向" path="redirect">
-            <n-input v-model:value="formData.redirect" />
-          </n-form-item>
-          <n-form-item label="权限标识" path="permission">
-            <n-input v-model:value="formData.permission" placeholder="如 system:user:add" />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="drawerVisible = false">取消</n-button>
-            <n-button type="primary" :loading="submitLoading" @click="handleSubmit">
-              确定
-            </n-button>
-          </n-space>
-        </template>
-      </n-drawer-content>
-    </n-drawer>
-  </div>
+  <MenuFormDrawer ref="menuFormDrawerRef" @success="handleFormSuccess" />
 </template>
-
-<style scoped>
-.toolbar {
-  margin-bottom: 12px;
-}
-.tip {
-  margin-left: 8px;
-  color: #999;
-  font-size: 12px;
-}
-</style>
