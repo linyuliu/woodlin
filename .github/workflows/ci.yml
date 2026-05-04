@@ -11,23 +11,23 @@ permissions:
   contents: read
 
 jobs:
-  build-backend:
-    name: Build and Test Backend
+  backend-build:
+    name: Build Backend
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           cache: maven
 
@@ -38,13 +38,49 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Build with Maven
+      - name: Compile with Maven
         run: mvn clean install -DskipTests --batch-mode --update-snapshots
-        timeout-minutes: 10
+        timeout-minutes: 15
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: |
+            woodlin-admin/target/*.jar
+            !woodlin-admin/target/*-sources.jar
+            !woodlin-admin/target/*-javadoc.jar
+          retention-days: 7
+
+  backend-test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: backend-build
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
 
       - name: Run Tests
         run: mvn test --batch-mode
-        timeout-minutes: 10
+        timeout-minutes: 15
         continue-on-error: true
 
       - name: Upload Test Results
@@ -57,12 +93,76 @@ jobs:
             **/target/failsafe-reports/
           retention-days: 7
 
-      - name: Upload Build Artifacts
+  frontend-build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('woodlin-web/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm
+
+      - name: Install frontend dependencies
+        working-directory: woodlin-web
+        run: npm install --legacy-peer-deps
+
+      - name: Type check
+        working-directory: woodlin-web
+        run: npm run type-check
+
+      - name: Build frontend
+        working-directory: woodlin-web
+        run: npm run build
+
+      - name: Upload Frontend Build
         uses: actions/upload-artifact@v4
         with:
-          name: backend-build
-          path: |
-            woodlin-admin/target/*.jar
-            !woodlin-admin/target/*-sources.jar
-            !woodlin-admin/target/*-javadoc.jar
+          name: frontend-build
+          path: woodlin-web/dist
           retention-days: 7
+
+  frontend-lint:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('woodlin-web/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm
+
+      - name: Install frontend dependencies
+        working-directory: woodlin-web
+        run: npm install --legacy-peer-deps
+
+      - name: Lint
+        working-directory: woodlin-web
+        run: npm run lint
+        continue-on-error: true
