@@ -3,6 +3,7 @@ package com.mumu.woodlin.file.controller;
 import java.io.IOException;
 import java.io.InputStream;
 
+import cn.hutool.core.util.StrUtil;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -56,9 +57,19 @@ public class FileManageController {
     @Operation(summary = "分页查询文件", description = "分页查询文件列表")
     public R<Page<SysFile>> page(
         @Parameter(description = "当前页") @RequestParam(defaultValue = "1") Long current,
-        @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") Long size
+        @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") Long size,
+        @Parameter(description = "文件名") @RequestParam(required = false) String fileName,
+        @Parameter(description = "文件类型分类") @RequestParam(required = false) String fileType,
+        @Parameter(description = "存储配置ID") @RequestParam(required = false) Long storageId
     ) {
-        Page<SysFile> page = fileService.page(new Page<>(current, size));
+        LambdaQueryWrapper<SysFile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.and(StrUtil.isNotBlank(fileName), q -> q.like(SysFile::getFileName, fileName)
+            .or()
+            .like(SysFile::getOriginalName, fileName));
+        wrapper.eq(storageId != null, SysFile::getStorageConfigId, storageId);
+        applyFileTypeFilter(wrapper, fileType);
+        wrapper.orderByDesc(SysFile::getCreateTime);
+        Page<SysFile> page = fileService.page(new Page<>(current, size), wrapper);
         return R.ok(page);
     }
     
@@ -196,6 +207,29 @@ public class FileManageController {
     private void ensureSuccess(boolean result, String failureMessage) {
         if (!result) {
             throw BusinessException.of(ResultCode.BUSINESS_ERROR, failureMessage);
+        }
+    }
+
+    private void applyFileTypeFilter(LambdaQueryWrapper<SysFile> wrapper, String fileType) {
+        if (StrUtil.isBlank(fileType)) {
+            return;
+        }
+        switch (fileType.toLowerCase()) {
+            case "image" -> wrapper.and(q -> q.likeRight(SysFile::getDetectedMimeType, "image/")
+                .or()
+                .likeRight(SysFile::getMimeType, "image/"));
+            case "video" -> wrapper.and(q -> q.likeRight(SysFile::getDetectedMimeType, "video/")
+                .or()
+                .likeRight(SysFile::getMimeType, "video/"));
+            case "doc" -> wrapper.and(q -> q.likeRight(SysFile::getDetectedMimeType, "application/")
+                .or()
+                .likeRight(SysFile::getMimeType, "application/"));
+            case "other" -> wrapper.and(q -> q.notLikeRight(SysFile::getDetectedMimeType, "image/")
+                .notLikeRight(SysFile::getDetectedMimeType, "video/")
+                .notLikeRight(SysFile::getMimeType, "image/")
+                .notLikeRight(SysFile::getMimeType, "video/"));
+            default -> {
+            }
         }
     }
 }
