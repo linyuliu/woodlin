@@ -9,10 +9,21 @@ import { computed } from 'vue'
 import { NButton } from 'naive-ui'
 import WIcon from '@/components/WIcon/index.vue'
 import AppBreadcrumb from '../AppBreadcrumb/index.vue'
+import AppNotice from '../AppNotice/index.vue'
+import LayoutSwitch from '../LayoutSwitch/index.vue'
 import ThemeSwitch from '../ThemeSwitch/index.vue'
 import LocaleSwitch from '../LocaleSwitch/index.vue'
+import TenantSwitch from '../TenantSwitch/index.vue'
 import UserDropdown from '../UserDropdown/index.vue'
 import { useAppStore } from '@/stores/modules/app'
+
+const props = withDefaults(defineProps<{
+  showSidebarToggle?: boolean
+  showBreadcrumb?: boolean
+}>(), {
+  showSidebarToggle: true,
+  showBreadcrumb: true,
+})
 
 const appStore = useAppStore()
 
@@ -31,14 +42,18 @@ function toggleSidebar(): void {
 <template>
   <div class="app-header">
     <div class="app-header__left">
-      <NButton quaternary circle @click="toggleSidebar">
+      <NButton v-if="props.showSidebarToggle" quaternary circle @click="toggleSidebar">
         <template #icon>
           <WIcon :icon="collapseIcon" />
         </template>
       </NButton>
-      <AppBreadcrumb />
+      <AppBreadcrumb v-if="props.showBreadcrumb" />
+      <slot name="center" />
     </div>
     <div class="app-header__right">
+      <TenantSwitch />
+      <AppNotice />
+      <LayoutSwitch />
       <ThemeSwitch />
       <LocaleSwitch />
       <UserDropdown />
@@ -61,5 +76,14 @@ function toggleSidebar(): void {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.app-header__left {
+  min-width: 0;
+  flex: 1;
+}
+
+.app-header__right {
+  flex-shrink: 0;
 }
 </style>

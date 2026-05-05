@@ -9,7 +9,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import type { RouteItem } from '@/types/global'
 import { MenuType } from '@/constants'
 import { buildAsyncRoutes } from '@/router/asyncRoutes'
-import { getRouter, LAYOUT_ROUTE_NAME } from '@/router'
+import { getRouter } from '@/router'
 
 interface RouteState {
   /** 后端返回的原始菜单列表（含按钮，按需用于面包屑/权限查询） */
@@ -44,7 +44,9 @@ export const useRouteStore = defineStore('route', {
   },
   actions: {
     /**
-     * 根据后端返回的菜单生成 Vue Router 路由并挂载到 Layout 节点下
+     * 根据后端返回的菜单生成 Vue Router 路由并挂载为顶级动态路由。
+     * 后端顶级目录节点本身就使用 Layout 作为 component，
+     * 如果再追加到静态 Layout 子节点下会形成双层布局壳。
      * @param items 后端菜单
      */
     generateRoutes(items: RouteItem[]): RouteRecordRaw[] {
@@ -55,7 +57,7 @@ export const useRouteStore = defineStore('route', {
         if (r.name && router.hasRoute(r.name)) {
           router.removeRoute(r.name)
         }
-        router.addRoute(LAYOUT_ROUTE_NAME, r)
+        router.addRoute(r)
       })
       this.asyncRoutes = records
       this.isRoutesLoaded = true

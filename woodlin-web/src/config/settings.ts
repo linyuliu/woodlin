@@ -20,6 +20,8 @@ export interface AppSettings {
   enableTabs: boolean
   /** 默认首页路径 */
   homePath: string
+  /** 默认布局模式 */
+  defaultLayoutMode: 'default' | 'mix' | 'top'
 }
 
 /** 默认配置 */
@@ -31,4 +33,5 @@ export const settings: AppSettings = {
   tokenKey: 'woodlin_token',
   enableTabs: true,
   homePath: '/dashboard/workplace',
+  defaultLayoutMode: 'default',
 }

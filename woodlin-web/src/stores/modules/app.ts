@@ -9,11 +9,13 @@ import { settings } from '@/config/settings'
 
 export type AppLocale = 'zh-CN' | 'en-US'
 export type AppTheme = 'light' | 'dark'
+export type LayoutMode = 'default' | 'mix' | 'top'
 
 interface AppState {
   theme: AppTheme
   locale: AppLocale
   collapsed: boolean
+  layoutMode: LayoutMode
 }
 
 export const useAppStore = defineStore('app', {
@@ -21,12 +23,15 @@ export const useAppStore = defineStore('app', {
     theme: settings.defaultTheme,
     locale: settings.defaultLocale,
     collapsed: false,
+    layoutMode: settings.defaultLayoutMode,
   }),
   getters: {
     /** 是否处于深色模式 */
     isDark: (state) => state.theme === 'dark',
     /** 侧边栏是否折叠（语义别名） */
     sidebarCollapsed: (state) => state.collapsed,
+    /** 当前布局模式 */
+    currentLayoutMode: (state) => state.layoutMode,
   },
   actions: {
     /** 切换深色/浅色主题 */
@@ -40,6 +45,10 @@ export const useAppStore = defineStore('app', {
     /** 设置语言 */
     setLocale(locale: AppLocale): void {
       this.locale = locale
+    },
+    /** 设置布局模式 */
+    setLayoutMode(layoutMode: LayoutMode): void {
+      this.layoutMode = layoutMode
     },
     /** 切换侧边栏折叠 */
     toggleCollapsed(): void {

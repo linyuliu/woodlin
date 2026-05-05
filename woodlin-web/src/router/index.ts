@@ -19,7 +19,7 @@ export const staticRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Layout',
-    component: () => import('@/layouts/DefaultLayout/index.vue'),
+    component: () => import('@/layouts/index.vue'),
     redirect: settings.homePath,
     children: [
       {

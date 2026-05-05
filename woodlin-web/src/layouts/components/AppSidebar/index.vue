@@ -17,8 +17,10 @@ const props = withDefaults(
   defineProps<{
     /** 是否折叠 */
     collapsed?: boolean
+    /** 可选菜单项（mix 布局下传入当前顶级菜单的 children） */
+    items?: RouteItem[]
   }>(),
-  { collapsed: false },
+  { collapsed: false, items: undefined },
 )
 
 const router = useRouter()
@@ -40,8 +42,10 @@ function toMenuOption(item: RouteItem): MenuOption {
   return option
 }
 
+const currentMenuItems = computed<RouteItem[]>(() => props.items ?? routeStore.menuItems)
+
 const menuOptions = computed<MenuOption[]>(() =>
-  routeStore.menuItems.map(toMenuOption),
+  currentMenuItems.value.map(toMenuOption),
 )
 
 const activeKey = ref<string>(String(route.name ?? ''))
@@ -66,7 +70,7 @@ function findPath(items: RouteItem[], key: string): string | null {
 
 /** 菜单点击 */
 function handleSelect(key: string): void {
-  const path = findPath(routeStore.menuItems, key)
+  const path = findPath(currentMenuItems.value, key)
   if (path) {void router.push(path)}
 }
 </script>

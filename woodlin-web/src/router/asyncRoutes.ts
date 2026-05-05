@@ -19,7 +19,7 @@ type ViewLoader = () => Promise<Component>
 const modules = import.meta.glob('/src/views/**/*.vue') as Record<string, ViewLoader>
 
 /** Layout 与 ParentView 通过静态导入，确保始终可用 */
-const Layout: ViewLoader = () => import('@/layouts/DefaultLayout/index.vue')
+const Layout: ViewLoader = () => import('@/layouts/index.vue')
 const ParentView: ViewLoader = () => import('@/components/ParentView/index.vue')
 const NotFound: ViewLoader = () => import('@/views/error/404.vue')
 
