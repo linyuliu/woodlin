@@ -237,7 +237,7 @@ const columns: DataTableColumns<SysTenant> = [
           { default: () => '编辑' },
         ),
       ]
-      if (hasPermission('tenant:tenant:delete')) {
+      if (hasPermission('tenant:list:remove')) {
         items.push(
           h(
             NPopconfirm,
@@ -295,7 +295,7 @@ onMounted(() => {
 
     <n-card size="small">
       <div class="toolbar">
-        <n-button v-permission="'tenant:tenant:add'" type="primary" @click="openAdd">
+        <n-button v-permission="'tenant:list:add'" type="primary" @click="openAdd">
           新增
         </n-button>
       </div>

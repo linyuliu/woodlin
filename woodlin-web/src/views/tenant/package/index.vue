@@ -228,7 +228,7 @@ const columns: DataTableColumns<SysTenantPackage> = [
           { default: () => '编辑' },
         ),
       ]
-      if (hasPermission('tenant:package:delete')) {
+      if (hasPermission('tenant:package:remove')) {
         items.push(
           h(
             NPopconfirm,

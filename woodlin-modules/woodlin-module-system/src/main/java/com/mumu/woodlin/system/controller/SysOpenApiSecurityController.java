@@ -49,7 +49,7 @@ public class SysOpenApiSecurityController {
     @GetMapping("/overview")
     @Operation(summary = "查询开放API概览")
     public R<OpenApiOverviewDto> overview() {
-        requirePermission("system:openapi:settings");
+        requirePermission("openapi:overview:view");
         return R.ok(openApiSecurityService.getOverview());
     }
 
@@ -88,7 +88,7 @@ public class SysOpenApiSecurityController {
     @GetMapping("/apps")
     @Operation(summary = "查询开放应用列表")
     public R<List<SysOpenApp>> listApps(@RequestParam(required = false) String keyword) {
-        requirePermission("system:openapi:app:list");
+        requirePermission("openapi:app:list");
         return R.ok(openAppService.listApps(keyword));
     }
 
@@ -101,7 +101,7 @@ public class SysOpenApiSecurityController {
     @PostMapping("/apps")
     @Operation(summary = "新增开放应用")
     public R<Void> addApp(@Valid @RequestBody SysOpenApp app) {
-        requirePermission("system:openapi:app:add");
+        requirePermission("openapi:app:add");
         ensureSuccess(openAppService.createApp(app), "新增开放应用失败");
         return R.ok("新增成功");
     }
@@ -115,7 +115,7 @@ public class SysOpenApiSecurityController {
     @PutMapping("/apps")
     @Operation(summary = "更新开放应用")
     public R<Void> updateApp(@Valid @RequestBody SysOpenApp app) {
-        requirePermission("system:openapi:app:edit");
+        requirePermission("openapi:app:edit");
         ensureSuccess(openAppService.updateApp(app), "修改开放应用失败");
         return R.ok("修改成功");
     }
@@ -129,7 +129,7 @@ public class SysOpenApiSecurityController {
     @DeleteMapping("/apps/{appIds}")
     @Operation(summary = "删除开放应用")
     public R<Void> removeApps(@PathVariable String appIds) {
-        requirePermission("system:openapi:app:remove");
+        requirePermission("openapi:app:remove");
         Arrays.stream(appIds.split(","))
             .filter(item -> !item.isBlank())
             .map(Long::valueOf)
@@ -147,7 +147,7 @@ public class SysOpenApiSecurityController {
     @Operation(summary = "查询开放应用凭证")
     public R<List<OpenApiCredentialView>> listCredentials(
         @Parameter(description = "应用ID") @PathVariable Long appId) {
-        requirePermission("system:openapi:credential:list");
+        requirePermission("openapi:credential:list");
         return R.ok(credentialService.listByAppId(appId));
     }
 
@@ -163,7 +163,7 @@ public class SysOpenApiSecurityController {
     public R<OpenApiCredentialIssueResponse> issueCredential(
         @Parameter(description = "应用ID") @PathVariable Long appId,
         @Valid @RequestBody OpenApiCredentialRequest request) {
-        requirePermission("system:openapi:credential:create");
+        requirePermission("openapi:credential:issue");
         return R.ok(credentialService.issueCredential(appId, request));
     }
 
@@ -179,7 +179,7 @@ public class SysOpenApiSecurityController {
     public R<OpenApiCredentialIssueResponse> rotateCredential(
         @Parameter(description = "凭证ID") @PathVariable Long credentialId,
         @Valid @RequestBody OpenApiCredentialRequest request) {
-        requirePermission("system:openapi:credential:rotate");
+        requirePermission("openapi:credential:issue");
         return R.ok(credentialService.rotateCredential(credentialId, request));
     }
 
@@ -193,7 +193,7 @@ public class SysOpenApiSecurityController {
     @Operation(summary = "吊销开放应用凭证")
     public R<Void> revokeCredential(
         @Parameter(description = "凭证ID") @PathVariable Long credentialId) {
-        requirePermission("system:openapi:credential:revoke");
+        requirePermission("openapi:credential:revoke");
         ensureSuccess(credentialService.revokeCredential(credentialId), "吊销凭证失败");
         return R.ok("吊销成功");
     }
@@ -207,7 +207,7 @@ public class SysOpenApiSecurityController {
     @GetMapping("/policies")
     @Operation(summary = "查询开放API策略")
     public R<List<SysOpenApiPolicy>> listPolicies(@RequestParam(required = false) String keyword) {
-        requirePermission("system:openapi:policy:list");
+        requirePermission("openapi:policy:list");
         return R.ok(policyService.listPolicies(keyword));
     }
 
@@ -220,7 +220,7 @@ public class SysOpenApiSecurityController {
     @PostMapping("/policies")
     @Operation(summary = "新增开放API策略")
     public R<Void> addPolicy(@Valid @RequestBody SysOpenApiPolicy policy) {
-        requirePermission("system:openapi:policy:add");
+        requirePermission("openapi:policy:add");
         ensurePolicyUnique(policy.getPathPattern(), policy.getHttpMethod(), null);
         policy.setEnabled(policy.getEnabled() == null ? "1" : policy.getEnabled());
         ensureSuccess(policyService.save(policy), "新增策略失败");
@@ -237,7 +237,7 @@ public class SysOpenApiSecurityController {
     @PutMapping("/policies")
     @Operation(summary = "更新开放API策略")
     public R<Void> updatePolicy(@Valid @RequestBody SysOpenApiPolicy policy) {
-        requirePermission("system:openapi:policy:edit");
+        requirePermission("openapi:policy:edit");
         if (policy.getPolicyId() == null) {
             throw BusinessException.of(ResultCode.BAD_REQUEST, "策略ID不能为空");
         }
@@ -256,7 +256,7 @@ public class SysOpenApiSecurityController {
     @DeleteMapping("/policies/{policyIds}")
     @Operation(summary = "删除开放API策略")
     public R<Void> removePolicies(@PathVariable String policyIds) {
-        requirePermission("system:openapi:policy:remove");
+        requirePermission("openapi:policy:remove");
         Arrays.stream(policyIds.split(","))
             .filter(item -> !item.isBlank())
             .map(Long::valueOf)

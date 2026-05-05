@@ -61,7 +61,7 @@ public class SysTenantController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页显示数量", example = "20")
             @RequestParam(defaultValue = "20") Integer pageSize) {
-        requirePermission("tenant:list");
+        requirePermission("tenant:list:list");
         return R.ok(tenantService.selectTenantPage(tenant, pageNum, pageSize));
     }
 
@@ -75,7 +75,7 @@ public class SysTenantController {
     @Operation(summary = "查询租户详情", description = "根据租户ID查询租户详情")
     public R<SysTenant> getInfo(
             @Parameter(description = "租户ID", required = true) @PathVariable String tenantId) {
-        requirePermission("tenant:list");
+        requirePermission("tenant:list:list");
         SysTenant tenant = tenantService.getById(tenantId);
         if (tenant == null) {
             throw BusinessException.of(ResultCode.BAD_REQUEST, "租户不存在");
@@ -92,7 +92,7 @@ public class SysTenantController {
     @PostMapping
     @Operation(summary = "新增租户", description = "新增租户基础信息")
     public R<Void> add(@Valid @RequestBody SysTenant tenant) {
-        requirePermission("tenant:add");
+        requirePermission("tenant:list:add");
         ensureSuccess(tenantService.createTenant(tenant), "新增租户失败");
         return R.ok("新增租户成功");
     }
@@ -106,7 +106,7 @@ public class SysTenantController {
     @PutMapping
     @Operation(summary = "修改租户", description = "修改租户基础信息")
     public R<Void> edit(@Valid @RequestBody SysTenant tenant) {
-        requirePermission("tenant:edit");
+        requirePermission("tenant:list:edit");
         ensureSuccess(tenantService.updateTenant(tenant), "修改租户失败");
         return R.ok("修改租户成功");
     }
@@ -121,7 +121,7 @@ public class SysTenantController {
     @Operation(summary = "删除租户", description = "按租户ID批量删除租户")
     public R<Void> remove(
             @Parameter(description = "租户ID列表，逗号分隔", required = true) @PathVariable String tenantIds) {
-        requirePermission("tenant:remove");
+        requirePermission("tenant:list:remove");
         List<String> tenantIdList = Arrays.stream(StrUtil.splitToArray(tenantIds, ','))
             .map(String::trim)
             .filter(StrUtil::isNotBlank)
@@ -139,7 +139,7 @@ public class SysTenantController {
     @PutMapping("/changeStatus")
     @Operation(summary = "修改租户状态", description = "启用或禁用租户")
     public R<Void> changeStatus(@Valid @RequestBody TenantStatusRequest request) {
-        requirePermission("tenant:edit");
+        requirePermission("tenant:list:edit");
         ensureSuccess(tenantService.updateTenantStatus(request.getTenantId(), request.getStatus()), "修改租户状态失败");
         return R.ok("修改租户状态成功");
     }
