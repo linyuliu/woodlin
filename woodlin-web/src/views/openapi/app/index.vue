@@ -53,7 +53,7 @@ function defaultForm(): OpenApiApp {
     appCode: '',
     ownerName: '',
     ipWhitelist: '',
-    status: '0',
+    status: '1',
     remark: '',
   }
 }
@@ -66,8 +66,8 @@ const rules: FormRules = {
 }
 
 const statusOptions: SelectOption[] = [
-  { label: '启用', value: '0' },
-  { label: '禁用', value: '1' },
+  { label: '启用', value: '1' },
+  { label: '禁用', value: '0' },
 ]
 
 async function refresh(): Promise<void> {
@@ -149,8 +149,8 @@ const columns: DataTableColumns<OpenApiApp> = [
     render: (row) =>
       h(
         NTag,
-        { size: 'small', type: row.status === '0' ? 'success' : 'error' },
-        { default: () => (row.status === '0' ? '启用' : '禁用') },
+        { size: 'small', type: row.status === '1' ? 'success' : 'error' },
+        { default: () => (row.status === '1' ? '启用' : '禁用') },
       ),
   },
   { title: '创建时间', key: 'createTime', width: 170 },

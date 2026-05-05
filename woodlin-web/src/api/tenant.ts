@@ -63,19 +63,117 @@ export interface PackageQuery {
   status?: string
 }
 
+interface BackendTenant {
+  tenantId?: string
+  tenantName: string
+  tenantCode: string
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  expireTime?: string
+  userLimit?: number
+  packageId?: number
+  packageName?: string
+  status?: string
+  remark?: string
+  createTime?: string
+}
+
+interface BackendTenantPackage {
+  packageId?: number
+  packageName: string
+  menuIds?: string
+  status?: string
+  remark?: string
+  createTime?: string
+}
+
+function mapTenant(record: BackendTenant): SysTenant {
+  return {
+    tenantId: record.tenantId,
+    id: record.tenantId,
+    tenantName: record.tenantName,
+    tenantCode: record.tenantCode,
+    contactName: record.contactName,
+    contactPhone: record.contactPhone,
+    contactEmail: record.contactEmail,
+    expireTime: record.expireTime,
+    userCount: record.userLimit,
+    packageId: record.packageId,
+    packageName: record.packageName,
+    status: record.status,
+    remark: record.remark,
+    createTime: record.createTime,
+  }
+}
+
+function toBackendTenant(data: SysTenant): BackendTenant {
+  return {
+    tenantId: data.tenantId ?? (data.id ? String(data.id) : undefined),
+    tenantName: data.tenantName,
+    tenantCode: data.tenantCode,
+    contactName: data.contactName,
+    contactPhone: data.contactPhone,
+    contactEmail: data.contactEmail,
+    expireTime: data.expireTime,
+    userLimit: data.userCount,
+    packageId: data.packageId,
+    status: data.status,
+    remark: data.remark,
+  }
+}
+
+function mapPackage(record: BackendTenantPackage): SysTenantPackage {
+  const menuIds = record.menuIds
+    ? record.menuIds.split(',').map((item) => Number(item.trim())).filter((item) => !Number.isNaN(item))
+    : []
+  return {
+    packageId: record.packageId,
+    id: record.packageId,
+    packageName: record.packageName,
+    menuIds,
+    menuCount: menuIds.length,
+    status: record.status,
+    remark: record.remark,
+    createTime: record.createTime,
+  }
+}
+
+function toBackendPackage(data: SysTenantPackage): BackendTenantPackage {
+  return {
+    packageId: data.packageId ?? data.id,
+    packageName: data.packageName,
+    menuIds: (data.menuIds ?? []).join(','),
+    status: data.status,
+    remark: data.remark,
+  }
+}
+
 /** 分页查询租户 */
 export function getTenantPage(params: TenantQuery): Promise<PageResult<SysTenant>> {
-  return get('/system/tenant/list', params as Record<string, unknown>)
+  return get<PageResult<BackendTenant>>(
+    '/system/tenant/list',
+    {
+      pageNum: params.pageNum ?? params.page,
+      pageSize: params.pageSize ?? params.size,
+      tenantName: params.tenantName,
+      tenantCode: params.tenantCode,
+      status: params.status,
+    },
+  ).then((res) => ({
+    ...res,
+    records: (res?.records ?? []).map(mapTenant),
+  }))
 }
 
 /** 新增租户 */
 export function createTenant(data: SysTenant): Promise<void> {
-  return post('/system/tenant', data)
+  return post('/system/tenant', toBackendTenant(data))
 }
 
 /** 更新租户（后端从 body 读取主键） */
 export function updateTenant(_id: number | string, data: SysTenant): Promise<void> {
-  return put('/system/tenant', data)
+  return put('/system/tenant', toBackendTenant(data))
 }
 
 /** 删除租户（支持单个或批量，逗号拼接） */
@@ -91,22 +189,33 @@ export function updateTenantStatus(id: number | string, status: string): Promise
 
 /** 分页查询租户套餐 */
 export function getPackagePage(params: PackageQuery): Promise<PageResult<SysTenantPackage>> {
-  return get('/system/tenant/package', params as Record<string, unknown>)
+  return get<PageResult<BackendTenantPackage>>(
+    '/system/tenant/package',
+    {
+      pageNum: params.pageNum ?? params.page,
+      pageSize: params.pageSize ?? params.size,
+      packageName: params.packageName,
+      status: params.status,
+    },
+  ).then((res) => ({
+    ...res,
+    records: (res?.records ?? []).map(mapPackage),
+  }))
 }
 
 /** 获取所有启用套餐（下拉用） */
 export function getAllPackages(): Promise<SysTenantPackage[]> {
-  return get('/system/tenant/package/all')
+  return get<BackendTenantPackage[]>('/system/tenant/package/all').then((res) => res.map(mapPackage))
 }
 
 /** 新增租户套餐 */
 export function createPackage(data: SysTenantPackage): Promise<void> {
-  return post('/system/tenant/package', data)
+  return post('/system/tenant/package', toBackendPackage(data))
 }
 
 /** 更新租户套餐 */
 export function updatePackage(id: number, data: SysTenantPackage): Promise<void> {
-  return put(`/system/tenant/package/${id}`, data)
+  return put(`/system/tenant/package/${id}`, toBackendPackage(data))
 }
 
 /** 删除租户套餐（支持单个或批量） */
