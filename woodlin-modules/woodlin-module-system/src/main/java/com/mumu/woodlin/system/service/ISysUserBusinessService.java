@@ -36,6 +36,13 @@ public interface ISysUserBusinessService extends IService<SysUser> {
      * @return 用户信息
      */
     SysUser getUserById(Long userId);
+
+    /**
+     * 获取当前登录用户的个人资料
+     *
+     * @return 当前用户资料
+     */
+    SysUser getCurrentUserProfile();
     
     /**
      * 创建用户
@@ -52,6 +59,14 @@ public interface ISysUserBusinessService extends IService<SysUser> {
      * @return 是否成功
      */
     boolean updateUser(SysUser user);
+
+    /**
+     * 更新当前登录用户的个人资料
+     *
+     * @param user 用户资料
+     * @return 是否成功
+     */
+    boolean updateCurrentUserProfile(SysUser user);
     
     /**
      * 批量删除用户

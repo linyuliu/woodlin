@@ -228,6 +228,25 @@ public class SysUserController {
     }
 
     /**
+     * 获取当前登录用户个人资料
+     */
+    @GetMapping("/profile")
+    @Operation(summary = "获取个人资料", description = "获取当前登录用户的个人资料")
+    public R<SysUser> profile() {
+        return R.ok(userBusinessService.getCurrentUserProfile());
+    }
+
+    /**
+     * 更新当前登录用户个人资料
+     */
+    @PostMapping("/profile")
+    @Operation(summary = "更新个人资料", description = "更新当前登录用户的昵称、邮箱、手机号、头像等资料")
+    public R<Void> updateProfile(@RequestBody SysUser user) {
+        ensureSuccess(userBusinessService.updateCurrentUserProfile(user), "更新个人资料失败");
+        return R.ok("更新个人资料成功");
+    }
+
+    /**
      * 权限校验
      *
      * @param permission 权限编码

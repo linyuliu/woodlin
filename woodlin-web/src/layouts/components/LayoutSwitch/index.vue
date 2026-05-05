@@ -5,7 +5,7 @@
   @since 2026-05-05
 -->
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed } from 'vue'
 import { NButton, NDropdown, type DropdownOption } from 'naive-ui'
 import WIcon from '@/components/WIcon/index.vue'
 import { useAppStore, type LayoutMode } from '@/stores/modules/app'

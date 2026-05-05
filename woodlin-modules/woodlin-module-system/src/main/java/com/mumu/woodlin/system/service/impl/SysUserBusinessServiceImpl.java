@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.util.PageUtil;
+import com.mumu.woodlin.security.util.SecurityUtil;
 import com.mumu.woodlin.system.dto.SysUserExcelDto;
 import com.mumu.woodlin.system.entity.SysUser;
 import com.mumu.woodlin.system.mapper.SysUserMapper;
@@ -85,6 +86,22 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
         
         return user;
     }
+
+    /**
+     * 获取当前登录用户的个人资料
+     */
+    @Override
+    public SysUser getCurrentUserProfile() {
+        Long userId = SecurityUtil.getUserId();
+        if (ObjectUtil.isNull(userId)) {
+            throw BusinessException.of(ResultCode.UNAUTHORIZED, "用户未登录");
+        }
+
+        SysUser user = getUserById(userId);
+        user.setPassword(null);
+        user.setRoleIds(null);
+        return user;
+    }
     
     /**
      * 创建用户
@@ -138,6 +155,36 @@ public class SysUserBusinessServiceImpl extends ServiceImpl<SysUserMapper, SysUs
             log.info("已清除用户 {} 的权限缓存", user.getUserId());
         }
         
+        return result;
+    }
+
+    /**
+     * 更新当前登录用户的个人资料
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateCurrentUserProfile(SysUser user) {
+        Long userId = SecurityUtil.getUserId();
+        if (ObjectUtil.isNull(userId)) {
+            throw BusinessException.of(ResultCode.UNAUTHORIZED, "用户未登录");
+        }
+        if (ObjectUtil.isNull(user)) {
+            throw BusinessException.of(ResultCode.BAD_REQUEST, "用户信息不能为空");
+        }
+
+        SysUser current = getUserById(userId);
+        current.setNickname(user.getNickname());
+        current.setEmail(user.getEmail());
+        current.setMobile(user.getMobile());
+        current.setAvatar(user.getAvatar());
+        current.setGender(user.getGender());
+        current.setRemark(user.getRemark());
+
+        boolean result = userService.updateUser(current);
+        if (result && permissionCacheService != null) {
+            permissionCacheService.evictUserCache(userId);
+            log.info("用户 {} 更新个人资料成功，已清除缓存", userId);
+        }
         return result;
     }
     

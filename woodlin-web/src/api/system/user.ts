@@ -17,10 +17,12 @@ export interface SysUser {
   email?: string
   deptId?: number
   deptName?: string
-  gender?: string
+  gender?: number | string
   status?: string
   roleIds?: number[]
   lastLoginTime?: string
+  lastLoginIp?: string
+  avatar?: string
   createTime?: string
   remark?: string
 }
@@ -78,12 +80,12 @@ export function getUserRoute(): Promise<RouteItem[]> {
 
 /** 个人资料 */
 export interface UserProfile {
-  id?: number
+  userId?: number
   username?: string
   nickname?: string
   email?: string
-  phone?: string
-  sex?: string
+  mobile?: string
+  gender?: number | string
   avatar?: string
   remark?: string
   lastLoginTime?: string
@@ -98,11 +100,6 @@ export function getProfile(): Promise<UserProfile> {
 /** 更新个人资料 */
 export function updateProfile(data: UserProfile): Promise<void> {
   return post('/system/user/profile', data)
-}
-
-/** 修改个人密码 */
-export function updatePassword(data: { oldPassword: string; newPassword: string }): Promise<void> {
-  return post('/system/user/password', data)
 }
 
 /** 分配角色给用户 */

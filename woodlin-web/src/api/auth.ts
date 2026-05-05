@@ -14,6 +14,12 @@ export interface LoginParams {
   captchaKey?: string
 }
 
+export interface ChangePasswordParams {
+  oldPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
 /** 登录 */
 export function login(data: LoginParams): Promise<LoginResponse> {
   return post<LoginResponse>('/auth/login', data)
@@ -32,4 +38,9 @@ export function getAuthInfo(): Promise<{ user: UserInfo; roles: string[]; permis
 /** 获取当前用户菜单路由 */
 export function getUserRoutes(): Promise<RouteItem[]> {
   return get<RouteItem[]>('/auth/routes')
+}
+
+/** 修改当前登录用户密码 */
+export function changePassword(data: ChangePasswordParams): Promise<void> {
+  return post<void>('/auth/change-password', data)
 }

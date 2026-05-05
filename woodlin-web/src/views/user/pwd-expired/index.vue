@@ -1,6 +1,6 @@
 <!--
   @file views/user/pwd-expired/index.vue
-  @description 密码过期强制修改页（占位实现）
+  @description 密码过期强制修改页
   @author yulin
   @since 2026-01-01
 -->
@@ -17,9 +17,12 @@ import {
   NInput,
   useMessage,
 } from 'naive-ui'
+import { changePassword } from '@/api/auth'
+import { useUserStore } from '@/stores/modules/user'
 
 const router = useRouter()
 const message = useMessage()
+const userStore = useUserStore()
 
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
@@ -46,7 +49,6 @@ const rules: FormRules = {
   },
 }
 
-/** 提交修改密码（占位：当前仅做表单校验后跳转登录页） */
 async function handleSubmit(): Promise<void> {
   try {
     await formRef.value?.validate()
@@ -55,9 +57,14 @@ async function handleSubmit(): Promise<void> {
   }
   loading.value = true
   try {
-    // TODO: 调用 /auth/change-password 接口
+    await changePassword({
+      oldPassword: form.oldPassword,
+      newPassword: form.newPassword,
+      confirmPassword: form.confirm,
+    })
     message.success('密码修改成功，请重新登录')
-    void router.push('/login')
+    userStore.reset()
+    await router.replace('/login')
   } finally {
     loading.value = false
   }

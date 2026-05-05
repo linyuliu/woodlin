@@ -6,6 +6,7 @@
 -->
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   type FormInst,
   type FormRules,
@@ -26,14 +27,15 @@ import {
   type UploadFileInfo,
   useMessage,
 } from 'naive-ui'
+import { changePassword } from '@/api/auth'
 import {
   getProfile,
-  updatePassword,
   updateProfile,
   type UserProfile,
 } from '@/api/system/user'
 import { useUserStore } from '@/stores/modules/user'
 
+const router = useRouter()
 const message = useMessage()
 const userStore = useUserStore()
 
@@ -42,8 +44,8 @@ const activeTab = ref<'info' | 'password' | 'security'>('info')
 const profile = reactive<UserProfile>({
   nickname: '',
   email: '',
-  phone: '',
-  sex: '0',
+  mobile: '',
+  gender: 0,
   avatar: '',
   remark: '',
   lastLoginTime: '',
@@ -58,7 +60,7 @@ const infoRules: FormRules = {
     validator: (_r, v: string) =>
       !v || /^[\w.-]+@[\w-]+(\.[\w-]+)+$/.test(v) || new Error('邮箱格式不正确'),
   },
-  phone: {
+  mobile: {
     trigger: 'blur',
     validator: (_r, v: string) =>
       !v || /^1[3-9]\d{9}$/.test(v) || new Error('手机号格式不正确'),
@@ -105,8 +107,8 @@ async function handleUpdateInfo(): Promise<void> {
     await updateProfile({
       nickname: profile.nickname,
       email: profile.email,
-      phone: profile.phone,
-      sex: profile.sex,
+      mobile: profile.mobile,
+      gender: profile.gender,
       remark: profile.remark,
       avatar: profile.avatar,
     })
@@ -128,14 +130,14 @@ async function handleUpdatePassword(): Promise<void> {
   }
   pwdLoading.value = true
   try {
-    await updatePassword({
+    await changePassword({
       oldPassword: pwdForm.oldPassword,
       newPassword: pwdForm.newPassword,
+      confirmPassword: pwdForm.confirmPassword,
     })
-    message.success('密码修改成功')
-    pwdForm.oldPassword = ''
-    pwdForm.newPassword = ''
-    pwdForm.confirmPassword = ''
+    message.success('密码修改成功，请重新登录')
+    userStore.reset()
+    await router.replace('/login')
   } finally {
     pwdLoading.value = false
   }
@@ -181,14 +183,14 @@ onMounted(loadProfile)
               <NFormItem label="邮箱" path="email">
                 <NInput v-model:value="profile.email" placeholder="请输入邮箱" />
               </NFormItem>
-              <NFormItem label="手机号" path="phone">
-                <NInput v-model:value="profile.phone" placeholder="请输入手机号" />
+              <NFormItem label="手机号" path="mobile">
+                <NInput v-model:value="profile.mobile" placeholder="请输入手机号" />
               </NFormItem>
-              <NFormItem label="性别" path="sex">
-                <NRadioGroup v-model:value="profile.sex">
-                  <NRadio value="0">男</NRadio>
-                  <NRadio value="1">女</NRadio>
-                  <NRadio value="2">未知</NRadio>
+              <NFormItem label="性别" path="gender">
+                <NRadioGroup v-model:value="profile.gender">
+                  <NRadio :value="1">男</NRadio>
+                  <NRadio :value="2">女</NRadio>
+                  <NRadio :value="0">未知</NRadio>
                 </NRadioGroup>
               </NFormItem>
               <NFormItem label="备注" path="remark">
