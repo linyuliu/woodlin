@@ -295,11 +295,7 @@ public class SysRoleController {
             @Parameter(description = "每页显示数量", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
         requirePermission("system:role:list");
         // 这里简化实现，实际应该查询 user_role 关联表
-        PageResult<SysUser> result = new PageResult<>();
-        result.setRecords(List.of());
-        result.setTotal(0L);
-        result.setCurrent((long) pageNum);
-        result.setSize((long) pageSize);
+        PageResult<SysUser> result = PageResult.success((long) pageNum, (long) pageSize, 0L, List.of());
         return R.ok(result);
     }
 
