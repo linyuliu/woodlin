@@ -16,6 +16,8 @@ export interface SysRole {
   remark?: string
   sort?: number
   createTime?: string
+  dataScope?: string
+  parentRoleId?: number
 }
 
 /** 角色分页查询参数 */

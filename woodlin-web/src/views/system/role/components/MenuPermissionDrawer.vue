@@ -41,7 +41,7 @@ function open(role: SysRole): void {
 
 /** 加载数据 */
 async function loadData(): Promise<void> {
-  if (!currentRole.value) return
+  if (!currentRole.value) {return}
   loading.value = true
   try {
     const [menuTree, assignedIds] = await Promise.all([
@@ -68,7 +68,7 @@ function transformMenuTree(list: RouteItem[]): TreeOption[] {
 
 /** 提交 */
 async function handleSubmit(): Promise<void> {
-  if (!currentRole.value) return
+  if (!currentRole.value) {return}
   submitting.value = true
   try {
     await assignRoleMenus(currentRole.value.id!, checkedKeys.value as number[])

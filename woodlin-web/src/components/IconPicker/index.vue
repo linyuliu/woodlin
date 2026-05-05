@@ -60,14 +60,14 @@ const AntdIconMap = AntdIcons as Record<string, any>
 
 const filteredIcons = computed(() => {
   const keyword = searchKeyword.value.toLowerCase()
-  if (!keyword) return iconNames
+  if (!keyword) {return iconNames}
   return iconNames.filter((name) => name.toLowerCase().includes(keyword))
 })
 
 const selectedIconName = computed(() => {
-  if (!props.modelValue) return ''
+  if (!props.modelValue) {return ''}
   const parts = props.modelValue.split(':')
-  if (parts.length === 3 && parts[0] === 'vicons') return parts[2]
+  if (parts.length === 3 && parts[0] === 'vicons') {return parts[2]}
   return ''
 })
 

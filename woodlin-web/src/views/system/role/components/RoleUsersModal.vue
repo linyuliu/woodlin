@@ -8,13 +8,12 @@
 import { ref, computed, type Ref } from 'vue'
 import {
   NModal,
-  NCard,
   NDataTable,
   NSpin,
   useMessage,
   type DataTableColumns,
 } from 'naive-ui'
-import { getRoleUsers, type SysRole, type RoleUser, type RoleUserQuery } from '@/api/system/role'
+import { getRoleUsers, type RoleUser, type RoleUserQuery, type SysRole } from '@/api/system/role'
 
 const message = useMessage()
 const visible = ref(false)
@@ -45,7 +44,7 @@ function open(role: SysRole): void {
 
 /** 加载数据 */
 async function loadData(): Promise<void> {
-  if (!currentRole.value) return
+  if (!currentRole.value) {return}
   loading.value = true
   try {
     const query: RoleUserQuery = {

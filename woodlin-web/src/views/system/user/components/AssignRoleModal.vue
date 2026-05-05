@@ -5,10 +5,9 @@
   @since 2026-05
 -->
 <script setup lang="ts">
-import { ref, reactive, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import {
   NModal,
-  NCard,
   NCheckboxGroup,
   NCheckbox,
   NSpace,
@@ -58,7 +57,7 @@ async function loadRoles(): Promise<void> {
 
 /** 提交 */
 async function handleSubmit(): Promise<void> {
-  if (!currentUser.value) return
+  if (!currentUser.value) {return}
   submitting.value = true
   try {
     await assignUserRoles(currentUser.value.id!, selectedRoleIds.value)

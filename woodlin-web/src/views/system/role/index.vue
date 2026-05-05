@@ -15,13 +15,11 @@ import {
   NSelect,
   NSpace,
   NTag,
-  NSwitch,
   NPopconfirm,
   useMessage,
   type DataTableColumns,
   type SelectOption,
 } from 'naive-ui'
-import { PlusOutlined, ReloadOutlined } from '@vicons/antd'
 import dayjs from 'dayjs'
 import {
   pageRoles,
@@ -85,7 +83,7 @@ const columns = computed<DataTableColumns<SysRole>>(() => [
     width: 120,
     render: (row: SysRole) =>
       row.dataScope
-        ? h(NTag, { size: 'small', type: 'info' }, { default: () => dataScopeMap[row.dataScope] || row.dataScope })
+        ? h(NTag, { size: 'small', type: 'info' }, { default: () => dataScopeMap[row.dataScope!] || row.dataScope })
         : '-',
   },
   {

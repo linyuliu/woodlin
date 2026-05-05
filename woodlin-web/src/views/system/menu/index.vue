@@ -6,7 +6,7 @@
   @since 2026-05
 -->
 <script setup lang="ts">
-import { h, onMounted, reactive, ref, computed, type Ref } from 'vue'
+import { h, onMounted, ref, computed, type Ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -15,18 +15,14 @@ import {
   NSelect,
   NSpace,
   NTag,
-  NSwitch,
   NPopconfirm,
   useMessage,
   type DataTableColumns,
   type SelectOption,
 } from 'naive-ui'
-import { PlusOutlined, ReloadOutlined, DownOutlined, RightOutlined } from '@vicons/antd'
 import {
   getMenuTree,
   deleteMenu,
-  createMenu,
-  updateMenu,
 } from '@/api/system/menu'
 import type { RouteItem } from '@/types/global'
 import MenuFormDrawer from './components/MenuFormDrawer.vue'

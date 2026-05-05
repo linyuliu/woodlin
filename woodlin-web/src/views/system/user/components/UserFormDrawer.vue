@@ -5,7 +5,7 @@
   @since 2026-05
 -->
 <script setup lang="ts">
-import { reactive, ref, type Ref, watch } from 'vue'
+import { reactive, ref, type Ref } from 'vue'
 import {
   NDrawer,
   NDrawerContent,
@@ -26,7 +26,7 @@ import {
   type TreeSelectOption,
 } from 'naive-ui'
 import { createUser, updateUser, type SysUser } from '@/api/system/user'
-import { pageRoles, type SysRole } from '@/api/system/role'
+import { pageRoles } from '@/api/system/role'
 import { getDeptTree, type SysDept } from '@/api/system/dept'
 
 const emit = defineEmits<{

@@ -18,7 +18,6 @@ import {
   NSelect,
   NSpace,
   NSwitch,
-  NTag,
   NTree,
   NPopconfirm,
   NPopover,
@@ -29,7 +28,6 @@ import {
   type TreeOption,
   type SelectOption,
 } from 'naive-ui'
-import { PlusOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined } from '@vicons/antd'
 import dayjs from 'dayjs'
 import {
   pageUsers,
@@ -94,7 +92,7 @@ const visibleColumns = ref<string[]>(allColumns.map((c) => c.key))
 const columns = computed<DataTableColumns<SysUser>>(() => {
   const cols: DataTableColumns<SysUser> = []
   allColumns.forEach((col) => {
-    if (!visibleColumns.value.includes(col.key)) return
+    if (!visibleColumns.value.includes(col.key)) {return}
     if (col.key === 'status') {
       cols.push({
         key: 'status',
