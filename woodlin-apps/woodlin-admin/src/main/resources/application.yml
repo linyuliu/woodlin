@@ -2,7 +2,6 @@ spring:
   application:
     # 应用名称（可通过环境变量覆盖）
     name: ${APP_NAME:woodlin-admin}
-
   profiles:
     # 运行环境（dev / test / prod）
     active: ${SPRING_PROFILES_ACTIVE:dev}

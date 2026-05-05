@@ -10,9 +10,9 @@ USE `woodlin`;
 
 -- 更新默认用户密码为 Aa@12345 的 BCrypt 哈希
 -- 新密码: Aa@12345
--- BCrypt Hash: $2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS
+-- BCrypt Hash: {bcrypt}$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS
 UPDATE `sys_user`
-SET `password` = '$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS',
+SET `password` = '{bcrypt}$2a$10$Wv7noGb1lxadWCFIWdJEIO8mYl3uNgFXgUmtGgR3IVA7RznBEZtxS',
     `update_by` = 'system',
     `update_time` = NOW()
 WHERE `username` IN ('admin', 'demo');
