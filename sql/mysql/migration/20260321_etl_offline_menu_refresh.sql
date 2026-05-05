@@ -8,7 +8,8 @@
 
 USE `woodlin`;
 
-CREATE TABLE IF NOT EXISTS `bak_20260321_etl_menu_sys_permission` LIKE `sys_permission`;
+DROP TABLE IF EXISTS `bak_20260321_etl_menu_sys_permission`;
+CREATE TABLE `bak_20260321_etl_menu_sys_permission` LIKE `sys_permission`;
 
 DELETE FROM `bak_20260321_etl_menu_sys_permission`
 WHERE `permission_id` IN (7000, 7001, 7002);

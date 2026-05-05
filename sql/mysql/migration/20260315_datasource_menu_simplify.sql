@@ -11,9 +11,12 @@ USE `woodlin`;
 -- =========================
 -- 1) 备份受影响数据
 -- =========================
-CREATE TABLE IF NOT EXISTS `bak_20260315_ds_simplify_sys_permission` LIKE `sys_permission`;
-CREATE TABLE IF NOT EXISTS `bak_20260315_ds_simplify_sys_role_permission` LIKE `sys_role_permission`;
-CREATE TABLE IF NOT EXISTS `bak_20260315_ds_simplify_sys_role_inherited_permission` LIKE `sys_role_inherited_permission`;
+DROP TABLE IF EXISTS `bak_20260315_ds_simplify_sys_permission`;
+CREATE TABLE `bak_20260315_ds_simplify_sys_permission` LIKE `sys_permission`;
+DROP TABLE IF EXISTS `bak_20260315_ds_simplify_sys_role_permission`;
+CREATE TABLE `bak_20260315_ds_simplify_sys_role_permission` LIKE `sys_role_permission`;
+DROP TABLE IF EXISTS `bak_20260315_ds_simplify_sys_role_inherited_permission`;
+CREATE TABLE `bak_20260315_ds_simplify_sys_role_inherited_permission` LIKE `sys_role_inherited_permission`;
 
 DELETE FROM `bak_20260315_ds_simplify_sys_permission`
 WHERE `permission_id` IN (2002, 2101, 2102, 2103, 2104, 2105);

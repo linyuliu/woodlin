@@ -11,10 +11,14 @@ USE `woodlin`;
 -- =========================
 -- 1) 备份受影响数据
 -- =========================
-CREATE TABLE IF NOT EXISTS `bak_20260315_sys_role` LIKE `sys_role`;
-CREATE TABLE IF NOT EXISTS `bak_20260315_sys_permission` LIKE `sys_permission`;
-CREATE TABLE IF NOT EXISTS `bak_20260315_sys_role_permission` LIKE `sys_role_permission`;
-CREATE TABLE IF NOT EXISTS `bak_20260315_sys_role_inherited_permission` LIKE `sys_role_inherited_permission`;
+DROP TABLE IF EXISTS `bak_20260315_sys_role`;
+CREATE TABLE `bak_20260315_sys_role` LIKE `sys_role`;
+DROP TABLE IF EXISTS `bak_20260315_sys_permission`;
+CREATE TABLE `bak_20260315_sys_permission` LIKE `sys_permission`;
+DROP TABLE IF EXISTS `bak_20260315_sys_role_permission`;
+CREATE TABLE `bak_20260315_sys_role_permission` LIKE `sys_role_permission`;
+DROP TABLE IF EXISTS `bak_20260315_sys_role_inherited_permission`;
+CREATE TABLE `bak_20260315_sys_role_inherited_permission` LIKE `sys_role_inherited_permission`;
 
 -- 备份超级管理员角色信息（role_id=1）
 DELETE FROM `bak_20260315_sys_role` WHERE `role_id` = 1;

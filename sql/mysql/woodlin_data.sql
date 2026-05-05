@@ -74,6 +74,10 @@ VALUES (1, 1, 0, 'default'),
 
 -- 初始化权限数据
 INSERT INTO `sys_permission`
+(`permission_id`, `parent_id`, `permission_name`, `permission_code`, `permission_type`,
+ `path`, `component`, `icon`, `sort_order`, `status`,
+ `is_frame`, `is_cache`, `visible`, `remark`, `create_by`,
+ `create_time`, `update_by`, `update_time`, `deleted`)
 VALUES (1, 0, '系统管理', 'system', 'M', 'system', NULL, 'system', 1, '1', '0', '0', '1', '系统管理目录', 'system',
         NOW(), 'system', NOW(), '0'),
        (2, 1, '用户管理', 'system:user', 'C', 'user', 'system/UserView', 'user', 1, '1', '0', '0', '1', '用户管理菜单',
