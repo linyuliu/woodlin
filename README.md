@@ -45,7 +45,7 @@ Woodlin 是一个面向后台管理场景的多模块仓库，当前开发基线
 | Vue | 3.5.x | 组合式 API + `<script setup>` |
 | TypeScript | 5.x | 全量 TS，开启 strict |
 | Naive UI | 2.x | 主 UI 组件库 |
-| Pinia | 2.x | 状态管理（含 `pinia-plugin-persistedstate`） |
+| Pinia | 3.x | 状态管理（含 `pinia-plugin-persistedstate`） |
 | Vue Router | 4.x | 路由 + 动态路由守卫 |
 | vue-i18n | 9.x | 国际化（zh-CN / en-US） |
 | VueUse | 11.x | 组合式工具函数 |
@@ -86,11 +86,11 @@ woodlin
 │   └── src
 │       ├── api          # 后端接口封装（按模块拆分）
 │       ├── assets       # 静态资源
-│       ├── components   # 全局通用组件（W 前缀 + PermissionButton/ParentView）
+│       ├── components   # 全局通用组件（W* / RightToolbar / PermissionButton / ParentView）
 │       ├── composables  # 组合式函数
 │       ├── config       # 全局配置（运行时常量、菜单元数据）
 │       ├── constants    # 静态常量、枚举
-│       ├── directives   # 自定义指令（v-permission、v-copy 等）
+│       ├── directives   # 自定义指令（v-permission、v-role、v-copy）
 │       ├── layouts      # 布局（DefaultLayout 含 Header/Sidebar/Tabs/Breadcrumb）
 │       ├── locales      # vue-i18n 语言包（zh-CN、en-US）
 │       ├── router       # 路由实例、动态路由、全局守卫
@@ -253,8 +253,7 @@ java -jar woodlin-apps/woodlin-admin/target/woodlin-admin-1.0.0.jar
 
 ```bash
 cd woodlin-web
-# 部分依赖（如 Naive UI、unplugin-* 系列）peer 范围较严，需要 --legacy-peer-deps
-npm install --legacy-peer-deps
+npm install
 npm run dev
 ```
 
@@ -274,6 +273,13 @@ npm run dev
 - `user/profile`：个人中心
 - `about`：关于页
 - `dashboard` / `login` / `error`：首页、登录、403/404/500
+
+前端登录与动态菜单约定：
+
+- `POST /auth/login`：返回 `token / expire / user / roles / permissions`
+- `GET /auth/info`：刷新当前用户身份信息
+- `GET /auth/routes`：返回动态菜单树，前端通过 `useRouteStore().generateRoutes()` + `import.meta.glob` 映射 `views/**/index.vue`
+- 图标统一走 `WIcon`，菜单 icon 使用 `vicons:antd:UserOutlined` 这类字符串格式
 
 默认访问地址：
 
@@ -345,8 +351,8 @@ mvn test
 # 单模块测试示例
 mvn -pl woodlin-modules/woodlin-module-system test
 
-# 前端开发（首次安装使用 --legacy-peer-deps）
-cd woodlin-web && npm install --legacy-peer-deps && npm run dev
+# 前端开发
+cd woodlin-web && npm install && npm run dev
 
 # 前端构建
 cd woodlin-web && npm run build

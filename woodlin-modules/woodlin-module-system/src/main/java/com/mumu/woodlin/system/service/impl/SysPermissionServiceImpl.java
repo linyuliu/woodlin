@@ -2,14 +2,12 @@ package com.mumu.woodlin.system.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.mumu.woodlin.common.constant.CommonConstant;
+import com.mumu.woodlin.authorization.entity.AuthPermission;
+import com.mumu.woodlin.authorization.service.AuthorizationService;
 import com.mumu.woodlin.system.dto.RouteVO;
 import com.mumu.woodlin.system.entity.SysPermission;
-import com.mumu.woodlin.system.entity.SysRole;
 import com.mumu.woodlin.system.mapper.SysPermissionMapper;
-import com.mumu.woodlin.system.mapper.SysRoleMapper;
 import com.mumu.woodlin.system.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +37,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
         implements ISysPermissionService {
 
     private final SysPermissionMapper permissionMapper;
-    private final SysRoleMapper roleMapper;
+    private final AuthorizationService authorizationService;
 
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
@@ -68,15 +66,9 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
         if (userId == null) {
             return Collections.emptyList();
         }
-        if (isSuperAdminUser(userId)) {
-            LambdaQueryWrapper<SysPermission> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(SysPermission::getDeleted, "0")
-                .eq(SysPermission::getStatus, "1")
-                .orderByAsc(SysPermission::getSortOrder)
-                .orderByAsc(SysPermission::getPermissionId);
-            return list(wrapper);
-        }
-        return permissionMapper.selectPermissionsByUserId(userId);
+        return authorizationService.listUserPermissions(userId).stream()
+            .map(this::convertToSysPermission)
+            .toList();
     }
 
     @Override
@@ -391,19 +383,35 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     }
 
     /**
-     * 判断用户是否超级管理员
+     * 转换授权权限为系统权限视图。
      *
-     * @param userId 用户ID
-     * @return 是否超级管理员
+     * @param permission 授权权限
+     * @return 系统权限
      */
-    private boolean isSuperAdminUser(Long userId) {
-        List<SysRole> roles = roleMapper.selectRolesByUserId(userId);
-        if (CollUtil.isEmpty(roles)) {
-            return false;
-        }
-        return roles.stream()
-            .map(SysRole::getRoleCode)
-            .filter(StrUtil::isNotBlank)
-            .anyMatch(roleCode -> StrUtil.equals(roleCode, CommonConstant.SUPER_ADMIN_ROLE_CODE));
+    private SysPermission convertToSysPermission(AuthPermission permission) {
+        SysPermission sysPermission = new SysPermission()
+            .setPermissionId(permission.getPermissionId())
+            .setParentId(permission.getParentId())
+            .setPermissionName(permission.getPermissionName())
+            .setPermissionCode(permission.getPermissionCode())
+            .setPermissionType(permission.getPermissionType())
+            .setPath(permission.getPath())
+            .setComponent(permission.getComponent())
+            .setIcon(permission.getIcon())
+            .setSortOrder(permission.getSortOrder())
+            .setStatus(permission.getStatus())
+            .setIsFrame(permission.getIsFrame())
+            .setIsCache(permission.getIsCache())
+            .setVisible(permission.getVisible())
+            .setShowInTabs(permission.getShowInTabs())
+            .setActiveMenu(permission.getActiveMenu())
+            .setRedirect(permission.getRedirect())
+            .setRemark(permission.getRemark());
+        sysPermission.setCreateBy(permission.getCreateBy());
+        sysPermission.setCreateTime(permission.getCreateTime());
+        sysPermission.setUpdateBy(permission.getUpdateBy());
+        sysPermission.setUpdateTime(permission.getUpdateTime());
+        sysPermission.setDeleted(permission.getDeleted());
+        return sysPermission;
     }
 }

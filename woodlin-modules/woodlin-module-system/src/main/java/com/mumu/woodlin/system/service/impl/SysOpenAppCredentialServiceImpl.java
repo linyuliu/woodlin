@@ -26,8 +26,10 @@ import com.mumu.woodlin.system.util.OpenApiSecurityConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 开放应用凭证服务实现。
@@ -39,6 +41,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCredentialMapper, SysOpenAppCredential>
     implements ISysOpenAppCredentialService {
+
+    private static final String CREDENTIAL_TYPE_AKSK = "AKSK";
+    private static final String CREDENTIAL_TYPE_APP_KEY = "APP_KEY";
 
     private final ISysOpenAppService openAppService;
     private final ISysConfigService configService;
@@ -93,6 +98,32 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
     }
 
     @Override
+    public SysOpenAppCredential getActiveCredentialByAppKey(String appKey) {
+        if (StrUtil.isBlank(appKey)) {
+            return null;
+        }
+        String appKeyHash = hashAppKey(appKey);
+        LambdaQueryWrapper<SysOpenAppCredential> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysOpenAppCredential::getAppKeyHash, appKeyHash);
+        wrapper.eq(SysOpenAppCredential::getCredentialType, CREDENTIAL_TYPE_APP_KEY);
+        wrapper.eq(SysOpenAppCredential::getStatus, "1");
+        wrapper.eq(SysOpenAppCredential::getDeleted, "0");
+        wrapper.last("LIMIT 1");
+        return getOne(wrapper, false);
+    }
+
+    @Override
+    public void touchLastUsedTime(Long credentialId) {
+        if (credentialId == null) {
+            return;
+        }
+        lambdaUpdate()
+            .eq(SysOpenAppCredential::getCredentialId, credentialId)
+            .set(SysOpenAppCredential::getLastUsedTime, LocalDateTime.now())
+            .update();
+    }
+
+    @Override
     public String revealSecretKey(SysOpenAppCredential credential) {
         return OpenApiSecurityKit.reveal(credential.getSecretKeyEncrypted(), resolveMasterKey());
     }
@@ -103,6 +134,38 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
     }
 
     private CredentialIssueMaterial fillCredential(SysOpenAppCredential credential, OpenApiCredentialRequest request) {
+        String credentialType = resolveCredentialType(request);
+        ApiSecurityMode securityMode = ApiSecurityMode.of(request.getSecurityMode(),
+            CREDENTIAL_TYPE_APP_KEY.equals(credentialType) ? ApiSecurityMode.APP_KEY : ApiSecurityMode.AKSK);
+
+        credential.setCredentialName(request.getCredentialName());
+        credential.setCredentialType(credentialType);
+        credential.setSecurityMode(securityMode.name());
+        credential.setActiveFrom(request.getActiveFrom() == null ? LocalDateTime.now() : request.getActiveFrom());
+        credential.setActiveTo(request.getActiveTo());
+        credential.setLastRotatedTime(LocalDateTime.now());
+        credential.setStatus("1");
+        credential.setRemark(request.getRemark());
+
+        CredentialIssueMaterial material = new CredentialIssueMaterial();
+        if (CREDENTIAL_TYPE_APP_KEY.equals(credentialType) || securityMode == ApiSecurityMode.APP_KEY) {
+            String appKey = generateAppKey();
+            credential.setCredentialType(CREDENTIAL_TYPE_APP_KEY);
+            credential.setSecurityMode(ApiSecurityMode.APP_KEY.name());
+            credential.setAccessKey(null);
+            credential.setAppKeyHash(hashAppKey(appKey));
+            credential.setSecretKeyEncrypted(null);
+            credential.setSecretKeyFingerprint(OpenApiSecurityKit.fingerprint(appKey));
+            credential.setSignatureAlgorithm(null);
+            credential.setEncryptionAlgorithm(ApiEncryptionAlgorithm.NONE.name());
+            credential.setSignaturePublicKey(null);
+            credential.setEncryptionPublicKey(null);
+            credential.setServerPublicKey(null);
+            credential.setServerPrivateKeyEncrypted(null);
+            material.setAppKey(appKey);
+            return material;
+        }
+
         String masterKey = resolveMasterKey();
         ApiSignatureAlgorithm signatureAlgorithm = ApiSignatureAlgorithm.of(
             request.getSignatureAlgorithm(), ApiSignatureAlgorithm.HMAC_SHA256
@@ -110,24 +173,16 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
         ApiEncryptionAlgorithm encryptionAlgorithm = ApiEncryptionAlgorithm.of(
             request.getEncryptionAlgorithm(), ApiEncryptionAlgorithm.NONE
         );
-        ApiSecurityMode securityMode = ApiSecurityMode.of(request.getSecurityMode(), ApiSecurityMode.AKSK);
         validateAlgorithmCombination(signatureAlgorithm, encryptionAlgorithm);
         ensureGuoMiAllowed(signatureAlgorithm, encryptionAlgorithm);
 
-        CredentialIssueMaterial material = new CredentialIssueMaterial();
         String secretKey = OpenApiSecurityKit.generateSecretKey();
-        credential.setCredentialName(request.getCredentialName());
         credential.setAccessKey(OpenApiSecurityKit.generateAccessKey());
+        credential.setAppKeyHash(null);
         credential.setSecretKeyEncrypted(OpenApiSecurityKit.protect(secretKey, masterKey));
         credential.setSecretKeyFingerprint(OpenApiSecurityKit.fingerprint(secretKey));
         credential.setSignatureAlgorithm(signatureAlgorithm.name());
         credential.setEncryptionAlgorithm(encryptionAlgorithm.name());
-        credential.setSecurityMode(securityMode.name());
-        credential.setActiveFrom(request.getActiveFrom() == null ? LocalDateTime.now() : request.getActiveFrom());
-        credential.setActiveTo(request.getActiveTo());
-        credential.setLastRotatedTime(LocalDateTime.now());
-        credential.setStatus("1");
-        credential.setRemark(request.getRemark());
         credential.setSignaturePublicKey(null);
         credential.setEncryptionPublicKey(null);
         credential.setServerPublicKey(null);
@@ -158,6 +213,7 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
         OpenApiCredentialIssueResponse response = new OpenApiCredentialIssueResponse();
         response.setCredential(toView(credential));
         response.setSecretKey(material.getSecretKey());
+        response.setAppKey(material.getAppKey());
         response.setSignaturePrivateKey(material.getSignaturePrivateKey());
         response.setEncryptionPrivateKey(material.getEncryptionPrivateKey());
         return response;
@@ -166,6 +222,9 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
     private OpenApiCredentialView toView(SysOpenAppCredential entity) {
         OpenApiCredentialView view = BeanUtil.copyProperties(entity, OpenApiCredentialView.class);
         view.setServerPublicKey(entity.getServerPublicKey());
+        if (StrUtil.isNotBlank(entity.getAppKeyHash())) {
+            view.setAppKeyMasked("app_" + StrUtil.blankToDefault(entity.getSecretKeyFingerprint(), "********"));
+        }
         return view;
     }
 
@@ -228,12 +287,29 @@ public class SysOpenAppCredentialServiceImpl extends ServiceImpl<SysOpenAppCrede
             "未配置开放API主密钥，请设置 woodlin.openapi.master-key 或 api.security.master-key");
     }
 
+    private String resolveCredentialType(OpenApiCredentialRequest request) {
+        if (StrUtil.equalsIgnoreCase(request.getCredentialType(), CREDENTIAL_TYPE_APP_KEY)
+            || StrUtil.equalsIgnoreCase(request.getSecurityMode(), ApiSecurityMode.APP_KEY.name())) {
+            return CREDENTIAL_TYPE_APP_KEY;
+        }
+        return CREDENTIAL_TYPE_AKSK;
+    }
+
+    private String generateAppKey() {
+        return "app_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String hashAppKey(String appKey) {
+        return OpenApiSecurityKit.sha256Hex(appKey.getBytes(StandardCharsets.UTF_8));
+    }
+
     /**
      * 凭证签发材料，仅在内存中保留。
      */
     @lombok.Data
     private static class CredentialIssueMaterial {
         private String secretKey;
+        private String appKey;
         private String signaturePrivateKey;
         private String encryptionPrivateKey;
     }

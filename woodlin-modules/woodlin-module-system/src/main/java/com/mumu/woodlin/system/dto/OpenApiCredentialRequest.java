@@ -24,6 +24,12 @@ public class OpenApiCredentialRequest {
     private String credentialName;
 
     /**
+     * 凭证类型。
+     */
+    @Schema(description = "凭证类型")
+    private String credentialType;
+
+    /**
      * 安全模式。
      */
     @NotBlank(message = "安全模式不能为空")
@@ -33,7 +39,6 @@ public class OpenApiCredentialRequest {
     /**
      * 签名算法。
      */
-    @NotBlank(message = "签名算法不能为空")
     @Schema(description = "签名算法")
     private String signatureAlgorithm;
 

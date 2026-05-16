@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mumu.woodlin.authorization.mapper.AuthorizationQueryMapper">
+
+    <resultMap id="AuthRoleResultMap" type="com.mumu.woodlin.authorization.entity.AuthRole">
+        <id column="role_id" property="roleId" />
+        <result column="parent_role_id" property="parentRoleId" />
+        <result column="role_level" property="roleLevel" />
+        <result column="role_path" property="rolePath" />
+        <result column="role_name" property="roleName" />
+        <result column="role_code" property="roleCode" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="data_scope" property="dataScope" />
+        <result column="is_inheritable" property="inheritable" />
+        <result column="status" property="status" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <resultMap id="AuthPermissionResultMap" type="com.mumu.woodlin.authorization.entity.AuthPermission">
+        <id column="permission_id" property="permissionId" />
+        <result column="parent_id" property="parentId" />
+        <result column="permission_name" property="permissionName" />
+        <result column="permission_code" property="permissionCode" />
+        <result column="permission_type" property="permissionType" />
+        <result column="resource_type" property="resourceType" />
+        <result column="resource_id" property="resourceId" />
+        <result column="path" property="path" />
+        <result column="component" property="component" />
+        <result column="icon" property="icon" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="status" property="status" />
+        <result column="is_frame" property="isFrame" />
+        <result column="is_cache" property="isCache" />
+        <result column="visible" property="visible" />
+        <result column="show_in_tabs" property="showInTabs" />
+        <result column="active_menu" property="activeMenu" />
+        <result column="redirect" property="redirect" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <resultMap id="AuthQuotaPolicyResultMap" type="com.mumu.woodlin.authorization.entity.AuthQuotaPolicy">
+        <id column="quota_id" property="quotaId" />
+        <result column="subject_type" property="subjectType" />
+        <result column="subject_id" property="subjectId" />
+        <result column="capability_id" property="capabilityId" />
+        <result column="scope_id" property="scopeId" />
+        <result column="window_seconds" property="windowSeconds" />
+        <result column="limit_count" property="limitCount" />
+        <result column="enabled" property="enabled" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <resultMap id="AuthOpenApiResourceResultMap" type="com.mumu.woodlin.authorization.entity.AuthOpenApiResource">
+        <id column="resource_id" property="resourceId" />
+        <result column="resource_code" property="resourceCode" />
+        <result column="resource_name" property="resourceName" />
+        <result column="http_method" property="httpMethod" />
+        <result column="path_pattern" property="pathPattern" />
+        <result column="capability_id" property="capabilityId" />
+        <result column="scope_id" property="scopeId" />
+        <result column="auth_mode" property="authMode" />
+        <result column="status" property="status" />
+        <result column="tenant_id" property="tenantId" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <sql id="EffectiveUserRoleIds">
+        SELECT ur.role_id
+        FROM auth_user_role ur
+        WHERE ur.user_id = #{userId}
+        UNION
+        SELECT rh.ancestor_role_id
+        FROM auth_role_hierarchy rh
+        INNER JOIN auth_user_role ur ON rh.descendant_role_id = ur.role_id
+        WHERE ur.user_id = #{userId}
+    </sql>
+
+    <select id="selectUserRoles" resultMap="AuthRoleResultMap">
+        SELECT DISTINCT r.*
+        FROM auth_role r
+        INNER JOIN (
+            <include refid="EffectiveUserRoleIds" />
+        ) er ON r.role_id = er.role_id
+        WHERE r.deleted = '0'
+          AND r.status = '1'
+        ORDER BY r.sort_order ASC, r.role_id ASC
+    </select>
+
+    <select id="selectUserPermissions" resultMap="AuthPermissionResultMap">
+        SELECT DISTINCT p.*
+        FROM auth_permission p
+        INNER JOIN auth_role_permission rp ON p.permission_id = rp.permission_id
+        INNER JOIN (
+            <include refid="EffectiveUserRoleIds" />
+        ) er ON rp.role_id = er.role_id
+        WHERE p.deleted = '0'
+          AND p.status = '1'
+        ORDER BY p.sort_order ASC, p.permission_id ASC
+    </select>
+
+    <select id="selectRolePermissions" resultMap="AuthPermissionResultMap">
+        SELECT DISTINCT p.*
+        FROM auth_permission p
+        INNER JOIN auth_role_permission rp ON p.permission_id = rp.permission_id
+        WHERE rp.role_id = #{roleId}
+          AND p.deleted = '0'
+          AND p.status = '1'
+        ORDER BY p.sort_order ASC, p.permission_id ASC
+    </select>
+
+    <select id="selectCustomDeptIds" resultType="java.lang.Long">
+        SELECT DISTINCT rd.dept_id
+        FROM auth_role_dept rd
+        WHERE rd.role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <select id="countAppScopeMatches" resultType="int">
+        SELECT COUNT(1)
+        FROM auth_subject_grant g
+        INNER JOIN auth_capability c ON g.capability_id = c.capability_id
+        INNER JOIN auth_scope s ON g.scope_id = s.scope_id
+        WHERE g.subject_type = 'app'
+          AND g.subject_id = CAST(#{appId} AS CHAR)
+          AND g.status = '1'
+          AND g.deleted = '0'
+          AND c.enabled = '1'
+          AND c.deleted = '0'
+          AND s.enabled = '1'
+          AND s.deleted = '0'
+          AND (c.resource_type IS NULL OR c.resource_type = '' OR c.resource_type = '*' OR c.resource_type = #{resourceType})
+          AND (
+              (
+                  (
+                      c.resource_pattern IS NULL
+                      OR c.resource_pattern = ''
+                      OR c.resource_pattern = '*'
+                      OR #{resourceId} LIKE REPLACE(c.resource_pattern, '*', '%')
+                  )
+                  AND (
+                      s.actions IS NULL
+                      OR s.actions = ''
+                      OR s.actions = '*'
+                      OR FIND_IN_SET(#{action}, s.actions) > 0
+                      OR #{action} LIKE REPLACE(s.actions, '*', '%')
+                  )
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM auth_scope_resource sr
+                  INNER JOIN auth_open_api_resource r ON sr.resource_id = r.resource_id
+                  WHERE sr.scope_id = s.scope_id
+                    AND r.deleted = '0'
+                    AND r.status = '1'
+                    AND (r.tenant_id IS NULL OR r.tenant_id = '' OR r.tenant_id = #{tenantId})
+                    AND (r.http_method = '*' OR r.http_method = 'ALL' OR #{action} LIKE CONCAT(r.http_method, ':%'))
+                    AND #{resourceId} LIKE REPLACE(r.path_pattern, '*', '%')
+              )
+          )
+        <if test="tenantId != null and tenantId != ''">
+          AND (g.tenant_id IS NULL OR g.tenant_id = '' OR g.tenant_id = #{tenantId})
+          AND (c.tenant_id IS NULL OR c.tenant_id = '' OR c.tenant_id = #{tenantId})
+          AND (s.tenant_id IS NULL OR s.tenant_id = '' OR s.tenant_id = #{tenantId})
+        </if>
+    </select>
+
+    <select id="selectQuotaPolicies" resultMap="AuthQuotaPolicyResultMap">
+        SELECT q.*
+        FROM auth_quota_policy q
+        WHERE q.subject_type = #{subjectType}
+          AND q.subject_id = #{subjectId}
+          AND q.enabled = '1'
+          AND q.deleted = '0'
+          AND (
+              (q.capability_id IS NULL AND q.scope_id IS NULL)
+              OR EXISTS (
+                  SELECT 1
+                  FROM auth_subject_grant g
+                  INNER JOIN auth_capability c ON g.capability_id = c.capability_id
+                  INNER JOIN auth_scope s ON g.scope_id = s.scope_id
+                  WHERE g.subject_type = q.subject_type
+                    AND g.subject_id = q.subject_id
+                    AND g.status = '1'
+                    AND g.deleted = '0'
+                    AND c.enabled = '1'
+                    AND c.deleted = '0'
+                    AND s.enabled = '1'
+                    AND s.deleted = '0'
+                    AND (q.capability_id IS NULL OR q.capability_id = g.capability_id)
+                    AND (q.scope_id IS NULL OR q.scope_id = g.scope_id)
+                    AND (c.resource_type IS NULL OR c.resource_type = '' OR c.resource_type = '*' OR c.resource_type = #{resourceType})
+                    AND (
+                        (
+                            (
+                                c.resource_pattern IS NULL
+                                OR c.resource_pattern = ''
+                                OR c.resource_pattern = '*'
+                                OR #{resourceId} LIKE REPLACE(c.resource_pattern, '*', '%')
+                            )
+                            AND (
+                                s.actions IS NULL
+                                OR s.actions = ''
+                                OR s.actions = '*'
+                                OR FIND_IN_SET(#{action}, s.actions) > 0
+                                OR #{action} LIKE REPLACE(s.actions, '*', '%')
+                            )
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM auth_scope_resource sr
+                            INNER JOIN auth_open_api_resource r ON sr.resource_id = r.resource_id
+                            WHERE sr.scope_id = s.scope_id
+                              AND r.deleted = '0'
+                              AND r.status = '1'
+                              AND (r.http_method = '*' OR r.http_method = 'ALL' OR #{action} LIKE CONCAT(r.http_method, ':%'))
+                              AND #{resourceId} LIKE REPLACE(r.path_pattern, '*', '%')
+                        )
+                    )
+              )
+          )
+        <if test="tenantId != null and tenantId != ''">
+          AND (q.tenant_id IS NULL OR q.tenant_id = '' OR q.tenant_id = #{tenantId})
+        </if>
+        ORDER BY q.quota_id ASC
+    </select>
+
+    <select id="selectAppAuthorizedResources" resultMap="AuthOpenApiResourceResultMap">
+        SELECT DISTINCT r.*
+        FROM auth_subject_grant g
+        INNER JOIN auth_scope_resource sr ON g.scope_id = sr.scope_id
+        INNER JOIN auth_open_api_resource r ON sr.resource_id = r.resource_id
+        INNER JOIN auth_capability c ON g.capability_id = c.capability_id
+        INNER JOIN auth_scope s ON g.scope_id = s.scope_id
+        WHERE g.subject_type = 'app'
+          AND g.subject_id = CAST(#{appId} AS CHAR)
+          AND g.status = '1'
+          AND g.deleted = '0'
+          AND r.status = '1'
+          AND r.deleted = '0'
+          AND c.enabled = '1'
+          AND c.deleted = '0'
+          AND s.enabled = '1'
+          AND s.deleted = '0'
+        <if test="tenantId != null and tenantId != ''">
+          AND (g.tenant_id IS NULL OR g.tenant_id = '' OR g.tenant_id = #{tenantId})
+          AND (r.tenant_id IS NULL OR r.tenant_id = '' OR r.tenant_id = #{tenantId})
+        </if>
+        ORDER BY r.resource_code ASC, r.resource_id ASC
+    </select>
+
+    <select id="selectAppGrantedScopeCodes" resultType="java.lang.String">
+        SELECT DISTINCT s.scope_code
+        FROM auth_subject_grant g
+        INNER JOIN auth_scope s ON g.scope_id = s.scope_id
+        INNER JOIN auth_capability c ON g.capability_id = c.capability_id
+        WHERE g.subject_type = 'app'
+          AND g.subject_id = CAST(#{appId} AS CHAR)
+          AND g.status = '1'
+          AND g.deleted = '0'
+          AND s.enabled = '1'
+          AND s.deleted = '0'
+          AND c.enabled = '1'
+          AND c.deleted = '0'
+        <if test="tenantId != null and tenantId != ''">
+          AND (g.tenant_id IS NULL OR g.tenant_id = '' OR g.tenant_id = #{tenantId})
+          AND (s.tenant_id IS NULL OR s.tenant_id = '' OR s.tenant_id = #{tenantId})
+          AND (c.tenant_id IS NULL OR c.tenant_id = '' OR c.tenant_id = #{tenantId})
+        </if>
+        ORDER BY s.scope_code ASC
+    </select>
+</mapper>

@@ -59,9 +59,10 @@ const rotatingCredentialId = ref<number | null>(null)
 
 const formData = reactive<OpenApiCredentialRequest>({
   credentialName: '',
-  securityMode: 'SIGN',
-  signatureAlgorithm: 'HMAC-SHA256',
-  encryptionAlgorithm: '',
+  credentialType: 'AKSK',
+  securityMode: 'AKSK',
+  signatureAlgorithm: 'HMAC_SHA256',
+  encryptionAlgorithm: 'NONE',
   activeFrom: undefined,
   activeTo: undefined,
   remark: '',
@@ -70,13 +71,26 @@ const formData = reactive<OpenApiCredentialRequest>({
 const rules: FormRules = {
   credentialName: [{ required: true, message: '请输入凭证名称', trigger: 'blur' }],
   securityMode: [{ required: true, message: '请选择安全模式', trigger: 'change' }],
-  signatureAlgorithm: [{ required: true, message: '请输入签名算法', trigger: 'blur' }],
 }
 
 const securityModeOptions: SelectOption[] = [
-  { label: '签名', value: 'SIGN' },
-  { label: '签名+加密', value: 'SIGN_ENCRYPT' },
-  { label: '不校验', value: 'NONE' },
+  { label: 'AK/SK 签名', value: 'AKSK' },
+  { label: 'AppKey', value: 'APP_KEY' },
+]
+
+const signatureOptions: SelectOption[] = [
+  { label: 'HMAC SHA256', value: 'HMAC_SHA256' },
+  { label: 'HMAC SHA512', value: 'HMAC_SHA512' },
+  { label: 'RSA SHA256', value: 'RSA_SHA256' },
+  { label: 'SM2 SM3', value: 'SM2_SM3' },
+]
+
+const encryptionOptions: SelectOption[] = [
+  { label: '不加密', value: 'NONE' },
+  { label: 'AES GCM', value: 'AES_GCM' },
+  { label: 'AES CBC', value: 'AES_CBC' },
+  { label: 'RSA OAEP SHA256', value: 'RSA_OAEP_SHA256' },
+  { label: 'SM4 CBC', value: 'SM4_CBC' },
 ]
 
 const issuedVisible = ref(false)
@@ -115,9 +129,10 @@ async function refresh(): Promise<void> {
 
 function resetForm(): void {
   formData.credentialName = ''
-  formData.securityMode = 'SIGN'
-  formData.signatureAlgorithm = 'HMAC-SHA256'
-  formData.encryptionAlgorithm = ''
+  formData.credentialType = 'AKSK'
+  formData.securityMode = 'AKSK'
+  formData.signatureAlgorithm = 'HMAC_SHA256'
+  formData.encryptionAlgorithm = 'NONE'
   formData.activeFrom = undefined
   formData.activeTo = undefined
   formData.remark = ''
@@ -144,9 +159,10 @@ function openRotate(row: OpenApiCredentialView): void {
   rotatingCredentialId.value = row.credentialId
   resetForm()
   formData.credentialName = row.credentialName ?? ''
-  formData.securityMode = row.securityMode ?? 'SIGN'
-  formData.signatureAlgorithm = row.signatureAlgorithm ?? 'HMAC-SHA256'
-  formData.encryptionAlgorithm = row.encryptionAlgorithm ?? ''
+  formData.credentialType = row.credentialType ?? 'AKSK'
+  formData.securityMode = row.securityMode ?? row.credentialType ?? 'AKSK'
+  formData.signatureAlgorithm = row.signatureAlgorithm ?? 'HMAC_SHA256'
+  formData.encryptionAlgorithm = row.encryptionAlgorithm ?? 'NONE'
   formData.remark = row.remark ?? ''
   drawerVisible.value = true
 }
@@ -201,11 +217,12 @@ async function copyText(text?: string): Promise<void> {
 
 const columns: DataTableColumns<OpenApiCredentialView> = [
   { title: '凭证名称', key: 'credentialName', width: 160 },
+  { title: '类型', key: 'credentialType', width: 110 },
   {
-    title: 'AccessKey',
+    title: '凭证标识',
     key: 'accessKey',
     width: 200,
-    render: (row) => maskKey(row.accessKey),
+    render: (row) => (row.credentialType === 'APP_KEY' ? row.appKeyMasked || '-' : maskKey(row.accessKey)),
   },
   { title: '安全模式', key: 'securityMode', width: 130 },
   { title: '签名算法', key: 'signatureAlgorithm', width: 140 },
@@ -218,8 +235,8 @@ const columns: DataTableColumns<OpenApiCredentialView> = [
     render: (row) =>
       h(
         NTag,
-        { size: 'small', type: row.status === '0' ? 'success' : 'error' },
-        { default: () => (row.status === '0' ? '有效' : '已吊销') },
+        { size: 'small', type: row.status === '1' ? 'success' : 'error' },
+        { default: () => (row.status === '1' ? '有效' : '已吊销') },
       ),
   },
   {
@@ -245,7 +262,7 @@ const columns: DataTableColumns<OpenApiCredentialView> = [
             size: 'small',
             text: true,
             type: 'warning',
-            disabled: row.status !== '0',
+            disabled: row.status !== '1',
             onClick: () => handleRevoke(row),
           },
           { default: () => '吊销' },
@@ -310,13 +327,17 @@ onMounted(async () => {
             <n-input v-model:value="formData.credentialName" />
           </n-form-item>
           <n-form-item label="安全模式" path="securityMode">
-            <n-select v-model:value="formData.securityMode" :options="securityModeOptions" />
+            <n-select
+              v-model:value="formData.securityMode"
+              :options="securityModeOptions"
+              @update:value="(value: string) => (formData.credentialType = value)"
+            />
           </n-form-item>
-          <n-form-item label="签名算法" path="signatureAlgorithm">
-            <n-input v-model:value="formData.signatureAlgorithm" />
+          <n-form-item v-if="formData.securityMode !== 'APP_KEY'" label="签名算法" path="signatureAlgorithm">
+            <n-select v-model:value="formData.signatureAlgorithm" :options="signatureOptions" />
           </n-form-item>
-          <n-form-item label="加密算法" path="encryptionAlgorithm">
-            <n-input v-model:value="formData.encryptionAlgorithm" />
+          <n-form-item v-if="formData.securityMode !== 'APP_KEY'" label="加密算法" path="encryptionAlgorithm">
+            <n-select v-model:value="formData.encryptionAlgorithm" :options="encryptionOptions" />
           </n-form-item>
           <n-form-item label="备注" path="remark">
             <n-input v-model:value="formData.remark" type="textarea" />
@@ -341,15 +362,23 @@ onMounted(async () => {
       :mask-closable="false"
     >
       <n-alert type="warning" style="margin-bottom: 12px">
-        SecretKey 与私钥仅在此处明文展示一次，请立即妥善保存，关闭后将无法再次查看。
+        SecretKey、AppKey 与私钥仅在此处明文展示一次，请立即妥善保存，关闭后将无法再次查看。
       </n-alert>
       <n-form label-placement="top">
-        <n-form-item label="AccessKey">
+        <n-form-item v-if="issuedResult?.credential?.accessKey" label="AccessKey">
           <n-input :value="issuedResult?.credential?.accessKey ?? ''" readonly />
         </n-form-item>
-        <n-form-item label="SecretKey">
+        <n-form-item v-if="issuedResult?.secretKey" label="SecretKey">
           <n-input
             :value="issuedResult?.secretKey ?? ''"
+            readonly
+            type="textarea"
+            :autosize="{ minRows: 2 }"
+          />
+        </n-form-item>
+        <n-form-item v-if="issuedResult?.appKey" label="AppKey">
+          <n-input
+            :value="issuedResult?.appKey ?? ''"
             readonly
             type="textarea"
             :autosize="{ minRows: 2 }"
@@ -377,8 +406,11 @@ onMounted(async () => {
           <n-button @click="copyText(issuedResult?.credential?.accessKey)">
             复制 AccessKey
           </n-button>
-          <n-button type="primary" @click="copyText(issuedResult?.secretKey)">
+          <n-button v-if="issuedResult?.secretKey" type="primary" @click="copyText(issuedResult?.secretKey)">
             复制 SecretKey
+          </n-button>
+          <n-button v-if="issuedResult?.appKey" type="primary" @click="copyText(issuedResult?.appKey)">
+            复制 AppKey
           </n-button>
           <n-button @click="issuedVisible = false">我已保存</n-button>
         </n-space>

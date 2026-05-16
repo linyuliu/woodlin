@@ -1,6 +1,7 @@
 package com.mumu.woodlin.sql2api.spi.impl;
 
 import com.mumu.woodlin.common.datasource.spi.impl.OracleMetadataExtractor;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -20,7 +21,7 @@ class OracleMetadataExtractorTest {
     @Test
     void testGetDatabaseType() {
         OracleMetadataExtractor extractor = new OracleMetadataExtractor();
-        assertEquals("Oracle", extractor.getDatabaseType());
+        assertEquals(DatabaseType.ORACLE, extractor.getDatabaseType());
     }
 
     @Test

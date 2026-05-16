@@ -7,9 +7,11 @@
 import type { App } from 'vue'
 import { permission } from './permission'
 import { copy } from './copy'
+import { role } from './role'
 
 /** 安装全部指令 */
 export function setupDirectives(app: App): void {
   app.directive('permission', permission)
+  app.directive('role', role)
   app.directive('copy', copy)
 }

@@ -10,7 +10,6 @@ import { h, onMounted, reactive, ref, computed, type Ref } from 'vue'
 import {
   NButton,
   NCard,
-  NDataTable,
   NInput,
   NSelect,
   NSpace,
@@ -32,6 +31,7 @@ import MenuPermissionDrawer from './components/MenuPermissionDrawer.vue'
 import DataScopeDrawer from './components/DataScopeDrawer.vue'
 import RoleUsersModal from './components/RoleUsersModal.vue'
 import WIcon from '@/components/WIcon/index.vue'
+import { hasPermission } from '@/utils/permission'
 
 const message = useMessage()
 
@@ -62,10 +62,10 @@ const statusOptions: SelectOption[] = [
 
 const dataScopeMap: Record<string, string> = {
   '1': '全部',
-  '2': '本部门',
-  '3': '本部门及以下',
-  '4': '仅本人',
-  '5': '自定义',
+  '2': '自定义',
+  '3': '本部门',
+  '4': '本部门及以下',
+  '5': '仅本人',
 }
 
 const columns = computed<DataTableColumns<SysRole>>(() => [
@@ -108,20 +108,31 @@ const columns = computed<DataTableColumns<SysRole>>(() => [
         NSpace,
         { size: 4 },
         {
-          default: () => [
-            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' }),
-            h(NButton, { text: true, type: 'info', size: 'small', onClick: () => handleMenuPermission(row) }, { default: () => '菜单权限' }),
-            h(NButton, { text: true, type: 'warning', size: 'small', onClick: () => handleDataScope(row) }, { default: () => '数据权限' }),
-            h(NButton, { text: true, size: 'small', onClick: () => handleViewUsers(row) }, { default: () => '用户列表' }),
-            h(
-              NPopconfirm,
-              { onPositiveClick: () => handleDelete(row.id!) },
-              {
-                trigger: () => h(NButton, { text: true, type: 'error', size: 'small' }, { default: () => '删除' }),
-                default: () => '确认删除该角色？',
-              }
-            ),
-          ],
+          default: () =>
+            [
+              hasPermission('system:role:edit')
+                ? h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' })
+                : null,
+              hasPermission('system:role:edit')
+                ? h(NButton, { text: true, type: 'info', size: 'small', onClick: () => handleMenuPermission(row) }, { default: () => '菜单权限' })
+                : null,
+              hasPermission('system:role:edit')
+                ? h(NButton, { text: true, type: 'warning', size: 'small', onClick: () => handleDataScope(row) }, { default: () => '数据权限' })
+                : null,
+              hasPermission('system:role:list')
+                ? h(NButton, { text: true, size: 'small', onClick: () => handleViewUsers(row) }, { default: () => '分配用户' })
+                : null,
+              hasPermission('system:role:remove')
+                ? h(
+                    NPopconfirm,
+                    { onPositiveClick: () => handleDelete(row.id!) },
+                    {
+                      trigger: () => h(NButton, { text: true, type: 'error', size: 'small' }, { default: () => '删除' }),
+                      default: () => '确认删除该角色？',
+                    }
+                  )
+                : null,
+            ].filter(Boolean),
         }
       ),
   },
@@ -156,18 +167,6 @@ async function loadData(): Promise<void> {
   } finally {
     loading.value = false
   }
-}
-
-/** 分页变化 */
-function handlePageChange(newPage: number): void {
-  page.value = newPage
-  loadData()
-}
-
-function handlePageSizeChange(newSize: number): void {
-  pageSize.value = newSize
-  page.value = 1
-  loadData()
 }
 
 /** 新增 */
@@ -217,67 +216,54 @@ onMounted(() => {
 </script>
 
 <template>
-  <NCard>
-    <NSpace vertical :size="16">
-      <!-- 搜索栏 -->
-      <NSpace :size="12" :wrap="false">
+  <div class="w-page">
+    <WSearchForm @search="handleSearch" @reset="handleReset">
         <NInput
           v-model:value="query.roleName"
           placeholder="角色名称"
           clearable
-          style="width: 160px"
+          class="w-page-search__item--md"
         />
         <NInput
           v-model:value="query.roleCode"
           placeholder="角色编码"
           clearable
-          style="width: 160px"
+          class="w-page-search__item--md"
         />
         <NSelect
           v-model:value="query.status"
           :options="statusOptions"
           placeholder="状态"
           clearable
-          style="width: 120px"
+          class="w-page-search__item--sm"
         />
-        <NButton type="primary" @click="handleSearch">查询</NButton>
-        <NButton @click="handleReset">重置</NButton>
+    </WSearchForm>
 
-        <div style="margin-left: auto; display: flex; gap: 8px">
-          <NButton type="primary" @click="handleAdd">
+    <NCard class="w-page-card">
+      <NSpace vertical :size="16">
+        <RightToolbar @refresh="loadData">
+          <PermissionButton permission="system:role:add" type="primary" @click="handleAdd">
             <template #icon>
               <WIcon icon="vicons:antd:PlusOutlined" />
             </template>
             新增
-          </NButton>
-          <NButton @click="loadData">
-            <template #icon>
-              <WIcon icon="vicons:antd:ReloadOutlined" />
-            </template>
-          </NButton>
-        </div>
-      </NSpace>
+          </PermissionButton>
+        </RightToolbar>
 
-      <!-- 表格 -->
-      <NDataTable
-        :columns="columns"
-        :data="tableData"
-        :loading="loading"
-        :row-key="(row: SysRole) => row.id!"
-        :pagination="{
-          page: page,
-          pageSize: pageSize,
-          itemCount: total,
-          showSizePicker: true,
-          pageSizes: [10, 20, 30, 50],
-          onUpdatePage: handlePageChange,
-          onUpdatePageSize: handlePageSizeChange,
-        }"
-        :scroll-x="1300"
-        size="small"
-      />
-    </NSpace>
-  </NCard>
+        <WTable
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          :columns="columns"
+          :data="tableData"
+          :loading="loading"
+          :total="total"
+          :row-key="(row: SysRole) => row.id!"
+          :scroll-x="1300"
+          @change="loadData"
+        />
+      </NSpace>
+    </NCard>
+  </div>
 
   <RoleFormDrawer ref="roleFormDrawerRef" @success="handleFormSuccess" />
   <MenuPermissionDrawer ref="menuPermissionDrawerRef" />

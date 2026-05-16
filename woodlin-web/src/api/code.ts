@@ -52,6 +52,11 @@ export interface PreviewResult {
   templateFiles: TemplateFile[]
 }
 
+/** 导入结果 */
+export interface ImportResult {
+  outputDir: string
+}
+
 /** 生成配置（提交给 preview/download/import 的统一 body） */
 export interface GenConfig {
   tableName: string
@@ -66,7 +71,13 @@ export interface GenConfig {
 
 /** 分页查询业务表 */
 export function pageTables(params: GenTableQuery): Promise<PageResult<GenTable>> {
-  return get('/gen/table', params as Record<string, unknown>)
+  return get('/gen/table', {
+    tableName: params.tableName,
+    tableComment: params.tableComment,
+    dataSourceId: params.dataSourceId,
+    pageNum: params.page,
+    pageSize: params.size,
+  })
 }
 
 /** 获取表字段 */
@@ -87,6 +98,6 @@ export async function downloadCode(data: GenConfig): Promise<Blob> {
 }
 
 /** 直接导入到当前项目 */
-export function importCode(data: GenConfig): Promise<void> {
+export function importCode(data: GenConfig): Promise<ImportResult> {
   return post('/gen/import', data)
 }

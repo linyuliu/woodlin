@@ -59,6 +59,21 @@ public interface ISysOpenAppCredentialService extends IService<SysOpenAppCredent
     SysOpenAppCredential getActiveCredentialByAccessKey(String accessKey);
 
     /**
+     * 根据 AppKey 查询有效凭证。
+     *
+     * @param appKey AppKey
+     * @return 凭证
+     */
+    SysOpenAppCredential getActiveCredentialByAppKey(String appKey);
+
+    /**
+     * 记录最近使用时间。
+     *
+     * @param credentialId 凭证ID
+     */
+    void touchLastUsedTime(Long credentialId);
+
+    /**
      * 解密获取 SK。
      *
      * @param credential 凭证

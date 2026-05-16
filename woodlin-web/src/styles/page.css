@@ -1,0 +1,132 @@
+/**
+ * @file styles/page.css
+ * @description 中后台页面级布局、列表、表单和弹层通用样式
+ * @author yulin
+ * @since 2026-05-06
+ */
+.w-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.w-page-card {
+  width: 100%;
+}
+
+.w-page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.w-page-toolbar__main,
+.w-page-toolbar__extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.w-page-toolbar__extra {
+  margin-left: auto;
+}
+
+.w-page-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.w-page-search__item {
+  min-width: 120px;
+}
+
+.w-page-search__item--sm {
+  width: 120px;
+}
+
+.w-page-search__item--md {
+  width: 160px;
+}
+
+.w-page-search__item--lg {
+  width: 220px;
+}
+
+.w-page-table {
+  min-width: 0;
+}
+
+.w-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.w-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.w-form-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.w-form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.w-drawer-body,
+.w-modal-body {
+  min-width: 0;
+}
+
+.w-scroll-panel {
+  min-height: 0;
+  border: 1px solid var(--w-color-border);
+  border-radius: var(--w-radius);
+  padding: 8px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-muted {
+  color: var(--w-color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .w-page-toolbar,
+  .w-page-toolbar__main,
+  .w-page-toolbar__extra,
+  .w-page-search {
+    width: 100%;
+  }
+
+  .w-page-toolbar__extra {
+    margin-left: 0;
+  }
+
+  .w-page-search__item,
+  .w-page-search__item--sm,
+  .w-page-search__item--md,
+  .w-page-search__item--lg {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .w-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

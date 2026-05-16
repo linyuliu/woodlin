@@ -7,8 +7,7 @@
 -- =============================================================
 USE `woodlin`;
 
-DROP TABLE IF EXISTS `sys_tenant_package`;
-CREATE TABLE `sys_tenant_package`
+CREATE TABLE IF NOT EXISTS `sys_tenant_package`
 (
     `package_id`   bigint(20)    NOT NULL COMMENT '套餐ID',
     `package_name` varchar(100)  NOT NULL COMMENT '套餐名称',

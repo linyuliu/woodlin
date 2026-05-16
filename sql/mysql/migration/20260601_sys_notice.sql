@@ -7,8 +7,7 @@
 -- =============================================================
 USE `woodlin`;
 
-DROP TABLE IF EXISTS `sys_notice`;
-CREATE TABLE `sys_notice`
+CREATE TABLE IF NOT EXISTS `sys_notice`
 (
     `notice_id`      bigint(20)    NOT NULL COMMENT '公告ID',
     `notice_title`   varchar(50)   NOT NULL COMMENT '公告标题',

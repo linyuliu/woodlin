@@ -35,6 +35,12 @@ public class SysJobLogServiceImpl extends ServiceImpl<SysJobLogMapper, SysJobLog
             if (StringUtils.hasText(query.getStatus())) {
                 wrapper.eq(SysJobLog::getStatus, query.getStatus());
             }
+            if (query.getStartTime() != null) {
+                wrapper.ge(SysJobLog::getStartTime, query.getStartTime());
+            }
+            if (query.getStopTime() != null) {
+                wrapper.le(SysJobLog::getStopTime, query.getStopTime());
+            }
         }
         wrapper.orderByDesc(SysJobLog::getStartTime);
         page = this.page(page, wrapper);

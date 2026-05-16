@@ -37,6 +37,13 @@ public class SysOpenApp extends BaseEntity {
     private Long appId;
 
     /**
+     * 客户ID。
+     */
+    @TableField("client_id")
+    @Schema(description = "客户ID")
+    private Long clientId;
+
+    /**
      * 应用编码。
      */
     @NotBlank(message = "应用编码不能为空")
@@ -65,6 +72,34 @@ public class SysOpenApp extends BaseEntity {
     @TableField("tenant_id")
     @Schema(description = "租户ID")
     private String tenantId;
+
+    /**
+     * 地区编码。
+     */
+    @TableField("region_code")
+    @Schema(description = "地区编码")
+    private String regionCode;
+
+    /**
+     * 地区名称。
+     */
+    @TableField("region_name")
+    @Schema(description = "地区名称")
+    private String regionName;
+
+    /**
+     * 负责人用户ID。
+     */
+    @TableField("owner_user_id")
+    @Schema(description = "负责人用户ID")
+    private Long ownerUserId;
+
+    /**
+     * 负责部门ID。
+     */
+    @TableField("owner_dept_id")
+    @Schema(description = "负责部门ID")
+    private Long ownerDeptId;
 
     /**
      * 负责人。

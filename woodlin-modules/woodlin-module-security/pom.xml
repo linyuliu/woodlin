@@ -43,6 +43,10 @@
             <groupId>com.mumu</groupId>
             <artifactId>woodlin-common-db</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-authorization</artifactId>
+        </dependency>
 
         <!-- Hutool 工具库 -->
         <dependency>

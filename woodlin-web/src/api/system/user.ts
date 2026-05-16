@@ -6,6 +6,14 @@
  */
 import { del, get, post, put } from '@/utils/request'
 import type { PageResult, RouteItem } from '@/types/global'
+import {
+  getOptionalNumber,
+  getOptionalString,
+  getString,
+  normalizePageResult,
+  toPageParams,
+  type RawRecord,
+} from '@/api/_utils'
 
 /** 用户实体 */
 export interface SysUser {
@@ -38,24 +46,73 @@ export interface UserQuery {
   status?: string
 }
 
+function mapUser(raw: RawRecord): SysUser {
+  return {
+    id: getOptionalNumber(raw, 'id', 'userId'),
+    username: getString(raw, 'username'),
+    nickname: getOptionalString(raw, 'nickname'),
+    mobile: getOptionalString(raw, 'mobile'),
+    email: getOptionalString(raw, 'email'),
+    deptId: getOptionalNumber(raw, 'deptId'),
+    deptName: getOptionalString(raw, 'deptName'),
+    gender: raw.gender as number | string | undefined,
+    status: getOptionalString(raw, 'status'),
+    roleIds: Array.isArray(raw.roleIds) ? (raw.roleIds as number[]) : undefined,
+    lastLoginTime: getOptionalString(raw, 'lastLoginTime'),
+    lastLoginIp: getOptionalString(raw, 'lastLoginIp'),
+    avatar: getOptionalString(raw, 'avatar'),
+    createTime: getOptionalString(raw, 'createTime'),
+    remark: getOptionalString(raw, 'remark'),
+  }
+}
+
+function toBackendUser(data: SysUser): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    username: data.username,
+    password: data.password,
+    nickname: data.nickname,
+    mobile: data.mobile,
+    email: data.email,
+    deptId: data.deptId,
+    gender: data.gender,
+    status: data.status,
+    roleIds: data.roleIds,
+    avatar: data.avatar,
+    remark: data.remark,
+  }
+  if (data.id !== undefined) {
+    payload.userId = data.id
+  }
+  return payload
+}
+
 /** 分页查询用户 */
-export function pageUsers(params: UserQuery): Promise<PageResult<SysUser>> {
-  return get('/system/user/list', params as Record<string, unknown>)
+export async function pageUsers(params: UserQuery): Promise<PageResult<SysUser>> {
+  const page = await get<PageResult<RawRecord>>('/system/user/list', {
+    username: params.username,
+    nickname: params.nickname,
+    mobile: params.mobile,
+    deptId: params.deptId,
+    status: params.status,
+    ...toPageParams(params),
+  })
+  return normalizePageResult(page, mapUser, params.page ?? 1, params.size ?? 10)
 }
 
 /** 获取用户详情 */
-export function getUser(id: number): Promise<SysUser> {
-  return get(`/system/user/${id}`)
+export async function getUser(id: number): Promise<SysUser> {
+  const user = await get<RawRecord>(`/system/user/${id}`)
+  return mapUser(user ?? {})
 }
 
 /** 新增用户 */
 export function createUser(data: SysUser): Promise<void> {
-  return post('/system/user', data)
+  return post('/system/user', toBackendUser(data))
 }
 
 /** 更新用户（后端从 body 读取主键） */
 export function updateUser(_id: number, data: SysUser): Promise<void> {
-  return put('/system/user', data)
+  return put('/system/user', toBackendUser(data))
 }
 
 /** 删除用户（支持单个或批量，逗号拼接） */

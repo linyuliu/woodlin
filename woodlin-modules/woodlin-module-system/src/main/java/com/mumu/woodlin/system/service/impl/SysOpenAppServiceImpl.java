@@ -3,6 +3,12 @@ package com.mumu.woodlin.system.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.authorization.entity.AuthQuotaPolicy;
+import com.mumu.woodlin.authorization.entity.AuthScope;
+import com.mumu.woodlin.authorization.entity.AuthSubjectGrant;
+import com.mumu.woodlin.authorization.mapper.AuthQuotaPolicyMapper;
+import com.mumu.woodlin.authorization.mapper.AuthScopeMapper;
+import com.mumu.woodlin.authorization.mapper.AuthSubjectGrantMapper;
 import com.mumu.woodlin.common.enums.ResultCode;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.system.entity.SysOpenApp;
@@ -25,7 +31,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysOpenAppServiceImpl extends ServiceImpl<SysOpenAppMapper, SysOpenApp> implements ISysOpenAppService {
 
+    private static final String DEFAULT_BASIC_SCOPE = "openapi.basic:*";
+
     private final SysOpenAppCredentialMapper credentialMapper;
+    private final AuthScopeMapper authScopeMapper;
+    private final AuthSubjectGrantMapper authSubjectGrantMapper;
+    private final AuthQuotaPolicyMapper authQuotaPolicyMapper;
 
     @Override
     public List<SysOpenApp> listApps(String keyword) {
@@ -46,7 +57,11 @@ public class SysOpenAppServiceImpl extends ServiceImpl<SysOpenAppMapper, SysOpen
     public boolean createApp(SysOpenApp app) {
         ensureAppCodeUnique(app.getAppCode(), null);
         app.setStatus(StrUtil.blankToDefault(app.getStatus(), "1"));
-        return save(app);
+        boolean saved = save(app);
+        if (saved) {
+            grantDefaultBasicScope(app);
+        }
+        return saved;
     }
 
     @Override
@@ -66,6 +81,14 @@ public class SysOpenAppServiceImpl extends ServiceImpl<SysOpenAppMapper, SysOpen
         LambdaQueryWrapper<SysOpenAppCredential> credentialWrapper = new LambdaQueryWrapper<>();
         credentialWrapper.eq(SysOpenAppCredential::getAppId, appId);
         credentialMapper.delete(credentialWrapper);
+        LambdaQueryWrapper<AuthSubjectGrant> grantWrapper = new LambdaQueryWrapper<>();
+        grantWrapper.eq(AuthSubjectGrant::getSubjectType, "app");
+        grantWrapper.eq(AuthSubjectGrant::getSubjectId, String.valueOf(appId));
+        authSubjectGrantMapper.delete(grantWrapper);
+        LambdaQueryWrapper<AuthQuotaPolicy> quotaWrapper = new LambdaQueryWrapper<>();
+        quotaWrapper.eq(AuthQuotaPolicy::getSubjectType, "app");
+        quotaWrapper.eq(AuthQuotaPolicy::getSubjectId, String.valueOf(appId));
+        authQuotaPolicyMapper.delete(quotaWrapper);
         return removeById(appId);
     }
 
@@ -87,6 +110,33 @@ public class SysOpenAppServiceImpl extends ServiceImpl<SysOpenAppMapper, SysOpen
         SysOpenApp existing = getById(appId);
         if (existing == null || "1".equals(existing.getDeleted())) {
             throw BusinessException.of(ResultCode.NOT_FOUND, "开放应用不存在");
+        }
+    }
+
+    private void grantDefaultBasicScope(SysOpenApp app) {
+        LambdaQueryWrapper<AuthScope> scopeWrapper = new LambdaQueryWrapper<>();
+        scopeWrapper.eq(AuthScope::getScopeCode, DEFAULT_BASIC_SCOPE);
+        scopeWrapper.eq(AuthScope::getDeleted, "0");
+        scopeWrapper.last("LIMIT 1");
+        AuthScope scope = authScopeMapper.selectOne(scopeWrapper);
+        if (scope == null) {
+            return;
+        }
+        AuthSubjectGrant grant = new AuthSubjectGrant()
+            .setSubjectType("app")
+            .setSubjectId(String.valueOf(app.getAppId()))
+            .setCapabilityId(scope.getCapabilityId())
+            .setScopeId(scope.getScopeId())
+            .setStatus("1")
+            .setTenantId(app.getTenantId());
+        LambdaQueryWrapper<AuthSubjectGrant> existingWrapper = new LambdaQueryWrapper<>();
+        existingWrapper.eq(AuthSubjectGrant::getSubjectType, grant.getSubjectType());
+        existingWrapper.eq(AuthSubjectGrant::getSubjectId, grant.getSubjectId());
+        existingWrapper.eq(AuthSubjectGrant::getCapabilityId, grant.getCapabilityId());
+        existingWrapper.eq(AuthSubjectGrant::getScopeId, grant.getScopeId());
+        existingWrapper.eq(AuthSubjectGrant::getDeleted, "0");
+        if (authSubjectGrantMapper.selectCount(existingWrapper) == 0) {
+            authSubjectGrantMapper.insert(grant);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.mumu.woodlin.sql2api.spi.impl;
 
 import com.mumu.woodlin.common.datasource.spi.impl.PostgreSQLMetadataExtractor;
+import com.mumu.woodlin.common.datasource.model.DatabaseType;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -20,7 +21,7 @@ class PostgreSQLMetadataExtractorTest {
     @Test
     void testGetDatabaseType() {
         PostgreSQLMetadataExtractor extractor = new PostgreSQLMetadataExtractor();
-        assertEquals("PostgreSQL", extractor.getDatabaseType());
+        assertEquals(DatabaseType.POSTGRESQL, extractor.getDatabaseType());
     }
 
     @Test

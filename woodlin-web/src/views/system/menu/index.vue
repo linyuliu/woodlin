@@ -23,20 +23,22 @@ import {
 import {
   getMenuTree,
   deleteMenu,
+  type SysMenuNode,
 } from '@/api/system/menu'
-import type { RouteItem } from '@/types/global'
 import MenuFormDrawer from './components/MenuFormDrawer.vue'
 import WIcon from '@/components/WIcon/index.vue'
+import { hasPermission } from '@/utils/permission'
 
 const message = useMessage()
 
-const treeData: Ref<RouteItem[]> = ref([])
+const treeData: Ref<SysMenuNode[]> = ref([])
 const loading = ref(false)
 const expandAll = ref(true)
 const expandedRowKeys = ref<Array<string | number>>([])
 
 const searchKeyword = ref('')
 const searchStatus = ref<string>()
+const searchVisible = ref<string>()
 
 const menuFormDrawerRef = ref<InstanceType<typeof MenuFormDrawer> | null>(null)
 
@@ -44,6 +46,12 @@ const statusOptions: SelectOption[] = [
   { label: '全部', value: '' },
   { label: '启用', value: '1' },
   { label: '禁用', value: '0' },
+]
+
+const visibleOptions: SelectOption[] = [
+  { label: '全部', value: '' },
+  { label: '显示', value: '1' },
+  { label: '隐藏', value: '0' },
 ]
 
 const menuTypeMap: Record<number, { text: string; type: 'info' | 'success' | 'warning' }> = {
@@ -61,16 +69,20 @@ const filteredTreeData = computed(() => {
   if (searchStatus.value) {
     result = filterTreeByStatus(result, searchStatus.value)
   }
+  if (searchVisible.value) {
+    result = filterTreeByVisible(result, searchVisible.value)
+  }
   return result
 })
 
 /** 按关键词过滤树 */
-function filterTreeByKeyword(list: RouteItem[], keyword: string): RouteItem[] {
-  const filtered: RouteItem[] = []
+function filterTreeByKeyword(list: SysMenuNode[], keyword: string): SysMenuNode[] {
+  const filtered: SysMenuNode[] = []
   for (const item of list) {
     const match = item.title?.toLowerCase().includes(keyword.toLowerCase()) ||
-                  item.name?.toLowerCase().includes(keyword.toLowerCase()) ||
-                  item.permission?.toLowerCase().includes(keyword.toLowerCase())
+                  item.permission?.toLowerCase().includes(keyword.toLowerCase()) ||
+                  item.path?.toLowerCase().includes(keyword.toLowerCase()) ||
+                  item.component?.toLowerCase().includes(keyword.toLowerCase())
     const children = item.children ? filterTreeByKeyword(item.children, keyword) : []
     if (match || children.length > 0) {
       filtered.push({ ...item, children: children.length > 0 ? children : item.children })
@@ -80,10 +92,10 @@ function filterTreeByKeyword(list: RouteItem[], keyword: string): RouteItem[] {
 }
 
 /** 按状态过滤树 */
-function filterTreeByStatus(list: RouteItem[], status: string): RouteItem[] {
-  const filtered: RouteItem[] = []
+function filterTreeByStatus(list: SysMenuNode[], status: string): SysMenuNode[] {
+  const filtered: SysMenuNode[] = []
   for (const item of list) {
-    const match = String(item.isHidden) === (status === '0' ? 'true' : 'false')
+    const match = item.status === status
     const children = item.children ? filterTreeByStatus(item.children, status) : []
     if (match || children.length > 0) {
       filtered.push({ ...item, children: children.length > 0 ? children : item.children })
@@ -92,13 +104,26 @@ function filterTreeByStatus(list: RouteItem[], status: string): RouteItem[] {
   return filtered
 }
 
-const columns = computed<DataTableColumns<RouteItem>>(() => [
+/** 按显示状态过滤树 */
+function filterTreeByVisible(list: SysMenuNode[], visible: string): SysMenuNode[] {
+  const filtered: SysMenuNode[] = []
+  for (const item of list) {
+    const match = item.visible === visible
+    const children = item.children ? filterTreeByVisible(item.children, visible) : []
+    if (match || children.length > 0) {
+      filtered.push({ ...item, children: children.length > 0 ? children : item.children })
+    }
+  }
+  return filtered
+}
+
+const columns = computed<DataTableColumns<SysMenuNode>>(() => [
   {
     key: 'title',
     title: '菜单名称',
     width: 240,
     fixed: 'left',
-    render: (row: RouteItem) =>
+    render: (row: SysMenuNode) =>
       h(
         NSpace,
         { size: 4, align: 'center' },
@@ -114,7 +139,7 @@ const columns = computed<DataTableColumns<RouteItem>>(() => [
     key: 'type',
     title: '类型',
     width: 80,
-    render: (row: RouteItem) => {
+    render: (row: SysMenuNode) => {
       const config = menuTypeMap[row.type]
       return h(NTag, { size: 'small', type: config.type }, { default: () => config.text })
     },
@@ -143,37 +168,41 @@ const columns = computed<DataTableColumns<RouteItem>>(() => [
     key: 'isHidden',
     title: '显示',
     width: 80,
-    render: (row: RouteItem) =>
-      h(NTag, { size: 'small', type: row.isHidden ? 'default' : 'success' }, { default: () => (row.isHidden ? '隐藏' : '显示') }),
+    render: (row: SysMenuNode) =>
+      h(NTag, { size: 'small', type: row.visible === '1' ? 'success' : 'default' }, { default: () => (row.visible === '1' ? '显示' : '隐藏') }),
   },
   {
     key: 'status',
     title: '状态',
     width: 80,
-    render: (row: RouteItem) => h(NTag, { size: 'small', type: row.isHidden ? 'default' : 'success' }, { default: () => (row.isHidden ? '禁用' : '启用') }),
+    render: (row: SysMenuNode) => h(NTag, { size: 'small', type: row.status === '1' ? 'success' : 'default' }, { default: () => (row.status === '1' ? '启用' : '禁用') }),
   },
   {
     key: 'action',
     title: '操作',
     width: 240,
     fixed: 'right',
-    render: (row: RouteItem) =>
+    render: (row: SysMenuNode) =>
       h(
         NSpace,
         { size: 4 },
         {
           default: () => [
-            row.type !== 3 ? h(NButton, { text: true, type: 'success', size: 'small', onClick: () => handleAddChild(row) }, { default: () => '新增子菜单' }) : null,
-            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' }),
-            h(
+            row.type !== 3 && hasPermission('system:menu:add')
+              ? h(NButton, { text: true, type: 'success', size: 'small', onClick: () => handleAddChild(row) }, { default: () => '新增子菜单' })
+              : null,
+            hasPermission('system:menu:edit')
+              ? h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => handleEdit(row) }, { default: () => '编辑' })
+              : null,
+            hasPermission('system:menu:remove') ? h(
               NPopconfirm,
               { onPositiveClick: () => handleDelete(row.id) },
               {
                 trigger: () => h(NButton, { text: true, type: 'error', size: 'small' }, { default: () => '删除' }),
                 default: () => '确认删除该菜单及其子菜单？',
               }
-            ),
-          ],
+            ) : null,
+          ].filter(Boolean),
         }
       ),
   },
@@ -192,6 +221,7 @@ function handleSearch(): void {
 function handleReset(): void {
   searchKeyword.value = ''
   searchStatus.value = undefined
+  searchVisible.value = undefined
   expandAll.value = true
   updateExpandedKeys()
 }
@@ -212,7 +242,7 @@ function updateExpandedKeys(): void {
 }
 
 /** 收集所有节点key */
-function collectAllKeys(list: RouteItem[]): number[] {
+function collectAllKeys(list: SysMenuNode[]): number[] {
   const keys: number[] = []
   for (const item of list) {
     keys.push(item.id)
@@ -243,12 +273,12 @@ function handleAdd(): void {
 }
 
 /** 新增子菜单 */
-function handleAddChild(parent: RouteItem): void {
+function handleAddChild(parent: SysMenuNode): void {
   menuFormDrawerRef.value?.open(undefined, parent.id)
 }
 
 /** 编辑 */
-function handleEdit(row: RouteItem): void {
+function handleEdit(row: SysMenuNode): void {
   menuFormDrawerRef.value?.open(row)
 }
 
@@ -268,67 +298,72 @@ function handleFormSuccess(): void {
   loadData()
 }
 
+function handleExpandedKeysChange(keys: Array<string | number>): void {
+  expandedRowKeys.value = keys
+}
+
 onMounted(() => {
   loadData()
 })
 </script>
 
 <template>
-  <NCard>
-    <NSpace vertical :size="16">
-      <!-- 搜索栏 -->
-      <NSpace :size="12" :wrap="false">
+  <div class="w-page">
+    <WSearchForm @search="handleSearch" @reset="handleReset">
         <NInput
           v-model:value="searchKeyword"
           placeholder="菜单名称"
           clearable
-          style="width: 180px"
+          class="w-page-search__item--md"
         />
         <NSelect
           v-model:value="searchStatus"
           :options="statusOptions"
+          placeholder="状态"
+          clearable
+          class="w-page-search__item--sm"
+        />
+        <NSelect
+          v-model:value="searchVisible"
+          :options="visibleOptions"
           placeholder="显示状态"
           clearable
-          style="width: 120px"
+          class="w-page-search__item--sm"
         />
-        <NButton type="primary" @click="handleSearch">查询</NButton>
-        <NButton @click="handleReset">重置</NButton>
+    </WSearchForm>
 
-        <div style="margin-left: auto; display: flex; gap: 8px">
+    <NCard class="w-page-card">
+      <NSpace vertical :size="16">
+        <RightToolbar @refresh="loadData">
           <NButton @click="handleToggleExpand">
             <template #icon>
               <WIcon :icon="expandAll ? 'vicons:antd:DownOutlined' : 'vicons:antd:RightOutlined'" />
             </template>
             {{ expandAll ? '收起全部' : '展开全部' }}
           </NButton>
-          <NButton type="primary" @click="handleAdd">
+          <PermissionButton permission="system:menu:add" type="primary" @click="handleAdd">
             <template #icon>
               <WIcon icon="vicons:antd:PlusOutlined" />
             </template>
             新增
-          </NButton>
-          <NButton @click="loadData">
-            <template #icon>
-              <WIcon icon="vicons:antd:ReloadOutlined" />
-            </template>
-          </NButton>
-        </div>
-      </NSpace>
+          </PermissionButton>
+        </RightToolbar>
 
-      <!-- 树形表格 -->
-      <NDataTable
-        :columns="columns"
-        :data="filteredTreeData"
-        :loading="loading"
-        :row-key="(row: RouteItem) => row.id"
-        :expanded-row-keys="expandedRowKeys"
-        children-key="children"
-        :scroll-x="1500"
-        size="small"
-        @update:expanded-row-keys="(keys) => (expandedRowKeys = keys)"
-      />
-    </NSpace>
-  </NCard>
+        <NDataTable
+          :columns="columns"
+          :data="filteredTreeData"
+          :loading="loading"
+          :row-key="(row: SysMenuNode) => row.id"
+          :expanded-row-keys="expandedRowKeys"
+          children-key="children"
+          :scroll-x="1500"
+          size="small"
+          striped
+          @update:expanded-row-keys="handleExpandedKeysChange"
+        />
+      </NSpace>
+    </NCard>
+  </div>
 
   <MenuFormDrawer ref="menuFormDrawerRef" @success="handleFormSuccess" />
 </template>

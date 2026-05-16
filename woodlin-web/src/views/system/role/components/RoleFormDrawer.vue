@@ -44,15 +44,15 @@ const formData = reactive<SysRole & { parentRoleId?: number }>({
   remark: '',
   sort: 0,
   parentRoleId: undefined,
-  dataScope: '2',
+  dataScope: '1',
 })
 
 const dataScopeOptions: SelectOption[] = [
   { label: '全部数据', value: '1' },
-  { label: '本部门数据', value: '2' },
-  { label: '本部门及以下数据', value: '3' },
-  { label: '仅本人数据', value: '4' },
-  { label: '自定义数据', value: '5' },
+  { label: '自定义数据', value: '2' },
+  { label: '本部门数据', value: '3' },
+  { label: '本部门及以下数据', value: '4' },
+  { label: '仅本人数据', value: '5' },
 ]
 
 const roleTreeOptions: Ref<TreeSelectOption[]> = ref([])
@@ -67,6 +67,10 @@ const rules: FormRules = {
       trigger: 'blur',
     },
   ],
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
 }
 
 /**
@@ -93,7 +97,7 @@ function resetForm(): void {
     remark: '',
     sort: 0,
     parentRoleId: undefined,
-    dataScope: '2',
+    dataScope: '1',
   })
   formRef.value?.restoreValidation()
 }
@@ -103,8 +107,8 @@ async function loadRoleTree(): Promise<void> {
   try {
     const data = await getRoleTree()
     roleTreeOptions.value = transformRoleTree(data)
-  } catch (error: any) {
-    message.error(error?.message || '加载角色树失败')
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '加载角色树失败'))
   }
 }
 
@@ -128,8 +132,9 @@ async function handleSubmit(): Promise<void> {
 
   loading.value = true
   try {
-    if (isEdit.value) {
-      await updateRole(formData.id!, formData)
+    const roleId = formData.id
+    if (isEdit.value && roleId !== undefined) {
+      await updateRole(roleId, formData)
       message.success('修改成功')
     } else {
       await createRole(formData)
@@ -137,8 +142,8 @@ async function handleSubmit(): Promise<void> {
     }
     visible.value = false
     emit('success')
-  } catch (error: any) {
-    message.error(error?.message || '操作失败')
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '操作失败'))
   } finally {
     loading.value = false
   }

@@ -6,6 +6,14 @@
  */
 import { del, get, post, put } from '@/utils/request'
 import type { PageResult } from '@/types/global'
+import {
+  getOptionalNumber,
+  getOptionalString,
+  getString,
+  normalizePageResult,
+  toPageParams,
+  type RawRecord,
+} from '@/api/_utils'
 
 /** 通知公告 */
 export interface SysNotice {
@@ -28,19 +36,50 @@ export interface NoticeQuery {
   status?: string
 }
 
+function mapNotice(raw: RawRecord): SysNotice {
+  return {
+    id: getOptionalNumber(raw, 'id', 'noticeId'),
+    noticeTitle: getString(raw, 'noticeTitle'),
+    noticeType: getString(raw, 'noticeType', '1'),
+    noticeContent: getOptionalString(raw, 'noticeContent'),
+    status: getOptionalString(raw, 'status'),
+    createBy: getOptionalString(raw, 'createBy'),
+    createTime: getOptionalString(raw, 'createTime'),
+  }
+}
+
+function toBackendNotice(data: SysNotice): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    noticeTitle: data.noticeTitle,
+    noticeType: data.noticeType,
+    noticeContent: data.noticeContent,
+    status: data.status,
+  }
+  if (data.id !== undefined) {
+    payload.noticeId = data.id
+  }
+  return payload
+}
+
 /** 分页查询通知公告 */
-export function pageNotices(params: NoticeQuery): Promise<PageResult<SysNotice>> {
-  return get('/system/notice', params as Record<string, unknown>)
+export async function pageNotices(params: NoticeQuery): Promise<PageResult<SysNotice>> {
+  const page = await get<PageResult<RawRecord>>('/system/notice', {
+    noticeTitle: params.noticeTitle,
+    noticeType: params.noticeType,
+    status: params.status,
+    ...toPageParams(params),
+  })
+  return normalizePageResult(page, mapNotice, params.page ?? 1, params.size ?? 10)
 }
 
 /** 新增通知公告 */
 export function createNotice(data: SysNotice): Promise<void> {
-  return post('/system/notice', data)
+  return post('/system/notice', toBackendNotice(data))
 }
 
 /** 更新通知公告 */
 export function updateNotice(id: number, data: SysNotice): Promise<void> {
-  return put(`/system/notice/${id}`, data)
+  return put(`/system/notice/${id}`, toBackendNotice(data))
 }
 
 /** 删除通知公告 */

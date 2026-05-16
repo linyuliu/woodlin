@@ -6,6 +6,13 @@
  */
 import { del, get, post, put } from '@/utils/request'
 import type { PageResult } from '@/types/global'
+import {
+  getOptionalNumber,
+  getOptionalString,
+  getString,
+  normalizePageResult,
+  type RawRecord,
+} from '@/api/_utils'
 
 /** 租户实体 */
 export interface SysTenant {
@@ -63,51 +70,26 @@ export interface PackageQuery {
   status?: string
 }
 
-interface BackendTenant {
-  tenantId?: string
-  tenantName: string
-  tenantCode: string
-  contactName?: string
-  contactPhone?: string
-  contactEmail?: string
-  expireTime?: string
-  userLimit?: number
-  packageId?: number
-  packageName?: string
-  status?: string
-  remark?: string
-  createTime?: string
-}
-
-interface BackendTenantPackage {
-  packageId?: number
-  packageName: string
-  menuIds?: string
-  status?: string
-  remark?: string
-  createTime?: string
-}
-
-function mapTenant(record: BackendTenant): SysTenant {
+function mapTenant(record: RawRecord): SysTenant {
   return {
-    tenantId: record.tenantId,
-    id: record.tenantId,
-    tenantName: record.tenantName,
-    tenantCode: record.tenantCode,
-    contactName: record.contactName,
-    contactPhone: record.contactPhone,
-    contactEmail: record.contactEmail,
-    expireTime: record.expireTime,
-    userCount: record.userLimit,
-    packageId: record.packageId,
-    packageName: record.packageName,
-    status: record.status,
-    remark: record.remark,
-    createTime: record.createTime,
+    tenantId: getOptionalString(record, 'tenantId'),
+    id: getOptionalString(record, 'tenantId') ?? getOptionalNumber(record, 'id'),
+    tenantName: getString(record, 'tenantName'),
+    tenantCode: getString(record, 'tenantCode'),
+    contactName: getOptionalString(record, 'contactName'),
+    contactPhone: getOptionalString(record, 'contactPhone'),
+    contactEmail: getOptionalString(record, 'contactEmail'),
+    expireTime: getOptionalString(record, 'expireTime'),
+    userCount: getOptionalNumber(record, 'userLimit', 'userCount'),
+    packageId: getOptionalNumber(record, 'packageId'),
+    packageName: getOptionalString(record, 'packageName'),
+    status: getOptionalString(record, 'status'),
+    remark: getOptionalString(record, 'remark'),
+    createTime: getOptionalString(record, 'createTime'),
   }
 }
 
-function toBackendTenant(data: SysTenant): BackendTenant {
+function toBackendTenant(data: SysTenant): RawRecord {
   return {
     tenantId: data.tenantId ?? (data.id ? String(data.id) : undefined),
     tenantName: data.tenantName,
@@ -123,23 +105,24 @@ function toBackendTenant(data: SysTenant): BackendTenant {
   }
 }
 
-function mapPackage(record: BackendTenantPackage): SysTenantPackage {
-  const menuIds = record.menuIds
-    ? record.menuIds.split(',').map((item) => Number(item.trim())).filter((item) => !Number.isNaN(item))
+function mapPackage(record: RawRecord): SysTenantPackage {
+  const rawMenuIds = getOptionalString(record, 'menuIds')
+  const menuIds = rawMenuIds
+    ? rawMenuIds.split(',').map((item) => Number(item.trim())).filter((item) => !Number.isNaN(item))
     : []
   return {
-    packageId: record.packageId,
-    id: record.packageId,
-    packageName: record.packageName,
+    packageId: getOptionalNumber(record, 'packageId', 'id'),
+    id: getOptionalNumber(record, 'packageId', 'id'),
+    packageName: getString(record, 'packageName'),
     menuIds,
     menuCount: menuIds.length,
-    status: record.status,
-    remark: record.remark,
-    createTime: record.createTime,
+    status: getOptionalString(record, 'status'),
+    remark: getOptionalString(record, 'remark'),
+    createTime: getOptionalString(record, 'createTime'),
   }
 }
 
-function toBackendPackage(data: SysTenantPackage): BackendTenantPackage {
+function toBackendPackage(data: SysTenantPackage): RawRecord {
   return {
     packageId: data.packageId ?? data.id,
     packageName: data.packageName,
@@ -151,7 +134,7 @@ function toBackendPackage(data: SysTenantPackage): BackendTenantPackage {
 
 /** 分页查询租户 */
 export function getTenantPage(params: TenantQuery): Promise<PageResult<SysTenant>> {
-  return get<PageResult<BackendTenant>>(
+  return get<PageResult<RawRecord>>(
     '/system/tenant/list',
     {
       pageNum: params.pageNum ?? params.page,
@@ -160,10 +143,7 @@ export function getTenantPage(params: TenantQuery): Promise<PageResult<SysTenant
       tenantCode: params.tenantCode,
       status: params.status,
     },
-  ).then((res) => ({
-    ...res,
-    records: (res?.records ?? []).map(mapTenant),
-  }))
+  ).then((res) => normalizePageResult(res, mapTenant, params.pageNum ?? params.page ?? 1, params.pageSize ?? params.size ?? 10))
 }
 
 /** 新增租户 */
@@ -189,7 +169,7 @@ export function updateTenantStatus(id: number | string, status: string): Promise
 
 /** 分页查询租户套餐 */
 export function getPackagePage(params: PackageQuery): Promise<PageResult<SysTenantPackage>> {
-  return get<PageResult<BackendTenantPackage>>(
+  return get<PageResult<RawRecord>>(
     '/system/tenant/package',
     {
       pageNum: params.pageNum ?? params.page,
@@ -197,15 +177,12 @@ export function getPackagePage(params: PackageQuery): Promise<PageResult<SysTena
       packageName: params.packageName,
       status: params.status,
     },
-  ).then((res) => ({
-    ...res,
-    records: (res?.records ?? []).map(mapPackage),
-  }))
+  ).then((res) => normalizePageResult(res, mapPackage, params.pageNum ?? params.page ?? 1, params.pageSize ?? params.size ?? 10))
 }
 
 /** 获取所有启用套餐（下拉用） */
 export function getAllPackages(): Promise<SysTenantPackage[]> {
-  return get<BackendTenantPackage[]>('/system/tenant/package/all').then((res) => res.map(mapPackage))
+  return get<RawRecord[]>('/system/tenant/package/all').then((res) => res.map(mapPackage))
 }
 
 /** 新增租户套餐 */

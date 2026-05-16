@@ -10,17 +10,20 @@ import java.util.Locale;
  */
 public enum ApiSecurityMode {
 
-    NONE(false, false),
-    TOKEN(true, false),
-    AKSK(false, true),
-    TOKEN_AND_AKSK(true, true);
+    NONE(false, false, false),
+    TOKEN(true, false, false),
+    AKSK(false, true, false),
+    APP_KEY(false, false, true),
+    TOKEN_AND_AKSK(true, true, false);
 
     private final boolean requiresToken;
     private final boolean requiresAksk;
+    private final boolean requiresAppKey;
 
-    ApiSecurityMode(boolean requiresToken, boolean requiresAksk) {
+    ApiSecurityMode(boolean requiresToken, boolean requiresAksk, boolean requiresAppKey) {
         this.requiresToken = requiresToken;
         this.requiresAksk = requiresAksk;
+        this.requiresAppKey = requiresAppKey;
     }
 
     public static ApiSecurityMode of(String value, ApiSecurityMode fallback) {
@@ -40,5 +43,9 @@ public enum ApiSecurityMode {
 
     public boolean requiresAksk() {
         return requiresAksk;
+    }
+
+    public boolean requiresAppKey() {
+        return requiresAppKey;
     }
 }

@@ -63,7 +63,15 @@ DefaultLayout
 | `WSearchForm` | 搜索表单容器，统一展开/收起、重置、提交 |
 | `WDictTag` | 根据字典 type + value 渲染带颜色的标签，自动从 `dictStore` 取数 |
 | `PermissionButton` | 内置 `system:xxx` 权限判定的按钮，等价于 `v-permission` 包装 |
+| `RightToolbar` | 列表页右上角工具条，统一承载“刷新 / 搜索开关 / 扩展操作” |
+| `WUpload` | 统一上传按钮和 URL 回填逻辑，约定上传响应里返回 URL |
 | `ParentView` | 多级菜单中转视图，等价于 `<router-view />`，用于无业务页面的父级路由 |
+
+### 指令约定（`src/directives/`）
+
+- `v-permission="'system:user:add'"`：按权限点渲染元素，数组写法表示 OR。
+- `v-role="'admin'"`：按角色码渲染元素，数组写法表示 OR。
+- `v-copy="'text'"`：点击后写入剪贴板。
 
 ---
 

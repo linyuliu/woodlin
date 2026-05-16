@@ -45,8 +45,8 @@ public class CodeGenController {
             @RequestParam(required = false) Long dataSourceId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "20") int pageSize) {
-        List<GenTableInfo> records = codeGenService.getTables(tableName, tableComment, pageNum, pageSize);
-        long total = codeGenService.countTables(tableName, tableComment);
+        List<GenTableInfo> records = codeGenService.getTables(tableName, tableComment, dataSourceId, pageNum, pageSize);
+        long total = codeGenService.countTables(tableName, tableComment, dataSourceId);
         PageResult<GenTableInfo> page = PageResult.success((long) pageNum, (long) pageSize, total, records);
         return R.ok(page);
     }
@@ -57,7 +57,7 @@ public class CodeGenController {
     @GetMapping("/column/{tableName}")
     public R<List<GenColumnInfo>> listColumns(@PathVariable String tableName,
             @RequestParam(required = false) Long dataSourceId) {
-        return R.ok(codeGenService.getColumns(tableName));
+        return R.ok(codeGenService.getColumns(tableName, dataSourceId));
     }
 
     /**
@@ -89,9 +89,10 @@ public class CodeGenController {
      * 导入（写入项目）：当前实现仅做预览校验
      */
     @PostMapping("/import")
-    public R<Void> importCode(@RequestBody GenConfig config) {
-        List<TemplateFile> files = codeGenService.preview(config);
-        log.info("代码生成导入，模板文件数: {}", files.size());
-        return R.ok("代码预览成功，实际写入需要配置目标路径");
+    public R<Map<String, Object>> importCode(@RequestBody GenConfig config) throws IOException {
+        String outputDir = codeGenService.importCode(config);
+        Map<String, Object> result = new HashMap<>(2);
+        result.put("outputDir", outputDir);
+        return R.ok(result);
     }
 }

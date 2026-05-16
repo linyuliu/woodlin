@@ -93,6 +93,10 @@ public class OpenApiSecurityServiceImpl implements IOpenApiSecurityService {
             .filter(item -> antPathMatcher.match(item.getPathPattern(), requestPath))
             .filter(item -> "*".equals(item.getHttpMethod()) || "ALL".equalsIgnoreCase(item.getHttpMethod())
                 || StrUtil.equalsIgnoreCase(item.getHttpMethod(), httpMethod))
+            .sorted((left, right) -> Integer.compare(
+                policyMatchScore(right, requestPath, httpMethod),
+                policyMatchScore(left, requestPath, httpMethod)
+            ))
             .findFirst()
             .orElse(null);
         return OpenApiRuntimeContext.builder()
@@ -127,5 +131,17 @@ public class OpenApiSecurityServiceImpl implements IOpenApiSecurityService {
         config.setTenantId("default");
         config.setRemark("开放API安全中心配置");
         configService.save(config);
+    }
+
+    private int policyMatchScore(SysOpenApiPolicy policy, String requestPath, String httpMethod) {
+        int score = 0;
+        if (StrUtil.equals(policy.getPathPattern(), requestPath)) {
+            score += 10_000;
+        }
+        score += StrUtil.length(policy.getPathPattern());
+        if (StrUtil.equalsIgnoreCase(policy.getHttpMethod(), httpMethod)) {
+            score += 1_000;
+        }
+        return score;
     }
 }

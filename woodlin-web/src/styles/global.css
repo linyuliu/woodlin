@@ -6,6 +6,7 @@
  */
 @import './variables.css';
 @import './naive-overrides.css';
+@import './page.css';
 
 * {
   box-sizing: border-box;

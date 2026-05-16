@@ -31,9 +31,19 @@ public class OpenApiCredentialView {
     private String credentialName;
 
     /**
+     * 凭证类型。
+     */
+    private String credentialType;
+
+    /**
      * 访问密钥。
      */
     private String accessKey;
+
+    /**
+     * AppKey 掩码。
+     */
+    private String appKeyMasked;
 
     /**
      * 指纹。
@@ -69,6 +79,11 @@ public class OpenApiCredentialView {
      * 最近轮换时间。
      */
     private LocalDateTime lastRotatedTime;
+
+    /**
+     * 最近使用时间。
+     */
+    private LocalDateTime lastUsedTime;
 
     /**
      * 服务端公钥。

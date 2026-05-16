@@ -8,14 +8,11 @@
 import { h, onMounted, reactive, ref, type Ref } from 'vue'
 import {
   NButton,
-  NCard,
-  NDataTable,
   NDrawer,
   NDrawerContent,
   NForm,
   NFormItem,
   NInput,
-  NPagination,
   NPopconfirm,
   NSelect,
   NSpace,
@@ -37,8 +34,7 @@ import {
   type PackageQuery,
   type SysTenantPackage,
 } from '@/api/tenant'
-import { getMenuTree } from '@/api/system/menu'
-import type { RouteItem } from '@/types/global'
+import { getMenuTree, type SysMenuNode } from '@/api/system/menu'
 import { usePermission } from '@/composables/usePermission'
 
 const message = useMessage()
@@ -90,7 +86,7 @@ const rules: FormRules = {
  * 过滤并转换菜单树为 TreeOption（仅保留目录/菜单：type 1 & 2，过滤按钮）
  * @param list 后端菜单/权限树
  */
-function mapMenuTree(list: RouteItem[]): TreeOption[] {
+function mapMenuTree(list: SysMenuNode[]): TreeOption[] {
   return list
     .filter((m) => m.type === 1 || m.type === 2)
     .map((m) => ({
@@ -256,55 +252,40 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-package">
-    <n-card size="small">
-      <n-form inline label-placement="left" :model="query">
-        <n-form-item label="套餐名称">
-          <n-input v-model:value="query.packageName" placeholder="套餐名称" clearable />
-        </n-form-item>
-        <n-form-item label="状态">
-          <n-select
-            v-model:value="query.status"
-            :options="statusOptions"
-            placeholder="状态"
-            clearable
-            style="min-width: 120px"
-          />
-        </n-form-item>
-        <n-form-item>
-          <n-space>
-            <n-button type="primary" @click="handleSearch">查询</n-button>
-            <n-button @click="handleReset">重置</n-button>
-          </n-space>
-        </n-form-item>
-      </n-form>
-    </n-card>
+  <div class="w-page">
+    <WSearchForm @search="handleSearch" @reset="handleReset">
+      <n-input
+        v-model:value="query.packageName"
+        placeholder="套餐名称"
+        clearable
+        class="w-page-search__item--md"
+      />
+      <n-select
+        v-model:value="query.status"
+        :options="statusOptions"
+        placeholder="状态"
+        clearable
+        class="w-page-search__item--sm"
+      />
+    </WSearchForm>
 
-    <n-card size="small">
-      <div class="toolbar">
-        <n-button v-permission="'tenant:package:add'" type="primary" @click="openAdd">
+    <n-card size="small" class="w-page-card">
+      <RightToolbar @refresh="refresh">
+        <PermissionButton permission="tenant:package:add" type="primary" @click="openAdd">
           新增
-        </n-button>
-      </div>
-      <n-data-table
+        </PermissionButton>
+      </RightToolbar>
+      <WTable
+        v-model:page="query.page"
+        v-model:page-size="query.size"
         :columns="columns"
         :data="tableData"
         :loading="loading"
+        :total="total"
         :row-key="(row: SysTenantPackage) => row.id as number"
         :scroll-x="1100"
-        striped
+        @change="refresh"
       />
-      <div class="pagination">
-        <n-pagination
-          v-model:page="query.page"
-          v-model:page-size="query.size"
-          :item-count="total"
-          show-size-picker
-          :page-sizes="[10, 20, 50, 100]"
-          @update:page="refresh"
-          @update:page-size="refresh"
-        />
-      </div>
     </n-card>
 
     <n-drawer v-model:show="drawerVisible" :width="560">
@@ -344,19 +325,3 @@ onMounted(() => {
     </n-drawer>
   </div>
 </template>
-
-<style scoped>
-.page-package {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.toolbar {
-  margin-bottom: 12px;
-}
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-</style>

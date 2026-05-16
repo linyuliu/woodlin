@@ -1,5 +1,8 @@
 package com.mumu.woodlin.task.controller;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import com.mumu.woodlin.common.response.PageResult;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.task.entity.SysJobLog;
@@ -9,6 +12,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class ScheduleJobLogController {
 
     private final ISysJobLogService jobLogService;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 分页查询日志
@@ -42,8 +48,15 @@ public class ScheduleJobLogController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String jobName,
             @RequestParam(required = false) String jobGroup,
-            @RequestParam(required = false) String status) {
-        SysJobLog query = new SysJobLog().setJobName(jobName).setJobGroup(jobGroup).setStatus(status);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        SysJobLog query = new SysJobLog()
+                .setJobName(jobName)
+                .setJobGroup(jobGroup)
+                .setStatus(status)
+                .setStartTime(parseDateTime(startTime))
+                .setStopTime(parseDateTime(endTime));
         return R.ok(jobLogService.queryLogPage(query, page, size));
     }
 
@@ -67,5 +80,23 @@ public class ScheduleJobLogController {
     public R<Void> clean() {
         jobLogService.cleanLogs();
         return R.ok();
+    }
+
+    private LocalDateTime parseDateTime(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        try {
+            if (raw.length() <= 10) {
+                return LocalDateTime.parse(raw + " 00:00:00", DATE_TIME_FORMATTER);
+            }
+            if (raw.contains("T")) {
+                return LocalDateTime.parse(raw);
+            }
+            return LocalDateTime.parse(raw, DATE_TIME_FORMATTER);
+        } catch (Exception e) {
+            log.warn("parseDateTime failed: {}", raw);
+            return null;
+        }
     }
 }

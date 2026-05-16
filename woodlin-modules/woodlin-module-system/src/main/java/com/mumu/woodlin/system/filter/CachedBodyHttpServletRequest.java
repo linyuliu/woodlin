@@ -10,6 +10,15 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * 支持重复读取和覆盖请求体的包装器。
@@ -20,6 +29,8 @@ import java.nio.charset.StandardCharsets;
 public class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
 
     private byte[] cachedBody;
+    private final Map<String, List<String>> headerOverrides = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private final Set<String> removedHeaderNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
     /**
      * 构造函数。
@@ -48,6 +59,36 @@ public class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
      */
     public void replaceBody(byte[] body) {
         this.cachedBody = body == null ? new byte[0] : body.clone();
+    }
+
+    /**
+     * 删除指定前缀的请求头。
+     *
+     * @param prefix 请求头前缀
+     */
+    public void removeHeadersWithPrefix(String prefix) {
+        Enumeration<String> names = super.getHeaderNames();
+        while (names != null && names.hasMoreElements()) {
+            String name = names.nextElement();
+            if (startsWithIgnoreCase(name, prefix)) {
+                removedHeaderNames.add(name);
+            }
+        }
+        headerOverrides.keySet().removeIf(name -> startsWithIgnoreCase(name, prefix));
+    }
+
+    /**
+     * 覆盖请求头。
+     *
+     * @param name  请求头名称
+     * @param value 请求头值
+     */
+    public void setHeader(String name, String value) {
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        removedHeaderNames.remove(name);
+        headerOverrides.put(name, Collections.singletonList(value == null ? "" : value));
     }
 
     @Override
@@ -82,6 +123,44 @@ public class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
     }
 
     @Override
+    public String getHeader(String name) {
+        List<String> values = headerOverrides.get(name);
+        if (values != null) {
+            return values.isEmpty() ? null : values.get(0);
+        }
+        if (removedHeaderNames.contains(name)) {
+            return null;
+        }
+        return super.getHeader(name);
+    }
+
+    @Override
+    public Enumeration<String> getHeaders(String name) {
+        List<String> values = headerOverrides.get(name);
+        if (values != null) {
+            return Collections.enumeration(values);
+        }
+        if (removedHeaderNames.contains(name)) {
+            return Collections.emptyEnumeration();
+        }
+        return super.getHeaders(name);
+    }
+
+    @Override
+    public Enumeration<String> getHeaderNames() {
+        Set<String> names = new LinkedHashSet<>();
+        Enumeration<String> originalNames = super.getHeaderNames();
+        while (originalNames != null && originalNames.hasMoreElements()) {
+            String name = originalNames.nextElement();
+            if (!removedHeaderNames.contains(name) && !headerOverrides.containsKey(name)) {
+                names.add(name);
+            }
+        }
+        names.addAll(new ArrayList<>(headerOverrides.keySet()));
+        return Collections.enumeration(names);
+    }
+
+    @Override
     public int getContentLength() {
         return cachedBody.length;
     }
@@ -89,5 +168,12 @@ public class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
     @Override
     public long getContentLengthLong() {
         return cachedBody.length;
+    }
+
+    private boolean startsWithIgnoreCase(String value, String prefix) {
+        if (value == null || prefix == null) {
+            return false;
+        }
+        return value.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 }

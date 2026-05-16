@@ -20,7 +20,12 @@ import {
   type SelectOption,
   type TreeOption,
 } from 'naive-ui'
-import { assignRoleDataScope, type SysRole, type DataScopeRequest } from '@/api/system/role'
+import {
+  assignRoleDataScope,
+  getRoleDataScope,
+  type SysRole,
+  type DataScopeRequest,
+} from '@/api/system/role'
 import { getDeptTree, type SysDept } from '@/api/system/dept'
 
 const message = useMessage()
@@ -31,19 +36,23 @@ const submitting = ref(false)
 const currentRole: Ref<SysRole | null> = ref(null)
 const deptTreeData: Ref<TreeOption[]> = ref([])
 const formData = reactive<DataScopeRequest>({
-  dataScope: '2',
+  dataScope: '1',
   deptIds: [],
 })
 
 const dataScopeOptions: SelectOption[] = [
   { label: '全部数据', value: '1' },
-  { label: '本部门数据', value: '2' },
-  { label: '本部门及以下数据', value: '3' },
-  { label: '仅本人数据', value: '4' },
-  { label: '自定义数据', value: '5' },
+  { label: '自定义数据', value: '2' },
+  { label: '本部门数据', value: '3' },
+  { label: '本部门及以下数据', value: '4' },
+  { label: '仅本人数据', value: '5' },
 ]
 
-const showDeptTree = computed(() => formData.dataScope === '5')
+const showDeptTree = computed(() => formData.dataScope === '2')
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
 
 /**
  * 打开抽屉
@@ -51,9 +60,14 @@ const showDeptTree = computed(() => formData.dataScope === '5')
 function open(role: SysRole): void {
   visible.value = true
   currentRole.value = role
-  formData.dataScope = role.dataScope || '2'
+  formData.dataScope = role.dataScope || '1'
   formData.deptIds = []
-  loadDeptTree()
+  void initialize()
+}
+
+async function initialize(): Promise<void> {
+  if (!currentRole.value?.id) {return}
+  await Promise.all([loadDeptTree(), loadCurrentDataScope(currentRole.value.id)])
 }
 
 /** 加载部门树 */
@@ -62,10 +76,20 @@ async function loadDeptTree(): Promise<void> {
   try {
     const data = await getDeptTree()
     deptTreeData.value = transformDeptTree(data)
-  } catch (error: any) {
-    message.error(error?.message || '加载部门树失败')
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '加载部门树失败'))
   } finally {
     loading.value = false
+  }
+}
+
+async function loadCurrentDataScope(roleId: number): Promise<void> {
+  try {
+    const data = await getRoleDataScope(roleId)
+    formData.dataScope = data.dataScope || '1'
+    formData.deptIds = data.deptIds ?? []
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '加载角色数据权限失败'))
   }
 }
 
@@ -80,14 +104,15 @@ function transformDeptTree(list: SysDept[]): TreeOption[] {
 
 /** 提交 */
 async function handleSubmit(): Promise<void> {
-  if (!currentRole.value) {return}
+  const roleId = currentRole.value?.id
+  if (roleId === undefined) {return}
   submitting.value = true
   try {
-    await assignRoleDataScope(currentRole.value.id!, formData)
+    await assignRoleDataScope(roleId, formData)
     message.success('数据权限配置成功')
     visible.value = false
-  } catch (error: any) {
-    message.error(error?.message || '操作失败')
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '操作失败'))
   } finally {
     submitting.value = false
   }

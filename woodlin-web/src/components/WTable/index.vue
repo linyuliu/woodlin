@@ -4,17 +4,31 @@
   @author yulin
   @since 2026-05-04
 -->
-<script setup lang="ts" generic="T extends Record<string, unknown>">
-import { NDataTable, NPagination, type DataTableColumns } from 'naive-ui'
+<script setup lang="ts">
+import {
+  NDataTable,
+  NPagination,
+  type DataTableColumns,
+  type DataTableProps,
+} from 'naive-ui'
 
 const props = defineProps<{
-  columns: DataTableColumns<T>
-  data: T[]
+  // Naive UI columns are intentionally row-type specific; this wrapper stays row-shape agnostic.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: DataTableColumns<any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any[]
   loading?: boolean
   page?: number
   pageSize?: number
   total?: number
-  rowKey?: (row: T) => string | number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rowKey?: (row: any) => string | number
+  scrollX?: number | string
+  size?: DataTableProps['size']
+  striped?: boolean
+  remote?: boolean
+  showPagination?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -43,10 +57,12 @@ function onPageSize(size: number): void {
       :data="props.data"
       :loading="props.loading"
       :row-key="props.rowKey"
-      remote
-      striped
+      :remote="props.remote ?? true"
+      :striped="props.striped ?? true"
+      :scroll-x="props.scrollX"
+      :size="props.size ?? 'small'"
     />
-    <div v-if="props.total && props.total > 0" class="w-table__pagination">
+    <div v-if="(props.showPagination ?? true) && props.total && props.total > 0" class="w-table__pagination">
       <NPagination
         :page="props.page ?? 1"
         :page-size="props.pageSize ?? 10"

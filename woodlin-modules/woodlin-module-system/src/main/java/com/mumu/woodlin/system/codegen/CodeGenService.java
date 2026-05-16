@@ -2,8 +2,13 @@ package com.mumu.woodlin.system.codegen;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -14,6 +19,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import com.mumu.woodlin.common.datasource.model.ColumnMetadata;
+import com.mumu.woodlin.common.datasource.model.TableMetadata;
+import com.mumu.woodlin.datasource.entity.InfraDatasourceConfig;
+import com.mumu.woodlin.datasource.mapper.InfraDatasourceMapper;
+import com.mumu.woodlin.datasource.service.DatabaseMetadataService;
 
 /**
  * 代码生成服务
@@ -32,6 +42,10 @@ public class CodeGenService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
+    @Autowired(required = false)
+    private InfraDatasourceMapper datasourceMapper;
+    @Autowired(required = false)
+    private DatabaseMetadataService metadataService;
 
     /**
      * 分页查询当前数据源中的数据库表
@@ -42,7 +56,11 @@ public class CodeGenService {
      * @param pageSize     每页数量
      * @return 表信息列表
      */
-    public List<GenTableInfo> getTables(String tableName, String tableComment, int pageNum, int pageSize) {
+    public List<GenTableInfo> getTables(String tableName, String tableComment, Long dataSourceId, int pageNum, int pageSize) {
+        if (dataSourceId != null) {
+            List<GenTableInfo> tables = getTablesFromDatasource(tableName, tableComment, dataSourceId);
+            return sliceTables(tables, pageNum, pageSize);
+        }
         if (jdbcTemplate == null) {
             log.warn("JdbcTemplate 未配置，无法读取数据库表元数据");
             return Collections.emptyList();
@@ -87,7 +105,10 @@ public class CodeGenService {
      * @param tableComment 表注释（模糊匹配，可选）
      * @return 表数量
      */
-    public long countTables(String tableName, String tableComment) {
+    public long countTables(String tableName, String tableComment, Long dataSourceId) {
+        if (dataSourceId != null) {
+            return getTablesFromDatasource(tableName, tableComment, dataSourceId).size();
+        }
         if (jdbcTemplate == null) {
             return 0L;
         }
@@ -117,7 +138,10 @@ public class CodeGenService {
      * @param tableName 表名
      * @return 字段信息列表
      */
-    public List<GenColumnInfo> getColumns(String tableName) {
+    public List<GenColumnInfo> getColumns(String tableName, Long dataSourceId) {
+        if (dataSourceId != null) {
+            return getColumnsFromDatasource(tableName, dataSourceId);
+        }
         if (jdbcTemplate == null || tableName == null || tableName.isBlank()) {
             return Collections.emptyList();
         }
@@ -160,7 +184,7 @@ public class CodeGenService {
      * @return 模板文件列表
      */
     public List<TemplateFile> preview(GenConfig config) {
-        List<GenColumnInfo> columns = getColumns(config.getTableName());
+        List<GenColumnInfo> columns = getColumns(config.getTableName(), config.getDataSourceId());
         String className = toPascalCase(safe(config.getBusinessName(), config.getTableName()));
         String basePackage = safe(config.getPackageName(), "com.mumu.woodlin.generated");
         String moduleName = safe(config.getModuleName(), "system");
@@ -206,6 +230,40 @@ public class CodeGenService {
             }
         }
         return baos.toByteArray();
+    }
+
+    /**
+     * 将生成的模板文件写入本地 generated-code 目录
+     *
+     * @param config 代码生成配置
+     * @return 输出目录绝对路径
+     * @throws IOException 写入失败
+     */
+    public String importCode(GenConfig config) throws IOException {
+        List<TemplateFile> files = preview(config);
+        Path outputRoot = Paths.get(
+                System.getProperty("user.dir"),
+                "generated-code",
+                sanitizePathSegment(safe(config.getTableName(), "codegen"))
+        ).toAbsolutePath().normalize();
+        for (TemplateFile file : files) {
+            Path target = outputRoot.resolve(file.getName()).normalize();
+            if (!target.startsWith(outputRoot)) {
+                throw new IOException("非法文件路径: " + file.getName());
+            }
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
+            Files.writeString(
+                    target,
+                    file.getContent(),
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE
+            );
+        }
+        return outputRoot.toString();
     }
 
     private String renderEntity(String basePackage, String className, GenConfig config, List<GenColumnInfo> columns) {
@@ -411,5 +469,108 @@ public class CodeGenService {
 
     private String safe(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private List<GenTableInfo> getTablesFromDatasource(String tableName, String tableComment, Long dataSourceId) {
+        if (metadataService == null || datasourceMapper == null) {
+            log.warn("数据源模块未就绪，无法读取数据源 [{}] 的表元数据", dataSourceId);
+            return Collections.emptyList();
+        }
+        String datasourceCode = resolveDatasourceCode(dataSourceId);
+        if (datasourceCode == null) {
+            log.warn("数据源 [{}] 不存在，无法读取表元数据", dataSourceId);
+            return Collections.emptyList();
+        }
+        List<TableMetadata> tables = metadataService.getTables(datasourceCode, null);
+        return tables.stream()
+                .filter(table -> matchesTable(table, tableName, tableComment))
+                .sorted(Comparator.comparing(
+                        TableMetadata::getTableName,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ))
+                .map(this::toGenTableInfo)
+                .toList();
+    }
+
+    private List<GenTableInfo> sliceTables(List<GenTableInfo> tables, int pageNum, int pageSize) {
+        int safePage = Math.max(1, pageNum);
+        int safeSize = Math.max(1, pageSize);
+        int fromIndex = Math.min((safePage - 1) * safeSize, tables.size());
+        int toIndex = Math.min(fromIndex + safeSize, tables.size());
+        return tables.subList(fromIndex, toIndex);
+    }
+
+    private boolean matchesTable(TableMetadata table, String tableName, String tableComment) {
+        String currentTableName = safe(table.getTableName(), "");
+        String currentComment = safe(table.getComment(), "");
+        boolean matchesName = tableName == null || tableName.isBlank() || currentTableName.contains(tableName);
+        boolean matchesComment = tableComment == null || tableComment.isBlank() || currentComment.contains(tableComment);
+        return matchesName && matchesComment;
+    }
+
+    private GenTableInfo toGenTableInfo(TableMetadata table) {
+        GenTableInfo info = new GenTableInfo();
+        info.setTableName(table.getTableName());
+        info.setTableComment(table.getComment());
+        info.setCreateTime(table.getCreateTime());
+        info.setUpdateTime(table.getUpdateTime());
+        return info;
+    }
+
+    private List<GenColumnInfo> getColumnsFromDatasource(String tableName, Long dataSourceId) {
+        if (tableName == null || tableName.isBlank() || metadataService == null || datasourceMapper == null) {
+            return Collections.emptyList();
+        }
+        String datasourceCode = resolveDatasourceCode(dataSourceId);
+        if (datasourceCode == null) {
+            log.warn("数据源 [{}] 不存在，无法读取字段元数据", dataSourceId);
+            return Collections.emptyList();
+        }
+        return metadataService.getColumns(datasourceCode, null, tableName).stream()
+                .map(this::toGenColumnInfo)
+                .toList();
+    }
+
+    private GenColumnInfo toGenColumnInfo(ColumnMetadata metadata) {
+        GenColumnInfo column = new GenColumnInfo();
+        String dataType = safe(metadata.getDataType(), "varchar");
+        column.setColumnName(metadata.getColumnName());
+        column.setColumnComment(metadata.getComment());
+        column.setColumnType(buildColumnType(metadata));
+        column.setJavaType(safe(metadata.getJavaType(), toJavaType(dataType)));
+        column.setJavaField(toCamelCase(metadata.getColumnName()));
+        boolean pk = Boolean.TRUE.equals(metadata.getPrimaryKey());
+        boolean required = Boolean.FALSE.equals(metadata.getNullable());
+        column.setIsPk(pk ? "1" : "0");
+        column.setIsRequired(required ? "1" : "0");
+        column.setIsInsert("1");
+        column.setIsEdit(pk ? "0" : "1");
+        column.setIsList("1");
+        column.setIsQuery("0");
+        column.setQueryType("EQ");
+        column.setHtmlType(toHtmlType(dataType));
+        return column;
+    }
+
+    private String buildColumnType(ColumnMetadata metadata) {
+        String dataType = safe(metadata.getDataType(), "varchar");
+        Integer columnSize = metadata.getColumnSize();
+        Integer decimalDigits = metadata.getDecimalDigits();
+        if (columnSize == null || columnSize <= 0) {
+            return dataType;
+        }
+        if (decimalDigits != null && decimalDigits > 0) {
+            return dataType + "(" + columnSize + "," + decimalDigits + ")";
+        }
+        return dataType + "(" + columnSize + ")";
+    }
+
+    private String resolveDatasourceCode(Long dataSourceId) {
+        InfraDatasourceConfig config = datasourceMapper == null ? null : datasourceMapper.selectById(dataSourceId);
+        return config == null ? null : config.getDatasourceCode();
+    }
+
+    private String sanitizePathSegment(String value) {
+        return value.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 }

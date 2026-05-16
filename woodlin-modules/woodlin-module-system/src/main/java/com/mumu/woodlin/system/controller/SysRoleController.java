@@ -1,7 +1,11 @@
 package com.mumu.woodlin.system.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,8 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mumu.woodlin.common.response.PageResult;
 import com.mumu.woodlin.common.response.R;
 import com.mumu.woodlin.system.dto.RoleTreeDTO;
+import com.mumu.woodlin.system.entity.SysDept;
 import com.mumu.woodlin.system.entity.SysRole;
+import com.mumu.woodlin.system.entity.SysRoleDept;
 import com.mumu.woodlin.system.entity.SysUser;
+import com.mumu.woodlin.system.mapper.SysRoleDeptMapper;
+import com.mumu.woodlin.system.mapper.SysUserMapper;
+import com.mumu.woodlin.system.mapper.SysUserRoleMapper;
+import com.mumu.woodlin.system.service.ISysDeptService;
 import com.mumu.woodlin.system.service.ISysRoleService;
 
 /**
@@ -45,6 +55,10 @@ import com.mumu.woodlin.system.service.ISysRoleService;
 public class SysRoleController {
     
     private final ISysRoleService roleService;
+    private final ISysDeptService deptService;
+    private final SysUserMapper userMapper;
+    private final SysUserRoleMapper userRoleMapper;
+    private final SysRoleDeptMapper roleDeptMapper;
     
     /**
      * 分页查询角色列表
@@ -294,9 +308,65 @@ public class SysRoleController {
             @Parameter(description = "页码，从1开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页显示数量", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
         requirePermission("system:role:list");
-        // 这里简化实现，实际应该查询 user_role 关联表
-        PageResult<SysUser> result = PageResult.success((long) pageNum, (long) pageSize, 0L, List.of());
+        int safePageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int safePageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        List<Long> userIds = userRoleMapper.selectUserIdsByRoleId(roleId);
+        if (userIds == null || userIds.isEmpty()) {
+            return R.ok(PageResult.success((long) safePageNum, (long) safePageSize, 0L, List.of()));
+        }
+
+        int fromIndex = Math.min((safePageNum - 1) * safePageSize, userIds.size());
+        int toIndex = Math.min(fromIndex + safePageSize, userIds.size());
+        List<Long> pageUserIds = userIds.subList(fromIndex, toIndex);
+        List<SysUser> users = userMapper.selectBatchIds(pageUserIds);
+        Map<Long, SysUser> userMap = new HashMap<>();
+        for (SysUser user : users) {
+            userMap.put(user.getUserId(), user);
+        }
+
+        List<SysUser> records = new ArrayList<>();
+        for (Long userId : pageUserIds) {
+            SysUser user = userMap.get(userId);
+            if (user == null) {
+                continue;
+            }
+            SysDept dept = user.getDeptId() == null ? null : deptService.selectDeptById(user.getDeptId());
+            RoleUserView view = new RoleUserView();
+            view.setUserId(user.getUserId());
+            view.setUsername(user.getUsername());
+            view.setNickname(user.getNickname());
+            view.setDeptName(dept == null ? null : dept.getDeptName());
+            records.add(view);
+        }
+
+        PageResult<SysUser> result = PageResult.success(
+                (long) safePageNum,
+                (long) safePageSize,
+                (long) userIds.size(),
+                records
+        );
         return R.ok(result);
+    }
+
+    /**
+     * 查询角色数据权限
+     */
+    @GetMapping("/{roleId}/data-scope")
+    @Operation(
+            summary = "查询角色数据权限",
+            description = "查询角色当前的数据权限范围及自定义部门列表"
+    )
+    public R<DataScopeResponse> getDataScope(
+            @Parameter(description = "角色ID", required = true, example = "1") @PathVariable Long roleId) {
+        requirePermission("system:role:list");
+        SysRole role = roleService.getById(roleId);
+        if (role == null) {
+            throw BusinessException.of(ResultCode.NOT_FOUND, "角色不存在");
+        }
+        DataScopeResponse response = new DataScopeResponse();
+        response.setDataScope(role.getDataScope());
+        response.setDeptIds(deptService.selectDeptListByRoleId(roleId));
+        return R.ok(response);
     }
 
     /**
@@ -316,8 +386,16 @@ public class SysRoleController {
             throw BusinessException.of(ResultCode.NOT_FOUND, "角色不存在");
         }
         role.setDataScope(request.getDataScope());
-        // 这里简化实现，实际应该保存 deptIds 到关联表
         ensureSuccess(roleService.updateById(role), "保存数据权限失败");
+        roleDeptMapper.delete(new LambdaQueryWrapper<SysRoleDept>().eq(SysRoleDept::getRoleId, roleId));
+        if (isCustomDataScope(request.getDataScope()) && request.getDeptIds() != null) {
+            for (Long deptId : request.getDeptIds()) {
+                if (deptId == null) {
+                    continue;
+                }
+                roleDeptMapper.insert(new SysRoleDept().setRoleId(roleId).setDeptId(deptId));
+            }
+        }
         return R.ok("保存数据权限成功");
     }
 
@@ -366,5 +444,42 @@ public class SysRoleController {
         public void setDeptIds(List<Long> deptIds) {
             this.deptIds = deptIds;
         }
+    }
+
+    public static class DataScopeResponse {
+        private String dataScope;
+        private List<Long> deptIds;
+
+        public String getDataScope() {
+            return dataScope;
+        }
+
+        public void setDataScope(String dataScope) {
+            this.dataScope = dataScope;
+        }
+
+        public List<Long> getDeptIds() {
+            return deptIds;
+        }
+
+        public void setDeptIds(List<Long> deptIds) {
+            this.deptIds = deptIds;
+        }
+    }
+
+    public static class RoleUserView extends SysUser {
+        private String deptName;
+
+        public String getDeptName() {
+            return deptName;
+        }
+
+        public void setDeptName(String deptName) {
+            this.deptName = deptName;
+        }
+    }
+
+    private boolean isCustomDataScope(String dataScope) {
+        return "2".equals(dataScope) || "5".equals(dataScope);
     }
 }

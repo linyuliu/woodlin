@@ -5,16 +5,18 @@
   @since 2026-01-01
 -->
 <script setup lang="ts">
-import { h, onMounted, reactive, ref, type Ref } from 'vue'
+import { computed, h, onMounted, reactive, ref, type Ref } from 'vue'
 import {
   NButton,
   NCard,
+  NCheckboxGroup,
   NDataTable,
   NDrawer,
   NDrawerContent,
   NForm,
   NFormItem,
   NInput,
+  NInputNumber,
   NPopconfirm,
   NSelect,
   NSpace,
@@ -29,15 +31,23 @@ import {
 import {
   createApp,
   deleteApps,
+  listAppGrants,
   listApps,
+  listClients,
+  listScopes,
+  saveAppGrants,
   updateApp,
+  type AuthScope,
   type OpenApiApp,
+  type OpenApiClient,
 } from '@/api/openapi'
 
 const message = useMessage()
 const dialog = useDialog()
 
 const tableData: Ref<OpenApiApp[]> = ref([])
+const clients: Ref<OpenApiClient[]> = ref([])
+const scopes: Ref<AuthScope[]> = ref([])
 const loading = ref(false)
 const keyword = ref('')
 
@@ -46,11 +56,21 @@ const drawerTitle = ref('')
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInst | null>(null)
+const grantDrawerVisible = ref(false)
+const grantLoading = ref(false)
+const selectedGrantApp = ref<OpenApiApp | null>(null)
+const selectedScopeIds = ref<number[]>([])
 
 function defaultForm(): OpenApiApp {
   return {
     appName: '',
     appCode: '',
+    clientId: undefined,
+    tenantId: '',
+    regionCode: '',
+    regionName: '',
+    ownerUserId: undefined,
+    ownerDeptId: undefined,
     ownerName: '',
     ipWhitelist: '',
     status: '1',
@@ -70,6 +90,29 @@ const statusOptions: SelectOption[] = [
   { label: '禁用', value: '0' },
 ]
 
+const clientOptions = computed<SelectOption[]>(() =>
+  clients.value.map((item) => ({
+    label: item.clientName,
+    value: item.clientId as number,
+  })),
+)
+
+const scopeOptions = computed<SelectOption[]>(() =>
+  scopes.value
+    .filter((item) => item.enabled !== '0' && item.scopeId)
+    .map((item) => ({
+      label: `${item.scopeName ?? item.scopeCode}（${item.scopeCode}）`,
+      value: item.scopeId as number,
+    })),
+)
+
+function clientName(clientId?: number): string {
+  if (!clientId) {
+    return '-'
+  }
+  return clients.value.find((item) => item.clientId === clientId)?.clientName ?? String(clientId)
+}
+
 async function refresh(): Promise<void> {
   loading.value = true
   try {
@@ -77,6 +120,12 @@ async function refresh(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+async function loadDictionaries(): Promise<void> {
+  const [clientData, scopeData] = await Promise.all([listClients(), listScopes()])
+  clients.value = clientData ?? []
+  scopes.value = scopeData ?? []
 }
 
 function handleSearch(): void {
@@ -100,6 +149,37 @@ function openEdit(row: OpenApiApp): void {
   drawerTitle.value = '编辑应用'
   Object.assign(formData, defaultForm(), row)
   drawerVisible.value = true
+}
+
+async function openGrant(row: OpenApiApp): Promise<void> {
+  if (!row.appId) {
+    return
+  }
+  selectedGrantApp.value = row
+  grantDrawerVisible.value = true
+  grantLoading.value = true
+  try {
+    const grants = (await listAppGrants(row.appId)) ?? []
+    selectedScopeIds.value = grants
+      .map((item) => item.scopeId)
+      .filter((item): item is number => typeof item === 'number')
+  } finally {
+    grantLoading.value = false
+  }
+}
+
+async function handleSaveGrants(): Promise<void> {
+  if (!selectedGrantApp.value?.appId) {
+    return
+  }
+  grantLoading.value = true
+  try {
+    await saveAppGrants(selectedGrantApp.value.appId, selectedScopeIds.value)
+    message.success('授权已保存')
+    grantDrawerVisible.value = false
+  } finally {
+    grantLoading.value = false
+  }
 }
 
 async function handleSubmit(): Promise<void> {
@@ -140,6 +220,9 @@ function handleDelete(row: OpenApiApp): void {
 const columns: DataTableColumns<OpenApiApp> = [
   { title: '应用名称', key: 'appName', width: 180 },
   { title: '应用编码', key: 'appCode', width: 200 },
+  { title: '客户', key: 'clientId', width: 160, render: (row) => clientName(row.clientId) },
+  { title: '地区', key: 'regionName', width: 120 },
+  { title: '租户', key: 'tenantId', width: 120 },
   { title: '负责人', key: 'ownerName', width: 140 },
   { title: 'IP白名单', key: 'ipWhitelist', ellipsis: { tooltip: true } },
   {
@@ -157,7 +240,7 @@ const columns: DataTableColumns<OpenApiApp> = [
   {
     title: '操作',
     key: 'action',
-    width: 180,
+    width: 220,
     fixed: 'right',
     render: (row) =>
       h(NSpace, { size: 'small' }, () => [
@@ -165,6 +248,11 @@ const columns: DataTableColumns<OpenApiApp> = [
           NButton,
           { size: 'small', text: true, type: 'primary', onClick: () => openEdit(row) },
           { default: () => '编辑' },
+        ),
+        h(
+          NButton,
+          { size: 'small', text: true, type: 'info', onClick: () => void openGrant(row) },
+          { default: () => '授权' },
         ),
         h(
           NPopconfirm,
@@ -183,7 +271,8 @@ const columns: DataTableColumns<OpenApiApp> = [
   },
 ]
 
-onMounted(() => {
+onMounted(async () => {
+  await loadDictionaries()
   void refresh()
 })
 </script>
@@ -227,6 +316,29 @@ onMounted(() => {
           <n-form-item label="应用编码" path="appCode">
             <n-input v-model:value="formData.appCode" :disabled="isEdit" />
           </n-form-item>
+          <n-form-item label="客户" path="clientId">
+            <n-select
+              v-model:value="formData.clientId"
+              :options="clientOptions"
+              clearable
+              filterable
+            />
+          </n-form-item>
+          <n-form-item label="租户" path="tenantId">
+            <n-input v-model:value="formData.tenantId" />
+          </n-form-item>
+          <n-form-item label="地区编码" path="regionCode">
+            <n-input v-model:value="formData.regionCode" />
+          </n-form-item>
+          <n-form-item label="地区名称" path="regionName">
+            <n-input v-model:value="formData.regionName" />
+          </n-form-item>
+          <n-form-item label="负责人用户ID" path="ownerUserId">
+            <n-input-number v-model:value="formData.ownerUserId" clearable style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="负责部门ID" path="ownerDeptId">
+            <n-input-number v-model:value="formData.ownerDeptId" clearable style="width: 100%" />
+          </n-form-item>
           <n-form-item label="负责人" path="ownerName">
             <n-input v-model:value="formData.ownerName" />
           </n-form-item>
@@ -250,6 +362,32 @@ onMounted(() => {
             <n-button @click="drawerVisible = false">取消</n-button>
             <n-button type="primary" :loading="submitLoading" @click="handleSubmit">
               确定
+            </n-button>
+          </n-space>
+        </template>
+      </n-drawer-content>
+    </n-drawer>
+
+    <n-drawer v-model:show="grantDrawerVisible" :width="640">
+      <n-drawer-content :title="`接口授权 - ${selectedGrantApp?.appName ?? ''}`" closable>
+        <n-card size="small" :bordered="false">
+          <n-checkbox-group v-model:value="selectedScopeIds">
+            <n-space vertical>
+              <n-checkbox
+                v-for="option in scopeOptions"
+                :key="String(option.value)"
+                :value="option.value as number"
+              >
+                {{ option.label }}
+              </n-checkbox>
+            </n-space>
+          </n-checkbox-group>
+        </n-card>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="grantDrawerVisible = false">取消</n-button>
+            <n-button type="primary" :loading="grantLoading" @click="handleSaveGrants">
+              保存
             </n-button>
           </n-space>
         </template>

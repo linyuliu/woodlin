@@ -54,7 +54,15 @@
 
         <dependency>
             <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-authorization</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
             <artifactId>woodlin-module-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mumu</groupId>
+            <artifactId>woodlin-module-datasource</artifactId>
         </dependency>
 
         <!-- Spring Boot Web -->

@@ -24,6 +24,11 @@ public class OpenApiCredentialIssueResponse {
     private String secretKey;
 
     /**
+     * 明文 AppKey，仅首次展示。
+     */
+    private String appKey;
+
+    /**
      * 签名私钥，仅首次展示。
      */
     private String signaturePrivateKey;

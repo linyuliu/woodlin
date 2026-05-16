@@ -32,6 +32,7 @@ import {
 import {
   createOfflineJob,
   deleteOfflineJob,
+  getOfflineJob,
   pageOfflineJobs,
   previewOfflineJob,
   runOfflineJob,
@@ -103,6 +104,10 @@ const previewLoading = ref(false)
 const previewData = ref<Record<string, unknown>[]>([])
 const previewColumns = ref<DataTableColumns<Record<string, unknown>>>([])
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
 async function loadDataSources(): Promise<void> {
   const res = await pageDataSources({ page: 1, size: 200 })
   dsOptions.value = (res?.records ?? []).map((d: DataSource) => ({
@@ -149,16 +154,22 @@ function openAdd(): void {
   drawerVisible.value = true
 }
 
-function openEdit(row: EtlOfflineJob): void {
+async function openEdit(row: EtlOfflineJob): Promise<void> {
+  if (!row.id) {return}
   isEdit.value = true
   drawerTitle.value = '编辑 ETL 作业'
   resetForm()
-  Object.assign(formData, row)
-  formData.fieldMappings =
-    row.fieldMappings && row.fieldMappings.length > 0
-      ? row.fieldMappings.map((m) => ({ ...m }))
-      : [defaultMapping()]
-  drawerVisible.value = true
+  try {
+    const detail = await getOfflineJob(row.id)
+    Object.assign(formData, detail)
+    formData.fieldMappings =
+      detail.fieldMappings && detail.fieldMappings.length > 0
+        ? detail.fieldMappings.map((m) => ({ ...m }))
+        : [defaultMapping()]
+    drawerVisible.value = true
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '加载作业详情失败'))
+  }
 }
 
 function addMapping(): void {
@@ -182,6 +193,8 @@ async function handleSubmit(): Promise<void> {
     }
     drawerVisible.value = false
     void refresh()
+  } catch (error: unknown) {
+    message.error(getErrorMessage(error, '保存失败'))
   } finally {
     submitLoading.value = false
   }

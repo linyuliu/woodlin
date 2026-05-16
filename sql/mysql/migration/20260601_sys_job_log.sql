@@ -7,8 +7,7 @@
 -- =============================================================
 USE `woodlin`;
 
-DROP TABLE IF EXISTS `sys_job_log`;
-CREATE TABLE `sys_job_log`
+CREATE TABLE IF NOT EXISTS `sys_job_log`
 (
     `log_id`        bigint(20)    NOT NULL COMMENT '日志ID',
     `job_name`      varchar(64)   DEFAULT NULL COMMENT '任务名称',

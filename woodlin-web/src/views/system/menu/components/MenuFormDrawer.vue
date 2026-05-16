@@ -19,13 +19,13 @@ import {
   NSwitch,
   NButton,
   NSpace,
+  NSpin,
   useMessage,
   type FormInst,
   type FormRules,
   type TreeSelectOption,
 } from 'naive-ui'
-import { createMenu, updateMenu, getMenuTree } from '@/api/system/menu'
-import type { RouteItem } from '@/types/global'
+import { createMenu, updateMenu, getMenuTree, getMenuDetail, type SysMenuNode } from '@/api/system/menu'
 import IconPicker from '@/components/IconPicker/index.vue'
 
 const emit = defineEmits<{
@@ -36,9 +36,10 @@ const message = useMessage()
 const visible = ref(false)
 const isEdit = ref(false)
 const loading = ref(false)
+const detailLoading = ref(false)
 const formRef = ref<FormInst | null>(null)
 
-const formData = reactive<Partial<RouteItem>>({
+const formData = reactive<Partial<SysMenuNode>>({
   id: undefined,
   parentId: 0,
   type: 2,
@@ -49,11 +50,14 @@ const formData = reactive<Partial<RouteItem>>({
   icon: '',
   sort: 0,
   permission: '',
+  status: '1',
   isFrame: false,
   isCache: false,
   isHidden: false,
   showInTabs: true,
+  activeMenu: '',
   redirect: '',
+  remark: '',
 })
 
 const menuTreeOptions: Ref<TreeSelectOption[]> = ref([])
@@ -61,7 +65,7 @@ const menuTreeOptions: Ref<TreeSelectOption[]> = ref([])
 const rules: FormRules = {
   title: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择菜单类型', type: 'number' }],
-  name: [{ required: true, message: '请输入路由名称', trigger: 'blur' }],
+  path: [{ required: false, message: '请输入路由地址', trigger: 'blur' }],
 }
 
 /** 是否显示路由字段 (目录和菜单) */
@@ -78,18 +82,28 @@ const showPermissionField = computed(() => formData.type === 2 || formData.type 
  * @param record - 编辑时的菜单对象
  * @param parentId - 新增子菜单时的父ID
  */
-function open(record?: RouteItem, parentId?: number): void {
+async function open(record?: SysMenuNode, parentId?: number): Promise<void> {
   visible.value = true
   isEdit.value = !!record
+  resetForm()
   if (record) {
-    Object.assign(formData, record)
+    detailLoading.value = true
+    try {
+      Object.assign(formData, await getMenuDetail(record.id))
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : '加载菜单详情失败'
+      message.error(messageText)
+      visible.value = false
+      return
+    } finally {
+      detailLoading.value = false
+    }
   } else {
-    resetForm()
     if (parentId !== undefined) {
       formData.parentId = parentId
     }
   }
-  loadMenuTree()
+  await loadMenuTree()
 }
 
 /** 重置表单 */
@@ -104,13 +118,16 @@ function resetForm(): void {
     component: '',
     icon: '',
     sort: 0,
-    permission: '',
-    isFrame: false,
-    isCache: false,
-    isHidden: false,
-    showInTabs: true,
-    redirect: '',
-  })
+      permission: '',
+      status: '1',
+      isFrame: false,
+      isCache: false,
+      isHidden: false,
+      showInTabs: true,
+      activeMenu: '',
+      redirect: '',
+      remark: '',
+    })
   formRef.value?.restoreValidation()
 }
 
@@ -128,7 +145,7 @@ async function loadMenuTree(): Promise<void> {
 }
 
 /** 转换菜单树 */
-function transformMenuTree(list: RouteItem[]): TreeSelectOption[] {
+function transformMenuTree(list: SysMenuNode[]): TreeSelectOption[] {
   return list.map((item) => ({
     key: item.id,
     label: item.title,
@@ -175,6 +192,7 @@ defineExpose({ open })
   <NDrawer v-model:show="visible" :width="600" placement="right">
     <NDrawerContent :title="isEdit ? '编辑菜单' : '新增菜单'" closable>
       <NForm
+        v-if="!detailLoading"
         ref="formRef"
         :model="formData"
         :rules="rules"
@@ -257,6 +275,16 @@ defineExpose({ open })
           </NSwitch>
         </NFormItem>
 
+        <NFormItem label="状态" path="status">
+          <NSwitch
+            :value="formData.status === '1'"
+            @update:value="(value) => (formData.status = value ? '1' : '0')"
+          >
+            <template #checked>启用</template>
+            <template #unchecked>禁用</template>
+          </NSwitch>
+        </NFormItem>
+
         <NFormItem v-if="showRouteFields" label="标签页" path="showInTabs">
           <NSwitch v-model:value="formData.showInTabs">
             <template #checked>显示</template>
@@ -267,7 +295,16 @@ defineExpose({ open })
         <NFormItem v-if="formData.type === 1" label="重定向" path="redirect">
           <NInput v-model:value="formData.redirect" placeholder="默认跳转路由" clearable />
         </NFormItem>
+
+        <NFormItem v-if="formData.type === 2" label="高亮菜单" path="activeMenu">
+          <NInput v-model:value="formData.activeMenu" placeholder="如: /system/user" clearable />
+        </NFormItem>
+
+        <NFormItem label="备注" path="remark">
+          <NInput v-model:value="formData.remark" type="textarea" placeholder="请输入备注" />
+        </NFormItem>
       </NForm>
+      <NSpin v-else :show="detailLoading" style="min-height: 320px" />
 
       <template #footer>
         <NSpace justify="end">

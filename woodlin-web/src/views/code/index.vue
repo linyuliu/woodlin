@@ -35,6 +35,7 @@ import {
   type GenConfig,
   type GenTable,
   type GenTableQuery,
+  type ImportResult,
   type TemplateFile,
 } from '@/api/code'
 import { pageDataSources, type DataSource } from '@/api/datasource'
@@ -158,8 +159,8 @@ async function handleDownload(): Promise<void> {
 async function handleImport(): Promise<void> {
   const tableName = getCheckedTable()
   if (!tableName) {return}
-  await importCode(buildConfig(tableName))
-  message.success('导入成功')
+  const result: ImportResult = await importCode(buildConfig(tableName))
+  message.success(result.outputDir ? `已生成到 ${result.outputDir}` : '已生成到 generated-code')
 }
 
 function detectLang(name: string): string {

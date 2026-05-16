@@ -11,10 +11,15 @@ import { del, get, post, put } from '@/utils/request'
 /** 开放应用（对应后端 SysOpenApp 实体） */
 export interface OpenApiApp {
   appId?: number
+  clientId?: number
   appCode: string
   appName: string
   status?: string
   tenantId?: string
+  regionCode?: string
+  regionName?: string
+  ownerUserId?: number
+  ownerDeptId?: number
   ownerName?: string
   ipWhitelist?: string
   remark?: string
@@ -22,12 +27,27 @@ export interface OpenApiApp {
   updateTime?: string
 }
 
+/** 开放客户 */
+export interface OpenApiClient {
+  clientId?: number
+  clientCode: string
+  clientName: string
+  tenantId?: string
+  ownerUserId?: number
+  ownerDeptId?: number
+  ownerName?: string
+  status?: string
+  remark?: string
+}
+
 /** 开放应用凭证视图（对应后端 OpenApiCredentialView） */
 export interface OpenApiCredentialView {
   credentialId?: number
   appId?: number
   credentialName?: string
+  credentialType?: string
   accessKey?: string
+  appKeyMasked?: string
   secretKeyFingerprint?: string
   signatureAlgorithm?: string
   encryptionAlgorithm?: string
@@ -35,6 +55,7 @@ export interface OpenApiCredentialView {
   activeFrom?: string
   activeTo?: string
   lastRotatedTime?: string
+  lastUsedTime?: string
   serverPublicKey?: string
   status?: string
   remark?: string
@@ -43,8 +64,9 @@ export interface OpenApiCredentialView {
 /** 凭证签发或轮换请求（对应后端 OpenApiCredentialRequest） */
 export interface OpenApiCredentialRequest {
   credentialName: string
+  credentialType?: string
   securityMode: string
-  signatureAlgorithm: string
+  signatureAlgorithm?: string
   encryptionAlgorithm?: string
   activeFrom?: string
   activeTo?: string
@@ -56,6 +78,8 @@ export interface OpenApiCredentialIssueResponse {
   credential: OpenApiCredentialView
   /** 明文 SecretKey，仅首次返回 */
   secretKey?: string
+  /** 明文 AppKey，仅首次返回 */
+  appKey?: string
   /** 签名私钥，仅首次返回 */
   signaturePrivateKey?: string
   /** 客户端解密私钥，仅首次返回 */
@@ -100,6 +124,52 @@ export interface OpenApiGlobalSettings {
   gmEnabled?: boolean
 }
 
+export interface AuthScope {
+  scopeId?: number
+  capabilityId?: number
+  scopeCode?: string
+  scopeName?: string
+  actions?: string
+  enabled?: string
+  tenantId?: string
+}
+
+export interface AuthSubjectGrant {
+  grantId?: number
+  subjectType?: string
+  subjectId?: string
+  capabilityId?: number
+  scopeId?: number
+  status?: string
+  tenantId?: string
+}
+
+export interface AuthQuotaPolicy {
+  quotaId?: number
+  subjectType?: string
+  subjectId?: string
+  capabilityId?: number
+  scopeId?: number
+  windowSeconds?: number
+  limitCount?: number
+  enabled?: string
+  tenantId?: string
+}
+
+export interface OpenApiResource {
+  resourceId?: number
+  resourceCode: string
+  resourceName: string
+  httpMethod: string
+  pathPattern: string
+  capabilityId?: number
+  scopeId?: number
+  authMode?: string
+  status?: string
+  tenantId?: string
+  remark?: string
+}
+
 /* ============== 概览 / 全局设置 ============== */
 
 /** 查询开放 API 概览 */
@@ -118,6 +188,23 @@ export function updateSettings(data: OpenApiGlobalSettings): Promise<void> {
 }
 
 /* ============== 应用 ============== */
+
+export function listClients(keyword?: string): Promise<OpenApiClient[]> {
+  return get('/system/open-api/clients', keyword ? { keyword } : undefined)
+}
+
+export function createClient(data: OpenApiClient): Promise<void> {
+  return post('/system/open-api/clients', data)
+}
+
+export function updateClient(data: OpenApiClient): Promise<void> {
+  return put('/system/open-api/clients', data)
+}
+
+export function deleteClients(clientIds: number | number[] | string): Promise<void> {
+  const ids = Array.isArray(clientIds) ? clientIds.join(',') : String(clientIds)
+  return del(`/system/open-api/clients/${ids}`)
+}
 
 /** 查询开放应用列表（按关键字过滤） */
 export function listApps(keyword?: string): Promise<OpenApiApp[]> {
@@ -138,6 +225,22 @@ export function updateApp(data: OpenApiApp): Promise<void> {
 export function deleteApps(appIds: number | number[] | string): Promise<void> {
   const ids = Array.isArray(appIds) ? appIds.join(',') : String(appIds)
   return del(`/system/open-api/apps/${ids}`)
+}
+
+export function listAppGrants(appId: number): Promise<AuthSubjectGrant[]> {
+  return get(`/system/open-api/apps/${appId}/grants`)
+}
+
+export function saveAppGrants(appId: number, scopeIds: number[]): Promise<void> {
+  return put(`/system/open-api/apps/${appId}/grants`, { scopeIds })
+}
+
+export function listAppQuotas(appId: number): Promise<AuthQuotaPolicy[]> {
+  return get(`/system/open-api/apps/${appId}/quotas`)
+}
+
+export function saveAppQuotas(appId: number, quotas: AuthQuotaPolicy[]): Promise<void> {
+  return put(`/system/open-api/apps/${appId}/quotas`, quotas)
 }
 
 /* ============== 凭证 ============== */
@@ -189,4 +292,31 @@ export function updatePolicy(data: OpenApiPolicy): Promise<void> {
 export function deletePolicies(policyIds: number | number[] | string): Promise<void> {
   const ids = Array.isArray(policyIds) ? policyIds.join(',') : String(policyIds)
   return del(`/system/open-api/policies/${ids}`)
+}
+
+/* ============== 授权目录 ============== */
+
+export function listScopes(): Promise<AuthScope[]> {
+  return get('/authorization/scopes')
+}
+
+export function listResources(keyword?: string): Promise<OpenApiResource[]> {
+  return get('/system/open-api/resources', keyword ? { keyword } : undefined)
+}
+
+export function createResource(data: OpenApiResource): Promise<void> {
+  return post('/system/open-api/resources', data)
+}
+
+export function updateResource(data: OpenApiResource): Promise<void> {
+  return put('/system/open-api/resources', data)
+}
+
+export function deleteResources(resourceIds: number | number[] | string): Promise<void> {
+  const ids = Array.isArray(resourceIds) ? resourceIds.join(',') : String(resourceIds)
+  return del(`/system/open-api/resources/${ids}`)
+}
+
+export function listResourceApps(resourceId: number): Promise<OpenApiApp[]> {
+  return get(`/system/open-api/resources/${resourceId}/apps`)
 }

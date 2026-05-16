@@ -7,8 +7,7 @@
 -- =============================================================
 USE `woodlin`;
 
-DROP TABLE IF EXISTS `sys_login_log`;
-CREATE TABLE `sys_login_log`
+CREATE TABLE IF NOT EXISTS `sys_login_log`
 (
     `login_id`       bigint(20)    NOT NULL COMMENT '日志主键',
     `username`       varchar(50)   DEFAULT NULL COMMENT '用户名',

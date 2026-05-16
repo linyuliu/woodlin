@@ -8,14 +8,11 @@
 import { h, onMounted, reactive, ref, type Ref } from 'vue'
 import {
   NButton,
-  NCard,
-  NDataTable,
   NDrawer,
   NDrawerContent,
   NForm,
   NFormItem,
   NInput,
-  NPagination,
   NPopconfirm,
   NSelect,
   NSpace,
@@ -218,58 +215,46 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-config">
-    <n-card size="small">
-      <n-form inline label-placement="left" :model="query">
-        <n-form-item label="参数名称">
-          <n-input v-model:value="query.configName" placeholder="参数名称" clearable />
-        </n-form-item>
-        <n-form-item label="参数键名">
-          <n-input v-model:value="query.configKey" placeholder="参数键名" clearable />
-        </n-form-item>
-        <n-form-item label="类型">
-          <n-select
-            v-model:value="query.configType"
-            :options="typeOptions"
-            placeholder="类型"
-            clearable
-            style="min-width: 120px"
-          />
-        </n-form-item>
-        <n-form-item>
-          <n-space>
-            <n-button type="primary" @click="handleSearch">查询</n-button>
-            <n-button @click="handleReset">重置</n-button>
-          </n-space>
-        </n-form-item>
-      </n-form>
-    </n-card>
+  <div class="w-page">
+    <WSearchForm @search="handleSearch" @reset="handleReset">
+      <n-input
+        v-model:value="query.configName"
+        placeholder="参数名称"
+        clearable
+        class="w-page-search__item--md"
+      />
+      <n-input
+        v-model:value="query.configKey"
+        placeholder="参数键名"
+        clearable
+        class="w-page-search__item--lg"
+      />
+      <n-select
+        v-model:value="query.configType"
+        :options="typeOptions"
+        placeholder="类型"
+        clearable
+        class="w-page-search__item--sm"
+      />
+    </WSearchForm>
 
-    <n-card size="small">
-      <div class="toolbar">
-        <n-button v-permission="'system:config:add'" type="primary" @click="openAdd">
+    <n-card size="small" class="w-page-card">
+      <RightToolbar @refresh="refresh">
+        <PermissionButton permission="system:config:add" type="primary" @click="openAdd">
           新增
-        </n-button>
-      </div>
-      <n-data-table
+        </PermissionButton>
+      </RightToolbar>
+      <WTable
+        v-model:page="query.page"
+        v-model:page-size="query.size"
         :columns="columns"
         :data="tableData"
         :loading="loading"
+        :total="total"
         :row-key="(row: SysConfig) => row.id as number"
         :scroll-x="1100"
-        striped
+        @change="refresh"
       />
-      <div class="pagination">
-        <n-pagination
-          v-model:page="query.page"
-          v-model:page-size="query.size"
-          :item-count="total"
-          show-size-picker
-          :page-sizes="[10, 20, 50, 100]"
-          @update:page="refresh"
-          @update:page-size="refresh"
-        />
-      </div>
     </n-card>
 
     <n-drawer v-model:show="drawerVisible" :width="520">
@@ -307,19 +292,3 @@ onMounted(() => {
     </n-drawer>
   </div>
 </template>
-
-<style scoped>
-.page-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.toolbar {
-  margin-bottom: 12px;
-}
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-</style>

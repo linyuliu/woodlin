@@ -6,6 +6,13 @@
  */
 import { del, get } from '@/utils/request'
 import type { PageResult } from '@/types/global'
+import {
+  getOptionalNumber,
+  getOptionalString,
+  getString,
+  normalizePageResult,
+  type RawRecord,
+} from '@/api/_utils'
 
 /** 在线用户 */
 export interface OnlineUser {
@@ -153,11 +160,59 @@ export interface CacheInfo {
   cacheValue?: string
 }
 
+function mapOnlineUser(raw: RawRecord): OnlineUser {
+  return {
+    tokenId: getString(raw, 'tokenId') || getString(raw, 'userId'),
+    username: getString(raw, 'username'),
+    ipaddr: getString(raw, 'ipaddr') || getString(raw, 'ip'),
+    loginLocation: getString(raw, 'loginLocation'),
+    browser: getString(raw, 'browser'),
+    os: getString(raw, 'os'),
+    loginTime: getString(raw, 'loginTime'),
+  }
+}
+
+function mapLoginLog(raw: RawRecord): LoginLog {
+  return {
+    id: getOptionalNumber(raw, 'id', 'loginId') ?? 0,
+    username: getString(raw, 'username'),
+    ipaddr: getString(raw, 'ipaddr'),
+    loginLocation: getString(raw, 'loginLocation'),
+    browser: getString(raw, 'browser'),
+    os: getString(raw, 'os'),
+    msg: getString(raw, 'msg'),
+    status: getString(raw, 'status'),
+    loginTime: getString(raw, 'loginTime'),
+  }
+}
+
+function mapOperLog(raw: RawRecord): OperLog {
+  return {
+    id: getOptionalNumber(raw, 'id', 'operId') ?? 0,
+    title: getString(raw, 'title'),
+    businessType: raw.businessType === undefined ? undefined : String(raw.businessType),
+    method: getString(raw, 'method'),
+    requestMethod: getString(raw, 'requestMethod'),
+    operName: getString(raw, 'operName') || getString(raw, 'createBy'),
+    deptName: getOptionalString(raw, 'deptName'),
+    operUrl: getString(raw, 'operUrl'),
+    operIp: getString(raw, 'operIp'),
+    operLocation: getString(raw, 'operLocation'),
+    operParam: getString(raw, 'operParam'),
+    jsonResult: getString(raw, 'jsonResult'),
+    status: getString(raw, 'status'),
+    errorMsg: getString(raw, 'errorMsg'),
+    operTime: getString(raw, 'operTime'),
+    costTime: getOptionalNumber(raw, 'costTime'),
+  }
+}
+
 /* ---------------- 在线用户 ---------------- */
 
 /** 分页查询在线用户 */
-export function pageOnline(params: OnlineUserQuery): Promise<PageResult<OnlineUser>> {
-  return get('/monitor/online', params as Record<string, unknown>)
+export async function pageOnline(params: OnlineUserQuery): Promise<PageResult<OnlineUser>> {
+  const page = await get<PageResult<RawRecord>>('/monitor/online', params as Record<string, unknown>)
+  return normalizePageResult(page, mapOnlineUser, params.page ?? 1, params.size ?? 10)
 }
 
 /** 强制下线 */
@@ -173,8 +228,9 @@ export function batchForceLogout(tokenIds: string[]): Promise<void> {
 /* ---------------- 登录日志 ---------------- */
 
 /** 分页查询登录日志 */
-export function pageLoginLog(params: LoginLogQuery): Promise<PageResult<LoginLog>> {
-  return get('/monitor/loginLog', params as Record<string, unknown>)
+export async function pageLoginLog(params: LoginLogQuery): Promise<PageResult<LoginLog>> {
+  const page = await get<PageResult<RawRecord>>('/monitor/loginLog', params as Record<string, unknown>)
+  return normalizePageResult(page, mapLoginLog, params.page ?? 1, params.size ?? 10)
 }
 
 /** 删除单条登录日志 */
@@ -190,13 +246,15 @@ export function cleanLoginLog(): Promise<void> {
 /* ---------------- 操作日志 ---------------- */
 
 /** 分页查询操作日志 */
-export function pageOperLog(params: OperLogQuery): Promise<PageResult<OperLog>> {
-  return get('/monitor/operLog', params as Record<string, unknown>)
+export async function pageOperLog(params: OperLogQuery): Promise<PageResult<OperLog>> {
+  const page = await get<PageResult<RawRecord>>('/monitor/operLog', params as Record<string, unknown>)
+  return normalizePageResult(page, mapOperLog, params.page ?? 1, params.size ?? 10)
 }
 
 /** 获取操作日志详情 */
-export function getOperLog(id: number): Promise<OperLog> {
-  return get(`/monitor/operLog/${id}`)
+export async function getOperLog(id: number): Promise<OperLog> {
+  const detail = await get<RawRecord>(`/monitor/operLog/${id}`)
+  return mapOperLog(detail ?? {})
 }
 
 /** 删除单条操作日志 */

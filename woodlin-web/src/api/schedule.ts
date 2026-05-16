@@ -6,6 +6,13 @@
  */
 import { del, get, post, put } from '@/utils/request'
 import type { PageResult } from '@/types/global'
+import {
+  getOptionalNumber,
+  getOptionalString,
+  getString,
+  normalizePageResult,
+  type RawRecord,
+} from '@/api/_utils'
 
 /** 定时任务 */
 export interface ScheduleJob {
@@ -60,19 +67,67 @@ export interface ScheduleLogQuery {
   endTime?: string
 }
 
+function mapJob(raw: RawRecord): ScheduleJob {
+  return {
+    id: getOptionalNumber(raw, 'id', 'jobId'),
+    jobName: getString(raw, 'jobName'),
+    jobGroup: getString(raw, 'jobGroup'),
+    invokeTarget: getString(raw, 'invokeTarget'),
+    cronExpression: getString(raw, 'cronExpression'),
+    misfirePolicy: getString(raw, 'misfirePolicy', '1'),
+    concurrent: getString(raw, 'concurrent', '0'),
+    status: getString(raw, 'status', '1'),
+    remark: getOptionalString(raw, 'remark'),
+    createTime: getOptionalString(raw, 'createTime'),
+    updateTime: getOptionalString(raw, 'updateTime'),
+  }
+}
+
+function toBackendJob(data: ScheduleJob): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    jobName: data.jobName,
+    jobGroup: data.jobGroup,
+    invokeTarget: data.invokeTarget,
+    cronExpression: data.cronExpression,
+    misfirePolicy: data.misfirePolicy,
+    concurrent: data.concurrent,
+    status: data.status,
+    remark: data.remark,
+  }
+  if (data.id !== undefined) {
+    payload.jobId = data.id
+  }
+  return payload
+}
+
+function mapLog(raw: RawRecord): ScheduleLog {
+  return {
+    id: getOptionalNumber(raw, 'id', 'logId'),
+    jobName: getString(raw, 'jobName'),
+    jobGroup: getString(raw, 'jobGroup'),
+    invokeTarget: getString(raw, 'invokeTarget'),
+    status: getString(raw, 'status'),
+    message: getOptionalString(raw, 'message'),
+    startTime: getOptionalString(raw, 'startTime'),
+    stopTime: getOptionalString(raw, 'stopTime'),
+    elapsedTime: getOptionalNumber(raw, 'elapsedTime'),
+  }
+}
+
 /** 分页查询任务 */
-export function pageJobs(params: ScheduleJobQuery): Promise<PageResult<ScheduleJob>> {
-  return get('/schedule/job', params as Record<string, unknown>)
+export async function pageJobs(params: ScheduleJobQuery): Promise<PageResult<ScheduleJob>> {
+  const page = await get<PageResult<RawRecord>>('/schedule/job', params as Record<string, unknown>)
+  return normalizePageResult(page, mapJob, params.page ?? 1, params.size ?? 10)
 }
 
 /** 新增任务 */
 export function createJob(data: ScheduleJob): Promise<void> {
-  return post('/schedule/job', data)
+  return post('/schedule/job', toBackendJob(data))
 }
 
 /** 更新任务 */
 export function updateJob(data: ScheduleJob): Promise<void> {
-  return put('/schedule/job', data)
+  return put('/schedule/job', toBackendJob(data))
 }
 
 /** 删除任务 */
@@ -91,8 +146,9 @@ export function runJobOnce(id: number): Promise<void> {
 }
 
 /** 分页查询日志 */
-export function pageLogs(params: ScheduleLogQuery): Promise<PageResult<ScheduleLog>> {
-  return get('/schedule/log', params as Record<string, unknown>)
+export async function pageLogs(params: ScheduleLogQuery): Promise<PageResult<ScheduleLog>> {
+  const page = await get<PageResult<RawRecord>>('/schedule/log', params as Record<string, unknown>)
+  return normalizePageResult(page, mapLog, params.page ?? 1, params.size ?? 10)
 }
 
 /** 删除单条日志 */

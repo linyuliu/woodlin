@@ -51,11 +51,25 @@ public class SysOpenAppCredential extends BaseEntity {
     private String credentialName;
 
     /**
+     * 凭证类型。
+     */
+    @TableField("credential_type")
+    @Schema(description = "凭证类型")
+    private String credentialType;
+
+    /**
      * 访问密钥。
      */
     @TableField("access_key")
     @Schema(description = "访问密钥")
     private String accessKey;
+
+    /**
+     * AppKey 哈希。
+     */
+    @TableField("app_key_hash")
+    @Schema(description = "AppKey哈希")
+    private String appKeyHash;
 
     /**
      * 加密存储的密钥。
@@ -140,6 +154,13 @@ public class SysOpenAppCredential extends BaseEntity {
     @TableField("last_rotated_time")
     @Schema(description = "最近轮换时间")
     private LocalDateTime lastRotatedTime;
+
+    /**
+     * 最近使用时间。
+     */
+    @TableField("last_used_time")
+    @Schema(description = "最近使用时间")
+    private LocalDateTime lastUsedTime;
 
     /**
      * 凭证状态。

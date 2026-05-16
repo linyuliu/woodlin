@@ -16,6 +16,11 @@ import com.mumu.woodlin.security.model.LoginUser;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SecurityUtil {
+
+    /**
+     * 外部授权检查器。
+     */
+    private static volatile AuthorizationChecker authorizationChecker;
     
     /**
      * 用户ID的会话key
@@ -98,7 +103,14 @@ public final class SecurityUtil {
      */
     public static boolean hasPermission(String permission) {
         LoginUser loginUser = getLoginUser();
-        return ObjectUtil.isNotNull(loginUser) && loginUser.hasPermission(permission);
+        if (ObjectUtil.isNull(loginUser)) {
+            return false;
+        }
+        AuthorizationChecker checker = authorizationChecker;
+        if (checker != null) {
+            return checker.hasPermission(loginUser, permission);
+        }
+        return loginUser.hasPermission(permission);
     }
     
     /**
@@ -109,7 +121,47 @@ public final class SecurityUtil {
      */
     public static boolean hasRole(String roleCode) {
         LoginUser loginUser = getLoginUser();
-        return ObjectUtil.isNotNull(loginUser) && loginUser.hasRole(roleCode);
+        if (ObjectUtil.isNull(loginUser)) {
+            return false;
+        }
+        AuthorizationChecker checker = authorizationChecker;
+        if (checker != null) {
+            return checker.hasRole(loginUser, roleCode);
+        }
+        return loginUser.hasRole(roleCode);
+    }
+
+    /**
+     * 设置外部授权检查器。
+     *
+     * @param checker 授权检查器
+     */
+    public static void setAuthorizationChecker(AuthorizationChecker checker) {
+        authorizationChecker = checker;
+    }
+
+    /**
+     * 外部授权检查器。
+     */
+    public interface AuthorizationChecker {
+
+        /**
+         * 检查权限。
+         *
+         * @param loginUser 登录用户
+         * @param permission 权限标识
+         * @return 是否允许
+         */
+        boolean hasPermission(LoginUser loginUser, String permission);
+
+        /**
+         * 检查角色。
+         *
+         * @param loginUser 登录用户
+         * @param roleCode 角色编码
+         * @return 是否拥有角色
+         */
+        boolean hasRole(LoginUser loginUser, String roleCode);
     }
     
     /**

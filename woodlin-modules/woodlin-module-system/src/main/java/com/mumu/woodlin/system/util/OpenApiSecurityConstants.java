@@ -17,6 +17,16 @@ public final class OpenApiSecurityConstants {
     public static final String OPEN_API_PATH_PREFIX = "/openapi/";
 
     /**
+     * 新版开放 API 前缀。
+     */
+    public static final String OPEN_API_V2_PATH_PREFIX = "/open/";
+
+    /**
+     * AppKey 头。
+     */
+    public static final String HEADER_APP_KEY = "X-App-Key";
+
+    /**
      * 访问凭证头。
      */
     public static final String HEADER_ACCESS_KEY = OpenApiHeaders.ACCESS_KEY;
@@ -67,6 +77,51 @@ public final class OpenApiSecurityConstants {
     public static final String AUTHORIZATION_PREFIX = OpenApiHeaders.AUTHORIZATION_PREFIX;
 
     /**
+     * 内部可信上下文请求头前缀。
+     */
+    public static final String INTERNAL_HEADER_PREFIX = "X-Woodlin-";
+
+    /**
+     * 内部主体类型头。
+     */
+    public static final String HEADER_INTERNAL_SUBJECT_TYPE = "X-Woodlin-Subject-Type";
+
+    /**
+     * 内部开放应用头。
+     */
+    public static final String HEADER_INTERNAL_APP_ID = "X-Woodlin-App-Id";
+
+    /**
+     * 内部凭证头。
+     */
+    public static final String HEADER_INTERNAL_CREDENTIAL_ID = "X-Woodlin-Credential-Id";
+
+    /**
+     * 内部租户头。
+     */
+    public static final String HEADER_INTERNAL_TENANT_ID = "X-Woodlin-Tenant-Id";
+
+    /**
+     * 内部客户头。
+     */
+    public static final String HEADER_INTERNAL_CLIENT_ID = "X-Woodlin-Client-Id";
+
+    /**
+     * 内部请求 ID 头。
+     */
+    public static final String HEADER_INTERNAL_REQUEST_ID = "X-Woodlin-Request-Id";
+
+    /**
+     * 内部 Scope 头。
+     */
+    public static final String HEADER_INTERNAL_SCOPES = "X-Woodlin-Scopes";
+
+    /**
+     * 内部安全模式头。
+     */
+    public static final String HEADER_INTERNAL_SECURITY_MODE = "X-Woodlin-Security-Mode";
+
+    /**
      * Nonce Redis 前缀。
      */
     public static final String NONCE_CACHE_PREFIX = OpenApiConfigKeys.DEFAULT_NONCE_CACHE_PREFIX;
@@ -75,6 +130,41 @@ public final class OpenApiSecurityConstants {
      * 策略缓存键。
      */
     public static final String POLICY_CACHE_KEY = "open_api_policy:enabled";
+
+    /**
+     * 当前开放应用请求属性。
+     */
+    public static final String ATTR_APP_ID = "woodlin.openapi.appId";
+
+    /**
+     * 当前开放凭证请求属性。
+     */
+    public static final String ATTR_CREDENTIAL_ID = "woodlin.openapi.credentialId";
+
+    /**
+     * 当前开放租户请求属性。
+     */
+    public static final String ATTR_TENANT_ID = "woodlin.openapi.tenantId";
+
+    /**
+     * 当前开放客户请求属性。
+     */
+    public static final String ATTR_CLIENT_ID = "woodlin.openapi.clientId";
+
+    /**
+     * 当前开放安全模式请求属性。
+     */
+    public static final String ATTR_SECURITY_MODE = "woodlin.openapi.securityMode";
+
+    /**
+     * 当前开放授权范围请求属性。
+     */
+    public static final String ATTR_SCOPES = "woodlin.openapi.scopes";
+
+    /**
+     * 当前开放请求 ID 属性。
+     */
+    public static final String ATTR_REQUEST_ID = "woodlin.openapi.requestId";
 
     /**
      * 配置键: 默认安全模式。

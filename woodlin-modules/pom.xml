@@ -16,6 +16,7 @@
     <description>Woodlin 主业务模块聚合器</description>
 
     <modules>
+        <module>woodlin-module-authorization</module>
         <module>woodlin-module-security</module>
         <module>woodlin-module-system</module>
         <module>woodlin-module-tenant</module>

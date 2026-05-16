@@ -41,6 +41,7 @@ import { getDeptTree, type SysDept } from '@/api/system/dept'
 import UserFormDrawer from './components/UserFormDrawer.vue'
 import AssignRoleModal from './components/AssignRoleModal.vue'
 import WIcon from '@/components/WIcon/index.vue'
+import { hasPermission } from '@/utils/permission'
 
 const message = useMessage()
 
@@ -101,6 +102,7 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
         render: (row: SysUser) =>
           h(NSwitch, {
             value: row.status === '1',
+            disabled: !hasPermission('system:user:edit'),
             onUpdateValue: (val: boolean) => handleStatusChange(row, val),
           }),
       })
@@ -121,7 +123,7 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
             { size: 4 },
             {
               default: () => [
-                h(
+                hasPermission('system:user:edit') ? h(
                   NButton,
                   {
                     text: true,
@@ -130,8 +132,8 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
                     onClick: () => handleEdit(row),
                   },
                   { default: () => '编辑' }
-                ),
-                h(
+                ) : null,
+                hasPermission('system:user:resetPwd') ? h(
                   NPopconfirm,
                   {
                     onPositiveClick: () => handleResetPassword(row),
@@ -145,8 +147,8 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
                       ),
                     default: () => '确认重置密码为 Aa@12345？',
                   }
-                ),
-                h(
+                ) : null,
+                hasPermission('system:user:edit') ? h(
                   NButton,
                   {
                     text: true,
@@ -155,8 +157,8 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
                     onClick: () => handleAssignRole(row),
                   },
                   { default: () => '分配角色' }
-                ),
-                h(
+                ) : null,
+                hasPermission('system:user:remove') ? h(
                   NPopconfirm,
                   {
                     onPositiveClick: () => handleDelete(row.id!),
@@ -170,8 +172,8 @@ const columns = computed<DataTableColumns<SysUser>>(() => {
                       ),
                     default: () => '确认删除该用户？',
                   }
-                ),
-              ],
+                ) : null,
+              ].filter(Boolean),
             }
           ),
       })
@@ -347,7 +349,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <NLayout has-sider style="height: 100%">
+  <NLayout has-sider class="user-page">
     <NLayoutSider
       :width="260"
       :native-scrollbar="false"
@@ -356,12 +358,12 @@ onMounted(() => {
       collapse-mode="width"
       :collapsed-width="0"
     >
-      <div style="padding: 16px">
+      <div class="user-page__sider">
         <NInput
           v-model:value="deptSearchValue"
           placeholder="搜索部门..."
           clearable
-          style="margin-bottom: 12px"
+          class="user-page__dept-search"
         />
         <NTree
           :data="deptTreeData"
@@ -377,34 +379,33 @@ onMounted(() => {
     </NLayoutSider>
 
     <NLayoutContent :native-scrollbar="false">
-      <NCard style="height: 100%">
-        <NSpace vertical :size="16">
-          <!-- 搜索栏 -->
-          <NSpace :size="12" :wrap="false">
+      <div class="w-page user-page__content">
+          <WSearchForm @search="handleSearch" @reset="handleReset">
             <NInput
               v-model:value="query.username"
               placeholder="用户名/昵称"
               clearable
-              style="width: 180px"
+              class="w-page-search__item--md"
             />
             <NSelect
               v-model:value="query.status"
               :options="statusOptions"
               placeholder="状态"
               clearable
-              style="width: 120px"
+              class="w-page-search__item--sm"
             />
-            <NButton type="primary" @click="handleSearch">查询</NButton>
-            <NButton @click="handleReset">重置</NButton>
+          </WSearchForm>
 
-            <div style="margin-left: auto; display: flex; gap: 8px">
-              <NButton type="primary" @click="handleAdd">
+        <NCard class="user-page__card">
+          <NSpace vertical :size="16">
+          <RightToolbar @refresh="loadData">
+              <PermissionButton permission="system:user:add" type="primary" @click="handleAdd">
                 <template #icon>
                   <WIcon icon="vicons:antd:PlusOutlined" />
                 </template>
                 新增
-              </NButton>
-              <NPopconfirm @positive-click="handleBatchDelete">
+              </PermissionButton>
+              <NPopconfirm v-if="hasPermission('system:user:remove')" @positive-click="handleBatchDelete">
                 <template #trigger>
                   <NButton :disabled="selectedRowKeys.length === 0">
                     <template #icon>
@@ -415,13 +416,13 @@ onMounted(() => {
                 </template>
                 确认删除选中的 {{ selectedRowKeys.length }} 个用户？
               </NPopconfirm>
-              <NButton @click="handleImport">
+              <NButton v-permission="'system:user:import'" @click="handleImport">
                 <template #icon>
                   <WIcon icon="vicons:antd:UploadOutlined" />
                 </template>
                 导入
               </NButton>
-              <NButton @click="handleExport">
+              <NButton v-permission="'system:user:export'" @click="handleExport">
                 <template #icon>
                   <WIcon icon="vicons:antd:DownloadOutlined" />
                 </template>
@@ -447,15 +448,8 @@ onMounted(() => {
                   </NSpace>
                 </NCheckboxGroup>
               </NPopover>
-              <NButton @click="loadData">
-                <template #icon>
-                  <WIcon icon="vicons:antd:ReloadOutlined" />
-                </template>
-              </NButton>
-            </div>
-          </NSpace>
+          </RightToolbar>
 
-          <!-- 表格 -->
           <NDataTable
             :columns="columns"
             :data="tableData"
@@ -475,8 +469,9 @@ onMounted(() => {
             :checked-row-keys="selectedRowKeys"
             @update:checked-row-keys="(keys) => (selectedRowKeys = keys)"
           />
-        </NSpace>
-      </NCard>
+          </NSpace>
+        </NCard>
+      </div>
     </NLayoutContent>
   </NLayout>
 
@@ -485,7 +480,27 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.user-page {
+  height: 100%;
+}
+
 :deep(.n-layout-sider) {
   background: #fff;
+}
+
+.user-page__sider {
+  padding: 16px;
+}
+
+.user-page__dept-search {
+  margin-bottom: 12px;
+}
+
+.user-page__card {
+  height: 100%;
+}
+
+.user-page__content {
+  padding-left: 16px;
 }
 </style>

@@ -93,12 +93,15 @@ public class MonitorController {
         if (onlineUserService == null) {
             return R.ok(PageResult.empty((long) pageNum, (long) pageSize));
         }
-        List<Map<String, Object>> records = onlineUserService.getOnlineUsers(pageNum, pageSize);
+        int totalCount = onlineUserService.getOnlineUserCount();
+        List<Map<String, Object>> filtered = onlineUserService.getOnlineUsers(1, Math.max(totalCount, 1));
         if (StringUtils.hasText(username) || StringUtils.hasText(ipaddr)) {
-            records = records.stream().filter(m -> matches(m, username, ipaddr)).toList();
+            filtered = filtered.stream().filter(m -> matches(m, username, ipaddr)).toList();
         }
-        long total = onlineUserService.getOnlineUserCount();
-        return R.ok(PageResult.success((long) pageNum, (long) pageSize, total, records));
+        int fromIndex = Math.min((pageNum - 1) * pageSize, filtered.size());
+        int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+        List<Map<String, Object>> records = filtered.subList(fromIndex, toIndex);
+        return R.ok(PageResult.success((long) pageNum, (long) pageSize, (long) filtered.size(), records));
     }
 
     private boolean matches(Map<String, Object> entry, String username, String ipaddr) {
@@ -234,6 +237,7 @@ public class MonitorController {
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "10") Integer size,
             @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "operName", required = false) String operName,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "startTime", required = false) String startTime,
             @RequestParam(value = "endTime", required = false) String endTime) {
@@ -243,6 +247,9 @@ public class MonitorController {
         LambdaQueryWrapper<SysOperLog> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(title)) {
             wrapper.like(SysOperLog::getTitle, title);
+        }
+        if (StringUtils.hasText(operName)) {
+            wrapper.like(SysOperLog::getCreateBy, operName);
         }
         if (StringUtils.hasText(status)) {
             try {

@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mumu.woodlin.authorization.entity.AuthRole;
+import com.mumu.woodlin.authorization.service.AuthorizationService;
 import com.mumu.woodlin.common.constant.CommonConstant;
 import com.mumu.woodlin.common.exception.BusinessException;
 import com.mumu.woodlin.common.mp.support.MyBatisPlusPageResults;
@@ -32,10 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 角色信息服务实现
@@ -55,6 +55,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRoleHierarchyMapper hierarchyMapper;
     private final SysRoleInheritedPermissionMapper inheritedPermissionMapper;
     private final SysUserRoleMapper userRoleMapper;
+    private final AuthorizationService authorizationService;
 
     /**
      * 权限缓存服务（可选依赖，如果不存在则不使用缓存）
@@ -231,34 +232,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     @Override
     public List<SysRole> selectAllRolesByUserId(Long userId) {
-        // 获取用户的直接角色
-        List<SysRole> directRoles = selectRolesByUserId(userId);
-        if (CollUtil.isEmpty(directRoles)) {
+        if (userId == null) {
             return Collections.emptyList();
         }
-
-        // 获取所有角色ID（包括继承的）
-        Set<Long> allRoleIds = new LinkedHashSet<>();
-        for (SysRole role : directRoles) {
-            allRoleIds.add(role.getRoleId());
-
-            // 添加祖先角色ID - 使用Lambda查询
-            LambdaQueryWrapper<SysRoleHierarchy> hierarchyWrapper = new LambdaQueryWrapper<>();
-            hierarchyWrapper.eq(SysRoleHierarchy::getDescendantRoleId, role.getRoleId())
-                .orderByAsc(SysRoleHierarchy::getDistance);
-            List<SysRoleHierarchy> hierarchies = hierarchyMapper.selectList(hierarchyWrapper);
-            List<Long> ancestorIds = hierarchies.stream()
-                .map(SysRoleHierarchy::getAncestorRoleId)
-                .toList();
-            allRoleIds.addAll(ancestorIds);
-        }
-
-        // 查询所有角色详情
-        if (allRoleIds.isEmpty()) {
-            return directRoles;
-        }
-
-        return listByIds(allRoleIds);
+        return authorizationService.listUserRoles(userId).stream()
+            .map(this::convertToSysRole)
+            .toList();
     }
 
     @Override
@@ -550,6 +529,34 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             .setSortOrder(role.getSortOrder())
             .setHasChildren(false)
             .setChildren(new ArrayList<>());
+    }
+
+    /**
+     * 转换授权角色为系统角色视图。
+     *
+     * @param role 授权角色
+     * @return 系统角色
+     */
+    private SysRole convertToSysRole(AuthRole role) {
+        SysRole sysRole = new SysRole()
+            .setRoleId(role.getRoleId())
+            .setParentRoleId(role.getParentRoleId())
+            .setRoleLevel(role.getRoleLevel())
+            .setRolePath(role.getRolePath())
+            .setRoleName(role.getRoleName())
+            .setRoleCode(role.getRoleCode())
+            .setSortOrder(role.getSortOrder())
+            .setDataScope(role.getDataScope())
+            .setIsInheritable(role.getInheritable())
+            .setStatus(role.getStatus())
+            .setTenantId(role.getTenantId())
+            .setRemark(role.getRemark());
+        sysRole.setCreateBy(role.getCreateBy());
+        sysRole.setCreateTime(role.getCreateTime());
+        sysRole.setUpdateBy(role.getUpdateBy());
+        sysRole.setUpdateTime(role.getUpdateTime());
+        sysRole.setDeleted(role.getDeleted());
+        return sysRole;
     }
 
     /**
